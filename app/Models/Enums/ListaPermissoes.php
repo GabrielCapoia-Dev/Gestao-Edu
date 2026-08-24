@@ -170,6 +170,7 @@ enum ListaPermissoes: string
     case ExcluirSetores = 'excluir setores';
     case ExcluirServidores = 'excluir servidores';
     case ExcluirPessoas = 'excluir pessoas';
+    case ExcluirPessoasDefinitivamente = 'excluir pessoas definitivamente';
     case ExcluirComponenteCurricular = 'excluir componente curricular';
     case ExcluirPedidosMerenda = 'excluir pedidos: merenda';
     case ExcluirItens = 'excluir itens';
@@ -434,6 +435,7 @@ enum ListaPermissoes: string
             self::ExcluirSetores => 'Excluir Setores',
             self::ExcluirServidores => 'Excluir Servidores',
             self::ExcluirPessoas => 'Excluir Pessoas',
+            self::ExcluirPessoasDefinitivamente => 'Excluir Pessoas Definitivamente',
             self::ExcluirComponenteCurricular => 'Excluir Componente Curricular',
             self::ExcluirPedidosMerenda => 'Excluir Pedidos: Merenda',
             self::ExcluirItens => 'Excluir Itens',

@@ -68,7 +68,12 @@ class ServidorPolicy
 
     public function forceDelete(User $user, Servidor $servidor): bool
     {
-        return false;
+        if (! $servidor->trashed() || $this->pessoaComUsuarioProtegido($user, $servidor)) {
+            return false;
+        }
+
+        return $user->hasPermissionTo(ListaPermissoes::ExcluirPessoasDefinitivamente->label())
+            && $this->podeAcessarServidor($user, $servidor);
     }
 
     public function forceDeleteAny(User $user): bool

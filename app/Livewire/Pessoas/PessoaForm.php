@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Services\DominioEmailService;
 use App\Services\PessoaEdicaoEscopadaService;
 use App\Services\PessoaProfessorFormService;
+use App\Services\PessoaSalvarExceptionService;
 use App\Services\PessoaScopeService;
 use App\Services\ServidorService;
 use Filament\Notifications\Notification;
@@ -175,18 +176,8 @@ class PessoaForm extends Component
                 $vinculos = is_array($lotacao['vinculos_turma_componente'] ?? null)
                     ? $lotacao['vinculos_turma_componente']
                     : [];
-                $selecionadas = collect($vinculos)
-                    ->filter(fn (mixed $item): bool => is_array($item))
-                    ->pluck('turma_id')
-                    ->filter()
-                    ->map(fn (mixed $id): int => (int) $id)
-                    ->unique()
-                    ->values()
-                    ->all();
                 $opcoesTurma = $this->turmasOptionsSeguras(
                     $escolaId,
-                    (string) ($matricula['turno'] ?? ''),
-                    $selecionadas,
                     $escolasOptions,
                 );
                 $turmasOptions[$matriculaKey][$lotacaoKey] = $opcoesTurma;
@@ -544,14 +535,12 @@ class PessoaForm extends Component
             : null;
         $permitidas = $this->turmasOptionsSeguras(
             $escolaId,
-            (string) ($this->matriculas[$matriculaKey]['turno'] ?? ''),
-            [],
             $this->escolasOptionsSeguras(),
         );
 
         if ($turmaId !== null && ! array_key_exists($turmaId, $permitidas)) {
             throw ValidationException::withMessages([
-                "matriculas.{$matriculaKey}.escolas.{$lotacaoKey}.vinculos_turma_componente.{$vinculoKey}.turma_id" => 'A turma selecionada não pertence à escola e ao turno desta matrícula.',
+                "matriculas.{$matriculaKey}.escolas.{$lotacaoKey}.vinculos_turma_componente.{$vinculoKey}.turma_id" => 'A turma selecionada não pertence à escola desta lotação.',
             ]);
         }
 
@@ -739,12 +728,27 @@ class PessoaForm extends Component
         } catch (AuthorizationException $exception) {
             throw $exception;
         } catch (Throwable $exception) {
-            report($exception);
-            $this->addError('formulario', 'Não foi possível salvar a pessoa. Revise os dados e tente novamente.');
+            $tratamento = app(PessoaSalvarExceptionService::class);
+            $validacao = $tratamento->mapear($exception);
+
+            if ($validacao) {
+                Notification::make()
+                    ->title('Não foi possível salvar')
+                    ->body(collect($validacao->errors())->flatten()->take(5)->implode(' '))
+                    ->danger()
+                    ->persistent()
+                    ->send();
+
+                throw $validacao;
+            }
+
+            $protocolo = $tratamento->registrarInesperada($exception, $this->pessoaId, $user->id);
+            $mensagem = "Não foi possível salvar a pessoa. Informe o protocolo {$protocolo} ao suporte.";
+            $this->addError('formulario', $mensagem);
 
             Notification::make()
                 ->title('Erro ao salvar pessoa')
-                ->body('A alteração não foi aplicada. Tente novamente.')
+                ->body($mensagem)
                 ->danger()
                 ->persistent()
                 ->send();
@@ -1013,13 +1017,43 @@ class PessoaForm extends Component
         }
 
         $cpf = Pessoa::normalizarCpf($this->cpf);
-        if ($cpf !== null && Servidor::query()
+        if ($cpf !== null && Servidor::withTrashed()
             ->where('cpf', $cpf)
             ->when($this->pessoaId !== null, fn ($query) => $query->whereKeyNot($this->pessoaId))
             ->exists()) {
             throw ValidationException::withMessages([
-                'cpf' => 'Este CPF já está vinculado a outra pessoa.',
+                'cpf' => 'Este CPF já está vinculado a outra pessoa, inclusive entre os cadastros arquivados.',
             ]);
+        }
+
+        $email = Pessoa::normalizarEmail($this->email);
+        $pessoaAtual = $this->pessoaId !== null
+            ? Servidor::withTrashed()->find($this->pessoaId)
+            : null;
+        $emailFoiAlterado = ! $pessoaAtual
+            || $email !== Pessoa::normalizarEmail($pessoaAtual->email);
+
+        if ($email !== null && $emailFoiAlterado) {
+            if (Servidor::withTrashed()
+                ->where('email_normalizado', $email)
+                ->when($this->pessoaId !== null, fn ($query) => $query->whereKeyNot($this->pessoaId))
+                ->exists()) {
+                throw ValidationException::withMessages([
+                    'email' => 'Este e-mail já está vinculado a outra pessoa, inclusive entre os cadastros arquivados.',
+                ]);
+            }
+
+            $user = User::withTrashed()
+                ->whereRaw('LOWER(email) = ?', [$email])
+                ->when(filled($pessoaAtual?->user_id), fn ($query) => $query->whereKeyNot($pessoaAtual->user_id))
+                ->first();
+            if ($user?->trashed() || ($user && Servidor::withTrashed()->where('user_id', $user->id)->exists())) {
+                throw ValidationException::withMessages([
+                    'email' => $user->trashed()
+                        ? 'Este e-mail pertence a uma conta de usuário arquivada. Restaure ou exclua definitivamente a conta antes de salvar.'
+                        : 'A conta encontrada para este e-mail já está vinculada a outra pessoa.',
+                ]);
+            }
         }
     }
 
@@ -1185,6 +1219,18 @@ class PessoaForm extends Component
                 if (! array_key_exists($escolaId, $escolasOptions)) {
                     throw ValidationException::withMessages([
                         "matriculas.{$matriculaKey}.escolas.{$lotacaoKey}.id_escola" => 'A escola não pertence ao seu escopo.',
+                    ]);
+                }
+
+                $numeroMatricula = mb_strtolower(trim((string) ($matricula['matricula'] ?? '')));
+                if ($numeroMatricula !== '' && Professor::query()
+                    ->where('id_escola', $escolaId)
+                    ->whereRaw('LOWER(TRIM(matricula)) = ?', [$numeroMatricula])
+                    ->whereNotNull('servidor_id')
+                    ->when($this->pessoaId !== null, fn ($query) => $query->where('servidor_id', '!=', $this->pessoaId))
+                    ->exists()) {
+                    throw ValidationException::withMessages([
+                        "matriculas.{$matriculaKey}.matricula" => 'Esta matrícula já está vinculada a outra pessoa na escola selecionada, inclusive em vínculos arquivados.',
                     ]);
                 }
 
@@ -1443,19 +1489,6 @@ class PessoaForm extends Component
         if (! $turma || (int) $turma->id_escola !== $escolaId) {
             throw ValidationException::withMessages([
                 "matriculas.{$matriculaKey}.escolas.{$lotacaoKey}.vinculos_turma_componente.{$vinculoKey}.turma_id" => 'A turma não pertence à escola da lotação.',
-            ]);
-        }
-
-        $turnosCompativeis = PessoaMatricula::turnosTurmaCompativeis((string) ($matricula['turno'] ?? ''));
-        $vinculoJaExistia = filled($lotacao['id'] ?? null) && TurmaComponenteProfessor::query()
-            ->where('professor_id', (int) $lotacao['id'])
-            ->where('turma_id', $turmaId)
-            ->where('componente_curricular_id', $componenteId)
-            ->where('tem_professor', true)
-            ->exists();
-        if (! in_array((string) $turma->turno, $turnosCompativeis, true) && ! $vinculoJaExistia) {
-            throw ValidationException::withMessages([
-                "matriculas.{$matriculaKey}.escolas.{$lotacaoKey}.vinculos_turma_componente.{$vinculoKey}.turma_id" => 'A turma não é compatível com o turno da matrícula.',
             ]);
         }
 
@@ -1928,11 +1961,10 @@ class PessoaForm extends Component
     }
 
     /**
-     * @param  list<int>  $selecionadas
      * @param  array<int, string>  $escolasOptions
      * @return array<int, string>
      */
-    private function turmasOptionsSeguras(?int $escolaId, string $turno, array $selecionadas, array $escolasOptions): array
+    private function turmasOptionsSeguras(?int $escolaId, array $escolasOptions): array
     {
         if (! $escolaId || ! array_key_exists($escolaId, $escolasOptions)) {
             return [];
@@ -1943,22 +1975,6 @@ class PessoaForm extends Component
             ->with('serie:id,nome')
             ->orderBy('turno')
             ->orderBy('nome');
-        $turnos = array_key_exists($turno, PessoaMatricula::turnosOptions())
-            ? PessoaMatricula::turnosTurmaCompativeis($turno)
-            : [];
-
-        if ($turnos !== []) {
-            $query->where(function ($turmas) use ($turnos, $selecionadas): void {
-                $turmas->whereIn('turno', $turnos);
-                if ($selecionadas !== []) {
-                    $turmas->orWhereIn('id', $selecionadas);
-                }
-            });
-        } elseif ($selecionadas !== []) {
-            $query->whereIn('id', $selecionadas);
-        } else {
-            return [];
-        }
 
         return $query->get()->mapWithKeys(function (Turma $turma): array {
             $nome = collect([$turma->serie?->nome, $turma->nome])->filter()->implode(' - ');

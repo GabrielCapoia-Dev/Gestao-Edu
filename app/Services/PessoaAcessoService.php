@@ -9,11 +9,12 @@ use App\Models\Role;
 use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-use LogicException;
+use Illuminate\Validation\ValidationException;
 use Spatie\Permission\PermissionRegistrar;
 
 class PessoaAcessoService
@@ -204,7 +205,7 @@ class PessoaAcessoService
             ->diff($user->roles()->pluck('roles.id')->map(fn ($id): int => (int) $id));
 
         if ($forjadas->isNotEmpty()) {
-            throw new \Illuminate\Auth\Access\AuthorizationException(
+            throw new AuthorizationException(
                 'Roles funcionais devem ser alteradas apenas pelo fluxo de Pessoas.'
             );
         }
@@ -231,6 +232,7 @@ class PessoaAcessoService
             ->values()
             ->all();
     }
+
     public function provisionarAcessosDoServidor(Pessoa|Servidor $servidor): void
     {
         $servidor = $servidor->fresh([
@@ -319,9 +321,9 @@ class PessoaAcessoService
             ->first();
 
         if (! $role) {
-            throw new LogicException(
-                'A role Equipe Gestora ainda não foi criada. Execute o comando permissoes:criar antes de provisionar gestores.'
-            );
+            throw ValidationException::withMessages([
+                'cargo' => 'O nível de acesso da Equipe Gestora ainda não está configurado. Execute a sincronização de permissões antes de salvar.',
+            ]);
         }
 
         foreach ($funcoesGestoras as $funcao) {
@@ -449,9 +451,9 @@ class PessoaAcessoService
             ->exists();
 
         if ($vinculadoAOutraPessoa) {
-            throw new LogicException(
-                'A conta encontrada para este e-mail já está vinculada a outra Pessoa. O conflito deve ser saneado antes de provisionar o acesso.'
-            );
+            throw ValidationException::withMessages([
+                'email' => 'A conta encontrada para este e-mail já está vinculada a outra pessoa. Regularize o vínculo da conta antes de salvar.',
+            ]);
         }
     }
 
@@ -473,9 +475,13 @@ class PessoaAcessoService
                 ->where('id', '!=', $user->id)
                 ->exists();
 
-            if (! $conflito) {
-                $payload['email'] = $email;
+            if ($conflito) {
+                throw ValidationException::withMessages([
+                    'email' => 'Este e-mail já pertence a outra conta de usuário, inclusive entre as contas arquivadas.',
+                ]);
             }
+
+            $payload['email'] = $email;
         }
 
         $user->update($payload);
