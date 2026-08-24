@@ -241,7 +241,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
-    cpus: "${DB_CPUS:-1.50}"
+    cpus: "${DB_CPUS:-0.70}"
     mem_limit: "${DB_MEM_LIMIT:-2g}"
     networks:
       - laravel_gestao-edu
