@@ -10,6 +10,7 @@ use App\Models\ProfessorMatricula;
 use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
 
@@ -99,7 +100,7 @@ class PessoaLegadoNormalizacaoService
     {
         $email = $somenteEmail ? $this->normalizarEmail($somenteEmail) : null;
 
-        $semServidor = Professor::query()
+        $semServidor = $this->professoresNormalizaveis()
             ->when($email, fn ($q) => $q->whereRaw('LOWER(TRIM(email)) = ?', [$email]))
             ->whereNull('servidor_id')
             ->orderBy('id')
@@ -111,7 +112,7 @@ class PessoaLegadoNormalizacaoService
         }
 
         if (Schema::hasColumn('professores', 'professor_matricula_id')) {
-            $semMatriculaFk = Professor::query()
+            $semMatriculaFk = $this->professoresNormalizaveis()
                 ->when($email, fn ($q) => $q->whereRaw('LOWER(TRIM(email)) = ?', [$email]))
                 ->whereNotNull('email')
                 ->where('email', '!=', '')
@@ -170,7 +171,7 @@ class PessoaLegadoNormalizacaoService
         $email = $somenteEmail ? $this->normalizarEmail($somenteEmail) : null;
 
         // Mesmo e-mail normalizado em mais de um servidor_id (ignora local-part vazio)
-        $professores = Professor::query()
+        $professores = $this->professoresNormalizaveis()
             ->whereNotNull('email')
             ->where('email', '!=', '')
             ->whereNotNull('servidor_id')
@@ -205,7 +206,7 @@ class PessoaLegadoNormalizacaoService
         $linkados = 0;
         $emailFiltro = $somenteEmail ? $this->normalizarEmail($somenteEmail) : null;
 
-        Professor::query()
+        $this->professoresNormalizaveis()
             ->whereNull('servidor_id')
             ->when($emailFiltro, fn ($q) => $q->whereRaw('LOWER(TRIM(email)) = ?', [$emailFiltro]))
             ->orderBy('id')
@@ -322,7 +323,7 @@ class PessoaLegadoNormalizacaoService
         $criadas = 0;
         $emailFiltro = $somenteEmail ? $this->normalizarEmail($somenteEmail) : null;
 
-        $servidorIds = Professor::query()
+        $servidorIds = $this->professoresNormalizaveis()
             ->whereNotNull('servidor_id')
             ->whereNotNull('matricula')
             ->where('matricula', '!=', '')
@@ -331,7 +332,7 @@ class PessoaLegadoNormalizacaoService
             ->pluck('servidor_id');
 
         foreach ($servidorIds as $servidorId) {
-            $professores = Professor::query()
+            $professores = $this->professoresNormalizaveis()
                 ->where('servidor_id', $servidorId)
                 ->whereNotNull('matricula')
                 ->where('matricula', '!=', '')
@@ -431,7 +432,7 @@ class PessoaLegadoNormalizacaoService
         $emailFiltro = $somenteEmail ? $this->normalizarEmail($somenteEmail) : null;
         $funcao = FuncaoAdministrativa::professorPadrao();
 
-        $servidorIds = Professor::query()
+        $servidorIds = $this->professoresNormalizaveis()
             ->whereNotNull('servidor_id')
             ->where('ativo', true)
             ->when($emailFiltro, fn ($q) => $q->whereRaw('LOWER(TRIM(email)) = ?', [$emailFiltro]))
@@ -523,7 +524,7 @@ class PessoaLegadoNormalizacaoService
                 }
 
                 if (! $acessoBloqueado && $user) {
-                    Professor::query()
+                    $this->professoresNormalizaveis()
                         ->where('servidor_id', $servidor->id)
                         ->where(function ($q) use ($user): void {
                             $q->whereNull('user_id')->orWhere('user_id', '!=', $user->id);
@@ -589,6 +590,27 @@ class PessoaLegadoNormalizacaoService
         }
 
         return true;
+    }
+
+    private function professoresNormalizaveis(): Builder
+    {
+        return Professor::query()
+            ->when(
+                Schema::hasColumn('professores', 'matricula'),
+                fn (Builder $query): Builder => $query->where(function (Builder $matriculas): void {
+                    $matriculas
+                        ->whereNull('matricula')
+                        ->orWhere('matricula', 'not like', 'EXCLUIDO-PROF-%');
+                }),
+            )
+            ->when(
+                Schema::hasColumn('professores', 'motivo_desativacao'),
+                fn (Builder $query): Builder => $query->where(function (Builder $motivos): void {
+                    $motivos
+                        ->whereNull('motivo_desativacao')
+                        ->orWhere('motivo_desativacao', 'not like', 'Pessoa excluída definitivamente%');
+                }),
+            );
     }
 
     private function normalizarEmail(?string $email): ?string

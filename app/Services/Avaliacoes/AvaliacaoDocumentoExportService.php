@@ -617,7 +617,15 @@ class AvaliacaoDocumentoExportService
 
                 return [
                     'nome' => $primeiraPauta->componente?->nome ?? 'Geral',
-                    'professor' => $this->professorDoComponente($turma, $componenteId, $pautasDoComponente, collect($pautasPayload)),
+                    'professor' => $this->professorDoComponente(
+                        $turma,
+                        $componenteId,
+                        $pautasDoComponente,
+                        collect($pautasPayload),
+                        is_array($infosPayload[(string) ((int) ($componenteId ?? 0))] ?? null)
+                            ? $infosPayload[(string) ((int) ($componenteId ?? 0))]
+                            : null,
+                    ),
                     'informacoes_complementares' => $textoInfo,
                     'mostrar_informacoes_complementares' => $textoInfo !== '',
                     'pautas' => $pautasDoComponente
@@ -666,8 +674,57 @@ class AvaliacaoDocumentoExportService
      * @param  Collection<int, Pauta>  $pautas
      * @param  Collection<string, array>  $pautasPayload
      */
-    private function professorDoComponente(Turma $turma, ?int $componenteId, Collection $pautas, Collection $pautasPayload): string
+    private function professorDoComponente(
+        Turma $turma,
+        ?int $componenteId,
+        Collection $pautas,
+        Collection $pautasPayload,
+        ?array $infoPayload = null,
+    ): string
     {
+        $professorIds = [];
+        $professorNomes = [];
+        foreach ($pautas as $pauta) {
+            $item = $pautasPayload->get((string) (int) $pauta->id) ?? $pautasPayload[(string) (int) $pauta->id] ?? null;
+            if (! is_array($item)) {
+                continue;
+            }
+
+            if (filled($item['professor_nome'] ?? null)) {
+                $professorNomes[] = trim((string) $item['professor_nome']);
+            }
+            if (! empty($item['professor_id'])) {
+                $professorIds[] = (int) $item['professor_id'];
+            }
+        }
+
+        if (filled($infoPayload['professor_nome'] ?? null)) {
+            $professorNomes[] = trim((string) $infoPayload['professor_nome']);
+        }
+        if (! empty($infoPayload['professor_id'])) {
+            $professorIds[] = (int) $infoPayload['professor_id'];
+        }
+
+        $professorNomes = array_values(array_unique(array_filter($professorNomes)));
+        if ($professorNomes !== []) {
+            return implode(' / ', $professorNomes);
+        }
+
+        $professorIds = array_values(array_unique(array_filter($professorIds)));
+        if ($professorIds !== []) {
+            $nomesAtuais = Professor::query()
+                ->whereIn('id', $professorIds)
+                ->pluck('nome')
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            if ($nomesAtuais !== []) {
+                return implode(' / ', $nomesAtuais);
+            }
+        }
+
         if ($componenteId) {
             $vinculo = TurmaComponenteProfessor::query()
                 ->where('turma_id', (int) $turma->id)
@@ -680,19 +737,7 @@ class AvaliacaoDocumentoExportService
             }
         }
 
-        $professorIds = [];
-        foreach ($pautas as $pauta) {
-            $item = $pautasPayload->get((string) (int) $pauta->id) ?? $pautasPayload[(string) (int) $pauta->id] ?? null;
-            if (is_array($item) && ! empty($item['professor_id'])) {
-                $professorIds[] = (int) $item['professor_id'];
-            }
-        }
-
-        if ($professorIds === []) {
-            return '';
-        }
-
-        return (string) (Professor::query()->whereKey($professorIds[0])->value('nome') ?? '');
+        return '';
     }
 
     /**

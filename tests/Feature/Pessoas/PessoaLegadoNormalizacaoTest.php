@@ -200,6 +200,26 @@ class PessoaLegadoNormalizacaoTest extends TestCase
         $this->assertSame(1, $segunda['early_exit']);
     }
 
+    public function test_nao_recria_pessoa_para_marcador_antigo_de_exclusao_definitiva(): void
+    {
+        $escola = $this->criarEscola('Escola Exclusão Antiga');
+
+        Professor::withoutEvents(fn () => Professor::query()->create([
+            'id_escola' => $escola->id,
+            'matricula' => 'EXCLUIDO-PROF-999',
+            'turno' => 'manha',
+            'nome' => 'Professor excluído #999',
+            'ativo' => false,
+            'motivo_desativacao' => 'Pessoa excluída definitivamente; histórico anonimizado.',
+        ]));
+
+        $service = app(PessoaLegadoNormalizacaoService::class);
+
+        $this->assertFalse($service->haPendenciasEstruturais());
+        $this->assertSame(1, $service->normalizar()['early_exit']);
+        $this->assertDatabaseCount('servidores', 0);
+    }
+
     public function test_seeder_executa_sem_erro(): void
     {
         $this->seedCargo();

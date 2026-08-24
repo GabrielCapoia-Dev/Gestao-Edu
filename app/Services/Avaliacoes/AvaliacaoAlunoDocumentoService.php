@@ -2,14 +2,16 @@
 
 namespace App\Services\Avaliacoes;
 
-use App\Models\Aluno;
 use App\Models\Alternativa;
+use App\Models\Aluno;
 use App\Models\Avaliacao;
 use App\Models\AvaliacaoAlunoDocumento;
 use App\Models\AvaliacaoAlunoDocumentoHistorico;
 use App\Models\Pauta;
+use App\Models\Professor;
 use App\Models\Turma;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -75,7 +77,7 @@ class AvaliacaoAlunoDocumentoService
     }
 
     /**
-     * @param  array{alternativa_id?: int|null, observacao?: string|null, professor_id?: int|null, componente_curricular_id?: int|null, respondido_em?: mixed}  $dados
+     * @param  array{alternativa_id?: int|null, observacao?: string|null, professor_id?: int|null, professor_nome?: string|null, componente_curricular_id?: int|null, respondido_em?: mixed}  $dados
      */
     public function salvarPauta(
         AvaliacaoAlunoDocumento $documento,
@@ -114,6 +116,17 @@ class AvaliacaoAlunoDocumentoService
                 $professorId = array_key_exists('professor_id', $dados)
                     ? ($dados['professor_id'] !== null ? (int) $dados['professor_id'] : null)
                     : ($payload['pautas'][$chave]['professor_id'] ?? null);
+                $professorIdAnterior = isset($payload['pautas'][$chave]['professor_id'])
+                    ? (int) $payload['pautas'][$chave]['professor_id']
+                    : null;
+                $professorNome = $this->nomeProfessor(
+                    $professorId,
+                    array_key_exists('professor_nome', $dados)
+                        ? $dados['professor_nome']
+                        : ($professorIdAnterior === $professorId
+                            ? ($payload['pautas'][$chave]['professor_nome'] ?? null)
+                            : null),
+                );
 
                 $respondidoEm = $dados['respondido_em'] ?? now()->toIso8601String();
                 if ($respondidoEm instanceof \DateTimeInterface) {
@@ -125,6 +138,7 @@ class AvaliacaoAlunoDocumentoService
                     'alternativa_id' => $alternativaId,
                     'observacao' => $observacao,
                     'professor_id' => $professorId,
+                    'professor_nome' => $professorNome,
                     'componente_curricular_id' => $componenteId,
                     'respondido_em' => (string) $respondidoEm,
                 ], fn ($value) => $value !== null && $value !== '');
@@ -135,7 +149,7 @@ class AvaliacaoAlunoDocumentoService
     }
 
     /**
-     * @param  array<int, array{alternativa_id?: int|null, observacao?: string|null, professor_id?: int|null, componente_curricular_id?: int|null, respondido_em?: mixed}>  $respostasPorPauta
+     * @param  array<int, array{alternativa_id?: int|null, observacao?: string|null, professor_id?: int|null, professor_nome?: string|null, componente_curricular_id?: int|null, respondido_em?: mixed}>  $respostasPorPauta
      */
     public function salvarPautasEmMassa(
         AvaliacaoAlunoDocumento $documento,
@@ -151,6 +165,16 @@ class AvaliacaoAlunoDocumentoService
             $componentes = Pauta::query()
                 ->whereIn('id', $pautaIds)
                 ->pluck('componente_curricular_id', 'id');
+            $professorIdsInformados = collect($respostasPorPauta)
+                ->pluck('professor_id')
+                ->filter()
+                ->map(fn ($id): int => (int) $id)
+                ->unique()
+                ->values()
+                ->all();
+            $nomesProfessores = $professorIdsInformados === []
+                ? collect()
+                : Professor::query()->whereIn('id', $professorIdsInformados)->pluck('nome', 'id');
 
             foreach ($respostasPorPauta as $pautaId => $dados) {
                 $chave = (string) (int) $pautaId;
@@ -173,15 +197,27 @@ class AvaliacaoAlunoDocumentoService
                     $respondidoEm = $respondidoEm->format(DATE_ATOM);
                 }
 
+                $professorId = array_key_exists('professor_id', $dados)
+                    ? ($dados['professor_id'] !== null ? (int) $dados['professor_id'] : null)
+                    : null;
+                $professorIdAnterior = isset($payload['pautas'][$chave]['professor_id'])
+                    ? (int) $payload['pautas'][$chave]['professor_id']
+                    : null;
+                $professorNome = $this->normalizarTexto(
+                    $dados['professor_nome']
+                        ?? ($professorIdAnterior === $professorId
+                            ? ($payload['pautas'][$chave]['professor_nome'] ?? null)
+                            : ($nomesProfessores[$professorId] ?? null)),
+                );
+
                 $payload['pautas'][$chave] = array_filter([
                     'pauta_id' => (int) $pautaId,
                     'alternativa_id' => $alternativaId,
                     'observacao' => array_key_exists('observacao', $dados)
                         ? $this->normalizarTexto($dados['observacao'] ?? null)
                         : null,
-                    'professor_id' => array_key_exists('professor_id', $dados)
-                        ? ($dados['professor_id'] !== null ? (int) $dados['professor_id'] : null)
-                        : null,
+                    'professor_id' => $professorId,
+                    'professor_nome' => $professorNome,
                     'componente_curricular_id' => $componenteId,
                     'respondido_em' => (string) $respondidoEm,
                 ], fn ($value) => $value !== null && $value !== '');
@@ -217,9 +253,18 @@ class AvaliacaoAlunoDocumentoService
             if ($textoNormalizado === null) {
                 unset($payload['informacoes_complementares'][$chave]);
             } else {
+                $professorIdAnterior = isset($payload['informacoes_complementares'][$chave]['professor_id'])
+                    ? (int) $payload['informacoes_complementares'][$chave]['professor_id']
+                    : null;
                 $payload['informacoes_complementares'][$chave] = array_filter([
                     'texto' => $textoNormalizado,
                     'professor_id' => $professorId,
+                    'professor_nome' => $this->nomeProfessor(
+                        $professorId,
+                        $professorIdAnterior === $professorId
+                            ? ($payload['informacoes_complementares'][$chave]['professor_nome'] ?? null)
+                            : null,
+                    ),
                     'atualizado_em' => now()->toIso8601String(),
                 ], fn ($value) => $value !== null && $value !== '');
             }
@@ -328,6 +373,18 @@ class AvaliacaoAlunoDocumentoService
         $observacoesPendentes = 0;
         $pautasNormalizadas = [];
 
+        $idsProfessoresPayload = collect($pautas)
+            ->merge($infos)
+            ->pluck('professor_id')
+            ->filter()
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+        $nomesProfessores = $idsProfessoresPayload === []
+            ? collect()
+            : Professor::query()->whereIn('id', $idsProfessoresPayload)->pluck('nome', 'id');
+
         $alternativaTemObservacao = [];
         $idsAlternativas = collect($pautas)
             ->pluck('alternativa_id')
@@ -374,7 +431,7 @@ class AvaliacaoAlunoDocumentoService
             $respondidoEm = $resposta['respondido_em'] ?? null;
             if ($respondidoEm) {
                 try {
-                    $datas[] = \Carbon\Carbon::parse($respondidoEm);
+                    $datas[] = Carbon::parse($respondidoEm);
                 } catch (\Throwable) {
                     // ignora data inválida
                 }
@@ -386,6 +443,9 @@ class AvaliacaoAlunoDocumentoService
                 'alternativa_id' => $alternativaId,
                 'observacao' => $observacao,
                 'professor_id' => $professorId,
+                'professor_nome' => $this->normalizarTexto(
+                    $resposta['professor_nome'] ?? ($nomesProfessores[$professorId] ?? null),
+                ),
                 'componente_curricular_id' => isset($resposta['componente_curricular_id'])
                     ? (int) $resposta['componente_curricular_id']
                     : null,
@@ -395,7 +455,7 @@ class AvaliacaoAlunoDocumentoService
 
         $payload['pautas'] = $pautasNormalizadas;
 
-        foreach ($infos as $info) {
+        foreach ($infos as &$info) {
             if (! is_array($info)) {
                 continue;
             }
@@ -403,8 +463,13 @@ class AvaliacaoAlunoDocumentoService
             $professorId = isset($info['professor_id']) ? (int) $info['professor_id'] : null;
             if ($professorId) {
                 $professorIds[] = $professorId;
+                $info['professor_nome'] = $this->normalizarTexto(
+                    $info['professor_nome'] ?? ($nomesProfessores[$professorId] ?? null),
+                );
             }
         }
+        unset($info);
+        $payload['informacoes_complementares'] = $infos;
 
         $alternativaIds = array_values(array_unique($alternativaIds));
         $professorIds = array_values(array_unique($professorIds));
@@ -672,5 +737,17 @@ class AvaliacaoAlunoDocumentoService
         $texto = trim((string) $texto);
 
         return $texto === '' ? null : $texto;
+    }
+
+    private function nomeProfessor(?int $professorId, mixed $snapshot = null): ?string
+    {
+        $nomeSnapshot = $this->normalizarTexto($snapshot);
+        if ($nomeSnapshot !== null || ! $professorId) {
+            return $nomeSnapshot;
+        }
+
+        return $this->normalizarTexto(
+            Professor::query()->whereKey($professorId)->value('nome'),
+        );
     }
 }

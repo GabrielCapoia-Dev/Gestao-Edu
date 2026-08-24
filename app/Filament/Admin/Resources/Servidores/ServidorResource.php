@@ -1798,7 +1798,7 @@ class ServidorResource extends Resource
             ->button()
             ->requiresConfirmation()
             ->modalHeading('Excluir pessoa definitivamente')
-            ->modalDescription('Esta ação não usa exclusão em cascata. Os dados pessoais serão removidos, mas os históricos funcionais e pedagógicos serão preservados de forma anonimizada. CPF, e-mail e matrícula poderão ser usados em um novo cadastro.')
+            ->modalDescription('A Pessoa, o Professor, as matrículas e a conta de acesso serão excluídos de fato. Alunos e avaliações não serão apagados; o nome do professor permanecerá nas avaliações já preenchidas. CPF, e-mail e matrícula poderão ser usados em um novo cadastro.')
             ->modalSubmitActionLabel('Excluir definitivamente')
             ->schema([
                 TextInput::make('confirmacao')
@@ -1822,7 +1822,7 @@ class ServidorResource extends Resource
 
                 Notification::make()
                     ->title('Pessoa excluída definitivamente')
-                    ->body('Os dados pessoais foram removidos e os históricos foram preservados de forma anonimizada.')
+                    ->body('O cadastro foi removido definitivamente. Alunos e avaliações foram preservados, inclusive o nome histórico do professor nas avaliações preenchidas.')
                     ->success()
                     ->send();
             });

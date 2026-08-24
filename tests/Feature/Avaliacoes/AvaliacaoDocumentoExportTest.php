@@ -19,11 +19,13 @@ use App\Models\ServidorFuncaoTurma;
 use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
+use App\Services\Avaliacoes\AvaliacaoAlunoDocumentoService;
 use App\Services\Avaliacoes\AvaliacaoDocumentoExportService;
 use App\Services\Avaliacoes\AvaliacaoParecerSnapshotService;
 use App\Services\ServidorService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use ReflectionMethod;
 use Spatie\Permission\Models\Permission;
 use Tests\Concerns\CreatesAvaliacaoDocumentos;
@@ -508,6 +510,92 @@ class AvaliacaoDocumentoExportTest extends TestCase
         $this->assertFalse($gestores['tem_coordenacao']);
         $this->assertFalse($gestores['pode_exportar']);
         $this->assertSame('A turma não possui coordenação ativa e vigente.', $gestores['motivo_bloqueio']);
+    }
+
+    public function test_documento_prioriza_nome_snapshot_quando_professor_foi_excluido(): void
+    {
+        $escola = $this->criarEscola('Escola Autoria Histórica');
+        $serie = $this->criarSerie('SER-AUT-HIST', '2º Ano');
+        $turma = $this->criarTurma($escola, $serie, 'A');
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Tipo Autoria Histórica', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Período Autoria Histórica', 'status' => true]);
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-AUT-HIST',
+            'nome' => 'História',
+        ]);
+        $pauta = Pauta::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'texto' => 'Reconhece a autoria histórica',
+            'serie_id' => $serie->id,
+            'componente_curricular_id' => $componente->id,
+            'status' => true,
+        ]);
+        $alternativa = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Sim',
+            'status' => true,
+        ]);
+        $avaliacao = Avaliacao::query()->create([
+            'nome' => 'Avaliação Autoria Histórica',
+            'tipo_avaliacao_id' => $tipo->id,
+            'periodo_avaliacao_id' => $periodo->id,
+            'data_inicio' => '2026-01-01',
+            'data_fim' => '2026-12-31',
+            'status' => Avaliacao::STATUS_ATIVA,
+        ]);
+        $avaliacao->pautas()->attach($pauta->id);
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno Autoria Histórica',
+            'cgm' => 'CGM-AUT-HIST',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turma->id,
+        ]);
+        $professorPreencheu = Professor::withoutEvents(fn () => Professor::query()->create([
+            'id_escola' => $escola->id,
+            'matricula' => 'PROF-PREENCHEU',
+            'nome' => 'Professor que Preencheu',
+        ]));
+        $turma->componentes()->attach($componente->id, [
+            'professor_id' => $professorPreencheu->id,
+            'tem_professor' => true,
+        ]);
+
+        $documento = app(AvaliacaoAlunoDocumentoService::class)->obterOuCriar($avaliacao, $aluno);
+        $documento = app(AvaliacaoAlunoDocumentoService::class)->salvarPauta($documento, $pauta->id, [
+            'alternativa_id' => $alternativa->id,
+            'professor_id' => $professorPreencheu->id,
+            'componente_curricular_id' => $componente->id,
+        ]);
+        $this->assertSame(
+            'Professor que Preencheu',
+            $documento->payload['pautas'][(string) $pauta->id]['professor_nome'],
+        );
+
+        $professorAtual = Professor::withoutEvents(fn () => Professor::query()->create([
+            'id_escola' => $escola->id,
+            'matricula' => 'PROF-ATUAL',
+            'nome' => 'Professor Atual',
+        ]));
+        DB::table('turma_componente_professor')
+            ->where('turma_id', $turma->id)
+            ->where('componente_curricular_id', $componente->id)
+            ->update([
+                'professor_id' => $professorAtual->id,
+                'tem_professor' => true,
+            ]);
+        $professorPreencheu->delete();
+
+        $metodo = new ReflectionMethod(AvaliacaoDocumentoExportService::class, 'professorDoComponente');
+        $metodo->setAccessible(true);
+        $nome = $metodo->invoke(
+            new AvaliacaoDocumentoExportService(),
+            $turma,
+            $componente->id,
+            collect([$pauta]),
+            collect($documento->pautasPayload()),
+        );
+
+        $this->assertSame('Professor que Preencheu', $nome);
     }
 
     public function test_documento_exibe_nao_avaliado_para_pauta_pendente(): void

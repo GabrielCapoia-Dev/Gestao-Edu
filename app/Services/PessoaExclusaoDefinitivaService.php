@@ -9,11 +9,10 @@ use App\Models\ProfessorMatricula;
 use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\User;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -69,37 +68,19 @@ class PessoaExclusaoDefinitivaService
                 ->get();
 
             $resumo = [
-                'professores_anonimizados' => $professores->count(),
-                'vinculos_funcionais_preservados' => $vinculos->count(),
+                'professores_excluidos' => $professores->count(),
+                'vinculos_funcionais_excluidos' => $vinculos->count(),
                 'matriculas_excluidas' => ProfessorMatricula::withTrashed()->where('servidor_id', $pessoa->id)->count(),
                 'vinculos_pedagogicos_desocupados' => $this->contarVinculosPedagogicos($professorIds),
-                'snapshots_anonimizados' => 0,
-                'usuario_anonimizado' => $user ? 1 : 0,
+                'documentos_avaliativos_com_autoria_preservada' => $this->preservarAutoriaDasAvaliacoes($professores),
+                'usuario_excluido' => $user ? 1 : 0,
             ];
 
             app(ServidorService::class)->desvincularProfessorDePedagogico($professorIds);
+            $this->desvincularAlunosDosProfessores($professorIds);
 
-            foreach ($professores as $professor) {
-                $payload = [
-                    'user_id' => null,
-                    'servidor_id' => null,
-                    'professor_matricula_id' => null,
-                    'matricula' => "EXCLUIDO-PROF-{$professor->id}",
-                    'nome' => "Professor excluído #{$professor->id}",
-                    'email' => null,
-                    'telefone' => null,
-                    'ativo' => false,
-                    'desativado_em' => now(),
-                    'desativado_por_id' => $operador->id,
-                    'motivo_desativacao' => 'Pessoa excluída definitivamente; histórico anonimizado.',
-                    'updated_at' => now(),
-                ];
-
-                if (Schema::hasColumn('professores', 'portaria')) {
-                    $payload['portaria'] = null;
-                }
-
-                DB::table('professores')->where('id', $professor->id)->update($payload);
+            if ($professorIds !== []) {
+                Professor::query()->whereIn('id', $professorIds)->delete();
             }
 
             ProfessorMatricula::withTrashed()
@@ -107,24 +88,14 @@ class PessoaExclusaoDefinitivaService
                 ->get()
                 ->each->forceDelete();
 
-            DB::table('servidor_funcao_administrativa')
-                ->where('servidor_id', $pessoa->id)
-                ->whereNull('data_fim')
-                ->update(['data_fim' => now()->toDateString(), 'updated_at' => now()]);
-            DB::table('servidor_funcao_administrativa')
-                ->where('servidor_id', $pessoa->id)
-                ->update([
-                    'servidor_id' => null,
-                    'matricula' => null,
-                    'portaria' => null,
-                    'status' => ServidorFuncaoAdministrativa::STATUS_INATIVO,
-                    'updated_at' => now(),
-                ]);
+            if ($vinculos->isNotEmpty()) {
+                ServidorFuncaoAdministrativa::query()
+                    ->whereIn('id', $vinculos->pluck('id')->all())
+                    ->delete();
+            }
 
-            $resumo['snapshots_anonimizados'] += $this->anonimizarSnapshotsDaPessoa($pessoa->id);
             if ($user) {
-                $resumo['snapshots_anonimizados'] += $this->anonimizarSnapshotsDoUsuario($user->id);
-                $this->anonimizarUsuario($user);
+                $this->excluirUsuario($user);
             }
 
             $pessoaId = (int) $pessoa->id;
@@ -156,55 +127,85 @@ class PessoaExclusaoDefinitivaService
             ->count();
     }
 
-    private function anonimizarSnapshotsDaPessoa(int $pessoaId): int
+    /** @param list<int> $professorIds */
+    private function desvincularAlunosDosProfessores(array $professorIds): void
     {
-        $alterados = 0;
-
-        if (Schema::hasTable('evento_calendario_transporte_alocacoes')) {
-            $alterados += DB::table('evento_calendario_transporte_alocacoes')
-                ->where('motorista_id', $pessoaId)
-                ->update([
-                    'motorista_nome' => 'Pessoa excluída',
-                    'motorista_cpf' => null,
-                    'motorista_matricula' => null,
-                    'updated_at' => now(),
-                ]);
+        if ($professorIds === []
+            || ! Schema::hasTable('alunos')
+            || ! Schema::hasColumn('alunos', 'id_professor')) {
+            return;
         }
 
+        DB::table('alunos')
+            ->whereIn('id_professor', $professorIds)
+            ->update(['id_professor' => null]);
+    }
+
+    /** @param Collection<int, Professor> $professores */
+    private function preservarAutoriaDasAvaliacoes(Collection $professores): int
+    {
+        $nomes = $professores
+            ->mapWithKeys(fn (Professor $professor): array => [
+                (int) $professor->id => trim($professor->nomeCanonico()),
+            ])
+            ->filter(fn (string $nome): bool => $nome !== '')
+            ->all();
+
+        if ($nomes === []) {
+            return 0;
+        }
+
+        $alterados = 0;
+
         foreach (['avaliacao_aluno_documentos', 'avaliacao_aluno_documentos_historico'] as $tabela) {
-            if (! Schema::hasTable($tabela) || ! Schema::hasColumn($tabela, 'responsaveis_snapshot')) {
+            if (! Schema::hasTable($tabela) || ! Schema::hasColumn($tabela, 'payload')) {
                 continue;
             }
 
             DB::table($tabela)
-                ->whereNotNull('responsaveis_snapshot')
+                ->whereNotNull('payload')
                 ->orderBy('id')
-                ->chunkById(100, function ($documentos) use ($tabela, $pessoaId, &$alterados): void {
+                ->chunkById(100, function ($documentos) use ($tabela, $nomes, &$alterados): void {
                     foreach ($documentos as $documento) {
-                        $snapshot = json_decode((string) $documento->responsaveis_snapshot, true);
-                        if (! is_array($snapshot)) {
+                        $payload = json_decode((string) $documento->payload, true);
+                        if (! is_array($payload)) {
                             continue;
                         }
 
                         $mudou = false;
-                        foreach (['diretor', 'coordenador'] as $papel) {
-                            if ((int) ($snapshot[$papel]['pessoa_id'] ?? 0) !== $pessoaId) {
+                        foreach (['pautas', 'informacoes_complementares'] as $grupo) {
+                            if (! is_array($payload[$grupo] ?? null)) {
                                 continue;
                             }
 
-                            $snapshot[$papel]['nome'] = 'Pessoa excluída';
-                            $snapshot[$papel]['portaria'] = '';
-                            $mudou = true;
+                            foreach ($payload[$grupo] as &$item) {
+                                if (! is_array($item)) {
+                                    continue;
+                                }
+
+                                $professorId = (int) ($item['professor_id'] ?? 0);
+                                if (! isset($nomes[$professorId]) || filled($item['professor_nome'] ?? null)) {
+                                    continue;
+                                }
+
+                                $item['professor_nome'] = $nomes[$professorId];
+                                $mudou = true;
+                            }
+                            unset($item);
                         }
 
                         if (! $mudou) {
                             continue;
                         }
 
-                        DB::table($tabela)->where('id', $documento->id)->update([
-                            'responsaveis_snapshot' => json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-                            'updated_at' => now(),
-                        ]);
+                        $atualizacao = [
+                            'payload' => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                        ];
+                        if (Schema::hasColumn($tabela, 'updated_at')) {
+                            $atualizacao['updated_at'] = now();
+                        }
+
+                        DB::table($tabela)->where('id', $documento->id)->update($atualizacao);
                         $alterados++;
                     }
                 });
@@ -213,42 +214,7 @@ class PessoaExclusaoDefinitivaService
         return $alterados;
     }
 
-    private function anonimizarSnapshotsDoUsuario(int $userId): int
-    {
-        $alterados = 0;
-        $atores = [
-            ['pedidos', 'solicitante_id', 'solicitante_id_legado', 'solicitante_nome_snapshot', 'solicitante_email_snapshot'],
-            ['pedidos', 'responsavel_id', 'responsavel_id_legado', 'responsavel_nome_snapshot', 'responsavel_email_snapshot'],
-            ['pedidos', 'comentario_gestor_user_id', 'comentario_gestor_user_id_legado', 'comentario_gestor_user_nome_snapshot', 'comentario_gestor_user_email_snapshot'],
-            ['pedido_historicos', 'usuario_id', 'usuario_id_legado', 'usuario_nome_snapshot', 'usuario_email_snapshot'],
-            ['pedido_arquivos', 'usuario_id', 'usuario_id_legado', 'usuario_nome_snapshot', 'usuario_email_snapshot'],
-            ['export_requests', 'user_id', 'user_id_legado', 'user_nome_snapshot', 'user_email_snapshot'],
-        ];
-
-        foreach ($atores as [$tabela, $atual, $legado, $nome, $email]) {
-            if (! Schema::hasTable($tabela)
-                || ! Schema::hasColumn($tabela, $atual)
-                || ! Schema::hasColumn($tabela, $legado)
-                || ! Schema::hasColumn($tabela, $nome)
-                || ! Schema::hasColumn($tabela, $email)) {
-                continue;
-            }
-
-            $alterados += DB::table($tabela)
-                ->where(function ($query) use ($atual, $legado, $userId): void {
-                    $query->where($atual, $userId)->orWhere($legado, $userId);
-                })
-                ->update([
-                    $nome => 'Usuário excluído',
-                    $email => null,
-                    'updated_at' => now(),
-                ]);
-        }
-
-        return $alterados;
-    }
-
-    private function anonimizarUsuario(User $user): void
+    private function excluirUsuario(User $user): void
     {
         $email = $user->email;
 
@@ -274,32 +240,7 @@ class PessoaExclusaoDefinitivaService
             DB::table('password_reset_tokens')->where('email', $email)->delete();
         }
 
-        $user->forceFill([
-            'id_escola' => null,
-            'setor_id' => null,
-            'name' => "Usuário excluído #{$user->id}",
-            'email' => null,
-            'email_approved' => false,
-            'ativo' => false,
-            'email_verified_at' => null,
-            'last_login_at' => null,
-            'last_seen_at' => null,
-            'password' => Hash::make(Str::random(64)),
-            'must_change_password' => true,
-            'google_id' => null,
-            'google_email' => null,
-            'google_token' => null,
-            'google_refresh_token' => null,
-            'google_token_expires_in' => null,
-            'avatar_url' => null,
-            'codigo' => null,
-            'remember_token' => Str::random(60),
-            'auth_version' => ((int) $user->auth_version) + 1,
-        ])->saveQuietly();
-
-        if (! $user->trashed()) {
-            $user->delete();
-        }
+        $user->forceDelete();
     }
 
     private function excluirPorUsuario(string $tabela, string $coluna, int $userId): void
