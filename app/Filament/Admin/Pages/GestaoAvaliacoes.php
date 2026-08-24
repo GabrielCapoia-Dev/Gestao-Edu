@@ -11,6 +11,7 @@ use App\Models\PeriodoAvaliacao;
 use App\Models\Serie;
 use App\Models\TipoAvaliacao;
 use App\Models\Turma;
+use App\Services\Avaliacoes\AvaliacaoDashboardFactsService;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -718,6 +719,11 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
                 DB::table('avaliacao_pauta_alternativa')->insert($payload);
             }
+
+            app(AvaliacaoDashboardFactsService::class)->requestSyncEstruturaAvaliacao(
+                (int) $avaliacao->id,
+                $isEdicao ? 'avaliacao_editada' : 'avaliacao_criada',
+            );
         });
 
         $this->fecharModal();

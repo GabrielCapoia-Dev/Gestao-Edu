@@ -53,6 +53,19 @@ return [
             'after_commit' => false,
         ],
 
+        /*
+         * Atualizacoes incrementais e reconstrucoes controladas do dashboard
+         * usam uma conexao dedicada para nao disputar workers com exportacoes.
+         */
+        'dashboard_redis' => [
+            'driver' => 'redis',
+            'connection' => env('AVALIACOES_DASHBOARD_REDIS_CONNECTION', 'default'),
+            'queue' => env('AVALIACOES_DASHBOARD_QUEUE', 'dashboard'),
+            'retry_after' => (int) env('AVALIACOES_DASHBOARD_QUEUE_RETRY_AFTER', 900),
+            'block_for' => 5,
+            'after_commit' => false,
+        ],
+
         'beanstalkd' => [
             'driver' => 'beanstalkd',
             'host' => env('BEANSTALKD_QUEUE_HOST', 'localhost'),

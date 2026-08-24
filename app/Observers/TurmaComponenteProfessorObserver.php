@@ -3,7 +3,7 @@
 namespace App\Observers;
 
 use App\Models\TurmaComponenteProfessor;
-use App\Services\Avaliacoes\AvaliacaoDashboardFactsService;
+use App\Services\Avaliacoes\AvaliacaoDashboardMetricsService;
 use App\Services\ProfessorEscolaVinculoService;
 use Illuminate\Support\Facades\DB;
 
@@ -36,6 +36,7 @@ class TurmaComponenteProfessorObserver
             ->where('turma_id', (int) $vinculo->turma_id)
             ->pluck('avaliacao_id')
             ->unique()
-            ->each(fn ($avaliacaoId) => app(AvaliacaoDashboardFactsService::class)->requestRebuild((int) $avaliacaoId));
+            ->each(fn ($avaliacaoId) => app(AvaliacaoDashboardMetricsService::class)
+                ->forgetForAvaliacao((int) $avaliacaoId));
     }
 }

@@ -45,6 +45,7 @@ use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
 use App\Models\VeiculoTransporte;
+use App\Observers\AvaliacaoDashboardAlunoObserver;
 use App\Observers\AvaliacaoDashboardSourceObserver;
 use App\Observers\PedidoObserver;
 use App\Observers\ProfessorObserver;
@@ -226,6 +227,7 @@ class AppServiceProvider extends ServiceProvider
         // ── Observers ──────────────────────────────────────────────────────────
         Pedido::observe(PedidoObserver::class);
         Professor::observe(ProfessorObserver::class);
+        Aluno::observe(AvaliacaoDashboardAlunoObserver::class);
         TurmaComponenteProfessor::observe(TurmaComponenteProfessorObserver::class);
         Avaliacao::observe(AvaliacaoDashboardSourceObserver::class);
         Pauta::observe(AvaliacaoDashboardSourceObserver::class);

@@ -6,7 +6,6 @@ use App\Models\User;
 use Closure;
 use Illuminate\Support\Facades\Cache;
 use JsonException;
-use Throwable;
 
 class AvaliacaoDashboardMetricsService
 {
@@ -23,14 +22,6 @@ class AvaliacaoDashboardMetricsService
 
         if ($avaliacaoId <= 0) {
             return $resolver();
-        }
-
-        // A projeção do dashboard é atualizada somente quando alguém realmente
-        // consulta o acompanhamento. O autosave apenas marca a avaliação como pendente.
-        try {
-            app(AvaliacaoDashboardFactsService::class)->refreshIfDirty($avaliacaoId);
-        } catch (Throwable $exception) {
-            report($exception);
         }
 
         return Cache::remember(

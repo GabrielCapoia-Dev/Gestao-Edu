@@ -43,17 +43,12 @@ class AvaliacaoDashboardProgressService
             );
         }
 
-        $consolidadas = collect($result)
-            ->filter(fn (AvaliacaoDashboardProgressData $item): bool => ! $item->emAtualizacao())
-            ->keys()
-            ->all();
-
-        if ($consolidadas === [] || $escolaIds === []) {
+        if ($escolaIds === []) {
             return $result;
         }
 
         $query = DB::table('avaliacao_dashboard_fatos')
-            ->whereIn('avaliacao_id', $consolidadas);
+            ->whereIn('avaliacao_id', $avaliacaoIds);
 
         if (is_array($escolaIds)) {
             $query->whereIn('escola_id', $this->ids($escolaIds));
@@ -73,9 +68,9 @@ class AvaliacaoDashboardProgressService
                     : null,
             ]);
 
-        foreach ($consolidadas as $avaliacaoId) {
+        foreach ($avaliacaoIds as $avaliacaoId) {
             $result[$avaliacaoId] = new AvaliacaoDashboardProgressData(
-                consolidacaoStatus: 'consolidado',
+                consolidacaoStatus: $result[$avaliacaoId]->consolidacaoStatus,
                 percentual: $progressos->get($avaliacaoId),
             );
         }

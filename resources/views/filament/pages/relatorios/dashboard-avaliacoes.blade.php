@@ -65,7 +65,14 @@
                 </section>
             @else
 
-            @if (in_array($consolidacaoStatus ?? '', ['pendente', 'processando'], true))
+            @if (in_array($consolidacaoStatus ?? '', [
+                'pendente',
+                'processando',
+                'incremental_pendente',
+                'incremental_processando',
+                'rebuild_pendente',
+                'rebuild_processando',
+            ], true))
                 <section class="dav-dashboard-loading">
                     <div class="dav-dashboard-loading__pulse"></div>
                     <div>
@@ -73,15 +80,15 @@
                         <span>Os dados podem estar desatualizados enquanto a fila processa a avaliação.</span>
                     </div>
                 </section>
-            @elseif (($consolidadaEm ?? '') !== '')
-                <div class="dav-refresh-meta">Indicadores consolidados em {{ $consolidadaEm }}</div>
-            @elseif (($consolidacaoStatus ?? '') === 'erro')
+            @elseif (in_array($consolidacaoStatus ?? '', ['erro', 'rebuild_erro'], true))
                 <section class="dav-dashboard-loading">
                     <div>
                         <strong>Falha na consolidação dos indicadores.</strong>
-                        <span>{{ $consolidacaoErro ?: 'Execute novamente o build da avaliação.' }}</span>
+                        <span>{{ $consolidacaoErro ?: 'Execute o comando manual de reparo da avaliação.' }}</span>
                     </div>
                 </section>
+            @elseif (($consolidadaEm ?? '') !== '')
+                <div class="dav-refresh-meta">Indicadores consolidados em {{ $consolidadaEm }}</div>
             @endif
 
             <section class="dav-panel dav-panel--legacy">

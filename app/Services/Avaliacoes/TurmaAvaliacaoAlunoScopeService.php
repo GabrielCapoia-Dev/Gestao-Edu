@@ -6,6 +6,7 @@ use App\Models\Aluno;
 use App\Models\Serie;
 use App\Models\Turma;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class TurmaAvaliacaoAlunoScopeService
 {
@@ -315,6 +316,80 @@ class TurmaAvaliacaoAlunoScopeService
                     (int) $escopo['turma_origem_id']
             )
             ->all();
+    }
+
+    /**
+     * Localiza turmas avaliativas integrais que podem usar uma das turmas
+     * informadas como origem. O vínculo potencial também é retornado quando a
+     * turma de origem está vazia, pois essa transição precisa remover fatos.
+     *
+     * @param  Collection<int, int>  $turmaIds
+     * @return Collection<int, array{avaliacao_id: int, turma_id: int}>
+     */
+    public function avaliacoesTurmasIntegraisAfetadas(Collection $turmaIds): Collection
+    {
+        $turmaIds = $turmaIds
+            ->map(fn ($id): int => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($turmaIds->isEmpty()) {
+            return collect();
+        }
+
+        $turmas = Turma::query()
+            ->whereIn('id', $turmaIds->all())
+            ->with('serie:id,nome')
+            ->get(['id', 'nome', 'turno', 'id_serie', 'id_escola']);
+        $turmasAlvoIds = collect();
+
+        foreach ($turmas as $turma) {
+            $serieNome = (string) ($turma->serie?->nome ?? '');
+
+            if ($serieNome === '') {
+                continue;
+            }
+
+            if ($this->nomeBaseIntegral($serieNome) !== null) {
+                $turmasAlvoIds->push((int) $turma->id);
+
+                continue;
+            }
+
+            $turmasAlvoIds = $turmasAlvoIds->merge(
+                Turma::query()
+                    ->where('id_escola', (int) $turma->id_escola)
+                    ->where('nome', (string) $turma->nome)
+                    ->where('turno', (string) $turma->turno)
+                    ->whereHas(
+                        'serie',
+                        fn ($query) => $query->where('nome', $serieNome.self::SUFIXO_SERIE_INTEGRAL),
+                    )
+                    ->whereHas('avaliacoes')
+                    ->pluck('id'),
+            );
+        }
+
+        $turmasAlvoIds = $turmasAlvoIds
+            ->map(fn ($id): int => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($turmasAlvoIds->isEmpty()) {
+            return collect();
+        }
+
+        return DB::table('avaliacao_turma')
+            ->whereIn('turma_id', $turmasAlvoIds->all())
+            ->get(['avaliacao_id', 'turma_id'])
+            ->map(fn (object $row): array => [
+                'avaliacao_id' => (int) $row->avaliacao_id,
+                'turma_id' => (int) $row->turma_id,
+            ])
+            ->unique(fn (array $row): string => $row['avaliacao_id'].'|'.$row['turma_id'])
+            ->values();
     }
 
     /**

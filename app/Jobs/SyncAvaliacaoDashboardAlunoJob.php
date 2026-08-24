@@ -8,65 +8,59 @@ use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 use Throwable;
 
-class RebuildAvaliacaoDashboardFactsJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
+class SyncAvaliacaoDashboardAlunoJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
     use Dispatchable;
     use InteractsWithQueue;
     use Queueable;
     use SerializesModels;
 
-    public int $tries = 2;
+    public int $tries;
 
-    public int $timeout = 600;
+    public int $timeout;
 
     public bool $failOnTimeout = true;
 
     /** @var list<int> */
-    public array $backoff = [60, 180];
-
-    public string $motivo = 'rebuild_explicito';
-
-    /** Jobs serializados antes do fluxo manual não podem executar full após o deploy. */
-    public bool $solicitacaoManualExplicita = false;
+    public array $backoff;
 
     public function __construct(
         public readonly int $avaliacaoId,
-        string $motivo = 'rebuild_explicito',
+        public readonly int $alunoId,
     ) {
-        $this->motivo = $motivo;
-        $this->solicitacaoManualExplicita = true;
-        $this->tries = (int) config('avaliacoes_dashboard.full.tries', 2);
-        $this->timeout = (int) config('avaliacoes_dashboard.full.timeout', 600);
-        $this->backoff = (array) config('avaliacoes_dashboard.full.backoff', [60, 180]);
+        $this->tries = (int) config('avaliacoes_dashboard.incremental.tries', 3);
+        $this->timeout = (int) config('avaliacoes_dashboard.incremental.timeout', 120);
+        $this->backoff = (array) config('avaliacoes_dashboard.incremental.backoff', [10, 30, 60]);
         $this->onConnection($this->queueConnection());
         $this->onQueue((string) config('avaliacoes_dashboard.queue', 'dashboard'));
     }
 
+    public function middleware(): array
+    {
+        return [
+            (new WithoutOverlapping('avaliacao-dashboard-aluno:'.$this->avaliacaoId.':'.$this->alunoId))
+                ->releaseAfter(5)
+                ->expireAfter((int) config('avaliacoes_dashboard.incremental.lock_ttl', 180)),
+        ];
+    }
+
     public function uniqueId(): string
     {
-        return (string) $this->avaliacaoId;
+        return $this->avaliacaoId.':'.$this->alunoId;
     }
 
     public function uniqueFor(): int
     {
-        return (int) config('avaliacoes_dashboard.full.unique_ttl', 3600);
+        return (int) config('avaliacoes_dashboard.incremental.unique_ttl', 3600);
     }
 
     public function handle(AvaliacaoDashboardFactsService $service): void
     {
-        if (! $this->solicitacaoManualExplicita) {
-            Log::warning('Rebuild legado automático do dashboard de avaliações descartado.', [
-                'avaliacao_id' => $this->avaliacaoId,
-            ]);
-
-            return;
-        }
-
-        $service->rebuild($this->avaliacaoId, $this->motivo, $this->attempts());
+        $service->processPendingDocumento($this->avaliacaoId, $this->alunoId, $this->attempts());
     }
 
     public function failed(?Throwable $exception): void
@@ -74,7 +68,7 @@ class RebuildAvaliacaoDashboardFactsJob implements ShouldBeUniqueUntilProcessing
         app(AvaliacaoDashboardFactsService::class)->markFailed(
             $this->avaliacaoId,
             $exception?->getMessage(),
-            AvaliacaoDashboardFactsService::STATUS_REBUILD_PROCESSING,
+            AvaliacaoDashboardFactsService::STATUS_INCREMENTAL_PROCESSING,
         );
     }
 

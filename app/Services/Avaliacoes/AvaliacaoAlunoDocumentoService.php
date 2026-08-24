@@ -71,7 +71,12 @@ class AvaliacaoAlunoDocumentoService
             'version' => 1,
         ]);
 
-        $this->markDashboardFactsDirty($avaliacaoId);
+        $this->requestDashboardFactsSync(
+            $avaliacaoId,
+            (int) $documento->aluno_id,
+            'documento_criado',
+            (int) $documento->version,
+        );
 
         return $documento;
     }
@@ -338,7 +343,18 @@ class AvaliacaoAlunoDocumentoService
                 ])->save();
 
                 $this->recalcularMetricas($documento->fresh());
-                $this->markDashboardFactsDirty((int) $documento->avaliacao_id);
+                $this->requestDashboardFactsSync(
+                    (int) $documento->avaliacao_id,
+                    (int) $origem->id,
+                    'movimentacao_origem',
+                    0,
+                );
+                $this->requestDashboardFactsSync(
+                    (int) $documento->avaliacao_id,
+                    (int) $destino->id,
+                    'movimentacao_destino',
+                    (int) $documento->version,
+                );
                 $movidos++;
             }
 
@@ -346,9 +362,18 @@ class AvaliacaoAlunoDocumentoService
         });
     }
 
-    private function markDashboardFactsDirty(int $avaliacaoId): void
-    {
-        $this->dashboardFactsService->markDirty($avaliacaoId);
+    private function requestDashboardFactsSync(
+        int $avaliacaoId,
+        int $alunoId,
+        string $motivo,
+        ?int $documentoVersion = null,
+    ): void {
+        $this->dashboardFactsService->requestSyncDocumento(
+            $avaliacaoId,
+            $alunoId,
+            $motivo,
+            $documentoVersion,
+        );
     }
 
     /**
@@ -357,7 +382,15 @@ class AvaliacaoAlunoDocumentoService
      */
     public function recalcularMetricasEFatos(AvaliacaoAlunoDocumento $documento): AvaliacaoAlunoDocumento
     {
-        return $this->recalcularMetricas($documento);
+        $documento = $this->recalcularMetricas($documento);
+        $this->requestDashboardFactsSync(
+            (int) $documento->avaliacao_id,
+            (int) $documento->aluno_id,
+            'metricas_recalculadas',
+            (int) $documento->version,
+        );
+
+        return $documento;
     }
 
     public function recalcularMetricas(AvaliacaoAlunoDocumento $documento): AvaliacaoAlunoDocumento
@@ -437,7 +470,7 @@ class AvaliacaoAlunoDocumentoService
                 }
             }
 
-            // Garante pauta_id dentro do item para consultas JSON (JSON_TABLE) e leitura.
+            // Garante pauta_id dentro do item para consultas pontuais no payload e leitura.
             $pautasNormalizadas[(string) $pautaIdInt] = array_filter([
                 'pauta_id' => $pautaIdInt,
                 'alternativa_id' => $alternativaId,
@@ -605,7 +638,12 @@ class AvaliacaoAlunoDocumentoService
         ])->save();
 
         $documento = $this->recalcularMetricas($documento->fresh());
-        $this->markDashboardFactsDirty((int) $documento->avaliacao_id);
+        $this->requestDashboardFactsSync(
+            (int) $documento->avaliacao_id,
+            (int) $documento->aluno_id,
+            'payload_alterado',
+            (int) $documento->version,
+        );
 
         return $documento;
     }
@@ -694,7 +732,12 @@ class AvaliacaoAlunoDocumentoService
         if ($dirty) {
             $documento->save();
             $this->recalcularMetricas($documento->fresh());
-            $this->markDashboardFactsDirty((int) $documento->avaliacao_id);
+            $this->requestDashboardFactsSync(
+                (int) $documento->avaliacao_id,
+                (int) $documento->aluno_id,
+                'contexto_aluno_alterado',
+                (int) $documento->version,
+            );
         }
 
         return $documento->fresh() ?? $documento;

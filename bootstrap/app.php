@@ -68,6 +68,13 @@ return Application::configure(basePath: dirname(__DIR__))
             ->everyMinute()
             ->withoutOverlapping(5);
     })
+    ->withSchedule(function (Schedule $schedule) {
+        $schedule
+            ->command('avaliacoes:dispatch-dashboard-pendencias --limit=200')
+            ->everyMinute()
+            ->onOneServer()
+            ->withoutOverlapping(5);
+    })
     ->withExceptions(function (Exceptions $exceptions) {
         //
     })->create();

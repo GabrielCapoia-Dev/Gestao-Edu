@@ -14,8 +14,8 @@ use App\Models\Serie;
 use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
-use App\Services\Avaliacoes\AvaliacaoDashboardMetricsService;
 use App\Services\Avaliacoes\AvaliacaoDashboardFactsService;
+use App\Services\Avaliacoes\AvaliacaoDashboardMetricsService;
 use App\Services\Avaliacoes\AvaliacaoDocumentoExportService;
 use App\Services\Exports\ExportRequestService;
 use App\Services\PessoaScopeService;
@@ -170,14 +170,6 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->dashboardCarregado = false;
         $this->normalizarFiltros();
         $this->normalizarFiltrosAcompanhamento();
-
-        if ($this->avaliacaoSelecionada()) {
-            try {
-                app(AvaliacaoDashboardFactsService::class)->refreshIfDirty((int) $this->filtros['avaliacao_id']);
-            } catch (Throwable $exception) {
-                report($exception);
-            }
-        }
 
         $this->atualizarStatusConsolidacao();
 
@@ -522,24 +514,6 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         $snapshotAnterior = $this->capturarSnapshotAcompanhamento($this->acompanhamentoTurmas);
         $cardsAnteriores = $this->cards;
-        $avaliacaoId = (int) ($this->filtros['avaliacao_id'] ?? 0);
-
-        try {
-            app(AvaliacaoDashboardFactsService::class)->refreshIfDirty($avaliacaoId);
-        } catch (Throwable $exception) {
-            report($exception);
-            $this->atualizarStatusConsolidacao();
-
-            if (! $silencioso) {
-                Notification::make()
-                    ->title('Não foi possível atualizar os indicadores.')
-                    ->body($exception->getMessage())
-                    ->danger()
-                    ->send();
-            }
-
-            return;
-        }
 
         $this->parecerTurmaElegibilidade = [];
         $this->atualizarMetricasLeves();
@@ -1903,10 +1877,6 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->normalizarFiltrosAcompanhamento();
 
         $this->atualizarStatusConsolidacao();
-        if ($this->avaliacaoSelecionada() && $this->consolidacaoStatus === '') {
-            app(AvaliacaoDashboardFactsService::class)->requestRebuild((int) $this->filtros['avaliacao_id']);
-            $this->atualizarStatusConsolidacao();
-        }
 
         $resolver = fn (): array => $this->montarDashboardData();
         $user = Auth::user();
@@ -2305,79 +2275,6 @@ class DashboardAvaliacoes extends Page implements HasForms
         if ($filtrosAtivos['professores_ids'] !== []) $query->whereIn('ar.professor_id', $filtrosAtivos['professores_ids']);
         if ($filtrosAtivos['pautas_ids'] !== []) $query->whereIn('ar.pauta_id', $filtrosAtivos['pautas_ids']);
         if (! $ignorarAlternativas && $filtrosAtivos['alternativas_ids'] !== []) $query->whereIn('ar.alternativa_id', $filtrosAtivos['alternativas_ids']);
-
-        return $query;
-
-        // Expande payload.pautas via JSON_TABLE (MySQL 8) sem tabela linha-por-resposta.
-        $expanded = '
-            select
-                d.avaliacao_id,
-                d.aluno_id,
-                d.turma_id,
-                d.escola_id,
-                cast(jt.pauta_id as unsigned) as pauta_id,
-                cast(jt.alternativa_id as unsigned) as alternativa_id,
-                cast(jt.professor_id as unsigned) as professor_id,
-                jt.observacao,
-                jt.respondido_em,
-                cast(jt.componente_curricular_id as unsigned) as componente_curricular_id
-            from avaliacao_aluno_documentos d
-            cross join json_table(
-                coalesce(d.payload, json_object(\'pautas\', json_object())),
-                \'$.pautas.*\' columns (
-                    pauta_id int path \'$.pauta_id\' null on error,
-                    alternativa_id int path \'$.alternativa_id\' null on error,
-                    professor_id int path \'$.professor_id\' null on error,
-                    observacao text path \'$.observacao\' null on error,
-                    respondido_em varchar(64) path \'$.respondido_em\' null on error,
-                    componente_curricular_id int path \'$.componente_curricular_id\' null on error
-                )
-            ) as jt
-            where jt.alternativa_id is not null
-        ';
-
-        $query = DB::table(DB::raw("({$expanded}) as ar"))
-            ->join('turmas as t', 't.id', '=', 'ar.turma_id')
-            ->join('alunos as aln', 'aln.id', '=', 'ar.aluno_id')
-            ->join('pautas as p', 'p.id', '=', 'ar.pauta_id')
-            ->join('alternativas as alt', 'alt.id', '=', 'ar.alternativa_id')
-            ->whereIn('ar.avaliacao_id', $avaliacaoIds)
-            ->where('aln.status', '!=', Aluno::STATUS_PENDENTE)
-            ->where('p.status', true)
-            ->where(function (QueryBuilder $query): void {
-                $query->whereNull('p.serie_id')
-                    ->orWhereColumn('p.serie_id', 't.id_serie');
-            });
-
-        $this->aplicarEscopoEscolarQuery($query, 't');
-
-        if ($filtrosAtivos['series_ids'] !== []) {
-            $query->whereIn('t.id_serie', $filtrosAtivos['series_ids']);
-        }
-
-        if ($filtrosAtivos['turnos'] !== []) {
-            $query->whereIn('t.turno', $filtrosAtivos['turnos']);
-        }
-
-        if ($filtrosAtivos['componentes_ids'] !== []) {
-            $query->whereIn('p.componente_curricular_id', $filtrosAtivos['componentes_ids']);
-        }
-
-        if ($filtrosAtivos['escolas_ids'] !== []) {
-            $query->whereIn('t.id_escola', $filtrosAtivos['escolas_ids']);
-        }
-
-        if ($filtrosAtivos['professores_ids'] !== []) {
-            $query->whereIn('ar.professor_id', $filtrosAtivos['professores_ids']);
-        }
-
-        if ($filtrosAtivos['pautas_ids'] !== []) {
-            $query->whereIn('ar.pauta_id', $filtrosAtivos['pautas_ids']);
-        }
-
-        if (! $ignorarAlternativas && $filtrosAtivos['alternativas_ids'] !== []) {
-            $query->whereIn('ar.alternativa_id', $filtrosAtivos['alternativas_ids']);
-        }
 
         return $query;
     }
