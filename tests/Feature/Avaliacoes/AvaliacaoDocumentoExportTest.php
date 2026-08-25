@@ -464,6 +464,53 @@ class AvaliacaoDocumentoExportTest extends TestCase
         $this->assertSame('', $gestores['motivo_bloqueio']);
     }
 
+    public function test_resolve_vinculos_gestores_legados_sem_data_inicio(): void
+    {
+        $escola = $this->criarEscola('Escola Gestores Legados');
+        $serie = $this->criarSerie('SER-GEST-LEG', '1o Ano');
+        $turma = $this->criarTurma($escola, $serie, 'A');
+        [$direcao, $coordenacao] = $this->criarResponsaveisParecer($escola, $turma);
+        $this->assertNotNull($coordenacao);
+
+        $direcao->update(['data_inicio' => null]);
+        $coordenacao->update(['data_inicio' => null]);
+        ServidorFuncaoTurma::query()
+            ->where('servidor_funcao_administrativa_id', $coordenacao->id)
+            ->update(['data_inicio' => null]);
+
+        $gestores = (new AvaliacaoDocumentoExportService())->gestoresDaTurma($turma);
+
+        $this->assertSame('Diretora Principal - PORT-DIR', $gestores['diretor']);
+        $this->assertSame('Coordenadora Principal - PORT-COORD', $gestores['coordenacao']);
+        $this->assertTrue($gestores['pode_exportar']);
+
+        $migration = require database_path('migrations/2026_08_25_170000_backfill_equipe_gestora_data_inicio.php');
+        $migration->up();
+
+        $datasPreenchidas = [
+            $direcao->fresh()->data_inicio?->toDateString(),
+            $coordenacao->fresh()->data_inicio?->toDateString(),
+            ServidorFuncaoTurma::query()
+                ->where('servidor_funcao_administrativa_id', $coordenacao->id)
+                ->value('data_inicio'),
+        ];
+
+        $this->assertNotContains(null, $datasPreenchidas);
+
+        $migration->up();
+
+        $this->assertSame(
+            $datasPreenchidas,
+            [
+                $direcao->fresh()->data_inicio?->toDateString(),
+                $coordenacao->fresh()->data_inicio?->toDateString(),
+                ServidorFuncaoTurma::query()
+                    ->where('servidor_funcao_administrativa_id', $coordenacao->id)
+                    ->value('data_inicio'),
+            ],
+        );
+    }
+
     public function test_nome_da_funcao_sem_flag_nao_resolve_diretor_ou_coordenador(): void
     {
         $escola = $this->criarEscola('Escola Sem Flag Documento');

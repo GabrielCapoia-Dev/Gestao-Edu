@@ -22,8 +22,11 @@ class ParecerResponsaveisResolver
         $diretores = ServidorFuncaoAdministrativa::query()
             ->where('id_escola', (int) $turma->id_escola)
             ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO)
-            ->whereNotNull('data_inicio')
-            ->whereDate('data_inicio', '<=', $momento->toDateString())
+            ->where(function ($query) use ($momento): void {
+                $query
+                    ->whereNull('data_inicio')
+                    ->orWhereDate('data_inicio', '<=', $momento->toDateString());
+            })
             ->where(function ($query) use ($momento): void {
                 $query
                     ->whereNull('data_fim')
@@ -56,8 +59,11 @@ class ParecerResponsaveisResolver
         $coordenacoes = ServidorFuncaoTurma::query()
             ->where('turma_id', (int) $turma->id)
             ->where('status', ServidorFuncaoTurma::STATUS_ATIVO)
-            ->whereNotNull('data_inicio')
-            ->whereDate('data_inicio', '<=', $momento->toDateString())
+            ->where(function ($query) use ($momento): void {
+                $query
+                    ->whereNull('data_inicio')
+                    ->orWhereDate('data_inicio', '<=', $momento->toDateString());
+            })
             ->where(function ($query) use ($momento): void {
                 $query
                     ->whereNull('data_fim')
@@ -67,10 +73,13 @@ class ParecerResponsaveisResolver
                 $query
                     ->where('id_escola', (int) $turma->id_escola)
                     ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO)
-                    ->whereNotNull('data_inicio')
-                    ->whereDate('data_inicio', '<=', $momento->toDateString())
-                    ->where(function ($vigencia) use ($momento): void {
-                        $vigencia
+                    ->where(function ($inicio) use ($momento): void {
+                        $inicio
+                            ->whereNull('data_inicio')
+                            ->orWhereDate('data_inicio', '<=', $momento->toDateString());
+                    })
+                    ->where(function ($fim) use ($momento): void {
+                        $fim
                             ->whereNull('data_fim')
                             ->orWhereDate('data_fim', '>=', $momento->toDateString());
                     })

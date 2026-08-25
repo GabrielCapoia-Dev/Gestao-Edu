@@ -64,7 +64,14 @@ class PessoaEquipeGestoraServiceTest extends TestCase
         $this->assertSame('PORT-ABC/2026', $direcao->portaria);
         $this->assertSame($direcao->portaria, $coordenacao->portaria);
         $this->assertSame(now()->toDateString(), $direcao->data_inicio->toDateString());
+        $this->assertSame(now()->toDateString(), $coordenacao->data_inicio->toDateString());
 
+        $vinculoTurma = ServidorFuncaoTurma::query()
+            ->where('servidor_funcao_administrativa_id', $coordenacao->id)
+            ->where('turma_id', $turma->id)
+            ->firstOrFail();
+
+        $this->assertSame(now()->toDateString(), $vinculoTurma->data_inicio->toDateString());
         $this->assertDatabaseHas('servidor_funcao_turma', [
             'servidor_funcao_administrativa_id' => $coordenacao->id,
             'turma_id' => $turma->id,
