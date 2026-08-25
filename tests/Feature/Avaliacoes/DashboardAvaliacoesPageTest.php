@@ -576,7 +576,7 @@ class DashboardAvaliacoesPageTest extends TestCase
         $this->assertArrayHasKey($escolaSul->id, $component->instance()->escolasOptions);
     }
 
-    public function test_botao_atualizar_recalcula_documentos_sem_gerar_fatos_ou_jobs(): void
+    public function test_botao_atualizar_recalcula_em_etapas_sem_gerar_fatos_ou_jobs(): void
     {
         Queue::fake();
         Permission::findOrCreate('Acompanhar Avaliações');
@@ -646,6 +646,8 @@ class DashboardAvaliacoesPageTest extends TestCase
         $dashboard->atualizarDadosRecentes(silencioso: true);
 
         $this->assertSame(1, $dashboard->cards['preenchimentos_respondidos']);
+        $dashboard->carregarGraficosDashboard();
+        $dashboard->carregarAcompanhamentoDashboard();
         $this->assertSame(1, collect($dashboard->acompanhamentoTurmas)->first()['preenchimentos_respondidos']);
         $this->assertDatabaseCount('avaliacao_dashboard_fatos', 0);
         $this->assertDatabaseCount('avaliacao_dashboard_pendencias', 0);

@@ -1,7 +1,18 @@
 <x-filament-panels::page>
-    <div class="av-livewire-root" x-data wire:init="carregarDashboardInicial" x-on:dashboard-acompanhamento-recarregar.window="$wire.atualizarAcompanhamentoTurmas()" x-on:dashboard-detalhes-recarregar.window="$wire.carregarDetalhesDashboard()">
+    <div
+        class="av-livewire-root"
+        x-data="{
+            async recarregarDetalhesDashboard() {
+                await $wire.carregarGraficosDashboard()
+                await $wire.carregarAcompanhamentoDashboard()
+            },
+        }"
+        wire:init="carregarDashboardInicial"
+        x-on:dashboard-acompanhamento-recarregar.window="$wire.atualizarAcompanhamentoTurmas()"
+        x-on:dashboard-detalhes-recarregar.window="recarregarDetalhesDashboard()"
+    >
     <div class="dav-page">
-        <div class="dav-processing-overlay" wire:loading.flex wire:target="carregarDashboardInicial,carregarResumoDashboard,carregarGraficosDashboard,carregarAcompanhamentoDashboard,carregarDetalhesDashboard,atualizarAcompanhamentoTurmas,atualizarDadosRecentes">
+        <div class="dav-processing-overlay" wire:loading.flex wire:target="carregarDashboardInicial,carregarResumoDashboard,carregarGraficosDashboard,carregarAcompanhamentoDashboard,atualizarAcompanhamentoTurmas,atualizarDadosRecentes">
             <div class="dav-processing-card">
                 <div class="dav-processing-spinner"></div>
                 <strong>Processando...</strong>

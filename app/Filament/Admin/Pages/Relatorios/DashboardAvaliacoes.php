@@ -222,12 +222,6 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->acompanhamentoCarregado = true;
     }
 
-    public function carregarDetalhesDashboard(): void
-    {
-        $this->carregarGraficosDashboard();
-        $this->carregarAcompanhamentoDashboard();
-    }
-
     public function updatedFiltros(mixed $value = null, ?string $key = null): void
     {
         $this->resetarPaginacoesDashboard();
@@ -486,8 +480,9 @@ class DashboardAvaliacoes extends Page implements HasForms
     }
 
     /**
-     * Atualiza KPIs e listagem via Livewire (sem reload do browser).
-     * Compara com o snapshot da página e destaca apenas linhas com valores novos.
+     * Atualiza primeiro o resumo e agenda gráficos/acompanhamento em requisições
+     * separadas. A avaliação 3 excede o timeout quando tudo é recalculado no
+     * mesmo ciclo Livewire.
      */
     public function atualizarDadosRecentes(bool $silencioso = false): void
     {
@@ -504,34 +499,20 @@ class DashboardAvaliacoes extends Page implements HasForms
             return;
         }
 
-        $snapshotAnterior = $this->capturarSnapshotAcompanhamento($this->acompanhamentoTurmas);
-        $cardsAnteriores = $this->cards;
-
         $this->parecerTurmaElegibilidade = [];
-        $this->atualizarMetricasLeves();
-
-        $this->acompanhamentoLinhasAlteradas = $this->diffSnapshotAcompanhamento(
-            $snapshotAnterior,
-            $this->capturarSnapshotAcompanhamento($this->acompanhamentoTurmas)
-        );
-
-        $cardsMudaram = $this->cardsDiferem($cardsAnteriores, $this->cards);
+        $this->acompanhamentoLinhasAlteradas = [];
+        $this->carregarResumoDashboard();
         $this->ultimaAtualizacaoIncremental = now()->format('d/m/Y H:i:s');
         $this->ultimaAtualizacao = $this->ultimaAtualizacaoIncremental;
+        $this->dispatch('dashboard-detalhes-recarregar');
 
         if ($silencioso) {
             return;
         }
 
-        $alteracoes = count($this->acompanhamentoLinhasAlteradas);
-
         Notification::make()
-            ->title($alteracoes > 0 || $cardsMudaram
-                ? 'Dados atualizados com alterações recentes.'
-                : 'Nenhuma alteração desde o último carregamento.')
-            ->body($alteracoes > 0
-                ? "{$alteracoes} turma(s) com preenchimento diferente."
-                : ($cardsMudaram ? 'Indicadores gerais foram atualizados.' : 'Os valores permanecem iguais.'))
+            ->title('Dados atuais carregados.')
+            ->body('Gráficos e acompanhamento estão sendo atualizados em etapas.')
             ->success()
             ->send();
     }
