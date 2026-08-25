@@ -360,10 +360,10 @@ class AvaliacaoTurmaWorkspace extends Component
         }
 
         if ($this->modoAcompanhamento()) {
-            $prefixoTurma = $turmaId . ':';
+            $prefixoTurma = $turmaId.':';
             $this->pautasExpandidas = array_values(array_filter(
                 $this->pautasExpandidas,
-                fn(string $item): bool => ! str_starts_with($item, $prefixoTurma)
+                fn (string $item): bool => ! str_starts_with($item, $prefixoTurma)
             ));
         }
 
@@ -383,7 +383,7 @@ class AvaliacaoTurmaWorkspace extends Component
             return 'Turma';
         }
 
-        return preg_match('/^turma\b/i', $nome) === 1 ? $nome : 'Turma ' . $nome;
+        return preg_match('/^turma\b/i', $nome) === 1 ? $nome : 'Turma '.$nome;
     }
 
     public function nomeTurma(Turma $turma): string
@@ -408,10 +408,10 @@ class AvaliacaoTurmaWorkspace extends Component
         }
 
         if ($this->modoAcompanhamento()) {
-            $prefixoTurma = $turmaId . ':';
+            $prefixoTurma = $turmaId.':';
             $this->alunosExpandidos = array_values(array_filter(
                 $this->alunosExpandidos,
-                fn(string $item): bool => ! str_starts_with($item, $prefixoTurma)
+                fn (string $item): bool => ! str_starts_with($item, $prefixoTurma)
             ));
         }
 
@@ -516,7 +516,7 @@ class AvaliacaoTurmaWorkspace extends Component
 
         if (
             $this->alunoEmMassaGlobal
-            && $turmasAlvo->every(fn(Turma $turma): bool => $this->alunosAlvoAvaliacaoEmMassa((int) $turma->id)->isEmpty())
+            && $turmasAlvo->every(fn (Turma $turma): bool => $this->alunosAlvoAvaliacaoEmMassa((int) $turma->id)->isEmpty())
         ) {
             Notification::make()
                 ->title('Selecione um aluno válido para aplicar em massa.')
@@ -528,7 +528,7 @@ class AvaliacaoTurmaWorkspace extends Component
 
         if (
             $this->componenteEmMassaGlobal !== null
-            && $turmasAlvo->every(fn(Turma $turma): bool => $this->pautasAlvoAvaliacaoEmMassa((int) $turma->id)->isEmpty())
+            && $turmasAlvo->every(fn (Turma $turma): bool => $this->pautasAlvoAvaliacaoEmMassa((int) $turma->id)->isEmpty())
         ) {
             Notification::make()
                 ->title('Selecione um componente válido para aplicar em massa.')
@@ -539,7 +539,7 @@ class AvaliacaoTurmaWorkspace extends Component
         }
 
         if ($turmasAlvo->every(
-            fn(Turma $turma): bool => $this->alunosAlvoAvaliacaoEmMassa((int) $turma->id)->isEmpty()
+            fn (Turma $turma): bool => $this->alunosAlvoAvaliacaoEmMassa((int) $turma->id)->isEmpty()
                 || $this->pautasAlvoAvaliacaoEmMassa((int) $turma->id)->isEmpty()
         )) {
             Notification::make()
@@ -594,7 +594,7 @@ class AvaliacaoTurmaWorkspace extends Component
                     }
 
                     if ($temObservacao && $observacaoInformada === '') {
-                        $pendencias[$turmaId . ':' . $pauta->id][] = $alunoId;
+                        $pendencias[$turmaId.':'.$pauta->id][] = $alunoId;
 
                         continue;
                     }
@@ -624,48 +624,39 @@ class AvaliacaoTurmaWorkspace extends Component
             return;
         }
 
-        DB::transaction(function () use ($payload, $pendencias): void {
-            $service = app(AvaliacaoAlunoDocumentoService::class);
+        foreach ($pendencias as $chave => $alunosIds) {
+            [, $pautaId] = array_map('intval', explode(':', $chave));
 
-            foreach ($payload as $alunoId => $respostasPorPauta) {
-                $aluno = $this->alunoDaSerieSelecionada((int) $alunoId);
-                if (! $aluno) {
-                    continue;
-                }
-
-                $documento = $service->obterOuCriar((int) $this->avaliacao, $aluno, false);
-                $service->salvarPautasEmMassa($documento, $respostasPorPauta);
+            foreach ($alunosIds as $alunoId) {
+                $payload[(int) $alunoId][$pautaId] = ['alternativa_id' => null];
             }
+        }
 
-            foreach ($pendencias as $chave => $alunosIds) {
-                [, $pautaId] = array_map('intval', explode(':', $chave));
+        $alunosPorId = $this->alunosDaSerie
+            ->keyBy(fn (Aluno $aluno): int => (int) $aluno->id);
+        $alunosAlterados = collect(array_keys($payload))
+            ->map(fn ($alunoId) => $alunosPorId->get((int) $alunoId))
+            ->filter()
+            ->values();
 
-                foreach ($alunosIds as $alunoId) {
-                    $aluno = $this->alunoDaSerieSelecionada((int) $alunoId);
-                    if (! $aluno) {
-                        continue;
-                    }
-
-                    $documento = $service->obter((int) $this->avaliacao, (int) $alunoId);
-                    if ($documento) {
-                        $service->removerPauta($documento, $pautaId);
-                    }
-                }
-            }
-        });
+        app(AvaliacaoAlunoDocumentoService::class)->salvarPautasEmMassaParaAlunos(
+            (int) $this->avaliacao,
+            $alunosAlterados,
+            $payload,
+        );
 
         $mensagens = [];
 
         if ($pautasIgnoradas > 0) {
-            $mensagens[] = $pautasIgnoradas . ' pauta(s) não possuem esta alternativa.';
+            $mensagens[] = $pautasIgnoradas.' pauta(s) não possuem esta alternativa.';
         }
 
         if ($alunosPendentesTransferenciaIgnorados !== []) {
-            $mensagens[] = count($alunosPendentesTransferenciaIgnorados) . ' aluno(s) pendente(s) de transferência foram ignorados.';
+            $mensagens[] = count($alunosPendentesTransferenciaIgnorados).' aluno(s) pendente(s) de transferência foram ignorados.';
         }
 
         if ($totalIgnoradoPorPreenchimento > 0) {
-            $mensagens[] = $totalIgnoradoPorPreenchimento . ' resposta(s) já preenchida(s) ou bloqueada(s) foram mantidas.';
+            $mensagens[] = $totalIgnoradoPorPreenchimento.' resposta(s) já preenchida(s) ou bloqueada(s) foram mantidas.';
         }
 
         Notification::make()
@@ -819,9 +810,9 @@ class AvaliacaoTurmaWorkspace extends Component
     {
         return collect($this->alternativasPorPauta)
             ->flatten(1)
-            ->filter(fn(array $alternativa): bool => isset($alternativa['id'], $alternativa['nome']))
-            ->unique(fn(array $alternativa): int => (int) $alternativa['id'])
-            ->sortBy(fn(array $alternativa): string => (string) $alternativa['nome'])
+            ->filter(fn (array $alternativa): bool => isset($alternativa['id'], $alternativa['nome']))
+            ->unique(fn (array $alternativa): int => (int) $alternativa['id'])
+            ->sortBy(fn (array $alternativa): string => (string) $alternativa['nome'])
             ->values();
     }
 
@@ -857,21 +848,21 @@ class AvaliacaoTurmaWorkspace extends Component
 
         $avaliacoes = $query
             ->with([
-                'tipo' => fn($tipo) => $tipo->with([
-                    'alternativas' => fn($alternativas) => $alternativas->where('status', true),
+                'tipo' => fn ($tipo) => $tipo->with([
+                    'alternativas' => fn ($alternativas) => $alternativas->where('status', true),
                 ]),
-                'pautas' => fn($pautas) => $pautas
+                'pautas' => fn ($pautas) => $pautas
                     ->where('status', true)
-                    ->when($this->modoAcompanhamento() && $this->serie, fn($query) => $query
-                        ->where(fn($serieQuery) => $serieQuery
+                    ->when($this->modoAcompanhamento() && $this->serie, fn ($query) => $query
+                        ->where(fn ($serieQuery) => $serieQuery
                             ->whereNull('serie_id')
                             ->orWhere('serie_id', (int) $this->serie)))
                     ->with([
                         'componente:id,nome',
-                        'tipo' => fn($tipo) => $tipo->with([
-                            'alternativas' => fn($alternativas) => $alternativas->where('status', true),
+                        'tipo' => fn ($tipo) => $tipo->with([
+                            'alternativas' => fn ($alternativas) => $alternativas->where('status', true),
                         ]),
-                        'alternativas' => fn($alternativas) => $alternativas->where('status', true),
+                        'alternativas' => fn ($alternativas) => $alternativas->where('status', true),
                     ]),
                 'turmas' => function ($turmas): void {
                     if ($this->modoAcompanhamento() && $this->turma) {
@@ -886,7 +877,7 @@ class AvaliacaoTurmaWorkspace extends Component
             ->get();
 
         return $this->avaliacoesDisponiveisCache = $avaliacoes
-            ->filter(fn(Avaliacao $avaliacao): bool => $this->filtrarTurmasDaAvaliacao($avaliacao)->isNotEmpty())
+            ->filter(fn (Avaliacao $avaliacao): bool => $this->filtrarTurmasDaAvaliacao($avaliacao)->isNotEmpty())
             ->values();
     }
 
@@ -917,7 +908,7 @@ class AvaliacaoTurmaWorkspace extends Component
 
         if ($this->modoAcompanhamento() && $this->turma) {
             return $this->turmasDisponiveisCache = $turmas
-                ->filter(fn(Turma $turma): bool => (int) $turma->id === (int) $this->turma)
+                ->filter(fn (Turma $turma): bool => (int) $turma->id === (int) $this->turma)
                 ->values();
         }
 
@@ -960,15 +951,15 @@ class AvaliacaoTurmaWorkspace extends Component
         $this->carregarAlternativasPorPauta($pautas);
 
         return $this->pautasDisponiveisCache = $pautas
-            ->filter(fn(Pauta $pauta): bool => $this->alternativasDaPauta((int) $pauta->id) !== [])
+            ->filter(fn (Pauta $pauta): bool => $this->alternativasDaPauta((int) $pauta->id) !== [])
             ->values();
     }
 
     public function getSeriesPorEscolaDisponiveisProperty(): Collection
     {
         return $this->turmasDisponiveis
-            ->filter(fn(Turma $turma): bool => $turma->serie !== null && $turma->escola !== null)
-            ->groupBy(fn(Turma $turma): string => $this->chaveSerieEscola((int) $turma->id_escola, (int) $turma->id_serie))
+            ->filter(fn (Turma $turma): bool => $turma->serie !== null && $turma->escola !== null)
+            ->groupBy(fn (Turma $turma): string => $this->chaveSerieEscola((int) $turma->id_escola, (int) $turma->id_serie))
             ->map(function (Collection $turmas): array {
                 /** @var Turma $turma */
                 $turma = $turmas->first();
@@ -981,7 +972,7 @@ class AvaliacaoTurmaWorkspace extends Component
                     'serie_nome' => (string) ($turma->serie?->nome ?? 'Série sem nome'),
                 ];
             })
-            ->sortBy(fn(array $escopo): string => mb_strtolower($escopo['escola_nome'] . '|' . $escopo['serie_nome']))
+            ->sortBy(fn (array $escopo): string => mb_strtolower($escopo['escola_nome'].'|'.$escopo['serie_nome']))
             ->values();
     }
 
@@ -992,7 +983,7 @@ class AvaliacaoTurmaWorkspace extends Component
         }
 
         return $this->turmasDisponiveis
-            ->filter(fn(Turma $turma): bool => (int) $turma->id_serie === (int) $this->serie
+            ->filter(fn (Turma $turma): bool => (int) $turma->id_serie === (int) $this->serie
                 && (! $this->escola || (int) $turma->id_escola === (int) $this->escola))
             ->values();
     }
@@ -1006,7 +997,7 @@ class AvaliacaoTurmaWorkspace extends Component
         $turmas = $this->turmasDaSerieDisponiveis;
         $turmasIds = $turmas
             ->pluck('id')
-            ->map(fn($id): int => (int) $id)
+            ->map(fn ($id): int => (int) $id)
             ->values()
             ->all();
 
@@ -1018,7 +1009,7 @@ class AvaliacaoTurmaWorkspace extends Component
 
         $origens = collect($escopos)
             ->pluck('turma_origem_id')
-            ->map(fn($id): int => (int) $id)
+            ->map(fn ($id): int => (int) $id)
             ->unique()
             ->values()
             ->all();
@@ -1039,18 +1030,17 @@ class AvaliacaoTurmaWorkspace extends Component
                 'pendencia_origem_aluno_id',
                 'tipo_vinculo',
             ])
-            ->groupBy(fn(Aluno $aluno): int => (int) $aluno->id_turma)
-            ->map(fn(Collection $alunos): Collection => $alunos->values());
+            ->groupBy(fn (Aluno $aluno): int => (int) $aluno->id_turma)
+            ->map(fn (Collection $alunos): Collection => $alunos->values());
 
         return $this->alunosPorTurmaCache = collect($escopos)
-            ->mapWithKeys(fn(array $escopo, int $turmaId): array => [
+            ->mapWithKeys(fn (array $escopo, int $turmaId): array => [
                 $turmaId => $alunosPorOrigem->get(
                     (int) $escopo['turma_origem_id'],
                     collect()
                 ),
             ]);
     }
-
 
     public function getAlunosDaSerieProperty(): Collection
     {
@@ -1059,7 +1049,7 @@ class AvaliacaoTurmaWorkspace extends Component
         }
 
         return $this->alunosDaSerieCache = $this->alunosPorTurma
-            ->flatMap(fn(Collection $alunos): Collection => $alunos)
+            ->flatMap(fn (Collection $alunos): Collection => $alunos)
             ->values();
     }
 
@@ -1082,9 +1072,9 @@ class AvaliacaoTurmaWorkspace extends Component
     public function getAlunosEmMassaDisponiveisProperty(): Collection
     {
         return $this->turmasAlvoAvaliacaoEmMassa()
-            ->filter(fn(Turma $turma): bool => $this->pautasAlvoAvaliacaoEmMassa((int) $turma->id)->isNotEmpty())
-            ->flatMap(fn(Turma $turma): Collection => $this->alunosRespondiveisDaTurma((int) $turma->id))
-            ->sortBy(fn(Aluno $aluno): string => mb_strtolower($this->rotuloAlunoEmMassa($aluno)))
+            ->filter(fn (Turma $turma): bool => $this->pautasAlvoAvaliacaoEmMassa((int) $turma->id)->isNotEmpty())
+            ->flatMap(fn (Turma $turma): Collection => $this->alunosRespondiveisDaTurma((int) $turma->id))
+            ->sortBy(fn (Aluno $aluno): string => mb_strtolower($this->rotuloAlunoEmMassa($aluno)))
             ->values();
     }
 
@@ -1095,7 +1085,7 @@ class AvaliacaoTurmaWorkspace extends Component
         return implode(' - ', array_filter([
             $aluno->nome,
             $turma ? $this->rotuloTurma($turma) : null,
-            $aluno->cgm ? 'CGM ' . $aluno->cgm : null,
+            $aluno->cgm ? 'CGM '.$aluno->cgm : null,
         ]));
     }
 
@@ -1139,7 +1129,7 @@ class AvaliacaoTurmaWorkspace extends Component
         }
 
         return $this->pautasDisponiveis
-            ->filter(fn(Pauta $pauta): bool => $this->pautaEhDaSerieDaTurma($pauta, $turma)
+            ->filter(fn (Pauta $pauta): bool => $this->pautaEhDaSerieDaTurma($pauta, $turma)
                 && $this->pautaEhRelevanteParaTurma($pauta, $turma))
             ->values();
     }
@@ -1256,13 +1246,13 @@ class AvaliacaoTurmaWorkspace extends Component
     public function pautasAgrupadasPorComponenteDaTurma(int $turmaId): Collection
     {
         return $this->pautasDaTurma($turmaId)
-            ->groupBy(fn(Pauta $pauta): string => $pauta->componente?->nome ?? 'Geral (sem componente especifico)');
+            ->groupBy(fn (Pauta $pauta): string => $pauta->componente?->nome ?? 'Geral (sem componente especifico)');
     }
 
     public function gruposPorComponenteDaTurma(int $turmaId): Collection
     {
         return $this->pautasDaTurma($turmaId)
-            ->groupBy(fn(Pauta $pauta): string => (string) ($pauta->componente_curricular_id ?? 0))
+            ->groupBy(fn (Pauta $pauta): string => (string) ($pauta->componente_curricular_id ?? 0))
             ->map(function (Collection $pautasDoComponente, string $componenteKey) use ($turmaId): array {
                 $componenteId = (int) $componenteKey;
                 $primeiraPauta = $pautasDoComponente->first();
@@ -1273,11 +1263,11 @@ class AvaliacaoTurmaWorkspace extends Component
                     'componente_id' => $componenteId,
                     'componente_nome' => $componenteNome,
                     'professor_nome' => $professorNome,
-                    'titulo' => $componenteNome . ' - ' . $professorNome,
+                    'titulo' => $componenteNome.' - '.$professorNome,
                     'pautas' => $pautasDoComponente->values(),
                 ];
             })
-            ->sortBy(fn(array $grupo): string => mb_strtolower($grupo['titulo']))
+            ->sortBy(fn (array $grupo): string => mb_strtolower($grupo['titulo']))
             ->values();
     }
 
@@ -1403,7 +1393,7 @@ class AvaliacaoTurmaWorkspace extends Component
         $this->professorIds = $user->professores()
             ->where('ativo', true)
             ->pluck('id')
-            ->map(fn($id): int => (int) $id)
+            ->map(fn ($id): int => (int) $id)
             ->all();
 
         if ($this->professorIds === []) {
@@ -1418,17 +1408,17 @@ class AvaliacaoTurmaWorkspace extends Component
         $this->turmaIdsProfessor = $vinculos
             ->pluck('turma_id')
             ->filter()
-            ->map(fn($id): int => (int) $id)
+            ->map(fn ($id): int => (int) $id)
             ->unique()
             ->values()
             ->all();
 
         $this->componentesPorTurma = $vinculos
             ->groupBy('turma_id')
-            ->map(fn(Collection $items): array => $items
+            ->map(fn (Collection $items): array => $items
                 ->pluck('componente_curricular_id')
                 ->filter()
-                ->map(fn($id): int => (int) $id)
+                ->map(fn ($id): int => (int) $id)
                 ->unique()
                 ->values()
                 ->all())
@@ -1445,7 +1435,7 @@ class AvaliacaoTurmaWorkspace extends Component
 
                 return $this->filtrarPautasDaTurma($avaliacao->pautas, $turma, false)->isNotEmpty();
             })
-            ->sortBy(fn(Turma $turma): string => mb_strtolower(implode('|', [
+            ->sortBy(fn (Turma $turma): string => mb_strtolower(implode('|', [
                 (string) ($turma->serie?->nome ?? ''),
                 (string) ($turma->escola?->nome ?? ''),
                 (string) ($turma->nome ?? ''),
@@ -1517,22 +1507,22 @@ class AvaliacaoTurmaWorkspace extends Component
             return;
         }
 
-        $pautasIds = $pautas->pluck('id')->map(fn($id): int => (int) $id)->values()->all();
+        $pautasIds = $pautas->pluck('id')->map(fn ($id): int => (int) $id)->values()->all();
         $overrides = DB::table('avaliacao_pauta_alternativa')
             ->where('avaliacao_id', (int) $this->avaliacaoAtual->id)
             ->whereIn('pauta_id', $pautasIds)
             ->get(['pauta_id', 'alternativa_id'])
             ->groupBy('pauta_id')
-            ->map(fn(Collection $rows): array => $rows
+            ->map(fn (Collection $rows): array => $rows
                 ->pluck('alternativa_id')
-                ->map(fn($id): int => (int) $id)
+                ->map(fn ($id): int => (int) $id)
                 ->unique()
                 ->values()
                 ->all());
 
         $overrideIds = $overrides
             ->flatten(1)
-            ->map(fn($id): int => (int) $id)
+            ->map(fn ($id): int => (int) $id)
             ->unique()
             ->values()
             ->all();
@@ -1554,7 +1544,7 @@ class AvaliacaoTurmaWorkspace extends Component
 
             if ($ids !== []) {
                 $alternativas = collect($ids)
-                    ->map(fn($alternativaId) => $alternativasOverride->get((int) $alternativaId))
+                    ->map(fn ($alternativaId) => $alternativasOverride->get((int) $alternativaId))
                     ->filter()
                     ->values();
             }
@@ -1574,7 +1564,7 @@ class AvaliacaoTurmaWorkspace extends Component
             }
 
             $this->alternativasPorPauta[(int) $pauta->id] = $alternativas
-                ->map(fn(Alternativa $alternativa): array => [
+                ->map(fn (Alternativa $alternativa): array => [
                     'id' => (int) $alternativa->id,
                     'nome' => (string) $alternativa->nome,
                     'tem_observacao' => (bool) $alternativa->tem_observacao,
@@ -1589,14 +1579,14 @@ class AvaliacaoTurmaWorkspace extends Component
     {
         $turmasIds = $this->turmasDaSerieDisponiveis
             ->pluck('id')
-            ->map(fn($id): int => (int) $id)
+            ->map(fn ($id): int => (int) $id)
             ->values()
             ->all();
 
         $componentesIds = $this->pautasBaseDisponiveis
             ->pluck('componente_curricular_id')
             ->filter()
-            ->map(fn($id): int => (int) $id)
+            ->map(fn ($id): int => (int) $id)
             ->unique()
             ->values()
             ->all();
@@ -1611,11 +1601,11 @@ class AvaliacaoTurmaWorkspace extends Component
             ->whereIn('turma_id', $turmasIds)
             ->whereIn('componente_curricular_id', $componentesIds)
             ->get(['turma_id', 'componente_curricular_id', 'professor_id'])
-            ->groupBy(fn(TurmaComponenteProfessor $vinculo): string => (int) $vinculo->turma_id . ':' . (int) $vinculo->componente_curricular_id)
-            ->map(fn(Collection $vinculos): array => $vinculos
+            ->groupBy(fn (TurmaComponenteProfessor $vinculo): string => (int) $vinculo->turma_id.':'.(int) $vinculo->componente_curricular_id)
+            ->map(fn (Collection $vinculos): array => $vinculos
                 ->pluck('professor_id')
                 ->filter()
-                ->map(fn($id): int => (int) $id)
+                ->map(fn ($id): int => (int) $id)
                 ->unique()
                 ->values()
                 ->all())
@@ -1651,7 +1641,7 @@ class AvaliacaoTurmaWorkspace extends Component
         }
 
         $nomesAlternativas = Alternativa::query()
-            ->whereIn('id', $documentos->flatMap(fn(AvaliacaoAlunoDocumento $d) => $d->alternativa_ids ?? [])->unique()->all())
+            ->whereIn('id', $documentos->flatMap(fn (AvaliacaoAlunoDocumento $d) => $d->alternativa_ids ?? [])->unique()->all())
             ->pluck('nome', 'id');
 
         $respostas = [];
@@ -1697,7 +1687,7 @@ class AvaliacaoTurmaWorkspace extends Component
         $alunos = $this->alunosDaSerie;
         $alunosIds = $alunos
             ->pluck('id')
-            ->map(fn($id): int => (int) $id)
+            ->map(fn ($id): int => (int) $id)
             ->values()
             ->all();
 
@@ -1871,7 +1861,7 @@ class AvaliacaoTurmaWorkspace extends Component
     private function alunosRespondiveisDaTurma(int $turmaId): Collection
     {
         return $this->alunosDaTurma($turmaId)
-            ->reject(fn(Aluno $aluno): bool => $this->alunoEstaBloqueadoParaAvaliacao($aluno))
+            ->reject(fn (Aluno $aluno): bool => $this->alunoEstaBloqueadoParaAvaliacao($aluno))
             ->values();
     }
 
@@ -1881,14 +1871,14 @@ class AvaliacaoTurmaWorkspace extends Component
             return null;
         }
 
-        $cacheKey = $turmaId . ':' . $componenteId;
+        $cacheKey = $turmaId.':'.$componenteId;
 
         if (! array_key_exists($cacheKey, $this->professoresPorTurmaComponente)) {
             $this->professoresPorTurmaComponente[$cacheKey] = TurmaComponenteProfessor::query()
                 ->where('turma_id', $turmaId)
                 ->where('componente_curricular_id', $componenteId)
                 ->pluck('professor_id')
-                ->map(fn($id): int => (int) $id)
+                ->map(fn ($id): int => (int) $id)
                 ->unique()
                 ->values()
                 ->all();
@@ -1929,7 +1919,7 @@ class AvaliacaoTurmaWorkspace extends Component
         }
 
         return $this->turmasDaSerieDisponiveis
-            ->filter(fn(Turma $turma): bool => (int) $turma->id === $turmaId)
+            ->filter(fn (Turma $turma): bool => (int) $turma->id === $turmaId)
             ->values();
     }
 
@@ -1943,7 +1933,7 @@ class AvaliacaoTurmaWorkspace extends Component
         }
 
         return $alunos
-            ->filter(fn(Aluno $aluno): bool => (int) $aluno->id === $alunoId)
+            ->filter(fn (Aluno $aluno): bool => (int) $aluno->id === $alunoId)
             ->values();
     }
 
@@ -1958,7 +1948,7 @@ class AvaliacaoTurmaWorkspace extends Component
         $componenteId = (int) $this->componenteEmMassaGlobal;
 
         return $pautas
-            ->filter(fn(Pauta $pauta): bool => (int) ($pauta->componente_curricular_id ?? 0) === $componenteId)
+            ->filter(fn (Pauta $pauta): bool => (int) ($pauta->componente_curricular_id ?? 0) === $componenteId)
             ->values();
     }
 
@@ -1969,7 +1959,7 @@ class AvaliacaoTurmaWorkspace extends Component
         }
 
         return collect($this->alternativasDaPauta($pautaId))
-            ->first(fn(array $alternativa): bool => (int) ($alternativa['id'] ?? 0) === (int) $alternativaId);
+            ->first(fn (array $alternativa): bool => (int) ($alternativa['id'] ?? 0) === (int) $alternativaId);
     }
 
     private function escolaDaTurma(int $turmaId): ?int
@@ -1982,10 +1972,10 @@ class AvaliacaoTurmaWorkspace extends Component
     private function escolaDaSerie(int $serieId): ?int
     {
         $escolasIds = $this->turmasDisponiveis
-            ->filter(fn(Turma $turma): bool => (int) $turma->id_serie === $serieId)
+            ->filter(fn (Turma $turma): bool => (int) $turma->id_serie === $serieId)
             ->pluck('id_escola')
             ->filter()
-            ->map(fn($id): int => (int) $id)
+            ->map(fn ($id): int => (int) $id)
             ->unique()
             ->values();
 
@@ -2036,7 +2026,7 @@ class AvaliacaoTurmaWorkspace extends Component
         }
 
         return $this->seriesPorEscolaDisponiveis
-            ->contains(fn(array $escopo): bool => (int) $escopo['serie_id'] === (int) $this->serie
+            ->contains(fn (array $escopo): bool => (int) $escopo['serie_id'] === (int) $this->serie
                 && (int) $escopo['escola_id'] === (int) $this->escola);
     }
 
@@ -2059,12 +2049,12 @@ class AvaliacaoTurmaWorkspace extends Component
 
     private function chaveExpansao(int $turmaId, int $itemId): string
     {
-        return $turmaId . ':' . $itemId;
+        return $turmaId.':'.$itemId;
     }
 
     private function chaveSerieEscola(int $escolaId, int $serieId): string
     {
-        return $escolaId . ':' . $serieId;
+        return $escolaId.':'.$serieId;
     }
 
     private function normalizarQueryId(mixed $valor): ?int
