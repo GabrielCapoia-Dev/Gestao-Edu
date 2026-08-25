@@ -65,32 +65,6 @@
                 </section>
             @else
 
-            @if (in_array($consolidacaoStatus ?? '', [
-                'pendente',
-                'processando',
-                'incremental_pendente',
-                'incremental_processando',
-                'rebuild_pendente',
-                'rebuild_processando',
-            ], true))
-                <section class="dav-dashboard-loading">
-                    <div class="dav-dashboard-loading__pulse"></div>
-                    <div>
-                        <strong>Consolidando indicadores...</strong>
-                        <span>Os dados podem estar desatualizados enquanto a fila processa a avaliação.</span>
-                    </div>
-                </section>
-            @elseif (in_array($consolidacaoStatus ?? '', ['erro', 'rebuild_erro'], true))
-                <section class="dav-dashboard-loading">
-                    <div>
-                        <strong>Falha na consolidação dos indicadores.</strong>
-                        <span>{{ $consolidacaoErro ?: 'Execute o comando manual de reparo da avaliação.' }}</span>
-                    </div>
-                </section>
-            @elseif (($consolidadaEm ?? '') !== '')
-                <div class="dav-refresh-meta">Indicadores consolidados em {{ $consolidadaEm }}</div>
-            @endif
-
             <section class="dav-panel dav-panel--legacy">
                 <div class="dav-panel-head">
                     <div>
@@ -365,7 +339,7 @@
                             wire:click="atualizarDadosRecentes"
                             wire:loading.attr="disabled"
                             wire:target="atualizarDadosRecentes"
-                            title="Verifica apenas o que mudou após o carregamento, sem recarregar a página">
+                            title="Recalcula os indicadores diretamente com os dados atuais, sem recarregar a página">
                             <span wire:loading.remove wire:target="atualizarDadosRecentes">Atualizar</span>
                             <span wire:loading wire:target="atualizarDadosRecentes">Verificando...</span>
                         </button>

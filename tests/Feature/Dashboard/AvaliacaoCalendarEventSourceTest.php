@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Dashboard;
 
+use App\Models\Alternativa;
 use App\Models\Aluno;
 use App\Models\Avaliacao;
 use App\Models\ComponenteCurricular;
@@ -16,6 +17,7 @@ use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
+use App\Services\Avaliacoes\AvaliacaoAlunoDocumentoService;
 use App\Services\Avaliacoes\AvaliacaoDashboardProgressService;
 use App\Services\Dashboard\Calendar\CalendarEventAggregator;
 use App\Services\Dashboard\Calendar\Sources\AvaliacaoCalendarEventSource;
@@ -24,7 +26,6 @@ use App\Support\Dashboard\Calendar\CalendarEventData;
 use App\Support\Dashboard\Calendar\CalendarQueryContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -48,7 +49,7 @@ class AvaliacaoCalendarEventSourceTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_fonte_de_avaliacoes_respeita_escola_periodo_status_e_sinaliza_progresso_pendente(): void
+    public function test_fonte_de_avaliacoes_respeita_escola_periodo_status_com_progresso_sob_demanda(): void
     {
         $agora = CarbonImmutable::parse('2026-07-20 10:00:00');
         CarbonImmutable::setTestNow($agora);
@@ -88,16 +89,16 @@ class AvaliacaoCalendarEventSourceTest extends TestCase
             $events->pluck('statusLabel')->all(),
         );
         $this->assertNull($events->first()->progresso);
-        $this->assertStringContainsString('Progresso em atualização', (string) $events->first()->resumo);
+        $this->assertStringNotContainsString('Progresso em atualização', (string) $events->first()->resumo);
         $this->assertSame($escolaA->id, $events->first()->escolaId);
         $this->assertNull($source->detail($context, (string) $avaliacaoB->id));
 
         $detail = $source->detail($context, (string) $avaliacaoA->id);
 
-        $this->assertSame('Progresso em atualização', $detail?->metadata['Progresso']);
+        $this->assertNull($detail?->metadata['Progresso']);
     }
 
-    public function test_progresso_do_professor_usa_pares_turma_componente_e_inclui_fatos_pendentes_sem_professor(): void
+    public function test_progresso_do_professor_usa_pares_turma_componente_sem_depender_do_professor_na_resposta(): void
     {
         $setor = $this->criarSetor('Setor do progresso por professor');
         $escola = $this->criarEscola('Escola do progresso por professor', $setor);
@@ -134,20 +135,25 @@ class AvaliacaoCalendarEventSourceTest extends TestCase
         $pautaRespondida = $this->criarPauta($tipo, $serie, $componentePermitido, 'Pauta respondida');
         $pautaPendente = $this->criarPauta($tipo, $serie, $componentePermitido, 'Pauta pendente');
         $pautaFora = $this->criarPauta($tipo, $serie, $componenteFora, 'Pauta de outro componente');
-        $alunoRespondido = $this->criarAluno($turma, 'AGENDA-ALUNO-1');
-        $alunoPendente = $this->criarAluno($turma, 'AGENDA-ALUNO-2');
-        $alunoFora = $this->criarAluno($turma, 'AGENDA-ALUNO-3');
-
-        DB::table('avaliacao_dashboard_consolidacoes')->insert([
-            'avaliacao_id' => $avaliacao->id,
-            'status' => 'consolidado',
-            'consolidada_em' => now(),
-            'created_at' => now(),
-            'updated_at' => now(),
+        $aluno = $this->criarAluno($turma, 'AGENDA-ALUNO-1');
+        $alternativa = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Atende',
+            'tem_observacao' => false,
+            'status' => true,
         ]);
-        $this->inserirFato($avaliacao, $alunoRespondido, $turma, $escola, $serie, $pautaRespondida, $componentePermitido, $professor, true);
-        $this->inserirFato($avaliacao, $alunoPendente, $turma, $escola, $serie, $pautaPendente, $componentePermitido, null, false);
-        $this->inserirFato($avaliacao, $alunoFora, $turma, $escola, $serie, $pautaFora, $componenteFora, null, false);
+        $pautaRespondida->alternativas()->attach($alternativa->id);
+        $avaliacao->series()->sync([$serie->id]);
+        $avaliacao->componentes()->sync([$componentePermitido->id, $componenteFora->id]);
+        $avaliacao->escolas()->sync([$escola->id]);
+        $avaliacao->turmas()->sync([$turma->id]);
+        $avaliacao->pautas()->sync([$pautaRespondida->id, $pautaPendente->id, $pautaFora->id]);
+
+        $documento = app(AvaliacaoAlunoDocumentoService::class)->obterOuCriar($avaliacao->id, $aluno);
+        app(AvaliacaoAlunoDocumentoService::class)->salvarPauta($documento, $pautaRespondida->id, [
+            'alternativa_id' => $alternativa->id,
+            'componente_curricular_id' => $componentePermitido->id,
+        ]);
 
         $progress = app(AvaliacaoDashboardProgressService::class)->batch(
             [$avaliacao->id],
@@ -261,36 +267,6 @@ class AvaliacaoCalendarEventSourceTest extends TestCase
             'id_turma' => $turma->id,
             'tipo_vinculo' => Aluno::TIPO_VINCULO_PRINCIPAL,
             'status' => Aluno::STATUS_MATRICULADO,
-        ]);
-    }
-
-    private function inserirFato(
-        Avaliacao $avaliacao,
-        Aluno $aluno,
-        Turma $turma,
-        Escola $escola,
-        Serie $serie,
-        Pauta $pauta,
-        ComponenteCurricular $componente,
-        ?Professor $professor,
-        bool $respondida,
-    ): void {
-        DB::table('avaliacao_dashboard_fatos')->insert([
-            'avaliacao_id' => $avaliacao->id,
-            'aluno_id' => $aluno->id,
-            'turma_id' => $turma->id,
-            'escola_id' => $escola->id,
-            'serie_id' => $serie->id,
-            'pauta_id' => $pauta->id,
-            'componente_curricular_id' => $componente->id,
-            'professor_id' => $professor?->id,
-            'respondida' => $respondida,
-            'observacao_pendente' => false,
-            'status_resposta' => $respondida ? 'respondida' : 'pendente',
-            'respondida_em' => $respondida ? now() : null,
-            'origem_version' => 1,
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
     }
 }

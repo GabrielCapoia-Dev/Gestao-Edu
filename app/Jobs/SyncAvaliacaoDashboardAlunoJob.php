@@ -2,7 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Services\Avaliacoes\AvaliacaoDashboardFactsService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -10,7 +9,6 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
-use Throwable;
 
 class SyncAvaliacaoDashboardAlunoJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
@@ -58,19 +56,8 @@ class SyncAvaliacaoDashboardAlunoJob implements ShouldBeUniqueUntilProcessing, S
         return (int) config('avaliacoes_dashboard.incremental.unique_ttl', 3600);
     }
 
-    public function handle(AvaliacaoDashboardFactsService $service): void
-    {
-        $service->processPendingDocumento($this->avaliacaoId, $this->alunoId, $this->attempts());
-    }
-
-    public function failed(?Throwable $exception): void
-    {
-        app(AvaliacaoDashboardFactsService::class)->markFailed(
-            $this->avaliacaoId,
-            $exception?->getMessage(),
-            AvaliacaoDashboardFactsService::STATUS_INCREMENTAL_PROCESSING,
-        );
-    }
+    /** Consome com segurança jobs antigos já serializados, sem recalcular fatos. */
+    public function handle(): void {}
 
     private function queueConnection(): string
     {

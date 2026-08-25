@@ -2,21 +2,22 @@
 
 namespace App\Services\Avaliacoes;
 
-use App\Models\TurmaComponenteProfessor;
 use App\Support\Avaliacoes\AvaliacaoDashboardProgressData;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
 class AvaliacaoDashboardProgressService
 {
+    public function __construct(
+        private readonly AvaliacaoDashboardOnDemandQueryService $queries,
+    ) {}
+
     /**
-     * Calcula o progresso em lote usando os fatos consolidados. Quando professorIds
-     * é informado, o denominador fica restrito aos pares turma/componente atribuídos
-     * ao professor, incluindo fatos ainda não respondidos (professor_id nulo).
+     * Calcula o progresso diretamente dos documentos e da estrutura atual.
      *
-     * @param list<int> $avaliacaoIds
-     * @param list<int>|null $escolaIds Null representa escopo global.
-     * @param list<int>|null $professorIds Null representa acompanhamento amplo.
+     * @param  list<int>  $avaliacaoIds
+     * @param  list<int>|null  $escolaIds  Null representa escopo global.
+     * @param  list<int>|null  $professorIds  Null representa acompanhamento amplo.
      * @return array<int, AvaliacaoDashboardProgressData>
      */
     public function batch(
@@ -30,48 +31,52 @@ class AvaliacaoDashboardProgressService
             return [];
         }
 
-        $statuses = DB::table('avaliacao_dashboard_consolidacoes')
-            ->whereIn('avaliacao_id', $avaliacaoIds)
-            ->pluck('status', 'avaliacao_id');
-
-        $result = [];
-
-        foreach ($avaliacaoIds as $avaliacaoId) {
-            $result[$avaliacaoId] = new AvaliacaoDashboardProgressData(
-                consolidacaoStatus: (string) ($statuses[$avaliacaoId] ?? 'pendente'),
+        $result = collect($avaliacaoIds)->mapWithKeys(fn (int $avaliacaoId): array => [
+            $avaliacaoId => new AvaliacaoDashboardProgressData(
+                consolidacaoStatus: 'consolidado',
                 percentual: null,
-            );
-        }
+            ),
+        ])->all();
 
         if ($escolaIds === []) {
             return $result;
         }
 
-        $query = DB::table('avaliacao_dashboard_fatos')
-            ->whereIn('avaliacao_id', $avaliacaoIds);
+        $esperados = $this->queries->esperados($avaliacaoIds);
+        $respondidos = $this->queries->respostas($avaliacaoIds, somenteCompletas: true);
 
         if (is_array($escolaIds)) {
-            $query->whereIn('escola_id', $this->ids($escolaIds));
+            $escolaIds = $this->ids($escolaIds);
+            $esperados->whereIn('t.id_escola', $escolaIds);
+            $respondidos->whereIn('t.id_escola', $escolaIds);
         }
 
         if (is_array($professorIds)) {
-            $this->applyProfessorScope($query, $professorIds);
+            $professorIds = $this->ids($professorIds);
+            $this->aplicarEscopoProfessor($esperados, $professorIds, 'tcp_progresso_esperado');
+            $this->aplicarEscopoProfessor($respondidos, $professorIds, 'tcp_progresso_respondido');
         }
 
-        $progressos = $query
-            ->selectRaw('avaliacao_id, COUNT(*) AS total, SUM(CASE WHEN respondida = 1 AND observacao_pendente = 0 THEN 1 ELSE 0 END) AS respondidas')
-            ->groupBy('avaliacao_id')
+        $distinctEsperado = $this->distinctCombinacaoExpr('at.avaliacao_id', 'at.turma_id', 'p.id', 'aln.id');
+        $distinctRespondido = $this->distinctCombinacaoExpr('ar.avaliacao_id', 'ar.turma_id', 'ar.pauta_id', 'ar.aluno_id');
+        $totais = $esperados
+            ->groupBy('at.avaliacao_id')
+            ->selectRaw("at.avaliacao_id, COUNT(DISTINCT {$distinctEsperado}) AS total")
             ->get()
-            ->mapWithKeys(fn ($row): array => [
-                (int) $row->avaliacao_id => (int) $row->total > 0
-                    ? round(((int) $row->respondidas / (int) $row->total) * 100, 2)
-                    : null,
-            ]);
+            ->pluck('total', 'avaliacao_id');
+        $concluidos = $respondidos
+            ->groupBy('ar.avaliacao_id')
+            ->selectRaw("ar.avaliacao_id, COUNT(DISTINCT {$distinctRespondido}) AS total")
+            ->get()
+            ->pluck('total', 'avaliacao_id');
 
         foreach ($avaliacaoIds as $avaliacaoId) {
+            $total = (int) ($totais[$avaliacaoId] ?? 0);
+            $concluido = min((int) ($concluidos[$avaliacaoId] ?? 0), $total);
+
             $result[$avaliacaoId] = new AvaliacaoDashboardProgressData(
-                consolidacaoStatus: $result[$avaliacaoId]->consolidacaoStatus,
-                percentual: $progressos->get($avaliacaoId),
+                consolidacaoStatus: 'consolidado',
+                percentual: $total > 0 ? round(($concluido / $total) * 100, 2) : null,
             );
         }
 
@@ -79,32 +84,36 @@ class AvaliacaoDashboardProgressService
     }
 
     /** @param list<int> $professorIds */
-    private function applyProfessorScope(Builder $query, array $professorIds): void
+    private function aplicarEscopoProfessor(Builder $query, array $professorIds, string $alias): void
     {
-        $vinculos = TurmaComponenteProfessor::query()
-            ->whereIn('professor_id', $this->ids($professorIds))
-            ->where('tem_professor', true)
-            ->get(['turma_id', 'componente_curricular_id'])
-            ->groupBy('turma_id');
-
-        if ($vinculos->isEmpty()) {
+        if ($professorIds === []) {
             $query->whereRaw('1 = 0');
 
             return;
         }
 
-        $query->where(function (Builder $pares) use ($vinculos): void {
-            foreach ($vinculos as $turmaId => $items) {
-                $pares->orWhere(function (Builder $par) use ($turmaId, $items): void {
-                    $par
-                        ->where('turma_id', (int) $turmaId)
-                        ->whereIn(
-                            'componente_curricular_id',
-                            $items->pluck('componente_curricular_id')->map(fn ($id): int => (int) $id)->all(),
-                        );
-                });
-            }
-        });
+        $query
+            ->join("turma_componente_professor as {$alias}", function ($join) use ($alias): void {
+                $join->on("{$alias}.turma_id", '=', 't.id')
+                    ->where("{$alias}.tem_professor", true)
+                    ->where(function ($join) use ($alias): void {
+                        $join->whereNull('p.componente_curricular_id')
+                            ->orOn("{$alias}.componente_curricular_id", '=', 'p.componente_curricular_id');
+                    });
+            })
+            ->whereIn("{$alias}.professor_id", $professorIds);
+    }
+
+    private function distinctCombinacaoExpr(string ...$colunas): string
+    {
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            return implode(" || ':' || ", array_map(
+                fn (string $coluna): string => "CAST({$coluna} AS TEXT)",
+                $colunas,
+            ));
+        }
+
+        return 'CONCAT_WS(\':\', '.implode(', ', $colunas).')';
     }
 
     /** @return list<int> */

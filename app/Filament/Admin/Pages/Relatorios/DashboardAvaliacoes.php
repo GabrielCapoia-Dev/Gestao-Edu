@@ -3,7 +3,6 @@
 namespace App\Filament\Admin\Pages\Relatorios;
 
 use App\Models\Alternativa;
-use App\Models\Aluno;
 use App\Models\Avaliacao;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
@@ -14,8 +13,7 @@ use App\Models\Serie;
 use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
-use App\Services\Avaliacoes\AvaliacaoDashboardFactsService;
-use App\Services\Avaliacoes\AvaliacaoDashboardMetricsService;
+use App\Services\Avaliacoes\AvaliacaoDashboardOnDemandQueryService;
 use App\Services\Avaliacoes\AvaliacaoDocumentoExportService;
 use App\Services\Exports\ExportRequestService;
 use App\Services\PessoaScopeService;
@@ -29,8 +27,10 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -130,12 +130,6 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public bool $acompanhamentoCarregado = false;
 
-    public string $consolidacaoStatus = '';
-
-    public string $consolidadaEm = '';
-
-    public string $consolidacaoErro = '';
-
     /**
      * @var array<string, array{diretor: string, coordenacao: string, tem_diretor: bool, tem_coordenacao: bool, pode_exportar: bool, motivo_bloqueio: string}>
      */
@@ -170,8 +164,6 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->dashboardCarregado = false;
         $this->normalizarFiltros();
         $this->normalizarFiltrosAcompanhamento();
-
-        $this->atualizarStatusConsolidacao();
 
         if (! $this->avaliacaoSelecionada()) {
             $this->aplicarDashboardData($this->dashboardVazio());
@@ -517,7 +509,6 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         $this->parecerTurmaElegibilidade = [];
         $this->atualizarMetricasLeves();
-        $this->atualizarStatusConsolidacao();
 
         $this->acompanhamentoLinhasAlteradas = $this->diffSnapshotAcompanhamento(
             $snapshotAnterior,
@@ -722,7 +713,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             ->statePath('filtrosAcompanhamento');
     }
 
-    public function getHeader(): ?\Illuminate\Contracts\View\View
+    public function getHeader(): ?View
     {
         $quando = $this->ultimaAtualizacaoIncremental !== ''
             ? $this->ultimaAtualizacaoIncremental
@@ -732,7 +723,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             'actions' => $this->getCachedHeaderActions(),
             'eyebrow' => 'Relatórios Pedagógicos',
             'title' => 'Acompanhamento de Pareceres',
-            'description' => 'Acompanhe o preenchimento dos pareceres por escola, turma, componente e professor. Use Atualizar para buscar só o que mudou. Atualizado em ' . $quando,
+            'description' => 'Acompanhe o preenchimento dos pareceres por escola, turma, componente e professor. Use Atualizar para recalcular com os dados atuais. Atualizado em '.$quando,
         ]);
     }
 
@@ -744,8 +735,8 @@ class DashboardAvaliacoes extends Page implements HasForms
                 ->icon('heroicon-o-arrow-path')
                 ->color('gray')
                 ->tooltip(fn (): string => $this->ultimaAtualizacaoIncremental !== ''
-                    ? 'Última verificação: ' . $this->ultimaAtualizacaoIncremental
-                    : 'Verifica alterações após o carregamento inicial, sem recarregar a página')
+                    ? 'Última verificação: '.$this->ultimaAtualizacaoIncremental
+                    : 'Recalcula os indicadores diretamente com os dados atuais')
                 ->visible(fn (): bool => $this->avaliacaoSelecionada())
                 ->action(fn () => $this->atualizarDadosRecentes()),
 
@@ -863,7 +854,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             return;
         }
 
-        $query->whereIn($alias . '.id_escola', $escolasIds);
+        $query->whereIn($alias.'.id_escola', $escolasIds);
     }
 
     private function aplicarEscopoEscolarEloquent(EloquentBuilder $query): void
@@ -884,7 +875,7 @@ class DashboardAvaliacoes extends Page implements HasForms
     }
 
     /**
-     * @param array<int> $ids
+     * @param  array<int>  $ids
      * @return array<int>
      */
     private function filtrarEscolasPermitidas(array $ids): array
@@ -909,7 +900,7 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public function getPodeExportarProperty(): bool
     {
-        /** @var \App\Models\User|null $user */
+        /** @var User|null $user */
         $user = Auth::user();
 
         if (! $user) {
@@ -1740,7 +1731,7 @@ class DashboardAvaliacoes extends Page implements HasForms
                 'dataExportacao' => now(),
                 'orientation' => 'landscape',
             ],
-            'dashboard-avaliações-' . now()->format('Y-m-d_H-i') . '.pdf'
+            'dashboard-avaliações-'.now()->format('Y-m-d_H-i').'.pdf'
         );
     }
 
@@ -1770,7 +1761,7 @@ class DashboardAvaliacoes extends Page implements HasForms
     private function exportarXlsxAcompanhamento()
     {
         $dados = $this->montarDashboardData(incluirAcompanhamentoCompleto: true);
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
 
         $resumoSheet = $spreadsheet->getActiveSheet();
         $resumoSheet->setTitle('Resumo');
@@ -1786,15 +1777,15 @@ class DashboardAvaliacoes extends Page implements HasForms
         $linha++;
 
         $indicadores = [
-            '% de preenchimento geral' => ($dados['cards']['percentual_preenchimento_geral'] ?? 0) . '%',
+            '% de preenchimento geral' => ($dados['cards']['percentual_preenchimento_geral'] ?? 0).'%',
             'Preenchimentos esperados' => $dados['cards']['preenchimentos_esperados'] ?? 0,
             'Preenchimentos respondidos' => $dados['cards']['preenchimentos_respondidos'] ?? 0,
             'Preenchimentos pendentes' => $dados['cards']['preenchimentos_pendentes'] ?? 0,
-            '% de turmas preenchidas' => ($dados['cards']['percentual_turmas_preenchidas'] ?? 0) . '%',
-            'Turmas preenchidas' => ($dados['cards']['turmas_preenchidas'] ?? 0) . ' de ' . ($dados['cards']['turmas_esperadas'] ?? 0),
+            '% de turmas preenchidas' => ($dados['cards']['percentual_turmas_preenchidas'] ?? 0).'%',
+            'Turmas preenchidas' => ($dados['cards']['turmas_preenchidas'] ?? 0).' de '.($dados['cards']['turmas_esperadas'] ?? 0),
             'Turmas incompletas' => $dados['cards']['turmas_incompletas'] ?? 0,
-            'Alunos pendentes manha' => ($dados['cards']['turno_manha_alunos_pendentes'] ?? 0) . ' de ' . ($dados['cards']['turno_manha_alunos_total'] ?? 0),
-            'Alunos pendentes tarde' => ($dados['cards']['turno_tarde_alunos_pendentes'] ?? 0) . ' de ' . ($dados['cards']['turno_tarde_alunos_total'] ?? 0),
+            'Alunos pendentes manha' => ($dados['cards']['turno_manha_alunos_pendentes'] ?? 0).' de '.($dados['cards']['turno_manha_alunos_total'] ?? 0),
+            'Alunos pendentes tarde' => ($dados['cards']['turno_tarde_alunos_pendentes'] ?? 0).' de '.($dados['cards']['turno_tarde_alunos_total'] ?? 0),
         ];
 
         foreach ($indicadores as $label => $valor) {
@@ -1803,7 +1794,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             $linha++;
         }
 
-        $this->estilizarCorpoTabela($resumoSheet, 'A' . ($linha - count($indicadores)) . ':B' . ($linha - 1));
+        $this->estilizarCorpoTabela($resumoSheet, 'A'.($linha - count($indicadores)).':B'.($linha - 1));
         $this->autoSizeColumns($resumoSheet, 2);
 
         $this->preencherTabelaSheet(
@@ -1815,8 +1806,8 @@ class DashboardAvaliacoes extends Page implements HasForms
                 $item['turmas_esperadas'],
                 $item['turmas_preenchidas'],
                 $item['turmas_incompletas'],
-                $item['percentual_turmas_incompletas'] . '%',
-                $item['percentual_preenchimento'] . '%',
+                $item['percentual_turmas_incompletas'].'%',
+                $item['percentual_preenchimento'].'%',
                 $item['preenchimentos_pendentes'],
             ])
         );
@@ -1830,7 +1821,7 @@ class DashboardAvaliacoes extends Page implements HasForms
                 $item['preenchimentos_esperados'],
                 $item['preenchimentos_respondidos'],
                 $item['preenchimentos_pendentes'],
-                $item['percentual_preenchimento'] . '%',
+                $item['percentual_preenchimento'].'%',
             ])
         );
 
@@ -1843,7 +1834,7 @@ class DashboardAvaliacoes extends Page implements HasForms
                 $item['preenchimentos_esperados'],
                 $item['preenchimentos_respondidos'],
                 $item['preenchimentos_pendentes'],
-                $item['percentual_preenchimento'] . '%',
+                $item['percentual_preenchimento'].'%',
             ])
         );
 
@@ -1856,7 +1847,7 @@ class DashboardAvaliacoes extends Page implements HasForms
                 $item['serie_nome'],
                 $item['turma_nome'],
                 $item['turno'],
-                $item['percentual_preenchimento'] . '%',
+                $item['percentual_preenchimento'].'%',
                 $item['status_label'],
             ])
         );
@@ -1865,39 +1856,8 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         return $this->downloadSpreadsheet(
             $spreadsheet,
-            'dashboard-avaliacoes-' . now()->format('Y-m-d_H-i') . '.xlsx'
+            'dashboard-avaliacoes-'.now()->format('Y-m-d_H-i').'.xlsx'
         );
-    }
-
-    private function atualizarDashboard(): void
-    {
-        $this->dashboardCarregado = false;
-        $this->parecerTurmaElegibilidade = [];
-        $this->normalizarFiltros();
-        $this->normalizarFiltrosAcompanhamento();
-
-        $this->atualizarStatusConsolidacao();
-
-        $resolver = fn (): array => $this->montarDashboardData();
-        $user = Auth::user();
-
-        $dados = $user instanceof User
-            ? app(AvaliacaoDashboardMetricsService::class)->remember(
-                $user,
-                $this->filtros,
-                $this->filtrosAcompanhamento,
-                [
-                    'acompanhamento_turmas_pagina' => $this->acompanhamentoTurmasPagina,
-                    'acompanhamento_turmas_por_pagina' => $this->acompanhamentoTurmasPorPagina,
-                    'listagens_paginas' => $this->listagensPaginas,
-                    'listagens_por_pagina' => $this->listagensPorPagina,
-                ],
-                $resolver
-            )
-            : $resolver();
-
-        $this->aplicarDashboardData($dados);
-        $this->dashboardCarregado = true;
     }
 
     private function aplicarDashboardData(array $dados): void
@@ -1914,29 +1874,6 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->ultimaAtualizacao = $this->avaliacaoSelecionada()
             ? now()->format('d/m/Y H:i:s')
             : '';
-    }
-
-    private function atualizarStatusConsolidacao(): void
-    {
-        $status = $this->avaliacaoSelecionada()
-            ? app(AvaliacaoDashboardFactsService::class)->status((int) $this->filtros['avaliacao_id'])
-            : null;
-
-        $this->consolidacaoStatus = (string) ($status->status ?? '');
-        $this->consolidadaEm = $status?->consolidada_em
-            ? \Carbon\Carbon::parse($status->consolidada_em)->format('d/m/Y H:i:s')
-            : '';
-        $this->consolidacaoErro = (string) ($status->erro ?? '');
-    }
-
-    public function verificarConsolidacao(): void
-    {
-        $anterior = $this->consolidacaoStatus;
-        $this->atualizarStatusConsolidacao();
-
-        if ($this->consolidacaoStatus === 'consolidado' && $anterior !== 'consolidado') {
-            $this->atualizarDashboard();
-        }
     }
 
     public function atualizarAcompanhamentoTurmas(): void
@@ -2181,8 +2118,7 @@ class DashboardAvaliacoes extends Page implements HasForms
         EloquentBuilder $query,
         bool $ignorarAlternativas = false,
         ?array $filtros = null
-    ): void
-    {
+    ): void {
         $filtrosAtivos = $filtros ?? $this->filtros;
 
         $professoresIds = $filtrosAtivos['professores_ids'];
@@ -2245,8 +2181,7 @@ class DashboardAvaliacoes extends Page implements HasForms
         array $avaliacaoIds,
         bool $ignorarAlternativas = false,
         ?array $filtros = null
-    ): QueryBuilder
-    {
+    ): QueryBuilder {
         $filtrosAtivos = $filtros ?? $this->filtros;
 
         if ($avaliacaoIds === []) {
@@ -2254,27 +2189,30 @@ class DashboardAvaliacoes extends Page implements HasForms
                 ->whereRaw('1 = 0');
         }
 
-        $query = DB::table('avaliacao_dashboard_fatos as ar')
-            ->join('turmas as t', 't.id', '=', 'ar.turma_id')
-            ->join('alunos as aln', 'aln.id', '=', 'ar.aluno_id')
-            ->join('pautas as p', 'p.id', '=', 'ar.pauta_id')
-            ->join('alternativas as alt', 'alt.id', '=', 'ar.alternativa_id')
-            ->whereIn('ar.avaliacao_id', $avaliacaoIds)
-            ->where('ar.respondida', true)
-            ->where('aln.status', '!=', Aluno::STATUS_PENDENTE)
-            ->where('p.status', true)
-            ->where(function (QueryBuilder $query): void {
-                $query->whereNull('p.serie_id')->orWhereColumn('p.serie_id', 't.id_serie');
-            });
+        $query = app(AvaliacaoDashboardOnDemandQueryService::class)->respostas($avaliacaoIds);
 
         $this->aplicarEscopoEscolarQuery($query, 't');
-        if ($filtrosAtivos['series_ids'] !== []) $query->whereIn('t.id_serie', $filtrosAtivos['series_ids']);
-        if ($filtrosAtivos['turnos'] !== []) $query->whereIn('t.turno', $filtrosAtivos['turnos']);
-        if ($filtrosAtivos['componentes_ids'] !== []) $query->whereIn('p.componente_curricular_id', $filtrosAtivos['componentes_ids']);
-        if ($filtrosAtivos['escolas_ids'] !== []) $query->whereIn('t.id_escola', $filtrosAtivos['escolas_ids']);
-        if ($filtrosAtivos['professores_ids'] !== []) $query->whereIn('ar.professor_id', $filtrosAtivos['professores_ids']);
-        if ($filtrosAtivos['pautas_ids'] !== []) $query->whereIn('ar.pauta_id', $filtrosAtivos['pautas_ids']);
-        if (! $ignorarAlternativas && $filtrosAtivos['alternativas_ids'] !== []) $query->whereIn('ar.alternativa_id', $filtrosAtivos['alternativas_ids']);
+        if ($filtrosAtivos['series_ids'] !== []) {
+            $query->whereIn('t.id_serie', $filtrosAtivos['series_ids']);
+        }
+        if ($filtrosAtivos['turnos'] !== []) {
+            $query->whereIn('t.turno', $filtrosAtivos['turnos']);
+        }
+        if ($filtrosAtivos['componentes_ids'] !== []) {
+            $query->whereIn('p.componente_curricular_id', $filtrosAtivos['componentes_ids']);
+        }
+        if ($filtrosAtivos['escolas_ids'] !== []) {
+            $query->whereIn('t.id_escola', $filtrosAtivos['escolas_ids']);
+        }
+        if ($filtrosAtivos['professores_ids'] !== []) {
+            $query->whereIn('ar.professor_id', $filtrosAtivos['professores_ids']);
+        }
+        if ($filtrosAtivos['pautas_ids'] !== []) {
+            $query->whereIn('ar.pauta_id', $filtrosAtivos['pautas_ids']);
+        }
+        if (! $ignorarAlternativas && $filtrosAtivos['alternativas_ids'] !== []) {
+            $query->whereIn('ar.alternativa_id', $filtrosAtivos['alternativas_ids']);
+        }
 
         return $query;
     }
@@ -2287,21 +2225,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             return DB::table('avaliacao_turma as at')->whereRaw('1 = 0');
         }
 
-        $query = DB::table('avaliacao_dashboard_fatos as f')
-            ->join('avaliacao_turma as at', function ($join): void {
-                $join->on('at.avaliacao_id', '=', 'f.avaliacao_id')
-                    ->on('at.turma_id', '=', 'f.turma_id');
-            })
-            ->join('turmas as t', 't.id', '=', 'at.turma_id')
-            ->join('alunos as aln', 'aln.id', '=', 'f.aluno_id')
-            ->join('pautas as p', 'p.id', '=', 'f.pauta_id')
-            ->whereIn('at.avaliacao_id', $avaliacaoIds)
-            ->where('aln.status', '!=', Aluno::STATUS_PENDENTE)
-            ->where('p.status', true)
-            ->where(function (QueryBuilder $query): void {
-                $query->whereNull('p.serie_id')
-                    ->orWhereColumn('p.serie_id', 't.id_serie');
-            });
+        $query = app(AvaliacaoDashboardOnDemandQueryService::class)->esperados($avaliacaoIds);
 
         $this->aplicarEscopoEscolarQuery($query, 't');
 
@@ -2509,8 +2433,8 @@ class DashboardAvaliacoes extends Page implements HasForms
     }
 
     /**
-     * @param Collection<int, object> $esperados
-     * @param Collection<int, object> $respondidos
+     * @param  Collection<int, object>  $esperados
+     * @param  Collection<int, object>  $respondidos
      * @return array<int, array<string, int|float|string>>
      */
     private function montarLinhasPreenchimentoAgrupado(Collection $esperados, Collection $respondidos): array
@@ -2723,7 +2647,7 @@ class DashboardAvaliacoes extends Page implements HasForms
                 DB::raw("COUNT(DISTINCT {$distinctExprRespondido}) as preenchimentos_respondidos")
             )
             ->get()
-            ->keyBy(fn ($item): string => $item->avaliacao_id . ':' . $item->turma_id);
+            ->keyBy(fn ($item): string => $item->avaliacao_id.':'.$item->turma_id);
 
         $escolasFiltradas = $this->filtros['escolas_ids'] !== []
             ? Escola::query()
@@ -2738,7 +2662,7 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         foreach ($esperadas as $esperada) {
             $escolaId = (int) $esperada->id;
-            $chaveTurma = $esperada->avaliacao_id . ':' . $esperada->turma_id;
+            $chaveTurma = $esperada->avaliacao_id.':'.$esperada->turma_id;
             $respondida = $respondidas->get($chaveTurma);
 
             if (! array_key_exists($escolaId, $linhasPorEscola)) {
@@ -2962,34 +2886,11 @@ class DashboardAvaliacoes extends Page implements HasForms
         $professoresIds = $filtros['professores_ids'] ?? [];
         $distinctEsperado = $this->distinctCombinacaoExpr('at.avaliacao_id', 'at.turma_id', 'p.id', 'aln.id');
         $distinctRespondido = $this->distinctCombinacaoExpr('ar.avaliacao_id', 'ar.turma_id', 'ar.pauta_id', 'ar.aluno_id');
-        $componenteChaveExpr = 'COALESCE(p.componente_curricular_id, 0)';
-        $professorChaveExpr = $professoresIds !== []
-            ? 'COALESCE(tcp_acomp.professor_id, 0)'
-            : '0';
-        $professorRespostaChaveExpr = $professoresIds !== []
-            ? 'COALESCE(ar.professor_id, 0)'
-            : '0';
 
         $esperadosQuery = (clone $this->basePreenchimentosEsperadosQuery($avaliacaoIds, $filtros))
             ->join('avaliacoes as av', 'av.id', '=', 'at.avaliacao_id')
             ->leftJoin('escolas as e', 'e.id', '=', 't.id_escola')
-            ->leftJoin('series as s', 's.id', '=', 't.id_serie')
-            ->leftJoin('componentes_curriculares as cc', 'cc.id', '=', 'p.componente_curricular_id');
-
-        if ($professoresIds !== []) {
-            $esperadosQuery
-                ->leftJoin('turma_componente_professor as tcp_acomp', function ($join): void {
-                    $join->on('tcp_acomp.turma_id', '=', 't.id');
-                    $join->where('tcp_acomp.tem_professor', true);
-                    $join->where(function ($join): void {
-                        $join->whereNull('p.componente_curricular_id')
-                            ->orOn('tcp_acomp.componente_curricular_id', '=', 'p.componente_curricular_id');
-                    });
-                })
-                ->leftJoin('professores as pr_acomp', 'pr_acomp.id', '=', 'tcp_acomp.professor_id');
-
-            $esperadosQuery->whereIn('tcp_acomp.professor_id', $professoresIds);
-        }
+            ->leftJoin('series as s', 's.id', '=', 't.id_serie');
 
         $esperadosQuery
             ->groupBy(
@@ -3001,11 +2902,8 @@ class DashboardAvaliacoes extends Page implements HasForms
                 'e.id',
                 'e.nome',
                 's.id',
-                's.nome',
-                'p.componente_curricular_id',
-                'cc.nome'
+                's.nome'
             )
-            ->groupByRaw($componenteChaveExpr)
             ->select(
                 'at.avaliacao_id',
                 'at.turma_id',
@@ -3016,58 +2914,43 @@ class DashboardAvaliacoes extends Page implements HasForms
                 'e.nome as escola_nome',
                 's.id as serie_id',
                 's.nome as serie_nome',
-                'p.componente_curricular_id as componente_id',
-                'cc.nome as componente_nome',
-                DB::raw("{$componenteChaveExpr} as componente_chave"),
-                DB::raw("{$professorChaveExpr} as professor_chave"),
                 DB::raw("COUNT(DISTINCT {$distinctEsperado}) as preenchimentos_esperados"),
                 DB::raw('COUNT(DISTINCT p.id) as pautas_total'),
                 DB::raw('COUNT(DISTINCT aln.id) as alunos_total')
             );
 
+        // O professor limita o par turma/componente atual. A resposta não depende
+        // do professor gravado no payload, que é apenas um snapshot histórico.
+        $filtrosRespostas = [...$filtros, 'professores_ids' => []];
+        $respondidosQuery = clone $this->baseRespostasQuery(
+            $avaliacaoIds,
+            ignorarAlternativas: true,
+            filtros: $filtrosRespostas,
+        );
+
         if ($professoresIds !== []) {
-            $esperadosQuery
-                ->groupBy('tcp_acomp.professor_id', 'pr_acomp.nome')
-                ->groupByRaw($professorChaveExpr)
-                ->addSelect('tcp_acomp.professor_id', 'pr_acomp.nome as professor_nome');
-        } else {
-            $esperadosQuery->addSelect(
-                DB::raw('NULL as professor_id'),
-                DB::raw('NULL as professor_nome')
-            );
+            $respondidosQuery
+                ->join('turma_componente_professor as tcp_resposta', function ($join): void {
+                    $join->on('tcp_resposta.turma_id', '=', 't.id')
+                        ->where('tcp_resposta.tem_professor', true)
+                        ->where(function ($join): void {
+                            $join->whereNull('p.componente_curricular_id')
+                                ->orOn('tcp_resposta.componente_curricular_id', '=', 'p.componente_curricular_id');
+                        });
+                })
+                ->whereIn('tcp_resposta.professor_id', $professoresIds);
         }
 
-        // Progresso respondido a partir do documento (1 linha por aluno×avaliação×turma).
-        $respondidosQuery = DB::table('avaliacao_aluno_documentos as d')
-            ->join('alunos as aln', 'aln.id', '=', 'd.aluno_id')
-            ->join('turmas as t', 't.id', '=', 'd.turma_id')
-            ->join('series as serie_vinculo', 'serie_vinculo.id', '=', 't.id_serie')
-            ->whereIn('d.avaliacao_id', $avaliacaoIds)
-            ->where(function (QueryBuilder $query): void {
-                $query->where(function (QueryBuilder $query): void {
-                    $query->where('aln.tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
-                        ->where('aln.status', '!=', Aluno::STATUS_PENDENTE);
-                })->orWhere(function (QueryBuilder $query): void {
-                    $query->where('serie_vinculo.codigo', 'srm_serie')
-                        ->where('aln.tipo_vinculo', Aluno::TIPO_VINCULO_CONTRA_TURNO)
-                        ->where('aln.status', Aluno::STATUS_MATRICULADO);
-                });
-            });
-
-        $this->aplicarFiltrosTurmaQuery($respondidosQuery, 't', $filtros);
-
         $respondidosQuery
-            ->groupBy('d.avaliacao_id', 'd.turma_id')
+            ->groupBy('ar.avaliacao_id', 'ar.turma_id')
             ->select(
-                'd.avaliacao_id',
-                'd.turma_id',
-                DB::raw('SUM(d.total_pautas_respondidas) as preenchimentos_respondidos'),
-                DB::raw('MAX(d.ultima_resposta_em) as ultima_resposta_em')
+                'ar.avaliacao_id',
+                'ar.turma_id',
+                DB::raw("COUNT(DISTINCT {$distinctRespondido}) as preenchimentos_respondidos"),
+                DB::raw('MAX(ar.respondido_em) as ultima_resposta_em')
             );
 
-        // Join só por avaliação+turma: o documento agrega todas as pautas do aluno.
-        // MAX evita multiplicar o mesmo total quando há várias linhas de componente no esperado.
-        $query = DB::query()
+        $acompanhamentoQuery = DB::query()
             ->fromSub($esperadosQuery, 'esperados')
             ->leftJoinSub($respondidosQuery, 'respondidos', function ($join): void {
                 $join->on('respondidos.avaliacao_id', '=', 'esperados.avaliacao_id')
@@ -3080,34 +2963,8 @@ class DashboardAvaliacoes extends Page implements HasForms
             );
 
         $query = DB::query()
-            ->fromSub($query, 'acompanhamento')
-            ->groupBy(
-                'acompanhamento.avaliacao_id',
-                'acompanhamento.turma_id',
-                'acompanhamento.avaliacao_nome',
-                'acompanhamento.escola_id',
-                'acompanhamento.turma_nome',
-                'acompanhamento.turno',
-                'acompanhamento.escola_nome',
-                'acompanhamento.serie_id',
-                'acompanhamento.serie_nome'
-            )
-            ->select(
-                'acompanhamento.avaliacao_id',
-                'acompanhamento.turma_id',
-                'acompanhamento.avaliacao_nome',
-                'acompanhamento.escola_id',
-                'acompanhamento.turma_nome',
-                'acompanhamento.turno',
-                'acompanhamento.escola_nome',
-                'acompanhamento.serie_id',
-                'acompanhamento.serie_nome',
-                DB::raw('SUM(acompanhamento.preenchimentos_esperados) as preenchimentos_esperados'),
-                DB::raw('MAX(acompanhamento.preenchimentos_respondidos) as preenchimentos_respondidos'),
-                DB::raw('SUM(acompanhamento.pautas_total) as pautas_total'),
-                DB::raw('MAX(acompanhamento.alunos_total) as alunos_total'),
-                DB::raw('MAX(acompanhamento.ultima_resposta_em) as ultima_resposta_em')
-            );
+            ->fromSub($acompanhamentoQuery, 'acompanhamento')
+            ->select('acompanhamento.*');
 
         $statusFiltro = filled($filtros['status_preenchimento'] ?? null)
             ? (string) $filtros['status_preenchimento']
@@ -3182,7 +3039,7 @@ class DashboardAvaliacoes extends Page implements HasForms
                     'parecer_exportavel' => $parecerElegibilidade['pode_exportar'],
                     'parecer_exportavel_motivo' => $parecerElegibilidade['motivo_bloqueio'],
                     'ultima_resposta' => $item->ultima_resposta_em
-                        ? \Illuminate\Support\Carbon::parse($item->ultima_resposta_em)->format('d/m/Y H:i')
+                        ? Carbon::parse($item->ultima_resposta_em)->format('d/m/Y H:i')
                         : '-',
                 ];
 
@@ -3250,15 +3107,15 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->aplicarEscopoEscolarQuery($query, $alias);
 
         if ($filtrosAtivos['series_ids'] !== []) {
-            $query->whereIn($alias . '.id_serie', $filtrosAtivos['series_ids']);
+            $query->whereIn($alias.'.id_serie', $filtrosAtivos['series_ids']);
         }
 
         if ($filtrosAtivos['turnos'] !== []) {
-            $query->whereIn($alias . '.turno', $filtrosAtivos['turnos']);
+            $query->whereIn($alias.'.turno', $filtrosAtivos['turnos']);
         }
 
         if ($filtrosAtivos['escolas_ids'] !== []) {
-            $query->whereIn($alias . '.id_escola', $filtrosAtivos['escolas_ids']);
+            $query->whereIn($alias.'.id_escola', $filtrosAtivos['escolas_ids']);
         }
     }
 
@@ -3331,7 +3188,7 @@ class DashboardAvaliacoes extends Page implements HasForms
     }
 
     /**
-     * @param array<int|string> $ids
+     * @param  array<int|string>  $ids
      */
     private function labelsByIds(array $ids, array $options): string
     {
@@ -3517,7 +3374,7 @@ class DashboardAvaliacoes extends Page implements HasForms
     }
 
     /**
-     * @param array<int, mixed> $values
+     * @param  array<int, mixed>  $values
      * @return array<int>
      */
     private function normalizarArrayIds(array $values): array
@@ -3586,7 +3443,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             return implode(" || '|#|' || ", $colunas);
         }
 
-        return 'CONCAT(' . implode(", '|#|', ", $colunas) . ')';
+        return 'CONCAT('.implode(", '|#|', ", $colunas).')';
     }
 
     private function preencherTabelaSheet(Worksheet $sheet, string $titulo, array $headers, Collection $rows): void
@@ -3604,20 +3461,20 @@ class DashboardAvaliacoes extends Page implements HasForms
         }
 
         if ($rows->isNotEmpty()) {
-            $this->estilizarCorpoTabela($sheet, 'A' . ($linha - $rows->count()) . ":{$ultimaColuna}" . ($linha - 1));
+            $this->estilizarCorpoTabela($sheet, 'A'.($linha - $rows->count()).":{$ultimaColuna}".($linha - 1));
         }
 
         $this->autoSizeColumns($sheet, count($headers));
     }
 
     /**
-     * @param array<string, string> $filtros
+     * @param  array<string, string>  $filtros
      */
     private function preencherCabecalhoSheet(Worksheet $sheet, string $titulo, array $filtros): int
     {
         $sheet->setCellValue('A1', $titulo);
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
-        $sheet->setCellValue('A2', 'Gerado em ' . now()->format('d/m/Y H:i') . ' por ' . (Auth::user()?->name ?? 'Sistema'));
+        $sheet->setCellValue('A2', 'Gerado em '.now()->format('d/m/Y H:i').' por '.(Auth::user()?->name ?? 'Sistema'));
         $sheet->getStyle('A2')->getFont()->setItalic(true);
 
         $linha = 4;

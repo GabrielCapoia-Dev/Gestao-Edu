@@ -194,33 +194,6 @@ services:
     networks:
       - laravel_gestao-edu
 
-  queue-dashboard:
-    image: laravel-app-gestao-edu
-    container_name: laravel-queue-dashboard-gestao-edu
-    working_dir: /var/www
-    env_file:
-      - .env
-    environment:
-      <<: *production-env
-    entrypoint: []
-    init: true
-    command: ["bash", "/var/www/entrypoint.sh", "queue-worker", "dashboard"]
-    volumes:
-      - .:/var/www
-    depends_on:
-      app:
-        condition: service_healthy
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    cpus: "${AVALIACOES_DASHBOARD_QUEUE_CPUS:-0.35}"
-    mem_limit: "${AVALIACOES_DASHBOARD_QUEUE_MEM_LIMIT:-512m}"
-    restart: unless-stopped
-    stop_grace_period: 630s
-    networks:
-      - laravel_gestao-edu
-
   db:
     image: mysql:8.0
     container_name: laravel-db-gestao-edu

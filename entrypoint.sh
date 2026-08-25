@@ -73,18 +73,6 @@ run_queue_worker() {
             php_memory_limit="${IMPORTS_PHP_MEMORY_LIMIT:-512M}"
             nice_level="${IMPORTS_QUEUE_NICE:-10}"
             ;;
-        dashboard)
-            queue_name="${AVALIACOES_DASHBOARD_QUEUE:-dashboard}"
-            queue_connection="${AVALIACOES_DASHBOARD_QUEUE_CONNECTION:-dashboard_redis}"
-            sleep_seconds="${AVALIACOES_DASHBOARD_QUEUE_SLEEP:-3}"
-            rest_seconds="${AVALIACOES_DASHBOARD_QUEUE_REST:-1}"
-            timeout_seconds="${AVALIACOES_DASHBOARD_QUEUE_WORKER_TIMEOUT:-600}"
-            tries="${AVALIACOES_DASHBOARD_QUEUE_TRIES:-3}"
-            memory_mb="${AVALIACOES_DASHBOARD_QUEUE_MEMORY_MB:-384}"
-            max_jobs="${AVALIACOES_DASHBOARD_QUEUE_MAX_JOBS:-250}"
-            php_memory_limit="${AVALIACOES_DASHBOARD_PHP_MEMORY_LIMIT:-384M}"
-            nice_level="${AVALIACOES_DASHBOARD_QUEUE_NICE:-10}"
-            ;;
         notifications)
             queue_name="notifications"
             queue_connection="redis"
@@ -185,7 +173,6 @@ php artisan filament:assets
 # registro persistente durante um deploy/restart anterior. O comando possui
 # controle de intervalo para nao gerar reenfileiramento excessivo.
 php artisan exports:recover-queued --limit=1000 || true
-php artisan avaliacoes:dispatch-dashboard-pendencias --limit=1000 --force || true
 
 date -u +"%Y-%m-%dT%H:%M:%SZ" > "$READY_FILE"
 chown www-data:www-data "$READY_FILE"

@@ -18,10 +18,6 @@ use RuntimeException;
 
 class AvaliacaoAlunoDocumentoService
 {
-    public function __construct(
-        private readonly AvaliacaoDashboardFactsService $dashboardFactsService,
-    ) {}
-
     public function obter(int $avaliacaoId, int $alunoId): ?AvaliacaoAlunoDocumento
     {
         return AvaliacaoAlunoDocumento::query()
@@ -70,13 +66,6 @@ class AvaliacaoAlunoDocumentoService
             'observacoes_obrigatorias_pendentes' => 0,
             'version' => 1,
         ]);
-
-        $this->requestDashboardFactsSync(
-            $avaliacaoId,
-            (int) $documento->aluno_id,
-            'documento_criado',
-            (int) $documento->version,
-        );
 
         return $documento;
     }
@@ -343,54 +332,11 @@ class AvaliacaoAlunoDocumentoService
                 ])->save();
 
                 $this->recalcularMetricas($documento->fresh());
-                $this->requestDashboardFactsSync(
-                    (int) $documento->avaliacao_id,
-                    (int) $origem->id,
-                    'movimentacao_origem',
-                    0,
-                );
-                $this->requestDashboardFactsSync(
-                    (int) $documento->avaliacao_id,
-                    (int) $destino->id,
-                    'movimentacao_destino',
-                    (int) $documento->version,
-                );
                 $movidos++;
             }
 
             return $movidos;
         });
-    }
-
-    private function requestDashboardFactsSync(
-        int $avaliacaoId,
-        int $alunoId,
-        string $motivo,
-        ?int $documentoVersion = null,
-    ): void {
-        $this->dashboardFactsService->requestSyncDocumento(
-            $avaliacaoId,
-            $alunoId,
-            $motivo,
-            $documentoVersion,
-        );
-    }
-
-    /**
-     * Recalcula métricas denormalizadas no próprio documento.
-     * Mantido como alias por compatibilidade com chamadas existentes.
-     */
-    public function recalcularMetricasEFatos(AvaliacaoAlunoDocumento $documento): AvaliacaoAlunoDocumento
-    {
-        $documento = $this->recalcularMetricas($documento);
-        $this->requestDashboardFactsSync(
-            (int) $documento->avaliacao_id,
-            (int) $documento->aluno_id,
-            'metricas_recalculadas',
-            (int) $documento->version,
-        );
-
-        return $documento;
     }
 
     public function recalcularMetricas(AvaliacaoAlunoDocumento $documento): AvaliacaoAlunoDocumento
@@ -637,15 +583,7 @@ class AvaliacaoAlunoDocumentoService
             'version' => (int) $documento->version + 1,
         ])->save();
 
-        $documento = $this->recalcularMetricas($documento->fresh());
-        $this->requestDashboardFactsSync(
-            (int) $documento->avaliacao_id,
-            (int) $documento->aluno_id,
-            'payload_alterado',
-            (int) $documento->version,
-        );
-
-        return $documento;
+        return $this->recalcularMetricas($documento->fresh());
     }
 
     private function registrarHistorico(
@@ -732,12 +670,6 @@ class AvaliacaoAlunoDocumentoService
         if ($dirty) {
             $documento->save();
             $this->recalcularMetricas($documento->fresh());
-            $this->requestDashboardFactsSync(
-                (int) $documento->avaliacao_id,
-                (int) $documento->aluno_id,
-                'contexto_aluno_alterado',
-                (int) $documento->version,
-            );
         }
 
         return $documento->fresh() ?? $documento;

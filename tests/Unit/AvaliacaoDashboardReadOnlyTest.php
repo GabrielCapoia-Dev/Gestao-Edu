@@ -8,21 +8,47 @@ use RecursiveIteratorIterator;
 
 class AvaliacaoDashboardReadOnlyTest extends TestCase
 {
-    public function test_dashboard_e_cache_de_metricas_nao_solicitam_sincronizacao(): void
+    public function test_leituras_do_dashboard_nao_dependem_de_fatos_ou_consolidacoes(): void
     {
         $root = dirname(__DIR__, 2);
         $fontes = [
             $root.'/app/Filament/Admin/Pages/Relatorios/DashboardAvaliacoes.php',
-            $root.'/app/Services/Avaliacoes/AvaliacaoDashboardMetricsService.php',
+            $root.'/app/Services/Avaliacoes/AvaliacaoDashboardOnDemandQueryService.php',
+            $root.'/app/Services/Avaliacoes/AvaliacaoDashboardProgressService.php',
         ];
-        $mutacoesProibidas = [
-            'requestRebuild(',
-            'requestSyncDocumento(',
-            'requestSyncPauta(',
-            'requestSyncTurma(',
+
+        foreach ($fontes as $fonte) {
+            $conteudo = file_get_contents($fonte);
+
+            $this->assertIsString($conteudo);
+            $this->assertStringNotContainsString('avaliacao_dashboard_fatos', $conteudo, $fonte);
+            $this->assertStringNotContainsString('avaliacao_dashboard_consolidacoes', $conteudo, $fonte);
+            $this->assertStringNotContainsString('AvaliacaoDashboardFactsService', $conteudo, $fonte);
+            $this->assertStringNotContainsString('AvaliacaoDashboardMetricsService', $conteudo, $fonte);
+        }
+    }
+
+    public function test_runtime_nao_agenda_sincronizacao_rebuild_ou_worker_de_fatos(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $fontes = [
+            $root.'/app/Services/Avaliacoes/AvaliacaoAlunoDocumentoService.php',
+            $root.'/app/Filament/Admin/Pages/GestaoAvaliacoes.php',
+            $root.'/app/Providers/AppServiceProvider.php',
+            $root.'/bootstrap/app.php',
+            $root.'/composer.json',
+            $root.'/docker-compose.yml',
+            $root.'/entrypoint.sh',
+        ];
+        $trechosProibidos = [
+            'requestDashboardFactsSync',
             'requestSyncEstruturaAvaliacao(',
-            'refreshIfDirty(',
-            'markDirty(',
+            'AvaliacaoDashboardAlunoObserver',
+            'AvaliacaoDashboardSourceObserver',
+            'avaliacoes:dispatch-dashboard-pendencias --limit=',
+            'queue-dashboard:',
+            'queue-worker", "dashboard',
+            'queue:listen dashboard_redis',
         ];
 
         foreach ($fontes as $fonte) {
@@ -30,13 +56,13 @@ class AvaliacaoDashboardReadOnlyTest extends TestCase
 
             $this->assertIsString($conteudo);
 
-            foreach ($mutacoesProibidas as $mutacao) {
-                $this->assertStringNotContainsString($mutacao, $conteudo, $fonte);
+            foreach ($trechosProibidos as $trecho) {
+                $this->assertStringNotContainsString($trecho, $conteudo, $fonte);
             }
         }
     }
 
-    public function test_rebuild_completo_so_e_solicitado_pelo_comando_manual(): void
+    public function test_nenhum_codigo_de_aplicacao_solicita_rebuild(): void
     {
         $root = dirname(__DIR__, 2);
         $callers = [];
@@ -56,10 +82,6 @@ class AvaliacaoDashboardReadOnlyTest extends TestCase
             }
         }
 
-        sort($callers);
-
-        $this->assertSame([
-            'app/Console/Commands/RebuildAvaliacaoDashboardFactsCommand.php',
-        ], $callers);
+        $this->assertSame([], $callers);
     }
 }

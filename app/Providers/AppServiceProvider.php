@@ -21,9 +21,9 @@ use App\Models\EventoCalendarioTransporteAlocacao;
 use App\Models\ExportRequest;
 use App\Models\FeedbackPedido;
 use App\Models\FuncaoAdministrativa;
+use App\Models\ImportacaoEventoCalendario;
 use App\Models\Inventario;
 use App\Models\InventarioPedido;
-use App\Models\ImportacaoEventoCalendario;
 use App\Models\Item;
 use App\Models\LocalTrabalho;
 use App\Models\Lotacao;
@@ -37,16 +37,14 @@ use App\Models\Professor;
 use App\Models\ReservaVeiculo;
 use App\Models\Role;
 use App\Models\Serie;
-use App\Models\Setor;
 use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
+use App\Models\Setor;
 use App\Models\TipoManutencao;
 use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
 use App\Models\VeiculoTransporte;
-use App\Observers\AvaliacaoDashboardAlunoObserver;
-use App\Observers\AvaliacaoDashboardSourceObserver;
 use App\Observers\PedidoObserver;
 use App\Observers\ProfessorObserver;
 use App\Observers\TurmaComponenteProfessorObserver;
@@ -84,13 +82,14 @@ use App\Policies\ProfessorPolicy;
 use App\Policies\ReservaVeiculoPolicy;
 use App\Policies\RolePolicy;
 use App\Policies\SeriePolicy;
-use App\Policies\SetorPolicy;
 use App\Policies\ServidorFuncaoAdministrativaPolicy;
 use App\Policies\ServidorPolicy;
+use App\Policies\SetorPolicy;
 use App\Policies\TipoManutencaoPolicy;
 use App\Policies\TurmaPolicy;
 use App\Policies\UserPolicy;
 use App\Policies\VeiculoTransportePolicy;
+use App\Services\Avaliacoes\AvaliacaoDashboardOnDemandQueryService;
 use App\Services\Exports\ExportSessionService;
 use App\Services\NotificationCenterService;
 use App\Services\UserPresenceService;
@@ -114,6 +113,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(LoginResponseContract::class, PasswordChangeLoginResponse::class);
+        $this->app->scoped(AvaliacaoDashboardOnDemandQueryService::class);
     }
 
     public function boot(): void
@@ -227,11 +227,7 @@ class AppServiceProvider extends ServiceProvider
         // ── Observers ──────────────────────────────────────────────────────────
         Pedido::observe(PedidoObserver::class);
         Professor::observe(ProfessorObserver::class);
-        Aluno::observe(AvaliacaoDashboardAlunoObserver::class);
         TurmaComponenteProfessor::observe(TurmaComponenteProfessorObserver::class);
-        Avaliacao::observe(AvaliacaoDashboardSourceObserver::class);
-        Pauta::observe(AvaliacaoDashboardSourceObserver::class);
-        Turma::observe(AvaliacaoDashboardSourceObserver::class);
 
         // ── Gates ──────────────────────────────────────────────────────────────
         Gate::define('admin-only', fn ($user) => $user->hasRole('Admin'));

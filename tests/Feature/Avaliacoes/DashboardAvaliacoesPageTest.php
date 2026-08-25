@@ -5,9 +5,10 @@ namespace Tests\Feature\Avaliacoes;
 use App\Filament\Admin\Pages\Relatorios\DashboardAvaliacoes;
 use App\Jobs\ProcessExportRequestJob;
 use App\Livewire\Avaliacoes\AvaliacaoTurmaWorkspace;
-use App\Models\Aluno;
 use App\Models\Alternativa;
+use App\Models\Aluno;
 use App\Models\Avaliacao;
+use App\Models\AvaliacaoAlunoDocumento;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\ExportRequest;
@@ -22,23 +23,21 @@ use App\Models\ServidorFuncaoTurma;
 use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
-use App\Services\Avaliacoes\AvaliacaoDashboardFactsService;
-use App\Services\Avaliacoes\AvaliacaoDashboardMetricsService;
+use App\Services\Avaliacoes\AvaliacaoDashboardOnDemandQueryService;
 use App\Services\Avaliacoes\TurmaAvaliacaoAlunoScopeService;
 use Filament\Notifications\Notification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
 use Tests\Concerns\CreatesAvaliacaoDocumentos;
-use App\Models\AvaliacaoAlunoDocumento;
 use Tests\TestCase;
 
 class DashboardAvaliacoesPageTest extends TestCase
 {
-    use RefreshDatabase;
     use CreatesAvaliacaoDocumentos;
+    use RefreshDatabase;
 
     public function test_dashboard_lista_serie_do_escopo_mesmo_sem_alunos_ou_fatos(): void
     {
@@ -121,16 +120,6 @@ class DashboardAvaliacoesPageTest extends TestCase
         $avaliacao->turmas()->sync([$turmaBase->id, $turmaIntegral->id]);
         $avaliacao->pautas()->sync([$pauta->id]);
 
-        app(AvaliacaoDashboardFactsService::class)->rebuild((int) $avaliacao->id);
-
-        $this->assertDatabaseHas('avaliacao_dashboard_fatos', [
-            'avaliacao_id' => $avaliacao->id,
-            'aluno_id' => $aluno->id,
-            'turma_id' => $turmaIntegral->id,
-            'serie_id' => $serieIntegral->id,
-            'pauta_id' => $pauta->id,
-        ]);
-
         $workspace = Livewire::actingAs($user)
             ->test(AvaliacaoTurmaWorkspace::class, [
                 'avaliacaoId' => $avaliacao->id,
@@ -154,9 +143,24 @@ class DashboardAvaliacoesPageTest extends TestCase
         $this->assertSame($alternativa->id, (int) $documento->payload['pautas'][(string) $pauta->id]['alternativa_id']);
         $this->assertSame($professor->id, (int) $documento->payload['pautas'][(string) $pauta->id]['professor_id']);
         $this->assertSame(1, $documento->total_pautas_esperadas);
+
+        $this->actingAs($user);
+        $dashboard = app(DashboardAvaliacoes::class);
+        $dashboard->mount();
+        $dashboard->filtros['avaliacao_id'] = $avaliacao->id;
+        $dashboard->carregarResumoDashboard();
+        $dashboard->carregarAcompanhamentoDashboard();
+
+        $linhaIntegral = collect($dashboard->acompanhamentoTurmas)
+            ->firstWhere('turma_id', $turmaIntegral->id);
+
+        $this->assertSame(1, $linhaIntegral['preenchimentos_esperados']);
+        $this->assertSame(1, $linhaIntegral['preenchimentos_respondidos']);
+        $this->assertSame(100.0, $linhaIntegral['percentual_preenchimento']);
+        $this->assertDatabaseCount('avaliacao_dashboard_fatos', 0);
     }
 
-    public function test_reconstrucao_preserva_regulares_integrais_e_inclui_apenas_contra_turno_srm(): void
+    public function test_calculo_sob_demanda_resolve_regulares_integrais_e_srm_pela_regra_do_workspace(): void
     {
         $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer completo', 'status' => true]);
         $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo completo', 'status' => true]);
@@ -202,7 +206,7 @@ class DashboardAvaliacoesPageTest extends TestCase
             $tipo,
             $serie,
             $componente,
-            'Pauta ' . $serie->nome,
+            'Pauta '.$serie->nome,
         ));
 
         $avaliacao = $this->criarAvaliacao('Avaliação completa', $tipo, $periodo);
@@ -218,19 +222,19 @@ class DashboardAvaliacoesPageTest extends TestCase
         $this->assertSame((int) $turmas->get((int) $series[1]->id)->id, $escopos[(int) $turmas->get((int) $series[3]->id)->id]['turma_origem_id']);
         $this->assertSame(Aluno::TIPO_VINCULO_CONTRA_TURNO, $escopos[(int) $turmas->get((int) $series[4]->id)->id]['tipo_vinculo']);
 
-        $servico = app(AvaliacaoDashboardFactsService::class);
-        $servico->rebuild((int) $avaliacao->id);
-        $primeiraContagem = DB::table('avaliacao_dashboard_fatos')->where('avaliacao_id', $avaliacao->id)->count();
-        $servico->rebuild((int) $avaliacao->id);
+        $linhas = app(AvaliacaoDashboardOnDemandQueryService::class)
+            ->esperados([$avaliacao->id])
+            ->get(['at.turma_id', 'aln.id as aluno_id']);
 
-        $this->assertSame(5, $primeiraContagem);
-        $this->assertSame($primeiraContagem, DB::table('avaliacao_dashboard_fatos')->where('avaliacao_id', $avaliacao->id)->count());
-        $this->assertSame(5, DB::table('avaliacao_dashboard_fatos')->where('avaliacao_id', $avaliacao->id)->distinct()->count('serie_id'));
-        $this->assertDatabaseHas('avaliacao_dashboard_fatos', ['avaliacao_id' => $avaliacao->id, 'aluno_id' => $alunoPrimeiro->id, 'serie_id' => $series[2]->id]);
-        $this->assertDatabaseHas('avaliacao_dashboard_fatos', ['avaliacao_id' => $avaliacao->id, 'aluno_id' => $alunoSegundo->id, 'serie_id' => $series[3]->id]);
-        $this->assertDatabaseHas('avaliacao_dashboard_fatos', ['avaliacao_id' => $avaliacao->id, 'aluno_id' => $alunoSrm->id, 'serie_id' => $series[4]->id]);
-        $this->assertDatabaseMissing('avaliacao_dashboard_fatos', ['avaliacao_id' => $avaliacao->id, 'aluno_id' => $contraTurnoComum->id]);
-        $this->assertDatabaseMissing('avaliacao_dashboard_fatos', ['avaliacao_id' => $avaliacao->id, 'aluno_id' => $principalIndevidoSrm->id]);
+        $this->assertCount(8, $linhas);
+        $this->assertTrue($linhas->contains(fn (object $linha): bool => (int) $linha->turma_id === (int) $turmas->get((int) $series[2]->id)->id
+            && (int) $linha->aluno_id === (int) $alunoPrimeiro->id));
+        $this->assertTrue($linhas->contains(fn (object $linha): bool => (int) $linha->turma_id === (int) $turmas->get((int) $series[3]->id)->id
+            && (int) $linha->aluno_id === (int) $alunoSegundo->id));
+        $this->assertTrue($linhas->contains(fn (object $linha): bool => (int) $linha->aluno_id === (int) $contraTurnoComum->id));
+        $this->assertTrue($linhas->contains(fn (object $linha): bool => (int) $linha->aluno_id === (int) $alunoSrm->id));
+        $this->assertTrue($linhas->contains(fn (object $linha): bool => (int) $linha->aluno_id === (int) $principalIndevidoSrm->id));
+        $this->assertDatabaseCount('avaliacao_dashboard_fatos', 0);
     }
 
     public function test_dashboard_carrega_indicadores_de_pendencia_apos_selecionar_avaliacao(): void
@@ -409,8 +413,8 @@ class DashboardAvaliacoesPageTest extends TestCase
         $turmasIds = [];
 
         for ($i = 1; $i <= 7; $i++) {
-            $turma = $this->criarTurma($escola, $serie, 'Turma Pag ' . $i, 'manha');
-            $aluno = $this->criarAluno($turma, 'Aluno Pag ' . $i, 'CGM-PAG-00' . $i);
+            $turma = $this->criarTurma($escola, $serie, 'Turma Pag '.$i, 'manha');
+            $aluno = $this->criarAluno($turma, 'Aluno Pag '.$i, 'CGM-PAG-00'.$i);
             $turmasIds[] = $turma->id;
 
             $this->registrarResposta($avaliacao, $turma, $aluno, $pauta, $alternativa);
@@ -572,66 +576,81 @@ class DashboardAvaliacoesPageTest extends TestCase
         $this->assertArrayHasKey($escolaSul->id, $component->instance()->escolasOptions);
     }
 
-    public function test_cache_do_dashboard_e_invalidado_por_resposta_e_informacao_complementar(): void
+    public function test_botao_atualizar_recalcula_documentos_sem_gerar_fatos_ou_jobs(): void
     {
-        cache()->flush();
+        Queue::fake();
+        Permission::findOrCreate('Acompanhar Avaliações');
 
-        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Cache Dashboard', 'status' => true]);
-        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo Cache Dashboard', 'status' => true]);
-        $serie = $this->criarSerie('SER-CACHE-DASH', '5o Ano');
-        $componente = ComponenteCurricular::query()->create([
-            'codigo' => 'COMP-CACHE-DASH',
-            'nome' => 'Historia',
+        $user = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
         ]);
-        $escola = $this->criarEscola('Escola Cache Dashboard');
-        $turma = $this->criarTurma($escola, $serie, 'Turma Cache', 'manha');
-        $aluno = $this->criarAluno($turma, 'Aluno Cache', 'CGM-CACHE-DASH');
+        $user->givePermissionTo('Acompanhar Avaliações');
+
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Atualização', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Período Atualização', 'status' => true]);
+        $serie = $this->criarSerie('SER-ATUALIZAR-DASH', '5o Ano');
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-ATUALIZAR-DASH',
+            'nome' => 'História',
+        ]);
+        $escola = $this->criarEscola('Escola Atualização Dashboard');
+        $user->escolas()->attach($escola->id);
+        $servidor = Servidor::query()->create([
+            'user_id' => $user->id,
+            'id_escola' => $escola->id,
+            'matricula' => 'SERV-ATUALIZAR-DASH',
+            'nome' => $user->name,
+            'email' => $user->email,
+            'status' => Servidor::STATUS_ATIVO,
+        ]);
+        Professor::query()->create([
+            'user_id' => $user->id,
+            'servidor_id' => $servidor->id,
+            'id_escola' => $escola->id,
+            'matricula' => 'PROF-ATUALIZAR-DASH',
+            'nome' => $user->name,
+            'email' => $user->email,
+            'ativo' => true,
+        ]);
+        $turma = $this->criarTurma($escola, $serie, 'Turma Atualização', 'manha');
+        $aluno = $this->criarAluno($turma, 'Aluno Atualização', 'CGM-ATUALIZAR-DASH');
         $alternativa = Alternativa::query()->create([
             'tipo_avaliacao_id' => $tipo->id,
             'nome' => 'Sim',
             'tem_observacao' => false,
             'status' => true,
         ]);
-        $pauta = $this->criarPauta($tipo, $serie, $componente, 'Pauta cache dashboard');
+        $pauta = $this->criarPauta($tipo, $serie, $componente, 'Pauta atualização dashboard');
         $pauta->alternativas()->attach($alternativa->id);
 
-        $avaliacao = $this->criarAvaliacao('Avaliacao Cache Dashboard', $tipo, $periodo);
+        $avaliacao = $this->criarAvaliacao('Avaliação Atualização Dashboard', $tipo, $periodo);
         $avaliacao->series()->sync([$serie->id]);
         $avaliacao->componentes()->sync([$componente->id]);
         $avaliacao->escolas()->sync([$escola->id]);
         $avaliacao->turmas()->sync([$turma->id]);
         $avaliacao->pautas()->sync([$pauta->id]);
 
-        $service = app(AvaliacaoDashboardMetricsService::class);
+        $this->actingAs($user);
+        $dashboard = app(DashboardAvaliacoes::class);
+        $dashboard->mount();
+        $dashboard->filtros['avaliacao_id'] = $avaliacao->id;
+        $dashboard->carregarResumoDashboard();
 
-        $this->assertSame(1, $service->versionFor($avaliacao->id));
+        $this->assertSame(0, $dashboard->cards['preenchimentos_respondidos']);
 
         $this->registrarResposta($avaliacao, $turma, $aluno, $pauta, $alternativa);
 
-        $this->assertSame(2, $service->versionFor($avaliacao->id));
+        $this->assertSame(0, $dashboard->cards['preenchimentos_respondidos']);
 
-        $doc = \App\Models\AvaliacaoAlunoDocumento::query()->firstOrFail();
-        $payload = $doc->payload;
-        $pautas = $payload['pautas'] ?? [];
-        if ($pautas !== []) {
-            $firstKey = array_key_first($pautas);
-            $pautas[$firstKey]['observacao'] = 'Ajuste de cache';
-            $payload['pautas'] = $pautas;
-            $doc->forceFill(['payload' => $payload])->save();
-            app(\App\Services\Avaliacoes\AvaliacaoAlunoDocumentoService::class)->recalcularMetricasEFatos($doc->fresh());
-        }
+        $dashboard->atualizarDadosRecentes(silencioso: true);
 
-        $this->assertSame(3, $service->versionFor($avaliacao->id));
-
-        $this->criarDocumentoResposta([
-            'avaliacao_id' => $avaliacao->id,
-            'turma_id' => $turma->id,
-            'aluno_id' => $aluno->id,
-            'componente_curricular_id' => $componente->id,
-            'informacoes_complementares' => 'Informacao para invalidar cache',
-        ]);
-
-        $this->assertSame(4, $service->versionFor($avaliacao->id));
+        $this->assertSame(1, $dashboard->cards['preenchimentos_respondidos']);
+        $this->assertSame(1, collect($dashboard->acompanhamentoTurmas)->first()['preenchimentos_respondidos']);
+        $this->assertDatabaseCount('avaliacao_dashboard_fatos', 0);
+        $this->assertDatabaseCount('avaliacao_dashboard_pendencias', 0);
+        $this->assertDatabaseCount('avaliacao_dashboard_escopo_pendencias', 0);
+        Queue::assertNothingPushed();
     }
 
     public function test_usuario_vinculado_visualiza_apenas_escolas_permitidas_no_acompanhamento(): void
@@ -721,7 +740,7 @@ class DashboardAvaliacoesPageTest extends TestCase
 
     public function test_acompanhamento_consolidado_nao_depende_do_professor_registrado_na_resposta(): void
     {
-        $permissaoAcompanharAvaliacoes = 'Acompanhar Avalia' . "\u{00E7}\u{00F5}" . 'es';
+        $permissaoAcompanharAvaliacoes = 'Acompanhar Avalia'."\u{00E7}\u{00F5}".'es';
         Permission::findOrCreate($permissaoAcompanharAvaliacoes);
 
         $user = User::factory()->create([
@@ -851,23 +870,17 @@ class DashboardAvaliacoesPageTest extends TestCase
             ->set("respostas.{$pauta->id}.{$alunoUm->id}.alternativa_id", $alternativa->id)
             ->set("respostas.{$pauta->id}.{$alunoDois->id}.alternativa_id", $alternativa->id);
 
-        $this->assertDatabaseHas('avaliacao_aluno_documentos', [
-            'avaliacao_id' => $avaliacao->id,
-            'pauta_id' => $pauta->id,
-            'turma_id' => $turma->id,
-            'aluno_id' => $alunoUm->id,
-            'professor_id' => $professor->id,
-            'alternativa_id' => $alternativa->id,
-        ]);
+        foreach ([$alunoUm, $alunoDois] as $aluno) {
+            $documento = AvaliacaoAlunoDocumento::query()
+                ->where('avaliacao_id', $avaliacao->id)
+                ->where('aluno_id', $aluno->id)
+                ->firstOrFail();
+            $resposta = $documento->payload['pautas'][(string) $pauta->id] ?? [];
 
-        $this->assertDatabaseHas('avaliacao_aluno_documentos', [
-            'avaliacao_id' => $avaliacao->id,
-            'pauta_id' => $pauta->id,
-            'turma_id' => $turma->id,
-            'aluno_id' => $alunoDois->id,
-            'professor_id' => $professor->id,
-            'alternativa_id' => $alternativa->id,
-        ]);
+            $this->assertSame($turma->id, (int) $documento->turma_id);
+            $this->assertSame($alternativa->id, (int) ($resposta['alternativa_id'] ?? 0));
+            $this->assertSame($professor->id, (int) ($resposta['professor_id'] ?? 0));
+        }
 
         $workspace->assertSet('modo', 'acompanhamento');
     }
@@ -975,20 +988,13 @@ class DashboardAvaliacoesPageTest extends TestCase
             ->set('avaliacaoEmMassaGlobal', $alternativa->id)
             ->call('aplicarEmMassaNaSerie');
 
-        $this->assertDatabaseHas('avaliacao_aluno_documentos', [
-            'avaliacao_id' => $avaliacao->id,
-            'pauta_id' => $pautaUm->id,
-            'turma_id' => $turmaPermitida->id,
-            'aluno_id' => $alunoPermitido->id,
-            'professor_id' => $professor->id,
-            'alternativa_id' => $alternativa->id,
-        ]);
-        $this->assertDatabaseMissing('avaliacao_aluno_documentos', [
-            'avaliacao_id' => $avaliacao->id,
-            'pauta_id' => $pautaDois->id,
-            'turma_id' => $turmaPermitida->id,
-            'aluno_id' => $alunoPermitido->id,
-        ]);
+        $documento = AvaliacaoAlunoDocumento::query()
+            ->where('avaliacao_id', $avaliacao->id)
+            ->where('aluno_id', $alunoPermitido->id)
+            ->firstOrFail();
+
+        $this->assertSame($alternativa->id, (int) ($documento->payload['pautas'][(string) $pautaUm->id]['alternativa_id'] ?? 0));
+        $this->assertArrayNotHasKey((string) $pautaDois->id, $documento->payload['pautas']);
 
         $workspace->set('componenteWorkspaceId', '');
 
@@ -998,14 +1004,10 @@ class DashboardAvaliacoesPageTest extends TestCase
             ->set('avaliacaoEmMassaGlobal', $alternativa->id)
             ->call('aplicarEmMassaNaSerie');
 
-        $this->assertDatabaseHas('avaliacao_aluno_documentos', [
-            'avaliacao_id' => $avaliacao->id,
-            'pauta_id' => $pautaDois->id,
-            'turma_id' => $turmaPermitida->id,
-            'aluno_id' => $alunoPermitido->id,
-            'professor_id' => $professor->id,
-            'alternativa_id' => $alternativa->id,
-        ]);
+        $documento->refresh();
+
+        $this->assertSame($alternativa->id, (int) ($documento->payload['pautas'][(string) $pautaDois->id]['alternativa_id'] ?? 0));
+        $this->assertSame($professor->id, (int) ($documento->payload['pautas'][(string) $pautaDois->id]['professor_id'] ?? 0));
     }
 
     public function test_workspace_do_acompanhamento_carrega_somente_o_escopo_solicitado_com_todos_os_componentes(): void
@@ -1109,9 +1111,9 @@ class DashboardAvaliacoesPageTest extends TestCase
             ->call('alternarComponente', $turma->id, $componenteDois->id)
             ->assertSee('Pauta todos 2')
             ->call('alternarPauta', $turma->id, $pautaUm->id)
-            ->assertSet('pautasExpandidas', [$turma->id . ':' . $pautaUm->id])
+            ->assertSet('pautasExpandidas', [$turma->id.':'.$pautaUm->id])
             ->call('alternarPauta', $turma->id, $pautaDois->id)
-            ->assertSet('pautasExpandidas', [$turma->id . ':' . $pautaDois->id])
+            ->assertSet('pautasExpandidas', [$turma->id.':'.$pautaDois->id])
             ->call('definirVisualizacao', 'alunos')
             ->assertSet('pautasExpandidas', []);
 
@@ -1119,7 +1121,7 @@ class DashboardAvaliacoesPageTest extends TestCase
 
         $workspace
             ->call('alternarAluno', $turma->id, $aluno->id)
-            ->assertSet('alunosExpandidos', [$turma->id . ':' . $aluno->id])
+            ->assertSet('alunosExpandidos', [$turma->id.':'.$aluno->id])
             ->call('definirVisualizacao', 'pautas')
             ->assertSet('alunosExpandidos', []);
     }
@@ -1234,7 +1236,7 @@ class DashboardAvaliacoesPageTest extends TestCase
     }
 
     /**
-     * @return array{component: \Livewire\Features\SupportTesting\Testable, linha: array<string, mixed>}
+     * @return array{component: Testable, linha: array<string, mixed>}
      */
     private function criarCenarioExportacaoParecerAcompanhamento(
         bool $comDiretor = true,
@@ -1252,24 +1254,24 @@ class DashboardAvaliacoesPageTest extends TestCase
         ]);
         $user->givePermissionTo(['Acompanhar Avaliações', 'Exportar Avaliações']);
 
-        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Exportação ' . $sufixo, 'status' => true]);
-        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Período Exportação ' . $sufixo, 'status' => true]);
-        $serie = $this->criarSerie('SER-EXP-' . $sufixo, 'Infantil 3 ' . $sufixo);
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Exportação '.$sufixo, 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Período Exportação '.$sufixo, 'status' => true]);
+        $serie = $this->criarSerie('SER-EXP-'.$sufixo, 'Infantil 3 '.$sufixo);
         $componente = ComponenteCurricular::query()->create([
-            'codigo' => 'COMP-EXP-' . $sufixo,
-            'nome' => 'Escuta, fala, pensamento e imaginação ' . $sufixo,
+            'codigo' => 'COMP-EXP-'.$sufixo,
+            'nome' => 'Escuta, fala, pensamento e imaginação '.$sufixo,
         ]);
-        $escola = $this->criarEscola('Escola Exportação Parecer ' . $sufixo);
+        $escola = $this->criarEscola('Escola Exportação Parecer '.$sufixo);
         $user->escolas()->attach($escola->id);
 
         $turma = $this->criarTurma($escola, $serie, 'A', 'manha');
-        $aluno = $this->criarAluno($turma, 'Aluno Exportação Parecer ' . $sufixo, 'CGM-EXP-' . $sufixo);
+        $aluno = $this->criarAluno($turma, 'Aluno Exportação Parecer '.$sufixo, 'CGM-EXP-'.$sufixo);
 
         $professor = Professor::query()->create([
             'id_escola' => $escola->id,
-            'matricula' => 'PROF-EXP-' . $sufixo,
-            'nome' => 'Professor Exportação Parecer ' . $sufixo,
-            'email' => 'prof.exportacao.parecer.' . strtolower($sufixo) . '@edu.umuarama.pr.gov.br',
+            'matricula' => 'PROF-EXP-'.$sufixo,
+            'nome' => 'Professor Exportação Parecer '.$sufixo,
+            'email' => 'prof.exportacao.parecer.'.strtolower($sufixo).'@edu.umuarama.pr.gov.br',
         ]);
         $turma->componentes()->attach($componente->id, [
             'professor_id' => $professor->id,
@@ -1282,10 +1284,10 @@ class DashboardAvaliacoesPageTest extends TestCase
             'tem_observacao' => false,
             'status' => true,
         ]);
-        $pauta = $this->criarPauta($tipo, $serie, $componente, 'Pauta exportação parecer ' . $sufixo);
+        $pauta = $this->criarPauta($tipo, $serie, $componente, 'Pauta exportação parecer '.$sufixo);
         $pauta->alternativas()->attach([$alternativa->id]);
 
-        $avaliacao = $this->criarAvaliacao('Avaliação Exportação Parecer ' . $sufixo, $tipo, $periodo);
+        $avaliacao = $this->criarAvaliacao('Avaliação Exportação Parecer '.$sufixo, $tipo, $periodo);
         $avaliacao->series()->sync([$serie->id]);
         $avaliacao->componentes()->sync([$componente->id]);
         $avaliacao->escolas()->sync([$escola->id]);
@@ -1376,7 +1378,7 @@ class DashboardAvaliacoesPageTest extends TestCase
         return Escola::query()->create([
             'codigo' => strtoupper(substr(md5($nome), 0, 5)),
             'nome' => $nome,
-            'email' => strtolower(str_replace(' ', '.', $nome)) . '@teste.local',
+            'email' => strtolower(str_replace(' ', '.', $nome)).'@teste.local',
             'telefone' => '(44) 99999-9999',
         ]);
     }
@@ -1392,7 +1394,7 @@ class DashboardAvaliacoesPageTest extends TestCase
     private function criarTurma(Escola $escola, Serie $serie, string $nome, string $turno): Turma
     {
         return Turma::query()->create([
-            'codigo' => 'TUR' . strtoupper(substr(md5($nome . $turno . microtime()), 0, 8)),
+            'codigo' => 'TUR'.strtoupper(substr(md5($nome.$turno.microtime()), 0, 8)),
             'nome' => $nome,
             'turno' => $turno,
             'id_serie' => $serie->id,
@@ -1405,8 +1407,7 @@ class DashboardAvaliacoesPageTest extends TestCase
         string $nome,
         string $cgm,
         string $tipoVinculo = Aluno::TIPO_VINCULO_PRINCIPAL
-    ): Aluno
-    {
+    ): Aluno {
         return Aluno::query()->create([
             'nome' => $nome,
             'cgm' => $cgm,
