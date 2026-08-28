@@ -23,6 +23,8 @@ class AvaliacaoTurmaCiclo extends Model
     {
         return [
             'versao_conclusao' => 'integer',
+            'operacional_inicializado_em' => 'datetime',
+            'legado_documentos_migrados' => 'integer',
             'concluida_em' => 'datetime',
             'concluida_por_snapshot' => 'array',
             'reaberta_em' => 'datetime',

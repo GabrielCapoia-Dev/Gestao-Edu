@@ -2,37 +2,29 @@
 
 namespace App\Services\Avaliacoes;
 
-use InvalidArgumentException;
-
+/**
+ * Política de persistência das avaliações.
+ *
+ * Não existe mais seleção de driver em runtime:
+ * - estado operacional aberto/reaberto é sempre relacional;
+ * - JSON legado permanece somente como fonte histórica/fallback de dados ainda
+ *   não inicializados no relacional;
+ * - conclusão gera snapshots JSON canônicos pelo ciclo da turma.
+ */
 class AvaliacaoPersistencia
 {
-    public const DRIVER_JSON = 'json';
-    public const DRIVER_SHADOW = 'shadow';
-    public const DRIVER_RELACIONAL = 'relacional';
-
-    public function driver(): string
-    {
-        $driver = (string) config('avaliacoes_persistencia.driver', self::DRIVER_JSON);
-
-        if (! in_array($driver, [self::DRIVER_JSON, self::DRIVER_SHADOW, self::DRIVER_RELACIONAL], true)) {
-            throw new InvalidArgumentException("Driver de persistência de avaliações inválido: {$driver}.");
-        }
-
-        return $driver;
-    }
-
     public function gravaRelacional(): bool
     {
-        return in_array($this->driver(), [self::DRIVER_SHADOW, self::DRIVER_RELACIONAL], true);
+        return true;
     }
 
     public function gravaDocumentoLegado(): bool
     {
-        return in_array($this->driver(), [self::DRIVER_JSON, self::DRIVER_SHADOW], true);
+        return false;
     }
 
     public function leRelacional(): bool
     {
-        return $this->driver() === self::DRIVER_RELACIONAL;
+        return true;
     }
 }

@@ -2,9 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\AvaliacaoAlunoDocumento;
-use App\Models\AvaliacaoInformacaoOperacional;
-use App\Models\AvaliacaoRespostaOperacional;
 use App\Models\AvaliacaoSnapshotEvento;
 use App\Models\AvaliacaoTurmaCiclo;
 use App\Services\Avaliacoes\AvaliacaoSnapshotService;
@@ -14,10 +11,9 @@ use Throwable;
 class AuditarAvaliacaoPersistencia extends Command
 {
     protected $signature = 'avaliacoes:auditar-persistencia
-        {--avaliacao= : Restringe a uma avaliação}
-        {--paridade-legado : Compara documentos JSON com as linhas operacionais}';
+        {--avaliacao= : Restringe a uma avaliação}';
 
-    protected $description = 'Verifica estados canônicos, tokens, hashes e paridade da persistência de avaliações';
+    protected $description = 'Verifica ciclos operacionais e integridade dos snapshots concluídos';
 
     public function handle(AvaliacaoSnapshotService $snapshots): int
     {
@@ -33,15 +29,18 @@ class AuditarAvaliacaoPersistencia extends Command
             if ($ciclo->aceitaEscrita() && ! $ciclo->tokenEscrita) {
                 $erros[] = "Ciclo {$ciclo->id}: aberto sem token de escrita.";
             }
+
             if ($ciclo->status === AvaliacaoTurmaCiclo::STATUS_CONCLUIDA) {
                 if ($ciclo->tokenEscrita || $ciclo->respostas_count > 0 || $ciclo->informacoes_count > 0) {
                     $erros[] = "Ciclo {$ciclo->id}: concluído ainda possui estado operacional.";
                 }
+
                 $evento = AvaliacaoSnapshotEvento::query()
                     ->whereKey($ciclo->snapshot_evento_atual_id)
                     ->whereNotNull('publicado_em')
                     ->with('snapshots')
                     ->first();
+
                 if (! $evento) {
                     $erros[] = "Ciclo {$ciclo->id}: concluído sem evento final publicado.";
                 } else {
@@ -51,50 +50,18 @@ class AuditarAvaliacaoPersistencia extends Command
                         $erros[] = "Ciclo {$ciclo->id}: {$exception->getMessage()}";
                     }
                 }
+
+                continue;
             }
-        }
 
-        if ($this->option('paridade-legado')) {
-            $documentos = AvaliacaoAlunoDocumento::query()
-                ->when($avaliacaoId > 0, fn ($query) => $query->where('avaliacao_id', $avaliacaoId))
-                ->get();
-            foreach ($documentos as $documento) {
-                $relacional = AvaliacaoRespostaOperacional::query()
-                    ->where('avaliacao_id', (int) $documento->avaliacao_id)
-                    ->where('aluno_id', (int) $documento->aluno_id)
-                    ->get()
-                    ->mapWithKeys(fn ($item): array => [(string) $item->pauta_id => [
-                        'alternativa_id' => $item->alternativa_id ? (int) $item->alternativa_id : null,
-                        'observacao' => $this->texto($item->observacao),
-                        'professor_id' => $item->professor_id ? (int) $item->professor_id : null,
-                        'componente_curricular_id' => $item->componente_curricular_id ? (int) $item->componente_curricular_id : null,
-                    ]])->all();
-                $legado = collect($documento->pautasPayload())->map(fn (array $item): array => [
-                    'alternativa_id' => ! empty($item['alternativa_id']) ? (int) $item['alternativa_id'] : null,
-                    'observacao' => $this->texto($item['observacao'] ?? null),
-                    'professor_id' => ! empty($item['professor_id']) ? (int) $item['professor_id'] : null,
-                    'componente_curricular_id' => ! empty($item['componente_curricular_id']) ? (int) $item['componente_curricular_id'] : null,
-                ])->all();
-                ksort($relacional);
-                ksort($legado);
-                if ($relacional !== $legado) {
-                    $erros[] = "Documento {$documento->id}: divergência nas respostas relacionais.";
-                }
+            // Um ciclo aberto ainda não inicializado é válido: significa que a
+            // turma ainda não foi acessada desde o corte para o modelo relacional.
+            if ($ciclo->operacional_inicializado_em === null) {
+                continue;
+            }
 
-                $infosRelacionais = AvaliacaoInformacaoOperacional::query()
-                    ->where('avaliacao_id', (int) $documento->avaliacao_id)
-                    ->where('aluno_id', (int) $documento->aluno_id)
-                    ->pluck('texto', 'componente_chave')
-                    ->map(fn ($texto): ?string => $this->texto($texto))
-                    ->all();
-                $infosLegado = collect($documento->informacoesComplementaresPayload())
-                    ->map(fn (array $item): ?string => $this->texto($item['texto'] ?? null))
-                    ->all();
-                ksort($infosRelacionais);
-                ksort($infosLegado);
-                if ($infosRelacionais !== $infosLegado) {
-                    $erros[] = "Documento {$documento->id}: divergência nas informações complementares.";
-                }
+            if ((int) $ciclo->legado_documentos_migrados > 0 && ! $ciclo->legado_migracao_hash) {
+                $erros[] = "Ciclo {$ciclo->id}: migração lazy registrada sem hash do legado.";
             }
         }
 
@@ -107,15 +74,14 @@ class AuditarAvaliacaoPersistencia extends Command
             return self::FAILURE;
         }
 
-        $this->info("Auditoria concluída: {$ciclos->count()} ciclo(s) válido(s).");
+        $naoInicializados = $ciclos
+            ->filter(fn (AvaliacaoTurmaCiclo $ciclo): bool => $ciclo->aceitaEscrita() && $ciclo->operacional_inicializado_em === null)
+            ->count();
+
+        $this->info(
+            "Auditoria concluída: {$ciclos->count()} ciclo(s) válido(s); {$naoInicializados} ainda aguardando primeiro acesso.",
+        );
 
         return self::SUCCESS;
-    }
-
-    private function texto(mixed $valor): ?string
-    {
-        $valor = trim((string) ($valor ?? ''));
-
-        return $valor !== '' ? $valor : null;
     }
 }

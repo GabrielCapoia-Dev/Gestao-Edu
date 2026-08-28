@@ -56,6 +56,7 @@ class AvaliacaoTurmaCicloService
                         ['ciclo_id' => (int) $ciclo->id],
                         ['generation_uuid' => (string) Str::uuid()],
                     );
+                    $this->inicializarSeNaoPossuiLegado($ciclo);
                 }
             }
         }, 3);
@@ -88,6 +89,7 @@ class AvaliacaoTurmaCicloService
                 ['ciclo_id' => (int) $ciclo->id],
                 ['generation_uuid' => (string) Str::uuid()],
             );
+            $this->inicializarSeNaoPossuiLegado($ciclo);
 
             return $ciclo->refresh();
         }, 3);
@@ -145,5 +147,27 @@ class AvaliacaoTurmaCicloService
         }
 
         return $token;
+    }
+
+    private function inicializarSeNaoPossuiLegado(AvaliacaoTurmaCiclo $ciclo): void
+    {
+        if ($ciclo->operacional_inicializado_em !== null) {
+            return;
+        }
+
+        $possuiLegado = DB::table('avaliacao_aluno_documentos')
+            ->where('avaliacao_id', (int) $ciclo->avaliacao_id)
+            ->where('turma_id', (int) $ciclo->turma_origem_id)
+            ->exists();
+
+        if ($possuiLegado) {
+            return;
+        }
+
+        $ciclo->forceFill([
+            'operacional_inicializado_em' => now(),
+            'legado_documentos_migrados' => 0,
+            'legado_migracao_hash' => null,
+        ])->save();
     }
 }
