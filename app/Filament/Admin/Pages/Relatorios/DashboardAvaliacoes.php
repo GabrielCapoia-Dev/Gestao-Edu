@@ -15,6 +15,7 @@ use App\Models\Turma;
 use App\Models\User;
 use App\Services\Avaliacoes\AvaliacaoDashboardOnDemandQueryService;
 use App\Services\Avaliacoes\AvaliacaoDocumentoExportService;
+use App\Services\Avaliacoes\AvaliacaoPersistencia;
 use App\Services\Exports\ExportRequestService;
 use App\Services\PessoaScopeService;
 use App\Services\Relatorios\RelatorioPdfRenderer;
@@ -107,6 +108,31 @@ class DashboardAvaliacoes extends Page implements HasForms
     public array $acompanhamentoLinhasAlteradas = [];
 
     public string $ultimaAtualizacaoIncremental = '';
+
+    public function avisoFiltrosHistoricos(): ?string
+    {
+        if (! app(AvaliacaoPersistencia::class)->leRelacional()) {
+            return null;
+        }
+
+        $usaFiltroDetalhado = ($this->filtros['professores_ids'] ?? []) !== []
+            || ($this->filtros['pautas_ids'] ?? []) !== []
+            || ($this->filtros['alternativas_ids'] ?? []) !== [];
+        $avaliacaoId = (int) ($this->filtros['avaliacao_id'] ?? 0);
+
+        if (! $usaFiltroDetalhado || $avaliacaoId <= 0) {
+            return null;
+        }
+
+        $possuiHistorico = DB::table('avaliacao_turma_ciclos')
+            ->where('avaliacao_id', $avaliacaoId)
+            ->where('status', 'concluida')
+            ->exists();
+
+        return $possuiHistorico
+            ? 'Filtros por professor, pauta e alternativa são aplicados somente às turmas abertas. O histórico concluído permanece resumido por turma e componente.'
+            : null;
+    }
 
     public array $listagensPaginas = [
         'tabelaEscolas' => 1,
@@ -2027,12 +2053,6 @@ class DashboardAvaliacoes extends Page implements HasForms
         });
 
         $this->aplicarFiltrosDiretosAvaliacao($query, $forcarAtivas, $filtrosAtivos);
-
-        if ($this->temFiltrosDeResposta($filtrosAtivos)) {
-            $query->whereHas('respostas', function (EloquentBuilder $respostaQuery) use ($filtrosAtivos): void {
-                $this->aplicarFiltrosRespostaEloquent($respostaQuery, filtros: $filtrosAtivos);
-            });
-        }
 
         return $query
             ->pluck('avaliacoes.id')

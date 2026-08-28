@@ -66,14 +66,30 @@ class AvaliacaoDashboardOnDemandQueryService
     public function respostas(array $avaliacaoIds, bool $somenteCompletas = false): QueryBuilder
     {
         $avaliacaoIds = $this->ids($avaliacaoIds);
-        $respostasExpandidas = match (DB::connection()->getDriverName()) {
-            'mysql' => $this->respostasExpandidasMysqlQuery($avaliacaoIds),
-            'sqlite' => $this->respostasExpandidasSqliteQuery($avaliacaoIds),
-            default => throw new RuntimeException(
-                'Driver de banco não suportado para leitura sob demanda das avaliações.'
-            ),
-        };
-        $respostas = $this->normalizarRespostasQuery($avaliacaoIds, $respostasExpandidas);
+        if (app(AvaliacaoPersistencia::class)->leRelacional()) {
+            $respostas = DB::table('avaliacao_respostas_operacionais')
+                ->whereIn('avaliacao_id', $avaliacaoIds)
+                ->select([
+                    'avaliacao_id',
+                    'aluno_id',
+                    'turma_avaliativa_id as turma_id',
+                    'pauta_id',
+                    'alternativa_id',
+                    'professor_id',
+                    'observacao',
+                    'respondido_em',
+                    'componente_curricular_id',
+                ]);
+        } else {
+            $respostasExpandidas = match (DB::connection()->getDriverName()) {
+                'mysql' => $this->respostasExpandidasMysqlQuery($avaliacaoIds),
+                'sqlite' => $this->respostasExpandidasSqliteQuery($avaliacaoIds),
+                default => throw new RuntimeException(
+                    'Driver de banco não suportado para leitura sob demanda das avaliações.'
+                ),
+            };
+            $respostas = $this->normalizarRespostasQuery($avaliacaoIds, $respostasExpandidas);
+        }
 
         $query = DB::query()
             ->fromSub($respostas, 'ar')
@@ -206,6 +222,17 @@ SQL))
     {
         if ($avaliacaoIds === []) {
             return $this->escoposVaziosQuery();
+        }
+
+        if (app(AvaliacaoPersistencia::class)->leRelacional()) {
+            return DB::table('avaliacao_turma_ciclos as ciclo_scope')
+                ->whereIn('ciclo_scope.avaliacao_id', $avaliacaoIds)
+                ->whereIn('ciclo_scope.status', ['aberta', 'reaberta'])
+                ->select([
+                    'ciclo_scope.avaliacao_id',
+                    'ciclo_scope.turma_avaliativa_id as turma_id',
+                    'ciclo_scope.turma_origem_id',
+                ]);
         }
 
         $cacheKey = implode(',', $avaliacaoIds);

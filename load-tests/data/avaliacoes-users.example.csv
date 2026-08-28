@@ -1,0 +1,3 @@
+email,password,avaliacao_id,turma_id,pauta_id,alternativa_id,aluno_ids
+professor.componente.a@teste.local,Senha@123,1,10,100,1000,501|502|503
+professor.componente.b@teste.local,Senha@123,1,10,200,1000,501|502|503

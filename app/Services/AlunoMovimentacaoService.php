@@ -9,6 +9,8 @@ use App\Models\Turma;
 use App\Models\User;
 use App\Notifications\SistemaNotification;
 use App\Services\Avaliacoes\AvaliacaoAlunoDocumentoService;
+use App\Services\Avaliacoes\AvaliacaoMovimentacaoRelacionalService;
+use App\Services\Avaliacoes\AvaliacaoPersistencia;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -983,13 +985,25 @@ class AlunoMovimentacaoService
                 => AvaliacaoAlunoDocumentoHistorico::MOVIMENTACAO_REMANEJAMENTO,
         };
 
-        app(AvaliacaoAlunoDocumentoService::class)
-            ->moverDocumentosDoAluno(
+        $persistencia = app(AvaliacaoPersistencia::class);
+
+        if ($persistencia->gravaRelacional()) {
+            app(AvaliacaoMovimentacaoRelacionalService::class)->mover(
+                $origem,
+                $destino,
+                $tipoHistorico,
+                $usuario,
+            );
+        }
+
+        if ($persistencia->gravaDocumentoLegado()) {
+            app(AvaliacaoAlunoDocumentoService::class)->moverDocumentosDoAluno(
                 $origem,
                 $destino,
                 $tipoHistorico,
                 $usuario
             );
+        }
     }
 
     /**
@@ -1033,6 +1047,11 @@ class AlunoMovimentacaoService
                         'aluno_id',
                         (int) $origem->id
                     )
+                    ->pluck('avaliacao_id')
+            )
+            ->merge(
+                DB::table('avaliacao_respostas_operacionais')
+                    ->where('aluno_id', (int) $origem->id)
                     ->pluck('avaliacao_id')
             )
             ->map(

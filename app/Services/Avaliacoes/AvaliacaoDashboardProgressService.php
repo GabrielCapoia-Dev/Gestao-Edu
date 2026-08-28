@@ -70,6 +70,25 @@ class AvaliacaoDashboardProgressService
             ->get()
             ->pluck('total', 'avaliacao_id');
 
+        if (app(AvaliacaoPersistencia::class)->leRelacional() && $professorIds === null) {
+            $historico = DB::table('avaliacao_snapshot_resumos_componentes as resumo')
+                ->join('avaliacao_turma_ciclos as ciclo', 'ciclo.id', '=', 'resumo.ciclo_id')
+                ->join('turmas as turma_historica', 'turma_historica.id', '=', 'ciclo.turma_avaliativa_id')
+                ->whereIn('ciclo.avaliacao_id', $avaliacaoIds)
+                ->where('ciclo.status', 'concluida')
+                ->whereColumn('ciclo.snapshot_evento_atual_id', 'resumo.evento_id')
+                ->when(is_array($escolaIds), fn ($query) => $query->whereIn('turma_historica.id_escola', $escolaIds))
+                ->groupBy('ciclo.avaliacao_id')
+                ->selectRaw('ciclo.avaliacao_id, SUM(resumo.respostas_esperadas) as esperado, SUM(resumo.respostas_concluidas) as concluido')
+                ->get()
+                ->keyBy('avaliacao_id');
+
+            foreach ($historico as $avaliacaoId => $item) {
+                $totais[$avaliacaoId] = (int) ($totais[$avaliacaoId] ?? 0) + (int) $item->esperado;
+                $concluidos[$avaliacaoId] = (int) ($concluidos[$avaliacaoId] ?? 0) + (int) $item->concluido;
+            }
+        }
+
         foreach ($avaliacaoIds as $avaliacaoId) {
             $total = (int) ($totais[$avaliacaoId] ?? 0);
             $concluido = min((int) ($concluidos[$avaliacaoId] ?? 0), $total);

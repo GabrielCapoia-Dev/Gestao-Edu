@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Alternativa;
 use App\Models\Avaliacao;
-use App\Services\Avaliacoes\AvaliacaoAlunoDocumentoService;
+use App\Services\Avaliacoes\AvaliacaoRespostaStore;
 use App\Models\Aluno;
 use App\Models\ComponenteCurricular;
 use App\Models\DominioEmail;
@@ -403,11 +403,10 @@ class AvaliacaoFluxoSeeder extends Seeder
         $avaliacaoEncerrada->componentes()->sync([$componenteMatematica->id, $componenteHistoria->id]);
         $avaliacaoEncerrada->escolas()->sync([$escolaCentro->id]);
 
-        $documentoService = app(AvaliacaoAlunoDocumentoService::class);
+        $respostaStore = app(AvaliacaoRespostaStore::class);
 
         foreach ($alunosCentroA->take(6) as $aluno) {
-            $documento = $documentoService->obterOuCriar($avaliacaoDiagnostica, $aluno);
-            $documentoService->salvarPauta($documento, (int) $pautaMatematica->id, [
+            $respostaStore->salvarPauta((int) $avaliacaoDiagnostica->id, (int) $turmaCentroA->id, $aluno, (int) $pautaMatematica->id, [
                 'professor_id' => $professorMat->id,
                 'alternativa_id' => $alternativaBom->id,
                 'observacao' => 'Resposta inicial registrada pelo seeder.',
@@ -417,8 +416,7 @@ class AvaliacaoFluxoSeeder extends Seeder
         }
 
         foreach ($alunosCentroB->take(4) as $aluno) {
-            $documento = $documentoService->obterOuCriar($avaliacaoDiagnostica, $aluno);
-            $documentoService->salvarPauta($documento, (int) $pautaHistoria->id, [
+            $respostaStore->salvarPauta((int) $avaliacaoDiagnostica->id, (int) $turmaCentroB->id, $aluno, (int) $pautaHistoria->id, [
                 'professor_id' => $professorHist->id,
                 'alternativa_id' => $alternativaRegular->id,
                 'observacao' => 'Avaliacao parcial para testes de continuidade.',

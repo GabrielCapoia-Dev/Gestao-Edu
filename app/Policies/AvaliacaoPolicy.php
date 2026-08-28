@@ -77,4 +77,14 @@ class AvaliacaoPolicy
     {
         return $user->hasPermissionTo('Preencher Avaliações em Massa');
     }
+
+    public function conclude(User $user): bool
+    {
+        return $user->hasPermissionTo('Concluir Avaliações');
+    }
+
+    public function reopen(User $user): bool
+    {
+        return $user->hasPermissionTo('Reabrir Avaliações');
+    }
 }

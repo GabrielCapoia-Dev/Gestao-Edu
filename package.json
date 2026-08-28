@@ -11,6 +11,7 @@
         "k6:100": "docker compose -f docker-compose.k6.yml run --rm -e K6_PROFILE=large k6",
         "k6:150": "docker compose -f docker-compose.k6.yml run --rm -e K6_PROFILE=xlarge k6",
         "k6:300": "docker compose -f docker-compose.k6.yml run --rm -e K6_PROFILE=target300 k6",
+        "k6:avaliacoes": "docker compose -f docker-compose.k6.yml run --rm k6 run /scripts/scenarios/avaliacoes-autosave.js",
         "k6:down": "docker compose -f docker-compose.k6.yml down"
     },
     "devDependencies": {

@@ -43,6 +43,11 @@ services:
       K6_INCLUDE_HEARTBEAT: "${K6_INCLUDE_HEARTBEAT:-false}"
       K6_PAGE_DELAY_MIN: "${K6_PAGE_DELAY_MIN:-1}"
       K6_PAGE_DELAY_MAX: "${K6_PAGE_DELAY_MAX:-4}"
+      K6_AVALIACAO_USERS_FILE: "${K6_AVALIACAO_USERS_FILE:-/scripts/data/avaliacoes-users.local.csv}"
+      K6_AVALIACAO_VUS: "${K6_AVALIACAO_VUS:-10}"
+      K6_AVALIACAO_DURATION: "${K6_AVALIACAO_DURATION:-5m}"
+      K6_AVALIACAO_P95_MS: "${K6_AVALIACAO_P95_MS:-1200}"
+      K6_AVALIACAO_INTERVAL_SECONDS: "${K6_AVALIACAO_INTERVAL_SECONDS:-0.7}"
       K6_OUT: "${K6_OUT:-influxdb=http://influxdb:8086/k6}"
     volumes:
       - ./load-tests:/scripts:ro

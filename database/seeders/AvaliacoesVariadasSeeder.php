@@ -6,7 +6,8 @@ use App\Models\Alternativa;
 use App\Models\Avaliacao;
 use App\Models\Aluno;
 use App\Models\AvaliacaoAlunoDocumento;
-use App\Services\Avaliacoes\AvaliacaoAlunoDocumentoService;
+use App\Services\Avaliacoes\AvaliacaoPersistencia;
+use App\Services\Avaliacoes\AvaliacaoRespostaStore;
 use App\Models\ComponenteCurricular;
 use App\Models\PeriodoAvaliacao;
 use App\Models\Pauta;
@@ -661,6 +662,10 @@ class AvaliacoesVariadasSeeder extends Seeder
         AvaliacaoAlunoDocumento::query()
             ->where('avaliacao_id', (int) $avaliacao->id)
             ->delete();
+        if (app(AvaliacaoPersistencia::class)->gravaRelacional()) {
+            DB::table('avaliacao_respostas_operacionais')->where('avaliacao_id', (int) $avaliacao->id)->delete();
+            DB::table('avaliacao_informacoes_operacionais')->where('avaliacao_id', (int) $avaliacao->id)->delete();
+        }
 
         if ($turmaIds === [] || $pautaIds === []) {
             return [
@@ -868,7 +873,7 @@ class AvaliacoesVariadasSeeder extends Seeder
             ], fn ($value) => $value !== null && $value !== '');
         }
 
-        $service = app(AvaliacaoAlunoDocumentoService::class);
+        $store = app(AvaliacaoRespostaStore::class);
 
         foreach ($documentosPorAluno as $alunoId => $dados) {
             $aluno = Aluno::query()->find($alunoId);
@@ -876,17 +881,22 @@ class AvaliacoesVariadasSeeder extends Seeder
                 continue;
             }
 
-            $documento = $service->obterOuCriar($avaliacao, $aluno, somentePrincipal: false);
-
             if (! empty($dados['pautas']) && is_array($dados['pautas'])) {
-                $service->salvarPautasEmMassa($documento, collect($dados['pautas'])->mapWithKeys(
-                    fn (array $pauta, string $pautaId): array => [(int) $pautaId => $pauta]
-                )->all());
+                $store->salvarPautasEmMassaParaAlunos(
+                    (int) $avaliacao->id,
+                    collect([$aluno]),
+                    [(int) $aluno->id => collect($dados['pautas'])->mapWithKeys(
+                        fn (array $pauta, string $pautaId): array => [(int) $pautaId => $pauta]
+                    )->all()],
+                    [(int) $aluno->id => (int) $dados['turma_id']],
+                );
             }
 
             if (! empty($dados['informacoes_complementares']['0']['texto'] ?? null)) {
-                $service->salvarInfoComplementar(
-                    $documento->fresh() ?? $documento,
+                $store->salvarInformacao(
+                    (int) $avaliacao->id,
+                    (int) $dados['turma_id'],
+                    $aluno,
                     0,
                     (string) $dados['informacoes_complementares']['0']['texto'],
                     $dados['informacoes_complementares']['0']['professor_id'] ?? null,

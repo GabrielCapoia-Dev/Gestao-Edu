@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Pages;
 
 use App\Models\Alternativa;
 use App\Models\Avaliacao;
+use App\Models\AvaliacaoTurmaCiclo;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\Pauta;
@@ -11,9 +12,13 @@ use App\Models\PeriodoAvaliacao;
 use App\Models\Serie;
 use App\Models\TipoAvaliacao;
 use App\Models\Turma;
+use App\Services\Avaliacoes\AvaliacaoTurmaCicloService;
+use App\Services\Avaliacoes\AvaliacaoSnapshotService;
+use App\Services\Avaliacoes\AvaliacaoEstruturaService;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
@@ -29,6 +34,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use UnitEnum;
 
@@ -201,6 +207,48 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
                         'avaliacao' => $record->getKey(),
                     ]))
                     ->visible(fn (): bool => Gate::allows('follow', Avaliacao::class)),
+
+                Action::make('reabrir_turma')
+                    ->label('Reabrir turma')
+                    ->icon(Heroicon::ArrowPath)
+                    ->color('warning')
+                    ->visible(fn (Avaliacao $record): bool => Gate::allows('reopen', Avaliacao::class)
+                        && AvaliacaoTurmaCiclo::query()
+                            ->where('avaliacao_id', (int) $record->id)
+                            ->where('status', AvaliacaoTurmaCiclo::STATUS_CONCLUIDA)
+                            ->exists())
+                    ->schema(fn (Avaliacao $record): array => [
+                        Select::make('ciclo_id')
+                            ->label('Turma concluída')
+                            ->options(AvaliacaoTurmaCiclo::query()
+                                ->where('avaliacao_id', (int) $record->id)
+                                ->where('status', AvaliacaoTurmaCiclo::STATUS_CONCLUIDA)
+                                ->with('turmaAvaliativa.escola', 'turmaAvaliativa.serie')
+                                ->get()
+                                ->mapWithKeys(fn (AvaliacaoTurmaCiclo $ciclo): array => [
+                                    (int) $ciclo->id => implode(' - ', array_filter([
+                                        $ciclo->turmaAvaliativa?->escola?->nome,
+                                        $ciclo->turmaAvaliativa?->serie?->nome,
+                                        $ciclo->turmaAvaliativa?->nome,
+                                    ])),
+                                ])->all())
+                            ->required()
+                            ->native(false),
+                        Textarea::make('motivo')
+                            ->label('Motivo da reabertura')
+                            ->required()
+                            ->minLength(10)
+                            ->maxLength(1000),
+                    ])
+                    ->action(function (array $data): void {
+                        app(AvaliacaoSnapshotService::class)->reabrir(
+                            (int) $data['ciclo_id'],
+                            Auth::user(),
+                            (string) $data['motivo'],
+                        );
+
+                        Notification::make()->title('Turma reaberta com sucesso.')->success()->send();
+                    }),
 
                 Action::make('excluir')
                     ->label('Excluir')
@@ -688,6 +736,20 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
                 $avaliacao = new Avaliacao;
             }
 
+            if ($avaliacao->exists) {
+                app(AvaliacaoEstruturaService::class)->validarAlteracao(
+                    $avaliacao,
+                    $pautasCarregadas->pluck('id')->map(fn ($id): int => (int) $id)->all(),
+                    $turmasIds,
+                    $seriesIds,
+                    $componentesIds,
+                    collect($overridesPayload)->map(fn (array $item): array => [
+                        'pauta_id' => (int) $item['pauta_id'],
+                        'alternativa_id' => (int) $item['alternativa_id'],
+                    ])->all(),
+                );
+            }
+
             $avaliacao->fill([
                 'nome' => trim((string) $validated['form']['nome']),
                 'tipo_avaliacao_id' => $tipoAvaliacaoId,
@@ -705,6 +767,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
             $avaliacao->series()->sync($seriesIds);
             $avaliacao->componentes()->sync($componentesIds);
             $avaliacao->escolas()->sync($escolasIds);
+            app(AvaliacaoTurmaCicloService::class)->sincronizarAvaliacao($avaliacao);
 
             DB::table('avaliacao_pauta_alternativa')
                 ->where('avaliacao_id', (int) $avaliacao->id)
