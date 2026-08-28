@@ -3,7 +3,10 @@
 namespace App\Services\Avaliacoes;
 
 use App\Models\Aluno;
+use App\Models\AvaliacaoInformacaoOperacional;
+use App\Models\AvaliacaoRespostaOperacional;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Adapta o store existente ao corte direto para o relacional.
@@ -34,7 +37,7 @@ class AvaliacaoRespostaStoreLazy extends AvaliacaoRespostaStore
     ): int {
         $this->migracaoLazy->garantirTurma($avaliacaoId, $turmaAvaliativaId);
 
-        return parent::salvarPauta(
+        return DB::transaction(function () use (
             $avaliacaoId,
             $turmaAvaliativaId,
             $aluno,
@@ -42,7 +45,26 @@ class AvaliacaoRespostaStoreLazy extends AvaliacaoRespostaStore
             $dados,
             $expectedVersion,
             $expectedValues,
-        );
+        ): int {
+            // O lock é somente da resposta exata. Pautas diferentes continuam
+            // independentes, mesmo para o mesmo aluno.
+            AvaliacaoRespostaOperacional::query()
+                ->where('avaliacao_id', $avaliacaoId)
+                ->where('aluno_id', (int) $aluno->id)
+                ->where('pauta_id', $pautaId)
+                ->lockForUpdate()
+                ->first();
+
+            return parent::salvarPauta(
+                $avaliacaoId,
+                $turmaAvaliativaId,
+                $aluno,
+                $pautaId,
+                $dados,
+                $expectedVersion,
+                $expectedValues,
+            );
+        }, 3);
     }
 
     public function removerPauta(
@@ -54,7 +76,16 @@ class AvaliacaoRespostaStoreLazy extends AvaliacaoRespostaStore
     ): void {
         $this->migracaoLazy->garantirTurma($avaliacaoId, $turmaAvaliativaId);
 
-        parent::removerPauta($avaliacaoId, $turmaAvaliativaId, $aluno, $pautaId, $expectedVersion);
+        DB::transaction(function () use ($avaliacaoId, $turmaAvaliativaId, $aluno, $pautaId, $expectedVersion): void {
+            AvaliacaoRespostaOperacional::query()
+                ->where('avaliacao_id', $avaliacaoId)
+                ->where('aluno_id', (int) $aluno->id)
+                ->where('pauta_id', $pautaId)
+                ->lockForUpdate()
+                ->first();
+
+            parent::removerPauta($avaliacaoId, $turmaAvaliativaId, $aluno, $pautaId, $expectedVersion);
+        }, 3);
     }
 
     public function salvarInformacao(
@@ -68,7 +99,7 @@ class AvaliacaoRespostaStoreLazy extends AvaliacaoRespostaStore
     ): int {
         $this->migracaoLazy->garantirTurma($avaliacaoId, $turmaAvaliativaId);
 
-        return parent::salvarInformacao(
+        return DB::transaction(function () use (
             $avaliacaoId,
             $turmaAvaliativaId,
             $aluno,
@@ -76,7 +107,24 @@ class AvaliacaoRespostaStoreLazy extends AvaliacaoRespostaStore
             $texto,
             $professorId,
             $expectedVersion,
-        );
+        ): int {
+            AvaliacaoInformacaoOperacional::query()
+                ->where('avaliacao_id', $avaliacaoId)
+                ->where('aluno_id', (int) $aluno->id)
+                ->where('componente_chave', $componenteId)
+                ->lockForUpdate()
+                ->first();
+
+            return parent::salvarInformacao(
+                $avaliacaoId,
+                $turmaAvaliativaId,
+                $aluno,
+                $componenteId,
+                $texto,
+                $professorId,
+                $expectedVersion,
+            );
+        }, 3);
     }
 
     public function salvarPautasEmMassaParaAlunos(
