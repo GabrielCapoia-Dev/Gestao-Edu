@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('avaliacao_turma_ciclos', function (Blueprint $table): void {
+        $this->createIfMissing('avaliacao_turma_ciclos', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('avaliacao_id')->constrained('avaliacoes')->cascadeOnDelete();
             $table->foreignId('turma_avaliativa_id')->constrained('turmas')->cascadeOnDelete();
@@ -32,7 +32,7 @@ return new class extends Migration
             $table->index('snapshot_evento_atual_id', 'idx_av_ciclo_snapshot_atual');
         });
 
-        Schema::create('avaliacao_turma_tokens_escrita', function (Blueprint $table): void {
+        $this->createIfMissing('avaliacao_turma_tokens_escrita', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('ciclo_id')->constrained('avaliacao_turma_ciclos')->cascadeOnDelete();
             $table->uuid('generation_uuid')->unique();
@@ -41,7 +41,7 @@ return new class extends Migration
             $table->unique('ciclo_id', 'uniq_av_token_ciclo');
         });
 
-        Schema::create('avaliacao_respostas_operacionais', function (Blueprint $table): void {
+        $this->createIfMissing('avaliacao_respostas_operacionais', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('token_escrita_id')->constrained('avaliacao_turma_tokens_escrita')->restrictOnDelete();
             $table->foreignId('ciclo_id')->constrained('avaliacao_turma_ciclos')->cascadeOnDelete();
@@ -64,7 +64,7 @@ return new class extends Migration
             $table->index(['avaliacao_id', 'aluno_id'], 'idx_av_resp_av_aluno');
         });
 
-        Schema::create('avaliacao_informacoes_operacionais', function (Blueprint $table): void {
+        $this->createIfMissing('avaliacao_informacoes_operacionais', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('token_escrita_id')->constrained('avaliacao_turma_tokens_escrita')->restrictOnDelete();
             $table->foreignId('ciclo_id')->constrained('avaliacao_turma_ciclos')->cascadeOnDelete();
@@ -83,7 +83,7 @@ return new class extends Migration
             $table->index(['avaliacao_id', 'aluno_id'], 'idx_av_info_av_aluno');
         });
 
-        Schema::create('avaliacao_snapshot_eventos', function (Blueprint $table): void {
+        $this->createIfMissing('avaliacao_snapshot_eventos', function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->string('idempotency_key', 120)->unique();
             $table->string('tipo', 24);
@@ -109,7 +109,7 @@ return new class extends Migration
             $table->index(['avaliacao_id', 'tipo', 'publicado_em'], 'idx_av_snapshot_av_tipo_data');
         });
 
-        Schema::create('avaliacao_aluno_snapshots', function (Blueprint $table): void {
+        $this->createIfMissing('avaliacao_aluno_snapshots', function (Blueprint $table): void {
             $table->id();
             $table->uuid('evento_id');
             $table->foreign('evento_id')->references('id')->on('avaliacao_snapshot_eventos')->cascadeOnDelete();
@@ -135,7 +135,7 @@ return new class extends Migration
             $table->index(['cgm', 'tipo'], 'idx_av_aluno_snapshot_cgm_tipo');
         });
 
-        Schema::create('avaliacao_snapshot_resumos_componentes', function (Blueprint $table): void {
+        $this->createIfMissing('avaliacao_snapshot_resumos_componentes', function (Blueprint $table): void {
             $table->id();
             $table->uuid('evento_id');
             $table->foreign('evento_id')->references('id')->on('avaliacao_snapshot_eventos')->cascadeOnDelete();
@@ -161,5 +161,12 @@ return new class extends Migration
         Schema::dropIfExists('avaliacao_respostas_operacionais');
         Schema::dropIfExists('avaliacao_turma_tokens_escrita');
         Schema::dropIfExists('avaliacao_turma_ciclos');
+    }
+
+    private function createIfMissing(string $tableName, Closure $callback): void
+    {
+        if (! Schema::hasTable($tableName)) {
+            Schema::create($tableName, $callback);
+        }
     }
 };
