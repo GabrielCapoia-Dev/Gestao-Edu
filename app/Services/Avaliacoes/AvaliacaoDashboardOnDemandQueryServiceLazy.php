@@ -14,7 +14,9 @@ use RuntimeException;
  *
  * - ciclos operacionalmente inicializados: respostas relacionais;
  * - ciclos ainda não acessados desde o corte: JSON legado;
- * - dashboard/calendário apenas leem; não pagam nem provocam a conversão.
+ * - dashboard/calendário apenas leem; não pagam nem provocam a conversão;
+ * - assim que todas as turmas do recorte estão inicializadas, volta ao caminho
+ *   relacional puro, sem JSON_TABLE/json_each no SQL cotidiano.
  */
 class AvaliacaoDashboardOnDemandQueryServiceLazy extends AvaliacaoDashboardOnDemandQueryService
 {
@@ -47,32 +49,61 @@ class AvaliacaoDashboardOnDemandQueryServiceLazy extends AvaliacaoDashboardOnDem
                 ->whereRaw('1 = 0');
         }
 
-        $relacional = DB::table('avaliacao_respostas_operacionais as ro')
-            ->join('avaliacao_turma_ciclos as ciclo_ro', 'ciclo_ro.id', '=', 'ro.ciclo_id')
-            ->whereIn('ro.avaliacao_id', $avaliacaoIds)
-            ->whereIn('ciclo_ro.status', [
+        $possuiLegadoPendente = DB::table('avaliacao_turma_ciclos')
+            ->whereIn('avaliacao_id', $avaliacaoIds)
+            ->where('status', AvaliacaoTurmaCiclo::STATUS_ABERTA)
+            ->whereNull('operacional_inicializado_em')
+            ->exists();
+
+        // Caminho normal depois que as turmas já passaram pelo primeiro acesso.
+        if (! $possuiLegadoPendente) {
+            return parent::respostas($avaliacaoIds, $somenteCompletas);
+        }
+
+        $possuiRelacional = DB::table('avaliacao_turma_ciclos')
+            ->whereIn('avaliacao_id', $avaliacaoIds)
+            ->whereIn('status', [
                 AvaliacaoTurmaCiclo::STATUS_ABERTA,
                 AvaliacaoTurmaCiclo::STATUS_REABERTA,
             ])
             ->where(function (QueryBuilder $query): void {
                 $query
-                    ->whereNotNull('ciclo_ro.operacional_inicializado_em')
-                    ->orWhere('ciclo_ro.status', AvaliacaoTurmaCiclo::STATUS_REABERTA);
+                    ->whereNotNull('operacional_inicializado_em')
+                    ->orWhere('status', AvaliacaoTurmaCiclo::STATUS_REABERTA);
             })
-            ->select([
-                'ro.avaliacao_id',
-                'ro.aluno_id',
-                'ro.turma_avaliativa_id as turma_id',
-                'ro.pauta_id',
-                'ro.alternativa_id',
-                'ro.professor_id',
-                'ro.observacao',
-                'ro.respondido_em',
-                'ro.componente_curricular_id',
-            ]);
+            ->exists();
 
         $legado = $this->respostasLegado($avaliacaoIds);
-        $fontes = $relacional->unionAll($legado);
+
+        if ($possuiRelacional) {
+            $relacional = DB::table('avaliacao_respostas_operacionais as ro')
+                ->join('avaliacao_turma_ciclos as ciclo_ro', 'ciclo_ro.id', '=', 'ro.ciclo_id')
+                ->whereIn('ro.avaliacao_id', $avaliacaoIds)
+                ->whereIn('ciclo_ro.status', [
+                    AvaliacaoTurmaCiclo::STATUS_ABERTA,
+                    AvaliacaoTurmaCiclo::STATUS_REABERTA,
+                ])
+                ->where(function (QueryBuilder $query): void {
+                    $query
+                        ->whereNotNull('ciclo_ro.operacional_inicializado_em')
+                        ->orWhere('ciclo_ro.status', AvaliacaoTurmaCiclo::STATUS_REABERTA);
+                })
+                ->select([
+                    'ro.avaliacao_id',
+                    'ro.aluno_id',
+                    'ro.turma_avaliativa_id as turma_id',
+                    'ro.pauta_id',
+                    'ro.alternativa_id',
+                    'ro.professor_id',
+                    'ro.observacao',
+                    'ro.respondido_em',
+                    'ro.componente_curricular_id',
+                ]);
+
+            $fontes = $relacional->unionAll($legado);
+        } else {
+            $fontes = $legado;
+        }
 
         $query = DB::query()
             ->fromSub($fontes, 'ar')
