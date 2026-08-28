@@ -49,9 +49,6 @@ class AvaliacaoPersistenciaLazyTest extends TestCase
             'turma_avaliativa_id' => $cenario['turma']->id,
             'legado_documentos_migrados' => 1,
         ]);
-        $this->assertNotNull(
-            $cenario['avaliacao']->fresh()->turmas()->first()?->id,
-        );
 
         $store->respostasDaAvaliacaoParaAlunos(
             (int) $cenario['avaliacao']->id,
@@ -188,8 +185,6 @@ class AvaliacaoPersistenciaLazyTest extends TestCase
         $avaliacao->componentes()->sync([$componente->id]);
         $avaliacao->escolas()->sync([$escola->id]);
 
-        app(AvaliacaoTurmaCicloService::class)->sincronizarAvaliacao($avaliacao);
-
         return compact(
             'tipo',
             'periodo',
@@ -216,6 +211,10 @@ class AvaliacaoPersistenciaLazyTest extends TestCase
             'alternativa_id' => (int) $alternativa->id,
             'componente_curricular_id' => (int) $cenario['componente']->id,
         ]);
+
+        // Simula exatamente o cenário de produção: o JSON já existia antes de
+        // o ciclo relacional ser materializado pela nova versão do sistema.
+        app(AvaliacaoTurmaCicloService::class)->sincronizarAvaliacao($cenario['avaliacao']);
 
         return $documento->fresh();
     }
