@@ -12,6 +12,8 @@ use App\Services\Avaliacoes\AvaliacaoMovimentacaoRelacionalService;
 use App\Services\Avaliacoes\AvaliacaoMovimentacaoRelacionalServiceLazy;
 use App\Services\Avaliacoes\AvaliacaoRespostaStore;
 use App\Services\Avaliacoes\AvaliacaoRespostaStoreLazy;
+use App\Services\Avaliacoes\AvaliacaoSnapshotService;
+use App\Services\Avaliacoes\AvaliacaoSnapshotServiceLazy;
 use Illuminate\Support\ServiceProvider;
 
 class AvaliacaoPersistenciaServiceProvider extends ServiceProvider
@@ -25,6 +27,7 @@ class AvaliacaoPersistenciaServiceProvider extends ServiceProvider
 
         $this->app->bind(AvaliacaoRespostaStore::class, AvaliacaoRespostaStoreLazy::class);
         $this->app->bind(AvaliacaoDocumentoReader::class, AvaliacaoDocumentoReaderLazy::class);
+        $this->app->bind(AvaliacaoSnapshotService::class, AvaliacaoSnapshotServiceLazy::class);
         $this->app->bind(
             AvaliacaoMovimentacaoRelacionalService::class,
             AvaliacaoMovimentacaoRelacionalServiceLazy::class,
