@@ -36,7 +36,7 @@ class AvaliacaoMigracaoLazySeguraService extends AvaliacaoMigracaoLazyService
             $ciclo?->status === AvaliacaoTurmaCiclo::STATUS_CONCLUIDA
             || $ciclo?->operacional_inicializado_em !== null
         ) {
-            return parent::garantirTurma($avaliacaoId, $turmaAvaliativaId);
+            return $ciclo;
         }
 
         $turmas = Turma::query()
