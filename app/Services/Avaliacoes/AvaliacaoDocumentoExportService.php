@@ -220,10 +220,17 @@ class AvaliacaoDocumentoExportService
             throw new NotFoundHttpException('Nenhuma pauta encontrada para a avaliação do aluno.');
         }
 
-        $documentoPersistido = app(AvaliacaoParecerSnapshotService::class)
-            ->capturarParaAluno($avaliacao, $turma, $aluno);
-        $gestores = app(ParecerResponsaveisResolver::class)
-            ->dadosParaDocumento($documentoPersistido->responsaveis_snapshot ?? []);
+        if (app(AvaliacaoPersistencia::class)->leRelacional()) {
+            $documentoPersistido = app(AvaliacaoDocumentoReader::class)
+                ->ler((int) $avaliacao->id, $aluno, $turma);
+            $gestores = app(ParecerResponsaveisResolver::class)
+                ->dadosParaDocumento($documentoPersistido->responsaveisSnapshot);
+        } else {
+            $documentoPersistido = app(AvaliacaoParecerSnapshotService::class)
+                ->capturarParaAluno($avaliacao, $turma, $aluno);
+            $gestores = app(ParecerResponsaveisResolver::class)
+                ->dadosParaDocumento($documentoPersistido->responsaveis_snapshot ?? []);
+        }
 
         $documento = $this->montarDocumentoAluno(
             $avaliacao,
@@ -371,6 +378,10 @@ class AvaliacaoDocumentoExportService
         string $escopo,
         array $params,
     ): void {
+        if (app(AvaliacaoPersistencia::class)->leRelacional()) {
+            return;
+        }
+
         DB::transaction(function () use ($avaliacao, $turmas, $escopo, $params): void {
             foreach ($turmas as $turma) {
                 $alunos = $this->alunosDaTurma($turma, $escopo, $params);
@@ -571,29 +582,26 @@ class AvaliacaoDocumentoExportService
         string $logoDataUri,
         ?string $documentoTipo = null
     ): array {
-        $documento = AvaliacaoAlunoDocumento::query()
-            ->where('avaliacao_id', (int) $avaliacao->id)
-            ->where('aluno_id', (int) $aluno->id)
-            ->first();
+        $documento = app(AvaliacaoDocumentoReader::class)->ler((int) $avaliacao->id, $aluno, $turma);
 
-        if (! $documento || ! is_array($documento->responsaveis_snapshot) || empty($documento->responsaveis_snapshot)) {
+        if ($documento->responsaveisSnapshot === []) {
             throw new ResponsaveisParecerInvalidosException(
                 'O documento do aluno não possui snapshot de responsáveis do parecer.'
             );
         }
 
-        $snapshot = $documento->responsaveis_snapshot;
+        $snapshot = $documento->responsaveisSnapshot;
         $gestores = app(ParecerResponsaveisResolver::class)->dadosParaDocumento($snapshot);
-        $escolaSnapshot = is_array($snapshot['escola'] ?? null) ? $snapshot['escola'] : [];
-        $turmaSnapshot = is_array($snapshot['turma'] ?? null) ? $snapshot['turma'] : [];
-        $serieSnapshot = is_array($snapshot['serie'] ?? null) ? $snapshot['serie'] : [];
+        $escolaSnapshot = is_array($documento->contexto['escola'] ?? null) ? $documento->contexto['escola'] : [];
+        $turmaSnapshot = is_array($documento->contexto['turma'] ?? null) ? $documento->contexto['turma'] : [];
+        $serieSnapshot = is_array($documento->contexto['serie'] ?? null) ? $documento->contexto['serie'] : [];
         $escolaNome = trim((string) ($escolaSnapshot['nome'] ?? ''));
         $turmaNome = trim((string) ($turmaSnapshot['nome'] ?? ''));
         $turmaTurno = trim((string) ($turmaSnapshot['turno'] ?? ''));
         $serieNome = trim((string) ($serieSnapshot['nome'] ?? ''));
 
-        $pautasPayload = $documento?->pautasPayload() ?? [];
-        $infosPayload = $documento?->informacoesComplementaresPayload() ?? [];
+        $pautasPayload = $documento->pautas();
+        $infosPayload = $documento->informacoes();
 
         $alternativaIds = collect($pautasPayload)
             ->pluck('alternativa_id')
@@ -799,18 +807,15 @@ class AvaliacaoDocumentoExportService
                     return null;
                 }
 
-                $documentos = AvaliacaoAlunoDocumento::query()
-                    ->where('avaliacao_id', (int) $avaliacao->id)
-                    ->whereIn('aluno_id', $alunos->pluck('id')->map(fn ($id) => (int) $id)->all())
-                    ->get()
-                    ->keyBy(fn (AvaliacaoAlunoDocumento $doc) => (int) $doc->aluno_id);
-
                 $respostas = collect();
                 $informacoesComplementares = collect();
                 $alternativaIds = [];
 
-                foreach ($documentos as $alunoId => $documento) {
-                    foreach ($documento->pautasPayload() as $pautaId => $item) {
+                foreach ($alunos as $aluno) {
+                    $alunoId = (int) $aluno->id;
+                    $documento = app(AvaliacaoDocumentoReader::class)->ler((int) $avaliacao->id, $aluno, $turma);
+
+                    foreach ($documento->pautas() as $pautaId => $item) {
                         if (! is_array($item) || empty($item['alternativa_id'])) {
                             continue;
                         }
@@ -828,7 +833,7 @@ class AvaliacaoDocumentoExportService
                         ]);
                     }
 
-                    foreach ($documento->informacoesComplementaresPayload() as $componenteId => $info) {
+                    foreach ($documento->informacoes() as $componenteId => $info) {
                         $informacoesComplementares->put(
                             ((int) $componenteId).'-'.(int) $alunoId,
                             (object) [

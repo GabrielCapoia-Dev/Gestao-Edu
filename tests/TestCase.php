@@ -10,6 +10,18 @@ abstract class TestCase extends BaseTestCase
 {
     public function createApplication(): Application
     {
+        if (getenv('GESTAO_TEST_DB') === 'mysql') {
+            $app = require Application::inferBasePath().'/bootstrap/app.php';
+            $app->make(Kernel::class)->bootstrap();
+
+            $database = (string) config('database.connections.mysql.database');
+            if (! str_ends_with($database, '_testing')) {
+                throw new \RuntimeException('Os testes MySQL exigem um banco dedicado terminado em _testing.');
+            }
+
+            return $app;
+        }
+
         // O container Docker exporta DB_CONNECTION=mysql; força sqlite em memória
         // antes do bootstrap para isolar testes do banco de desenvolvimento.
         putenv('DB_CONNECTION=sqlite');

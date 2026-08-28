@@ -18,6 +18,18 @@ use RuntimeException;
 
 class AvaliacaoAlunoDocumentoService
 {
+    /** @param array<string, mixed> $payload */
+    public function substituirPayloadCompatibilidade(int $avaliacaoId, Aluno $aluno, array $payload): AvaliacaoAlunoDocumento
+    {
+        $documento = $this->obterOuCriar($avaliacaoId, $aluno, false);
+
+        return DB::transaction(function () use ($documento, $payload): AvaliacaoAlunoDocumento {
+            $bloqueado = AvaliacaoAlunoDocumento::query()->lockForUpdate()->findOrFail((int) $documento->id);
+
+            return $this->persistirPayload($bloqueado, $this->normalizarPayload($payload));
+        }, 3);
+    }
+
     public function obter(int $avaliacaoId, int $alunoId): ?AvaliacaoAlunoDocumento
     {
         return AvaliacaoAlunoDocumento::query()

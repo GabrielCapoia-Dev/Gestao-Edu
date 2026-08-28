@@ -73,6 +73,22 @@ npm run k6:150
 npm run k6:300
 ```
 
+### Autosave concorrente de avaliações
+
+Copie `data/avaliacoes-users.example.csv` para `data/avaliacoes-users.local.csv` e informe professores reais do ambiente de teste. Cada linha representa um componente/pauta; use a mesma turma e os mesmos alunos em ao menos duas linhas para reproduzir o preenchimento simultâneo por professores diferentes.
+
+```bash
+npm run k6:avaliacoes
+```
+
+Variáveis específicas: `K6_AVALIACAO_USERS_FILE`, `K6_AVALIACAO_VUS`, `K6_AVALIACAO_DURATION`, `K6_AVALIACAO_P95_MS` e `K6_AVALIACAO_INTERVAL_SECONDS`. O cenário autentica cada professor, carrega o snapshot real do Livewire e envia patches de autosave. Execute o mesmo conjunto contra os commits de baseline e contra o cutover relacional; não reutilize o banco entre as três medições.
+
+Os testes de integração do armazenamento e dos locks devem ser repetidos em MySQL 8 com um banco descartável terminado em `_testing`:
+
+```bash
+php artisan test --configuration=phpunit.mysql.xml
+```
+
 Abrir o Grafana em `http://localhost:3001`, usando `admin` / `admin`, e acessar o dashboard `Gestao Edu - K6 Overview`.
 
 O dashboard mostra os principais sinais para encontrar gargalos:

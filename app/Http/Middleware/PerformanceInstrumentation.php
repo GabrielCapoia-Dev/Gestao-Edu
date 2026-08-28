@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
+use App\Support\Avaliacoes\AvaliacaoPerformanceContext;
 
 class PerformanceInstrumentation
 {
@@ -64,6 +65,7 @@ class PerformanceInstrumentation
             'user_roles' => $user && method_exists($user, 'getRoleNames')
                 ? $user->getRoleNames()->values()->all()
                 : [],
+            'avaliacao' => app(AvaliacaoPerformanceContext::class)->all() ?: null,
         ]);
 
         return $response;

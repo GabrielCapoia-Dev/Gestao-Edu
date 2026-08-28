@@ -901,6 +901,24 @@
                 <div class="gi-toolbar">
                     <div></div>
                     <div class="gi-toolbar-right">
+                        @foreach ($this->turmasDaSerieDisponiveis as $turmaAcao)
+                            @if ($this->podeExportarTurma((int) $turmaAcao->id))
+                                <button type="button" class="gi-action" wire:click="exportarTurma({{ (int) $turmaAcao->id }})">
+                                    Exportar — {{ $this->rotuloTurma($turmaAcao) }}
+                                </button>
+                            @endif
+
+                            @if ($this->podeConcluirTurma((int) $turmaAcao->id))
+                                <button
+                                    type="button"
+                                    class="gi-action gi-action--primary"
+                                    wire:click="concluirTurmaEExportar({{ (int) $turmaAcao->id }})"
+                                    wire:confirm="Concluir esta turma? As respostas serão arquivadas no snapshot final e a turma ficará bloqueada para edição.">
+                                    Concluir turma e exportar — {{ $this->rotuloTurma($turmaAcao) }}
+                                </button>
+                            @endif
+                        @endforeach
+
                         <button type="button" class="gi-action gi-action--primary" wire:click="salvarRespostas" @disabled(! $this->podeResponder())>
                             {{ $this->modoAcompanhamento() ? 'Validar pendências da turma' : 'Validar pendências da série' }}
                         </button>

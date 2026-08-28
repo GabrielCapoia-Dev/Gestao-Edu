@@ -4,6 +4,8 @@ namespace App\Policies;
 
 use App\Models\Pauta;
 use App\Models\User;
+use App\Models\AvaliacaoSnapshotEvento;
+use App\Models\AvaliacaoRespostaOperacional;
 
 class PautaPolicy
 {
@@ -29,6 +31,8 @@ class PautaPolicy
 
     public function delete(User $user, Pauta $model): bool
     {
-        return $user->hasPermissionTo('Excluir Pautas');
+        return $user->hasPermissionTo('Excluir Pautas')
+            && ! AvaliacaoRespostaOperacional::query()->where('pauta_id', (int) $model->id)->exists()
+            && ! AvaliacaoSnapshotEvento::query()->whereIn('avaliacao_id', $model->avaliacoes()->select('avaliacoes.id'))->exists();
     }
 }

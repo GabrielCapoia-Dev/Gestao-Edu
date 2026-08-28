@@ -155,6 +155,10 @@
                         </select>
                     </label>
                 </div>
+
+                @if ($avisoHistorico = $this->avisoFiltrosHistoricos())
+                    <div class="av-note av-note--warning">{{ $avisoHistorico }}</div>
+                @endif
             </section>
 
             <section class="dav-kpi-grid">
