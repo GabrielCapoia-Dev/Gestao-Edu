@@ -35,7 +35,7 @@ class AvaliacaoRespostaStoreLazy extends AvaliacaoRespostaStore
         ?int $expectedVersion = null,
         array $expectedValues = [],
     ): int {
-        $this->migracaoLazy->garantirTurma($avaliacaoId, $turmaAvaliativaId);
+        $ciclo = $this->migracaoLazy->garantirTurma($avaliacaoId, $turmaAvaliativaId);
 
         return DB::transaction(function () use (
             $avaliacaoId,
@@ -45,11 +45,13 @@ class AvaliacaoRespostaStoreLazy extends AvaliacaoRespostaStore
             $dados,
             $expectedVersion,
             $expectedValues,
+            $ciclo,
         ): int {
-            // O lock é somente da resposta exata. Pautas diferentes continuam
+            // Usa exatamente a mesma chave do índice UNIQUE
+            // (ciclo_id, aluno_id, pauta_id). Pautas diferentes continuam
             // independentes, mesmo para o mesmo aluno.
             AvaliacaoRespostaOperacional::query()
-                ->where('avaliacao_id', $avaliacaoId)
+                ->where('ciclo_id', (int) $ciclo->id)
                 ->where('aluno_id', (int) $aluno->id)
                 ->where('pauta_id', $pautaId)
                 ->lockForUpdate()
@@ -74,11 +76,11 @@ class AvaliacaoRespostaStoreLazy extends AvaliacaoRespostaStore
         int $pautaId,
         ?int $expectedVersion = null,
     ): void {
-        $this->migracaoLazy->garantirTurma($avaliacaoId, $turmaAvaliativaId);
+        $ciclo = $this->migracaoLazy->garantirTurma($avaliacaoId, $turmaAvaliativaId);
 
-        DB::transaction(function () use ($avaliacaoId, $turmaAvaliativaId, $aluno, $pautaId, $expectedVersion): void {
+        DB::transaction(function () use ($avaliacaoId, $turmaAvaliativaId, $aluno, $pautaId, $expectedVersion, $ciclo): void {
             AvaliacaoRespostaOperacional::query()
-                ->where('avaliacao_id', $avaliacaoId)
+                ->where('ciclo_id', (int) $ciclo->id)
                 ->where('aluno_id', (int) $aluno->id)
                 ->where('pauta_id', $pautaId)
                 ->lockForUpdate()
@@ -97,7 +99,7 @@ class AvaliacaoRespostaStoreLazy extends AvaliacaoRespostaStore
         ?int $professorId,
         ?int $expectedVersion = null,
     ): int {
-        $this->migracaoLazy->garantirTurma($avaliacaoId, $turmaAvaliativaId);
+        $ciclo = $this->migracaoLazy->garantirTurma($avaliacaoId, $turmaAvaliativaId);
 
         return DB::transaction(function () use (
             $avaliacaoId,
@@ -107,9 +109,10 @@ class AvaliacaoRespostaStoreLazy extends AvaliacaoRespostaStore
             $texto,
             $professorId,
             $expectedVersion,
+            $ciclo,
         ): int {
             AvaliacaoInformacaoOperacional::query()
-                ->where('avaliacao_id', $avaliacaoId)
+                ->where('ciclo_id', (int) $ciclo->id)
                 ->where('aluno_id', (int) $aluno->id)
                 ->where('componente_chave', $componenteId)
                 ->lockForUpdate()
