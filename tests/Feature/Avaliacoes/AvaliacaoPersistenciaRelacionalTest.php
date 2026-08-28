@@ -31,12 +31,6 @@ class AvaliacaoPersistenciaRelacionalTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        config()->set('avaliacoes_persistencia.driver', 'relacional');
-    }
-
     public function test_autosave_grava_linha_pequena_e_detecta_versao_concorrente(): void
     {
         $cenario = $this->criarCenario();
@@ -59,7 +53,8 @@ class AvaliacaoPersistenciaRelacionalTest extends TestCase
         );
 
         $this->assertSame(1, $versao);
-        $this->assertLessThanOrEqual(4, count($queries), implode(PHP_EOL, $queries));
+        // Inclui o lock pontual da mesma resposta para serializar conflitos reais.
+        $this->assertLessThanOrEqual(5, count($queries), implode(PHP_EOL, $queries));
         $this->assertDatabaseHas('avaliacao_respostas_operacionais', [
             'avaliacao_id' => $cenario['avaliacao']->id,
             'turma_avaliativa_id' => $cenario['turma']->id,
@@ -180,7 +175,6 @@ class AvaliacaoPersistenciaRelacionalTest extends TestCase
 
     public function test_comando_migra_json_atual_sem_apagar_documento(): void
     {
-        config()->set('avaliacoes_persistencia.driver', 'json');
         $cenario = $this->criarCenario(sincronizarCiclo: false);
         $documento = app(AvaliacaoAlunoDocumentoService::class)
             ->obterOuCriar($cenario['avaliacao']->id, $cenario['aluno']);
