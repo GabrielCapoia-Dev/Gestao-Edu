@@ -37,6 +37,7 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\On;
@@ -201,10 +202,23 @@ class DashboardAvaliacoes extends Page implements HasForms
             return;
         }
 
-        $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas();
-        $tabelaEscolas = $this->montarTabelaEscolas($avaliacaoIds);
-        $totais = $this->calcularTotaisPreenchimento($avaliacaoIds, $tabelaEscolas);
-        $turnos = $this->calcularPreenchimentoPorTurno($avaliacaoIds);
+        $resumo = Cache::remember(
+            $this->dashboardCacheKey('resumo'),
+            now()->addSeconds($this->dashboardCacheTtl()),
+            function (): array {
+                $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas();
+                $tabelaEscolas = $this->montarTabelaEscolas($avaliacaoIds);
+
+                return [
+                    'tabela_escolas' => $tabelaEscolas,
+                    'totais' => $this->calcularTotaisPreenchimento($avaliacaoIds, $tabelaEscolas),
+                    'turnos' => $this->calcularPreenchimentoPorTurno($avaliacaoIds),
+                ];
+            }
+        );
+        $tabelaEscolas = $resumo['tabela_escolas'];
+        $totais = $resumo['totais'];
+        $turnos = $resumo['turnos'];
 
         $this->cards = [
             ...$totais,
@@ -239,15 +253,36 @@ class DashboardAvaliacoes extends Page implements HasForms
         }
 
         $this->normalizarFiltros();
-        $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas();
-        $this->preenchimentoPorComponentes = $this->montarPreenchimentoPorComponentes($avaliacaoIds);
-        $this->preenchimentoPorSeries = $this->montarPreenchimentoPorSeries($avaliacaoIds);
+        $graficos = Cache::remember(
+            $this->dashboardCacheKey('graficos'),
+            now()->addSeconds($this->dashboardCacheTtl()),
+            function (): array {
+                $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas();
+
+                return [
+                    'componentes' => $this->montarPreenchimentoPorComponentes($avaliacaoIds),
+                    'series' => $this->montarPreenchimentoPorSeries($avaliacaoIds),
+                ];
+            }
+        );
+        $this->preenchimentoPorComponentes = $graficos['componentes'];
+        $this->preenchimentoPorSeries = $graficos['series'];
         $this->graficosCarregados = true;
     }
 
     public function carregarAcompanhamentoDashboard(): void
     {
-        $this->atualizarAcompanhamentoTurmas();
+        $acompanhamento = Cache::remember(
+            $this->dashboardCacheKey('acompanhamento'),
+            now()->addSeconds($this->dashboardCacheTtl()),
+            function (): array {
+                $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas();
+
+                return $this->montarAcompanhamentoTurmas($avaliacaoIds, paginar: true);
+            }
+        );
+        $this->acompanhamentoTurmas = $acompanhamento['itens'];
+        $this->acompanhamentoTurmasTotal = $acompanhamento['total'];
         $this->acompanhamentoCarregado = true;
     }
 
@@ -608,6 +643,7 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         $this->parecerTurmaElegibilidade = [];
         $this->acompanhamentoLinhasAlteradas = [];
+        $this->limparDashboardCache();
         $this->carregarResumoDashboard();
         $this->ultimaAtualizacaoIncremental = now()->format('d/m/Y H:i:s');
         $this->ultimaAtualizacao = $this->ultimaAtualizacaoIncremental;
@@ -3616,6 +3652,31 @@ class DashboardAvaliacoes extends Page implements HasForms
     {
         foreach (range(1, $count) as $index) {
             $sheet->getColumnDimension(Coordinate::stringFromColumnIndex($index))->setAutoSize(true);
+        }
+    }
+
+    private function dashboardCacheTtl(): int
+    {
+        return max((int) config('performance.cache_ttl.avaliacoes_dashboard', 45), 1);
+    }
+
+    private function dashboardCacheKey(string $secao): string
+    {
+        $contexto = [
+            'usuario' => Auth::id(),
+            'filtros' => $this->filtros,
+            'filtros_acompanhamento' => $secao === 'acompanhamento' ? $this->filtrosAcompanhamento : [],
+            'pagina' => $secao === 'acompanhamento' ? $this->acompanhamentoTurmasPagina : null,
+            'por_pagina' => $secao === 'acompanhamento' ? $this->acompanhamentoTurmasPorPagina : null,
+        ];
+
+        return 'avaliacoes-dashboard:'.$secao.':'.hash('sha256', serialize($contexto));
+    }
+
+    private function limparDashboardCache(): void
+    {
+        foreach (['resumo', 'graficos', 'acompanhamento'] as $secao) {
+            Cache::forget($this->dashboardCacheKey($secao));
         }
     }
 
