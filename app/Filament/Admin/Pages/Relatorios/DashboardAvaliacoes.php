@@ -3106,7 +3106,7 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         // Ciclos concluídos já não possuem linhas operacionais: sua progressão
         // vem dos resumos imutáveis do snapshot final.
-        if (app(AvaliacaoPersistencia::class)->leRelacional()) {
+        if (DB::getSchemaBuilder()->hasTable('avaliacao_turma_ciclos')) {
             $historicos = DB::table('avaliacao_turma_ciclos as ciclo')
                 ->join('avaliacoes as av', 'av.id', '=', 'ciclo.avaliacao_id')
                 ->join('turmas as t', 't.id', '=', 'ciclo.turma_avaliativa_id')
