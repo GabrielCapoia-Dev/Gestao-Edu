@@ -449,6 +449,35 @@ class DashboardAvaliacoes extends Page implements HasForms
         return $ciclo?->status !== AvaliacaoTurmaCiclo::STATUS_CONCLUIDA;
     }
 
+    public function getPodeReabrirParecerWorkspaceProperty(): bool
+    {
+        $linha = $this->workspaceAcompanhamentoLinha;
+        if (! $this->workspaceAcompanhamentoAberto || ! is_array($linha) || ($linha['status'] ?? null) !== 'concluido') {
+            return false;
+        }
+        return Gate::allows('reopen', Avaliacao::class);
+    }
+
+    public function reabrirParecerTurma(): void
+    {
+        abort_unless(static::canAccess(), 403);
+        if (! $this->podeReabrirParecerWorkspace) {
+            return;
+        }
+        $linha = $this->workspaceAcompanhamentoLinha;
+        $ciclo = AvaliacaoTurmaCiclo::query()->where('avaliacao_id', (int) $linha['avaliacao_id'])
+            ->where('turma_avaliativa_id', (int) $linha['turma_id'])->firstOrFail();
+        try {
+            app(AvaliacaoSnapshotService::class)->reabrir($ciclo, Auth::user(), 'Reabertura solicitada pelo acompanhamento.');
+            $this->fecharWorkspaceAcompanhamento();
+            $this->limparDashboardCache();
+            $this->dispatch('dashboard-acompanhamento-recarregar');
+            Notification::make()->title('Avaliação reaberta para edição.')->success()->send();
+        } catch (Throwable $exception) {
+            Notification::make()->title('Não foi possível reabrir a avaliação.')->body($exception->getMessage())->danger()->send();
+        }
+    }
+
     public function concluirParecerTurma(): void
     {
         abort_unless(static::canAccess(), 403);

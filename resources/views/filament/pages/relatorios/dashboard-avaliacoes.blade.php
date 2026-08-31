@@ -480,6 +480,9 @@
                                     | {{ $workspaceAcompanhamentoLinha['serie_nome'] }}
                                     | {{ $workspaceAcompanhamentoLinha['turma_nome'] }}
                                 </p>
+                                @if (($workspaceAcompanhamentoLinha['status'] ?? null) === 'concluido')
+                                    <span class="dav-status-badge dav-status-badge--success">Avaliação concluída — somente leitura</span>
+                                @endif
                             </div>
 
                             <button type="button" class="dav-slideover-close" x-on:click="open = false; $wire.fecharWorkspaceAcompanhamento()" aria-label="Fechar">
@@ -504,6 +507,12 @@
                         </div>
 
                         <footer class="dav-slideover-footer">
+                            @if ($this->podeReabrirParecerWorkspace)
+                                <button type="button" class="dav-action dav-action--warning" wire:click="reabrirParecerTurma" wire:loading.attr="disabled" wire:target="reabrirParecerTurma">
+                                    <span wire:loading.remove wire:target="reabrirParecerTurma">Reabrir avaliação</span>
+                                    <span wire:loading wire:target="reabrirParecerTurma">Reabrindo...</span>
+                                </button>
+                            @endif
                             @if ($this->podeConcluirParecerWorkspace)
                                 <button
                                     type="button"
