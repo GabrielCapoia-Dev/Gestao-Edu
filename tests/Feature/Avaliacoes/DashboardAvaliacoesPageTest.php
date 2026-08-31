@@ -1161,12 +1161,46 @@ class DashboardAvaliacoesPageTest extends TestCase
             ->where('avaliacao_id', $linha['avaliacao_id'])
             ->where('turma_id', $linha['turma_id'])
             ->firstOrFail();
-        $this->assertNotEmpty($documento->responsaveis_snapshot);
-        $this->assertNotNull($documento->responsaveis_snapshot_em);
+        $this->assertEmpty($documento->responsaveis_snapshot);
+        $this->assertNull($documento->responsaveis_snapshot_em);
 
-        $component->assertRedirect();
+        $component->assertNoRedirect();
 
         Queue::assertPushed(ProcessExportRequestJob::class, 1);
+    }
+
+    public function test_modal_de_acompanhamento_conclui_turma_sem_fechar_ou_redirecionar(): void
+    {
+        $dados = $this->criarCenarioExportacaoParecerAcompanhamento();
+        $component = $dados['component'];
+        $linha = $dados['linha'];
+        Permission::findOrCreate('Concluir Avaliações');
+        $dados['user']->givePermissionTo('Concluir Avaliações');
+
+        $component
+            ->call(
+                'abrirWorkspaceAcompanhamento',
+                $linha['avaliacao_id'],
+                $linha['turma_id'],
+                $linha['escola_id'],
+                $linha['serie_id'],
+                $linha['componente_id'],
+                $linha['professor_id'],
+            )
+            ->assertSet('workspaceAcompanhamentoAberto', true)
+            ->assertSee('Concluir avaliação')
+            ->call('concluirParecerTurma')
+            ->assertNotified('Avaliação da turma concluída.')
+            ->assertSet('workspaceAcompanhamentoAberto', true)
+            ->assertNoRedirect();
+
+        $this->assertDatabaseHas('avaliacao_turma_ciclos', [
+            'avaliacao_id' => $linha['avaliacao_id'],
+            'turma_avaliativa_id' => $linha['turma_id'],
+            'status' => 'concluida',
+        ]);
+        $this->assertDatabaseCount('avaliacao_respostas_operacionais', 0);
+        $this->assertDatabaseCount('avaliacao_aluno_snapshots', 1);
     }
 
     public function test_exportar_parecer_no_acompanhamento_bloqueia_quando_falta_gestor_obrigatorio(): void
@@ -1238,7 +1272,7 @@ class DashboardAvaliacoesPageTest extends TestCase
     }
 
     /**
-     * @return array{component: Testable, linha: array<string, mixed>}
+     * @return array{component: Testable, linha: array<string, mixed>, user: User}
      */
     private function criarCenarioExportacaoParecerAcompanhamento(
         bool $comDiretor = true,
@@ -1302,13 +1336,14 @@ class DashboardAvaliacoesPageTest extends TestCase
 
         $this->vincularGestoresDaTurma($escola, $turma, $comDiretor, $comCoordenacao);
 
-        $component = Livewire::actingAs($user)
-            ->test(DashboardAvaliacoes::class)
+        $this->actingAs($user);
+        $component = Livewire::test(DashboardAvaliacoes::class)
             ->set('filtros.avaliacao_id', $avaliacao->id);
 
         return [
             'component' => $component,
             'linha' => $component->instance()->acompanhamentoTurmas[0],
+            'user' => $user,
         ];
     }
 

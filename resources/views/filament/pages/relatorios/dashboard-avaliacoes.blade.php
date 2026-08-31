@@ -504,6 +504,20 @@
                         </div>
 
                         <footer class="dav-slideover-footer">
+                            @if ($this->podeConcluirParecerWorkspace)
+                                <button
+                                    type="button"
+                                    class="dav-action dav-action--primary"
+                                    wire:click="concluirParecerTurma"
+                                    wire:loading.attr="disabled"
+                                    wire:target="concluirParecerTurma"
+                                    wire:confirm="Concluir a avaliação desta turma? As respostas serão convertidas para o snapshot JSON final e a turma ficará bloqueada para edição."
+                                >
+                                    <span wire:loading.remove wire:target="concluirParecerTurma">Concluir avaliação</span>
+                                    <span wire:loading wire:target="concluirParecerTurma">Concluindo...</span>
+                                </button>
+                            @endif
+
                             <button type="button" class="dav-action" x-on:click="open = false; $wire.fecharWorkspaceAcompanhamento()">
                                 Fechar
                             </button>

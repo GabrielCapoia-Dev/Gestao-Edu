@@ -128,7 +128,10 @@ services:
       - .:/var/www
     depends_on:
       app:
-        condition: service_healthy
+        # O worker já aguarda bootstrap/cache/runtime-ready no entrypoint.
+        # Iniciá-lo junto do app evita que permaneça apenas como "Created"
+        # quando o healthcheck do app falha durante um deploy.
+        condition: service_started
       db:
         condition: service_healthy
       redis:

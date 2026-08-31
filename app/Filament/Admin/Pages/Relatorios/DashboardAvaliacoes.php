@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Pages\Relatorios;
 
 use App\Models\Alternativa;
 use App\Models\Avaliacao;
+use App\Models\AvaliacaoTurmaCiclo;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\Pauta;
@@ -15,7 +16,9 @@ use App\Models\Turma;
 use App\Models\User;
 use App\Services\Avaliacoes\AvaliacaoDashboardOnDemandQueryService;
 use App\Services\Avaliacoes\AvaliacaoDocumentoExportService;
+use App\Services\Avaliacoes\AvaliacaoMigracaoLazyService;
 use App\Services\Avaliacoes\AvaliacaoPersistencia;
+use App\Services\Avaliacoes\AvaliacaoSnapshotService;
 use App\Services\Exports\ExportRequestService;
 use App\Services\PessoaScopeService;
 use App\Services\Relatorios\RelatorioPdfRenderer;
@@ -392,6 +395,87 @@ class DashboardAvaliacoes extends Page implements HasForms
         }
     }
 
+    public function getPodeConcluirParecerWorkspaceProperty(): bool
+    {
+        $linha = $this->workspaceAcompanhamentoLinha;
+
+        if (! $this->workspaceAcompanhamentoAberto
+            || ! is_array($linha)
+            || ($linha['status'] ?? null) !== 'concluido'
+            || ! Gate::allows('conclude', Avaliacao::class)) {
+            return false;
+        }
+
+        $ciclo = AvaliacaoTurmaCiclo::query()
+            ->where('avaliacao_id', (int) ($linha['avaliacao_id'] ?? 0))
+            ->where('turma_avaliativa_id', (int) ($linha['turma_id'] ?? 0))
+            ->first();
+
+        return $ciclo?->status !== AvaliacaoTurmaCiclo::STATUS_CONCLUIDA;
+    }
+
+    public function concluirParecerTurma(): void
+    {
+        abort_unless(static::canAccess(), 403);
+
+        if (! $this->podeConcluirParecerWorkspace) {
+            Notification::make()
+                ->title('Esta avaliação não pode ser concluída neste momento.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $linha = $this->workspaceAcompanhamentoLinha;
+        $linhaAtual = $this->localizarLinhaAcompanhamento(
+            (int) $linha['avaliacao_id'],
+            (int) $linha['turma_id'],
+            (int) $linha['escola_id'],
+            (int) $linha['serie_id'],
+            (int) ($linha['componente_id'] ?? 0),
+            (int) ($linha['professor_id'] ?? 0),
+        );
+
+        if ($linhaAtual === null || ($linhaAtual['status'] ?? null) !== 'concluido') {
+            Notification::make()
+                ->title('A turma não está mais completa ou saiu do seu escopo.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        /** @var User|null $user */
+        $user = Auth::user();
+        abort_unless($user !== null, 403);
+
+        try {
+            $ciclo = app(AvaliacaoMigracaoLazyService::class)->garantirTurma(
+                (int) $linhaAtual['avaliacao_id'],
+                (int) $linhaAtual['turma_id'],
+            );
+            app(AvaliacaoSnapshotService::class)->concluir($ciclo, $user);
+
+            $this->workspaceAcompanhamentoLinha = $linhaAtual;
+            $this->workspaceAcompanhamentoTemAlteracoes = true;
+            $this->workspaceAcompanhamentoKey++;
+            $this->parecerTurmaElegibilidade = [];
+
+            Notification::make()
+                ->title('Avaliação da turma concluída.')
+                ->body('As respostas foram convertidas para o snapshot JSON final.')
+                ->success()
+                ->send();
+        } catch (Throwable $exception) {
+            Notification::make()
+                ->title('Não foi possível concluir a avaliação da turma.')
+                ->body($exception->getMessage())
+                ->danger()
+                ->send();
+        }
+    }
+
     public function exportarParecerTurma(
         int $avaliacaoId,
         int $turmaId,
@@ -473,8 +557,6 @@ class DashboardAvaliacoes extends Page implements HasForms
                 'escopo' => 'turma',
                 'turma_id' => $turmaId,
             ];
-            $documentoService->prepararSnapshotsParecer($filtrosExportacao, $user);
-
             $exportRequest = app(ExportRequestService::class)->queue(
                 user: $user,
                 type: 'avaliacao_documento',
@@ -490,7 +572,6 @@ class DashboardAvaliacoes extends Page implements HasForms
                 ->success()
                 ->send();
 
-            $this->redirect(url()->previous());
         } catch (Throwable $exception) {
             Notification::make()
                 ->title('Não foi possível iniciar a exportação')
