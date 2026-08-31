@@ -85,6 +85,8 @@ class AvaliacaoPolicy
 
     public function reopen(User $user): bool
     {
-        return $user->hasPermissionTo('Reabrir Avaliações');
+        // Administradores mantêm acesso administrativo mesmo quando a
+        // permissão foi criada após o cadastro do usuário.
+        return $user->hasRole('Admin') || $user->hasPermissionTo('Reabrir Avaliações');
     }
 }
