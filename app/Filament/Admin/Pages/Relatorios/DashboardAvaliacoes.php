@@ -3104,6 +3104,40 @@ class DashboardAvaliacoes extends Page implements HasForms
             ->orderBy('acompanhamento.turma_nome')
             ->get();
 
+        // Ciclos concluídos já não possuem linhas operacionais: sua progressão
+        // vem dos resumos imutáveis do snapshot final.
+        if (app(AvaliacaoPersistencia::class)->leRelacional()) {
+            $historicos = DB::table('avaliacao_turma_ciclos as ciclo')
+                ->join('avaliacoes as av', 'av.id', '=', 'ciclo.avaliacao_id')
+                ->join('turmas as t', 't.id', '=', 'ciclo.turma_avaliativa_id')
+                ->leftJoin('avaliacao_snapshot_eventos as evento', 'evento.id', '=', 'ciclo.snapshot_evento_atual_id')
+                ->leftJoin('escolas as e', 'e.id', '=', 't.id_escola')
+                ->leftJoin('series as s', 's.id', '=', 't.id_serie')
+                ->leftJoin('avaliacao_snapshot_resumos_componentes as resumo', function ($join): void {
+                    $join->on('resumo.ciclo_id', '=', 'ciclo.id')
+                        ->on('resumo.evento_id', '=', 'ciclo.snapshot_evento_atual_id');
+                })
+                ->whereIn('ciclo.avaliacao_id', $avaliacaoIds)
+                ->where('ciclo.status', AvaliacaoTurmaCiclo::STATUS_CONCLUIDA)
+                ->when(($filtros['series_ids'] ?? []) !== [], fn ($q) => $q->whereIn('t.id_serie', $filtros['series_ids']))
+                ->when(($filtros['turnos'] ?? []) !== [], fn ($q) => $q->whereIn('t.turno', $filtros['turnos']))
+                ->when(($filtros['escolas_ids'] ?? []) !== [], fn ($q) => $q->whereIn('t.id_escola', $filtros['escolas_ids']))
+                ->groupBy('ciclo.id', 'ciclo.avaliacao_id', 'ciclo.turma_avaliativa_id', 'av.nome', 't.nome', 't.turno', 'e.id', 'e.nome', 's.id', 's.nome', 'evento.total_alunos')
+                ->select([
+                    'ciclo.avaliacao_id', 'ciclo.turma_avaliativa_id as turma_id', 'av.nome as avaliacao_nome',
+                    'e.id as escola_id', 't.nome as turma_nome', 't.turno', 'e.nome as escola_nome',
+                    's.id as serie_id', 's.nome as serie_nome',
+                ])
+                ->selectRaw('COALESCE(SUM(resumo.respostas_esperadas), 0) as preenchimentos_esperados')
+                ->selectRaw('COALESCE(SUM(resumo.respostas_concluidas), 0) as preenchimentos_respondidos')
+                ->selectRaw('COALESCE(SUM(resumo.respostas_esperadas), 0) as pautas_total')
+                ->selectRaw('COALESCE(evento.total_alunos, 0) as alunos_total')
+                ->selectRaw('MAX(ciclo.concluida_em) as ultima_resposta_em')
+                ->get();
+
+            $dados = $dados->concat($historicos);
+        }
+
         $turmasDaPagina = Turma::query()
             ->whereIn('id', $dados->pluck('turma_id')->map(fn ($id): int => (int) $id)->unique()->values()->all())
             ->get()
