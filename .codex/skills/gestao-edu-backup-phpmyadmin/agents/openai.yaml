@@ -1,0 +1,5 @@
+interface:
+  display_name: "Backup SQL para phpMyAdmin"
+  short_description: "Divide e compacta dumps SQL para testes"
+  default_prompt: "Use $gestao-edu-backup-phpmyadmin para preparar este dump SQL para importacao sequencial no phpMyAdmin."
+
