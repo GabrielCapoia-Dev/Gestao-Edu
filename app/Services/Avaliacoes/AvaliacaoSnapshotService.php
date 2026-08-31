@@ -63,7 +63,12 @@ class AvaliacaoSnapshotService
                 ->where('ciclo_id', (int) $ciclo->id)
                 ->whereIn('aluno_id', $alunos->pluck('id'))
                 ->whereIn('pauta_id', $pautas->pluck('id'))
-                ->get();
+                ->orderByDesc('version')
+                ->orderByDesc('updated_at')
+                ->orderByDesc('id')
+                ->get()
+                ->unique(fn (AvaliacaoRespostaOperacional $resposta): string => $resposta->aluno_id.':'.$resposta->pauta_id)
+                ->values();
             $informacoes = AvaliacaoInformacaoOperacional::query()
                 ->where('ciclo_id', (int) $ciclo->id)
                 ->whereIn('aluno_id', $alunos->pluck('id'))
