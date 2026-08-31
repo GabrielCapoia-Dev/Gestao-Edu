@@ -436,7 +436,7 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         if (! $this->workspaceAcompanhamentoAberto
             || ! is_array($linha)
-            || ($linha['status'] ?? null) !== 'concluido'
+            || ($linha['status'] ?? null) !== 'preenchido'
             || ! Gate::allows('conclude', Avaliacao::class)) {
             return false;
         }
@@ -501,7 +501,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             (int) ($linha['professor_id'] ?? 0),
         );
 
-        if ($linhaAtual === null || ($linhaAtual['status'] ?? null) !== 'concluido') {
+        if ($linhaAtual === null || ($linhaAtual['status'] ?? null) !== 'preenchido') {
             Notification::make()
                 ->title('A turma não está mais completa ou saiu do seu escopo.')
                 ->warning()
