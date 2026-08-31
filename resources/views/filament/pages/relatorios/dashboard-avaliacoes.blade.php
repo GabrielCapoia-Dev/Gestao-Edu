@@ -392,12 +392,13 @@
                                 @php
                                     $statusClass = match ($item['status']) {
                                         'concluido' => 'dav-badge--ok',
+                                        'preenchido' => 'dav-badge--filled',
                                         'em_andamento' => 'dav-badge--warn',
                                         default => 'dav-badge--danger',
                                     };
                                     $linhaAlterada = ! empty($item['alterado_recentemente']);
                                 @endphp
-                                <tr class="{{ $linhaAlterada ? 'dav-row-changed' : '' }}" @if($linhaAlterada) title="Valor atualizado nesta verificação" @endif>
+                                <tr class="{{ $linhaAlterada ? 'dav-row-changed' : '' }}{{ $item['status'] === 'concluido' ? ' dav-row-completed' : '' }}" @if($linhaAlterada) title="Valor atualizado nesta verificação" @endif>
                                     <td>{{ $item['escola_nome'] }}</td>
                                     <td>{{ $item['serie_nome'] }}</td>
                                     <td>
@@ -470,7 +471,7 @@
                 <div class="dav-slideover-shell" x-data="{ open: true }" x-show="open" x-transition.opacity x-on:keydown.escape.window="open = false; $wire.fecharWorkspaceAcompanhamento()" role="dialog" aria-modal="true">
                     <button type="button" class="dav-slideover-backdrop" x-on:click="open = false; $wire.fecharWorkspaceAcompanhamento()" aria-label="Fechar modal de avaliação"></button>
 
-                    <section class="dav-slideover-panel">
+                    <section class="dav-slideover-panel{{ ($workspaceAcompanhamentoLinha['status'] ?? null) === 'concluido' ? ' dav-slideover-panel--completed' : '' }}">
                         <header class="dav-slideover-header">
                             <div>
                                 <p class="dav-slideover-eyebrow">Acompanhamento de Pareceres</p>
@@ -1155,6 +1156,10 @@
         .dav-bar-fill--amber {
             background: linear-gradient(90deg, #c77700 0%, #e0a11a 100%);
         }
+
+        .dav-badge--filled { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+        .dav-row-completed { background: #f0fdf4; }
+        .dav-slideover-panel--completed .av-progress-bar { background: #16a34a !important; }
 
         .dav-bar-note {
             color: var(--gray-500);

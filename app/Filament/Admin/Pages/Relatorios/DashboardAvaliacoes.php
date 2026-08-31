@@ -854,6 +854,7 @@ class DashboardAvaliacoes extends Page implements HasForms
                     ->options([
                         '' => 'Todos',
                         'concluido' => 'Concluído',
+                        'preenchido' => 'Preenchido',
                         'em_andamento' => 'Em andamento',
                         'nao_iniciado' => 'Não iniciado',
                     ])
@@ -2712,7 +2713,7 @@ class DashboardAvaliacoes extends Page implements HasForms
         $esperadasPorAluno = (clone $this->basePreenchimentosEsperadosQuery($avaliacaoIds))
             ->whereIn('t.turno', array_keys($resultado))
             ->groupBy('t.turno', 'aln.id')
-            ->select(
+                ->select(
                 't.turno',
                 'aln.id as aluno_id',
                 DB::raw("COUNT(DISTINCT {$distinctEsperado}) as total")
@@ -3060,7 +3061,8 @@ class DashboardAvaliacoes extends Page implements HasForms
                 't.turno',
                 'e.nome as escola_nome',
                 's.id as serie_id',
-                's.nome as serie_nome',
+                    's.nome as serie_nome',
+                    DB::raw('NULL as ciclo_status'),
                 DB::raw("COUNT(DISTINCT {$distinctEsperado}) as preenchimentos_esperados"),
                 DB::raw('COUNT(DISTINCT p.id) as pautas_total'),
                 DB::raw('COUNT(DISTINCT aln.id) as alunos_total')
@@ -3157,6 +3159,7 @@ class DashboardAvaliacoes extends Page implements HasForms
                     'e.id as escola_id', 't.nome as turma_nome', 't.turno', 'e.nome as escola_nome',
                     's.id as serie_id', 's.nome as serie_nome',
                 ])
+                ->selectRaw('ciclo.status as ciclo_status')
                 ->selectRaw('COALESCE(SUM(resumo.respostas_esperadas), 0) as preenchimentos_esperados')
                 ->selectRaw('COALESCE(SUM(resumo.respostas_concluidas), 0) as preenchimentos_respondidos')
                 ->selectRaw('COALESCE(SUM(resumo.respostas_esperadas), 0) as pautas_total')
@@ -3181,7 +3184,8 @@ class DashboardAvaliacoes extends Page implements HasForms
                     ? round(($preenchimentosRespondidos / $preenchimentosEsperados) * 100, 1)
                     : 0.0;
                 $status = match (true) {
-                    $preenchimentosEsperados > 0 && $preenchimentosPendentes === 0 => 'concluido',
+                    ($item->ciclo_status ?? null) === AvaliacaoTurmaCiclo::STATUS_CONCLUIDA => 'concluido',
+                    $preenchimentosEsperados > 0 && $preenchimentosPendentes === 0 => 'preenchido',
                     $preenchimentosRespondidos > 0 => 'em_andamento',
                     default => 'nao_iniciado',
                 };
@@ -3214,6 +3218,7 @@ class DashboardAvaliacoes extends Page implements HasForms
                     'status' => $status,
                     'status_label' => match ($status) {
                         'concluido' => 'Concluído',
+                        'preenchido' => 'Preenchido',
                         'em_andamento' => 'Em andamento',
                         default => 'Não iniciado',
                     },
@@ -3424,7 +3429,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             ? $turno
             : null;
         $status = (string) ($this->filtrosAcompanhamento['status'] ?? '');
-        $this->filtrosAcompanhamento['status'] = in_array($status, ['concluido', 'em_andamento', 'nao_iniciado'], true)
+        $this->filtrosAcompanhamento['status'] = in_array($status, ['concluido', 'preenchido', 'em_andamento', 'nao_iniciado'], true)
             ? $status
             : null;
     }
