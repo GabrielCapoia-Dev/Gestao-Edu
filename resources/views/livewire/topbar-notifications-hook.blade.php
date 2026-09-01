@@ -59,7 +59,7 @@
     class="notif-wrapper"
     data-notification-topbar
     data-count-url="{{ route('notifications.unreadCount') }}"
-    data-poll-interval="{{ (int) config('notifications.topbar_poll_interval_ms', 60000) }}"
+    data-poll-interval="{{ (int) config('notifications.topbar_poll_interval_ms', 180000) }}"
 >
     <a
         href="{{ $centralUrl }}"
@@ -183,7 +183,7 @@
             soundReady = true;
         }, { once: true });
 
-        const pollInterval = Math.max(30000, Number(document.querySelector('[data-notification-topbar]')?.dataset.pollInterval ?? 60000));
+        const pollInterval = Math.max(30000, Number(document.querySelector('[data-notification-topbar]')?.dataset.pollInterval ?? 180000));
 
         refresh();
         setInterval(refresh, pollInterval);

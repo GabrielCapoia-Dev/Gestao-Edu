@@ -7,7 +7,7 @@
         @if ($pendingAutoDownload && ! $autoDownloadDispatched)
             <div
                 x-init="$wire.set('autoDownload', @js((string) $pendingAutoDownload))"
-                wire:poll.visible.{{ (int) config('performance.livewire_polling.exports_auto_download', 10) }}s="pollAutoDownload"
+                wire:poll.visible.{{ (int) config('performance.livewire_polling.exports_auto_download', 30) }}s="pollAutoDownload"
             ></div>
         @endif
 

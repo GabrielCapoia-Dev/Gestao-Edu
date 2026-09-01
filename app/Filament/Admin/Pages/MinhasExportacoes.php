@@ -163,7 +163,7 @@ class MinhasExportacoes extends Page implements HasTable
             ])
             ->defaultSort('created_at', 'desc')
             ->poll(fn (): ?string => $this->hasActiveExports()
-                ? ((int) config('performance.livewire_polling.exports_table', 15)).'s'
+                ? ((int) config('performance.livewire_polling.exports_table', 30)).'s'
                 : null);
     }
 

@@ -1,7 +1,7 @@
 @php
     $pollSeconds = $open
-        ? (int) config('performance.livewire_polling.exports_topbar_open', 2)
-        : (int) config('performance.livewire_polling.exports_topbar_closed', 15);
+        ? (int) config('performance.livewire_polling.exports_topbar_open', 15)
+        : (int) config('performance.livewire_polling.exports_topbar_closed', 60);
 @endphp
 
 <div

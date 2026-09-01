@@ -53,19 +53,19 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule) {
         $schedule
             ->command('exports:prune')
-            ->everyMinute()
+            ->hourly()
             ->withoutOverlapping(120);
     })
     ->withSchedule(function (Schedule $schedule) {
         $schedule
             ->command('exports:monitor-stalled')
-            ->everyMinute()
+            ->everyFiveMinutes()
             ->withoutOverlapping(30);
     })
     ->withSchedule(function (Schedule $schedule) {
         $schedule
             ->command('exports:recover-queued --limit=1000')
-            ->everyMinute()
+            ->everyFiveMinutes()
             ->withoutOverlapping(5);
     })
     ->withExceptions(function (Exceptions $exceptions) {

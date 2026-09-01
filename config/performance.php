@@ -28,9 +28,13 @@ return [
     |
     */
 
-    'heartbeat_interval_seconds' => (int) env('PERF_HEARTBEAT_INTERVAL', 30),
+    'heartbeat_interval_seconds' => (int) env('PERF_HEARTBEAT_INTERVAL', 120),
 
-    'presence_touch_min_interval_seconds' => (int) env('PERF_PRESENCE_TOUCH_MIN_INTERVAL', 20),
+    'presence_touch_min_interval_seconds' => (int) env('PERF_PRESENCE_TOUCH_MIN_INTERVAL', 90),
+
+    'presence_online_window_seconds' => (int) env('PERF_PRESENCE_ONLINE_WINDOW', 180),
+
+    'presence_history_sync_interval_seconds' => (int) env('PERF_PRESENCE_HISTORY_SYNC_INTERVAL', 900),
 
     'online_users_limit' => (int) env('PERF_ONLINE_USERS_LIMIT', 25),
 
@@ -46,12 +50,12 @@ return [
     */
 
     'livewire_polling' => [
-        'online_users' => (int) env('PERF_POLL_ONLINE_USERS', 30),
+        'online_users' => (int) env('PERF_POLL_ONLINE_USERS', 60),
         'online_users_closed' => (int) env('PERF_POLL_ONLINE_USERS_CLOSED', 120),
-        'exports_table' => (int) env('PERF_POLL_EXPORTS_TABLE', 15),
-        'exports_auto_download' => (int) env('PERF_POLL_EXPORTS_AUTO_DOWNLOAD', 10),
-        'exports_topbar_open' => (int) env('PERF_POLL_EXPORTS_TOPBAR_OPEN', 2),
-        'exports_topbar_closed' => (int) env('PERF_POLL_EXPORTS_TOPBAR_CLOSED', 15),
+        'exports_table' => (int) env('PERF_POLL_EXPORTS_TABLE', 30),
+        'exports_auto_download' => (int) env('PERF_POLL_EXPORTS_AUTO_DOWNLOAD', 30),
+        'exports_topbar_open' => (int) env('PERF_POLL_EXPORTS_TOPBAR_OPEN', 15),
+        'exports_topbar_closed' => (int) env('PERF_POLL_EXPORTS_TOPBAR_CLOSED', 60),
     ],
 
     /*
@@ -61,14 +65,14 @@ return [
     */
 
     'cache_ttl' => [
-        'online_users' => (int) env('PERF_CACHE_ONLINE_USERS', 15),
-        'online_count' => (int) env('PERF_CACHE_ONLINE_COUNT', 10),
-        'users_count' => (int) env('PERF_CACHE_USERS_COUNT', 60),
-        'notification_form_options' => (int) env('PERF_CACHE_NOTIFICATION_FORM_OPTIONS', 300),
-        'active_exports' => (int) env('PERF_CACHE_ACTIVE_EXPORTS', 10),
-        'inventory_dashboard' => (int) env('PERF_CACHE_INVENTORY_DASHBOARD', 60),
-        'reports_dashboard' => (int) env('PERF_CACHE_REPORTS_DASHBOARD', 60),
-        'avaliacoes_dashboard' => (int) env('PERF_CACHE_AVALIACOES_DASHBOARD', 45),
+        'online_users' => (int) env('PERF_CACHE_ONLINE_USERS', 60),
+        'online_count' => (int) env('PERF_CACHE_ONLINE_COUNT', 60),
+        'users_count' => (int) env('PERF_CACHE_USERS_COUNT', 900),
+        'notification_form_options' => (int) env('PERF_CACHE_NOTIFICATION_FORM_OPTIONS', 1800),
+        'active_exports' => (int) env('PERF_CACHE_ACTIVE_EXPORTS', 60),
+        'inventory_dashboard' => (int) env('PERF_CACHE_INVENTORY_DASHBOARD', 300),
+        'reports_dashboard' => (int) env('PERF_CACHE_REPORTS_DASHBOARD', 300),
+        'avaliacoes_dashboard' => (int) env('PERF_CACHE_AVALIACOES_DASHBOARD', 120),
     ],
 
     'instrumentation' => [

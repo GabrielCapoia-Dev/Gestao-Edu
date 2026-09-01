@@ -1,6 +1,6 @@
 @php
     $onlineUsersPollSeconds = $open
-        ? (int) config('performance.livewire_polling.online_users', 30)
+        ? (int) config('performance.livewire_polling.online_users', 60)
         : (int) config('performance.livewire_polling.online_users_closed', 120);
 @endphp
 

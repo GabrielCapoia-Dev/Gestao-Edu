@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\UserPresenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 class UserPresenceServiceTest extends TestCase
@@ -30,15 +31,18 @@ class UserPresenceServiceTest extends TestCase
 
     public function test_online_and_offline_lists_follow_presence_window_and_last_login_order(): void
     {
+        config()->set('performance.presence_online_window_seconds', 180);
+        Cache::flush();
+
         Carbon::setTestNow('2026-05-11 10:00:00');
 
-        User::factory()->create([
+        $onlineB = User::factory()->create([
             'name' => 'Online B',
             'last_seen_at' => now()->subSeconds(10),
             'last_login_at' => now()->subHour(),
         ]);
 
-        User::factory()->create([
+        $onlineA = User::factory()->create([
             'name' => 'Online A',
             'last_seen_at' => now()->subSeconds(20),
             'last_login_at' => now()->subHour(),
@@ -63,8 +67,11 @@ class UserPresenceServiceTest extends TestCase
         ]);
 
         $presence = app(UserPresenceService::class);
+        $presence->touch($onlineB);
+        $presence->touch($onlineA);
 
         $this->assertSame(['Online A', 'Online B'], $presence->onlineUsers()->pluck('name')->all());
+        $this->assertSame(2, $presence->onlineCount());
         $this->assertSame(
             ['Offline Recente', 'Offline Antigo', 'Offline Nunca'],
             $presence->offlineUsers()->pluck('name')->all()
@@ -76,6 +83,8 @@ class UserPresenceServiceTest extends TestCase
     public function test_touch_throttles_repeated_heartbeats_for_same_user(): void
     {
         config()->set('performance.presence_touch_min_interval_seconds', 20);
+        config()->set('performance.presence_history_sync_interval_seconds', 20);
+        Cache::flush();
 
         Carbon::setTestNow('2026-05-11 11:00:00');
 

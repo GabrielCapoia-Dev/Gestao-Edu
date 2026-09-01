@@ -45,7 +45,7 @@
                     return;
                 }
 
-                intervalId = setInterval(ping, {{ (int) config('performance.heartbeat_interval_seconds', 30) * 1000 }});
+                intervalId = setInterval(ping, {{ (int) config('performance.heartbeat_interval_seconds', 120) * 1000 }});
             };
 
             document.addEventListener('visibilitychange', () => {

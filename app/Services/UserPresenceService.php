@@ -11,7 +11,11 @@ use Throwable;
 class UserPresenceService
 {
     public const PERMISSION = 'Visualizar Usuarios Online';
-    public const ONLINE_WINDOW_SECONDS = 30;
+    public const DEFAULT_ONLINE_WINDOW_SECONDS = 180;
+
+    private const ACTIVE_USERS_CACHE_KEY = 'presence:active-users';
+
+    private const ACTIVE_USERS_LOCK_KEY = 'presence:active-users:lock';
 
     public function touch(User $user, bool $markLogin = false): void
     {
@@ -23,9 +27,20 @@ class UserPresenceService
             return;
         }
 
-        $data = [
-            'last_seen_at' => $now,
-        ];
+        $this->markOnline((int) $user->getKey(), $now->getTimestamp());
+        $this->cachePut($cacheKey, true, now()->addSeconds($minInterval));
+
+        $historySyncInterval = max(
+            $minInterval,
+            (int) config('performance.presence_history_sync_interval_seconds', 900),
+        );
+        $historyCacheKey = 'presence:last-seen-sync:user:'.$user->getKey();
+
+        if (! $markLogin && ! $this->cacheAdd($historyCacheKey, true, now()->addSeconds($historySyncInterval))) {
+            return;
+        }
+
+        $data = ['last_seen_at' => $now];
 
         if ($markLogin) {
             $data['last_login_at'] = $now;
@@ -35,7 +50,7 @@ class UserPresenceService
             ->whereKey($user->getKey())
             ->update($data);
 
-        $this->cachePut($cacheKey, true, now()->addSeconds($minInterval));
+        $this->cachePut($historyCacheKey, true, now()->addSeconds($historySyncInterval));
 
         if ($markLogin) {
             $this->forgetCache();
@@ -44,7 +59,11 @@ class UserPresenceService
 
     public function onlineCount(): int
     {
-        return (int) $this->remember('presence:online-count', fn (): int => $this->onlineQuery()->count(), 'online_count');
+        $activeUserIds = $this->activeUserIds();
+
+        return $activeUserIds === null
+            ? $this->onlineQuery()->count()
+            : count($activeUserIds);
     }
 
     public function totalUsersCount(): int
@@ -54,30 +73,52 @@ class UserPresenceService
 
     public function onlineUsers(): Collection
     {
-        return $this->remember('presence:online', fn (): Collection => $this->onlineQuery()
+        $activeUserIds = $this->activeUserIds();
+
+        if ($activeUserIds === []) {
+            return collect();
+        }
+
+        $query = $activeUserIds === null
+            ? $this->onlineQuery()
+            : User::query()->whereKey($activeUserIds);
+
+        return $query
             ->orderBy('name')
             ->limit(max(5, (int) config('performance.online_users_limit', 25)))
-            ->get(['id', 'name', 'email', 'last_login_at', 'last_seen_at']));
+            ->get(['id', 'name', 'email', 'last_login_at', 'last_seen_at']);
     }
 
     public function offlineUsers(): Collection
     {
-        return $this->remember('presence:offline', fn (): Collection => User::query()
-            ->where(function ($query): void {
-                $query
-                    ->whereNull('last_seen_at')
+        $activeUserIds = $this->activeUserIds();
+        $query = User::query();
+
+        if ($activeUserIds === null) {
+            $query->where(function ($query): void {
+                $query->whereNull('last_seen_at')
                     ->orWhere('last_seen_at', '<', $this->onlineCutoff());
-            })
+            });
+        } elseif ($activeUserIds !== []) {
+            $query->whereNotIn($query->getModel()->getQualifiedKeyName(), $activeUserIds);
+        }
+
+        return $query
             ->orderByRaw('last_login_at IS NULL')
             ->orderByDesc('last_login_at')
             ->orderBy('name')
             ->limit(max(5, (int) config('performance.offline_users_limit', 25)))
-            ->get(['id', 'name', 'email', 'last_login_at', 'last_seen_at']));
+            ->get(['id', 'name', 'email', 'last_login_at', 'last_seen_at']);
     }
 
     public function onlineCutoff(): \Illuminate\Support\Carbon
     {
-        return now()->subSeconds(self::ONLINE_WINDOW_SECONDS);
+        $window = max(
+            30,
+            (int) config('performance.presence_online_window_seconds', self::DEFAULT_ONLINE_WINDOW_SECONDS),
+        );
+
+        return now()->subSeconds($window);
     }
 
     public function forgetCache(): void
@@ -117,6 +158,15 @@ class UserPresenceService
         }
     }
 
+    protected function cacheAdd(string $key, mixed $value, mixed $ttl): bool
+    {
+        try {
+            return Cache::add($key, $value, $ttl);
+        } catch (Throwable) {
+            return true;
+        }
+    }
+
     protected function cacheForget(string $key): void
     {
         try {
@@ -131,5 +181,72 @@ class UserPresenceService
         return User::query()
             ->whereNotNull('last_seen_at')
             ->where('last_seen_at', '>=', $this->onlineCutoff());
+    }
+
+    private function markOnline(int $userId, int $seenAt): void
+    {
+        try {
+            Cache::lock(self::ACTIVE_USERS_LOCK_KEY, 5)->block(2, function () use ($userId, $seenAt): void {
+                $activeUsers = $this->normalizedActiveUsers(Cache::get(self::ACTIVE_USERS_CACHE_KEY, []));
+                $cutoff = $seenAt - $this->onlineWindowSeconds();
+                $activeUsers = array_filter(
+                    $activeUsers,
+                    static fn (int $timestamp): bool => $timestamp >= $cutoff,
+                );
+                $activeUsers[$userId] = $seenAt;
+
+                Cache::put(
+                    self::ACTIVE_USERS_CACHE_KEY,
+                    $activeUsers,
+                    now()->addSeconds($this->onlineWindowSeconds() * 2),
+                );
+            });
+        } catch (Throwable) {
+            // Mantem o fallback por last_seen_at quando o Redis estiver indisponivel.
+        }
+    }
+
+    /** @return list<int>|null */
+    private function activeUserIds(): ?array
+    {
+        try {
+            $activeUsers = $this->normalizedActiveUsers(Cache::get(self::ACTIVE_USERS_CACHE_KEY, []));
+            $cutoff = now()->getTimestamp() - $this->onlineWindowSeconds();
+
+            return collect($activeUsers)
+                ->filter(static fn (int $timestamp): bool => $timestamp >= $cutoff)
+                ->keys()
+                ->map(static fn (int|string $id): int => (int) $id)
+                ->values()
+                ->all();
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /** @return array<int, int> */
+    private function normalizedActiveUsers(mixed $value): array
+    {
+        if (! is_array($value)) {
+            return [];
+        }
+
+        $activeUsers = [];
+
+        foreach ($value as $userId => $timestamp) {
+            if ((int) $userId > 0 && (int) $timestamp > 0) {
+                $activeUsers[(int) $userId] = (int) $timestamp;
+            }
+        }
+
+        return $activeUsers;
+    }
+
+    private function onlineWindowSeconds(): int
+    {
+        return max(
+            30,
+            (int) config('performance.presence_online_window_seconds', self::DEFAULT_ONLINE_WINDOW_SECONDS),
+        );
     }
 }

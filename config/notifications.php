@@ -12,9 +12,9 @@ return [
         explode(',', (string) env('NOTIFICATIONS_QUEUE_BACKOFF', '10,60,300'))
     ))),
 
-    'unread_count_cache_ttl' => (int) env('NOTIFICATIONS_UNREAD_COUNT_CACHE_TTL', 30),
+    'unread_count_cache_ttl' => (int) env('NOTIFICATIONS_UNREAD_COUNT_CACHE_TTL', 120),
 
-    'topbar_poll_interval_ms' => (int) env('NOTIFICATIONS_TOPBAR_POLL_INTERVAL_MS', 60000),
+    'topbar_poll_interval_ms' => (int) env('NOTIFICATIONS_TOPBAR_POLL_INTERVAL_MS', 180000),
 
-    'center_poll_interval_ms' => (int) env('NOTIFICATIONS_CENTER_POLL_INTERVAL_MS', 30000),
+    'center_poll_interval_ms' => (int) env('NOTIFICATIONS_CENTER_POLL_INTERVAL_MS', 120000),
 ];
