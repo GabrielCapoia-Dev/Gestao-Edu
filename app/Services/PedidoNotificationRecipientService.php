@@ -12,6 +12,9 @@ class PedidoNotificationRecipientService
 {
     public const PERMISSAO_LISTAR_PEDIDOS = 'Listar Pedidos';
 
+    /** @var array<int, Collection<int, User>> */
+    private array $destinatariosPorEscola = [];
+
     public function podeReceber(User $user, Pedido $pedido): bool
     {
         if (
@@ -41,13 +44,19 @@ class PedidoNotificationRecipientService
             return collect();
         }
 
+        $escolaId = (int) $pedido->escola_id;
+
+        if (array_key_exists($escolaId, $this->destinatariosPorEscola)) {
+            return $this->destinatariosPorEscola[$escolaId];
+        }
+
         try {
-            return User::permission(self::PERMISSAO_LISTAR_PEDIDOS)
+            return $this->destinatariosPorEscola[$escolaId] = User::permission(self::PERMISSAO_LISTAR_PEDIDOS)
                 ->get()
                 ->filter(fn (User $user): bool => $this->podeReceber($user, $pedido))
                 ->values();
         } catch (PermissionDoesNotExist) {
-            return collect();
+            return $this->destinatariosPorEscola[$escolaId] = collect();
         }
     }
 

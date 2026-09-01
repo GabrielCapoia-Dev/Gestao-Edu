@@ -56,8 +56,8 @@ services:
         condition: service_healthy
     healthcheck:
       test: [ "CMD-SHELL", "test -s /var/www/bootstrap/cache/runtime-ready && test -s /var/www/bootstrap/cache/routes-v7.php && test -s /var/www/bootstrap/cache/config.php" ]
-      interval: 5s
-      timeout: 5s
+      interval: 30s
+      timeout: 10s
       retries: 36
       start_period: 900s
     networks:
@@ -214,7 +214,7 @@ services:
       - "${DOCKER_DB_PORT}:3306"
     healthcheck:
       test: [ "CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${MYSQL_ROOT_PASSWORD}" ]
-      interval: 5s
+      interval: 30s
       timeout: 5s
       retries: 20
     networks:
@@ -228,7 +228,7 @@ services:
       - redis_data:/data
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
-      interval: 5s
+      interval: 30s
       timeout: 3s
       retries: 20
     restart: unless-stopped

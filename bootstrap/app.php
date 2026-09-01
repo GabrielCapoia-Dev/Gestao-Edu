@@ -30,8 +30,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule) {
         $schedule
             ->command('app:notificar-pedidos-atrasados')
-            ->everyMinute()
-            ->withoutOverlapping(10);
+            ->hourly()
+            ->withoutOverlapping(120);
     })
     ->withSchedule(function ($schedule) {
         $schedule->command('app:notificar-pedidos-a-vencer')

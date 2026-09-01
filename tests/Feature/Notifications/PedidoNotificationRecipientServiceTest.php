@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Policies\NotificationPolicy;
 use App\Services\PedidoNotificationRecipientService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -69,6 +70,25 @@ class PedidoNotificationRecipientServiceTest extends TestCase
         $this->assertTrue($policy->viewAny($vinculado));
         $this->assertFalse($policy->viewAny($semVinculo));
         $this->assertFalse($vinculado->hasPermissionTo('Visualizar Notificações'));
+    }
+
+    public function test_reutiliza_destinatarios_calculados_para_pedidos_da_mesma_escola(): void
+    {
+        [$escola, $setor] = $this->criarEscola('Escola Cache de Destinatários');
+        $vinculado = $this->criarUsuarioVinculado($escola, $setor, 'Usuário em Cache');
+        $vinculado->givePermissionTo(PedidoNotificationRecipientService::PERMISSAO_LISTAR_PEDIDOS);
+
+        $service = app(PedidoNotificationRecipientService::class);
+        $pedido = new Pedido(['escola_id' => $escola->id]);
+
+        DB::enableQueryLog();
+        $this->assertSame([$vinculado->id], $service->destinatarios($pedido)->pluck('id')->all());
+        $this->assertNotEmpty(DB::getQueryLog());
+
+        DB::flushQueryLog();
+        $this->assertSame([$vinculado->id], $service->destinatarios($pedido)->pluck('id')->all());
+        $this->assertSame([], DB::getQueryLog());
+        DB::disableQueryLog();
     }
 
     /** @return array{0: Escola, 1: Setor} */
