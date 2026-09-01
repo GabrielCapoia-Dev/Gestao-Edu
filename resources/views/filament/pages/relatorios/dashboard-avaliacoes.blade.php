@@ -2,12 +2,16 @@
     <div
         class="av-livewire-root"
         x-data="{
+            async carregarDashboardInicialCompleto() {
+                await $wire.carregarDashboardInicial()
+                await this.recarregarDetalhesDashboard()
+            },
             async recarregarDetalhesDashboard() {
                 await $wire.carregarGraficosDashboard()
                 await $wire.carregarAcompanhamentoDashboard()
             },
         }"
-        wire:init="carregarDashboardInicial"
+        x-init="carregarDashboardInicialCompleto()"
         x-on:dashboard-acompanhamento-recarregar.window="$wire.atualizarAcompanhamentoTurmas()"
         x-on:dashboard-detalhes-recarregar.window="recarregarDetalhesDashboard()"
     >
@@ -188,7 +192,7 @@
                 </article>
             </section>
 
-            <section class="dav-chart-grid{{ $this->podeVerPendenciaPorEscola ? ' dav-chart-grid--three' : '' }}" wire:init="carregarGraficosDashboard">
+            <section class="dav-chart-grid{{ $this->podeVerPendenciaPorEscola ? ' dav-chart-grid--three' : '' }}">
                 @if ($this->podeVerPendenciaPorEscola)
                 <article class="dav-card dav-card--chart">
                     <header>
@@ -333,7 +337,7 @@
             </section>
             @endif
 
-            <section class="dav-card" wire:init="carregarAcompanhamentoDashboard">
+            <section class="dav-card">
                 <header class="dav-card-header--split">
                     <div>
                         <h3>Acompanhamento de Pareceres</h3>

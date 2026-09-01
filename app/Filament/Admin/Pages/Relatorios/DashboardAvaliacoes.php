@@ -300,16 +300,6 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->dispatch('dashboard-detalhes-recarregar');
     }
 
-    public function updatedFiltrosAvaliacaoId(): void
-    {
-        $this->resetarPaginacoesDashboard();
-        $this->fecharWorkspaceAcompanhamento();
-        $this->limparFiltrosDependentes();
-        $this->filtrosAcompanhamento = $this->filtrosAcompanhamentoPadrao();
-        $this->carregarResumoDashboard();
-        $this->dispatch('dashboard-detalhes-recarregar');
-    }
-
     public function limparFiltros(): void
     {
         $this->filtros = $this->filtrosPadrao();
