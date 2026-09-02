@@ -268,15 +268,17 @@ return [
     |---------------------------------------------------------------------------
     |
     | These settings protect against malicious or oversized payloads that could
-    | cause denial of service. The default values should feel reasonable for
-    | most web applications. Each can be set to null to disable the limit.
+    | cause denial of service. O workspace de avaliações mantém uma quantidade
+    | significativa de respostas editáveis no estado Livewire e pode ultrapassar
+    | 1MB mesmo em uso legítimo. Mantemos um limite finito, porém com margem
+    | suficiente para turmas maiores.
     |
     */
 
     'payload' => [
-        'max_size' => 1024 * 1024,   // 1MB - maximum request payload size in bytes
-        'max_nesting_depth' => 10,   // Maximum depth of dot-notation property paths
-        'max_calls' => 50,           // Maximum method calls per request
-        'max_components' => 20,      // Maximum components per batch request
+        'max_size' => (int) env('LIVEWIRE_PAYLOAD_MAX_SIZE', 4 * 1024 * 1024), // 4MB por padrão
+        'max_nesting_depth' => 10,
+        'max_calls' => 50,
+        'max_components' => 20,
     ],
 ];
