@@ -94,6 +94,39 @@
         box-shadow: 0 14px 30px rgba(23, 54, 141, 0.1);
     }
 
+    .av-pauta-toggle[href] {
+        color: inherit;
+        text-decoration: none;
+    }
+
+    .av-student-picker {
+        position: sticky;
+        top: 0.75rem;
+        z-index: 5;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(18rem, 28rem);
+        align-items: end;
+        gap: 1rem;
+        padding: 1rem;
+        border: 1px solid color-mix(in oklab, var(--primary-300) 54%, var(--gray-200));
+        border-radius: var(--radius-xl);
+        background: color-mix(in oklab, #fff 94%, var(--primary-50));
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.09);
+    }
+
+    .av-student-picker > div {
+        display: grid;
+        gap: 0.15rem;
+    }
+
+    .av-student-picker strong {
+        color: var(--gray-950);
+    }
+
+    .av-student-picker small {
+        color: var(--gray-500);
+    }
+
     .av-total-card {
         display: inline-flex;
         align-items: center;
@@ -399,7 +432,8 @@
         background: var(--gray-100);
     }
 
-    .av-segmented-control button {
+    .av-segmented-control button,
+    .av-segmented-control a {
         min-height: 2.25rem;
         padding: 0.45rem 0.85rem;
         border: 0;
@@ -416,7 +450,8 @@
             box-shadow 0.15s ease;
     }
 
-    .av-segmented-control button.is-active {
+    .av-segmented-control button.is-active,
+    .av-segmented-control a.is-active {
         background: #fff;
         color: var(--primary-700);
         box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
@@ -888,6 +923,11 @@
             flex-direction: column;
         }
 
+        .av-student-picker {
+            position: static;
+            grid-template-columns: 1fr;
+        }
+
         .av-modal-step-tabs {
             grid-template-columns: 1fr;
         }
@@ -996,11 +1036,13 @@
         background: var(--gray-950);
     }
 
-    :root.dark .av-segmented-control button {
+    :root.dark .av-segmented-control button,
+    :root.dark .av-segmented-control a {
         color: var(--gray-400);
     }
 
-    :root.dark .av-segmented-control button.is-active {
+    :root.dark .av-segmented-control button.is-active,
+    :root.dark .av-segmented-control a.is-active {
         background: var(--gray-800);
         color: var(--primary-200);
         box-shadow: none;
@@ -1217,7 +1259,8 @@
             gap: 0.65rem;
         }
 
-        .av-professor-page .av-segmented-control button {
+        .av-professor-page .av-segmented-control button,
+        .av-professor-page .av-segmented-control a {
             min-height: 2.15rem;
             padding: 0.45rem 0.5rem;
             font-size: var(--text-xs);

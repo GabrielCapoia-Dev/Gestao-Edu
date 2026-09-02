@@ -197,7 +197,7 @@ class AvaliacaoProfessorPageTest extends TestCase
         $avaliacao->turmas()->attach([$turmaA->id, $turmaB->id, $turmaOutraEscola->id, $turmaFora->id]);
         $this->sincronizarEscopoAvaliacao($avaliacao, [$serie->id, $outraSerie->id], [$componente->id], [$escola->id, $outraEscola->id]);
 
-        Aluno::query()->create([
+        $alunoTurmaA = Aluno::query()->create([
             'nome' => 'Aluno Turma A',
             'cgm' => 'CGM-SER-A',
             'data_nascimento' => '2015-01-01',
@@ -245,6 +245,22 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->set('serieEscola', $outraEscola->id.':'.$serie->id)
             ->assertDontSee('Turma C')
             ->assertDontSee('Turma A');
+
+        Livewire::withQueryParams([
+            'avaliacao' => $avaliacao->id,
+            'escola' => $escola->id,
+            'serie' => $serie->id,
+            'turma' => $turmaA->id,
+            'visualizacao' => 'alunos',
+            'aluno' => $alunoTurmaA->id,
+        ])
+            ->actingAs($userProfessor)
+            ->test(AvaliacaoTurmaWorkspace::class, $this->workspaceProfessorParams())
+            ->assertSet('visualizacao', 'alunos')
+            ->assertSet('alunoEmFoco', $alunoTurmaA->id)
+            ->assertSee('Selecione um aluno para avaliar')
+            ->assertSee('Pauta do primeiro ano')
+            ->assertDontSee('Aluno Turma B');
     }
 
     public function test_professor_visualiza_apenas_avaliacoes_e_turmas_das_escolas_e_turmas_vinculadas(): void

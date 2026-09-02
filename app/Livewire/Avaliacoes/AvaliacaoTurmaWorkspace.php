@@ -88,6 +88,8 @@ class AvaliacaoTurmaWorkspace extends Component
 
     public string $visualizacao = 'pautas';
 
+    public ?int $alunoEmFoco = null;
+
     public array $professorIds = [];
 
     public array $turmaIdsProfessor = [];
@@ -141,6 +143,13 @@ class AvaliacaoTurmaWorkspace extends Component
         $this->modo = in_array($modo, ['professor', 'acompanhamento'], true) ? $modo : 'professor';
         $this->canEdit = $canEdit;
 
+        $visualizacaoQuery = (string) request()->query('visualizacao', '');
+        if (in_array($visualizacaoQuery, ['pautas', 'alunos'], true)) {
+            $this->visualizacao = $visualizacaoQuery;
+        }
+
+        $this->alunoEmFoco = $this->normalizarQueryId(request()->query('aluno'));
+
         if (! $this->modoAcompanhamento()) {
             $this->sincronizarVinculosProfessor();
         }
@@ -164,15 +173,7 @@ class AvaliacaoTurmaWorkspace extends Component
 
             $this->avaliacao = $avaliacaoId ?: $avaliacaoQuery;
 
-            if ($serieId) {
-                $this->serie = $serieId;
-                $this->escola = $escolaId ?: $this->escolaDaSerie($serieId);
-                $this->sincronizarSerieEscola();
-            } elseif ($serieQuery) {
-                $this->serie = $serieQuery;
-                $this->escola = $escolaQuery ?: $this->escolaDaSerie($serieQuery);
-                $this->sincronizarSerieEscola();
-            } elseif ($turmaId) {
+            if ($turmaId) {
                 $this->turma = $turmaId;
                 $this->serie = $this->serieDaTurma($turmaId);
                 $this->escola = $escolaId ?: $this->escolaDaTurma($turmaId);
@@ -182,6 +183,14 @@ class AvaliacaoTurmaWorkspace extends Component
                 $this->serie = $this->serieDaTurma($turmaQuery);
                 $this->escola = $this->escolaDaTurma($turmaQuery);
                 $this->sincronizarSerieEscola();
+            } elseif ($serieId) {
+                $this->serie = $serieId;
+                $this->escola = $escolaId ?: $this->escolaDaSerie($serieId);
+                $this->sincronizarSerieEscola();
+            } elseif ($serieQuery) {
+                $this->serie = $serieQuery;
+                $this->escola = $escolaQuery ?: $this->escolaDaSerie($serieQuery);
+                $this->sincronizarSerieEscola();
             }
         }
 
@@ -190,6 +199,10 @@ class AvaliacaoTurmaWorkspace extends Component
 
             if (! $this->modoAcompanhamento() && $this->turma) {
                 $this->turmasExpandidas = [(int) $this->turma];
+
+                if ($this->alunoEmFoco && ! $this->alunosDaTurma((int) $this->turma)->contains('id', $this->alunoEmFoco)) {
+                    $this->alunoEmFoco = null;
+                }
             }
         }
     }

@@ -103,7 +103,7 @@
                         <strong>{{ $turmaEmFoco ? $this->rotuloTurma($turmaEmFoco) : 'Turma selecionada' }}</strong>
                         <small>{{ $turmaEmFoco?->escola?->nome }} · {{ $turmaEmFoco?->serie?->nome }}</small>
                     </div>
-                    <a class="gi-action gi-action--secondary" href="{{ $visaoGeralUrl }}">Voltar para todas as turmas</a>
+                    <a class="gi-action gi-action--secondary" href="{{ $visaoGeralUrl }}" wire:navigate>Voltar para todas as turmas</a>
                 </section>
             @endif
 
@@ -179,12 +179,15 @@
 
                         @if ($this->podeAlternarVisualizacao())
                         <div class="av-segmented-control" role="tablist">
-                            <button type="button" class="{{ $visualizacao === 'pautas' ? 'is-active' : '' }}" wire:click="definirVisualizacao('pautas')">
-                                Por pautas
-                            </button>
-                            <button type="button" class="{{ $visualizacao === 'alunos' ? 'is-active' : '' }}" wire:click="definirVisualizacao('alunos')">
-                                Por alunos
-                            </button>
+                            @if ($this->modoAcompanhamento())
+                                <button type="button" class="{{ $visualizacao === 'pautas' ? 'is-active' : '' }}" wire:click="definirVisualizacao('pautas')">Por pautas</button>
+                                <button type="button" class="{{ $visualizacao === 'alunos' ? 'is-active' : '' }}" wire:click="definirVisualizacao('alunos')">Por alunos</button>
+                            @else
+                                @php($urlPautas = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie, 'turma' => $turma, 'visualizacao' => 'pautas']))
+                                @php($urlAlunos = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie, 'turma' => $turma, 'visualizacao' => 'alunos']))
+                                <a class="{{ $visualizacao === 'pautas' ? 'is-active' : '' }}" href="{{ $urlPautas }}" wire:navigate>Por pautas</a>
+                                <a class="{{ $visualizacao === 'alunos' ? 'is-active' : '' }}" href="{{ $urlAlunos }}" wire:navigate>Por alunos</a>
+                            @endif
                         </div>
                         @endif
                     </div>
@@ -366,7 +369,7 @@
                         @php($turmaUrl = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie, 'turma' => $turmaIdAtual]))
 
                         <section wire:key="workspace-turma-pautas-{{ $turmaIdAtual }}" x-data="{ aberto: @js($turmaSelecionada) }" :class="{ 'is-open': aberto }" class="gi-panel av-turma-section">
-                            <button type="button" class="av-pauta-toggle" x-on:click="window.location.href = @js($turmaUrl)">
+                            <a class="av-pauta-toggle" href="{{ $turmaUrl }}" wire:navigate>
                                 <div class="av-pauta-toggle-main">
                                     <h3 class="av-pauta-title">{{ $this->rotuloTurma($turmaItem) }}</h3>
                                     <p class="av-pauta-meta">{{ $turmaItem->escola?->nome }} - {{ $turmaItem->serie?->nome }}</p>
@@ -387,7 +390,7 @@
                                         <span class="av-pauta-arrow" :class="{ 'is-open': aberto }">v</span>
                                     </div>
                                 </div>
-                            </button>
+                            </a>
 
                             @if ($turmaSelecionada)
                                 <div class="av-turma-content">
@@ -734,7 +737,7 @@
                         @php($turmaUrl = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie, 'turma' => $turmaIdAtual]))
 
                         <section wire:key="workspace-turma-alunos-{{ $turmaIdAtual }}" x-data="{ aberto: @js($turmaSelecionada) }" :class="{ 'is-open': aberto }" class="gi-panel av-turma-section">
-                            <button type="button" class="av-pauta-toggle" x-on:click="window.location.href = @js($turmaUrl)">
+                            <a class="av-pauta-toggle" href="{{ $turmaUrl }}" wire:navigate>
                                 <div class="av-pauta-toggle-main">
                                     <h3 class="av-pauta-title">{{ $this->rotuloTurma($turmaItem) }}</h3>
                                     <p class="av-pauta-meta">{{ $turmaItem->escola?->nome }} - {{ $turmaItem->serie?->nome }}</p>
@@ -755,17 +758,37 @@
                                         <span class="av-pauta-arrow" :class="{ 'is-open': aberto }">v</span>
                                     </div>
                                 </div>
-                            </button>
+                            </a>
 
                             @if ($turmaSelecionada)
                                 <div class="av-turma-content">
+                                    <div class="av-student-picker">
+                                        <div>
+                                            <span class="av-focus-kicker">Preenchimento por aluno</span>
+                                            <strong>Selecione um aluno para avaliar</strong>
+                                            <small>Abra somente um registro por vez para preencher com mais segurança.</small>
+                                        </div>
+                                        <label class="gi-field">
+                                            <span>Aluno</span>
+                                            <select x-on:change="if ($event.target.value) Livewire.navigate($event.target.value)">
+                                                <option value="">Selecione um aluno</option>
+                                                @foreach ($alunosDaTurma as $alunoOpcao)
+                                                    @php($alunoOpcaoUrl = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie, 'turma' => $turmaIdAtual, 'visualizacao' => 'alunos', 'aluno' => $alunoOpcao->id]))
+                                                    <option value="{{ $alunoOpcaoUrl }}" @selected((int) ($this->alunoEmFoco ?? 0) === (int) $alunoOpcao->id)>
+                                                        {{ $alunoOpcao->nome }} · CGM {{ $alunoOpcao->cgm }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </label>
+                                    </div>
                                     @forelse ($alunosDaTurma as $aluno)
                                         @php($progressoAluno = $this->progressoPorAluno[$aluno->id] ?? ['preenchidas' => 0, 'total' => 0, 'percentual' => 0, 'concluida' => false])
-                                        @php($alunoExpandido = $this->alunoEstaExpandido($turmaIdAtual, (int) $aluno->id))
                                         @php($alunoBloqueadoTransferencia = $this->alunoEstaBloqueadoParaAvaliacao($aluno))
+                                        @php($alunoSelecionado = (int) ($this->alunoEmFoco ?? 0) === (int) $aluno->id)
+                                        @php($alunoUrl = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie, 'turma' => $turmaIdAtual, 'visualizacao' => 'alunos', 'aluno' => $aluno->id]))
 
-                                        <section wire:key="workspace-turma-{{ $turmaIdAtual }}-aluno-{{ $aluno->id }}" class="av-pauta-section av-pauta-section--nested {{ $alunoExpandido ? 'is-open' : '' }}">
-                                            <button type="button" class="av-pauta-toggle" wire:click="alternarAluno({{ $turmaIdAtual }}, {{ $aluno->id }})">
+                                        <section wire:key="workspace-turma-{{ $turmaIdAtual }}-aluno-{{ $aluno->id }}" class="av-pauta-section av-pauta-section--nested {{ $alunoSelecionado ? 'is-open' : '' }}">
+                                            <a class="av-pauta-toggle" href="{{ $alunoUrl }}" wire:navigate>
                                                 <div class="av-pauta-toggle-main">
                                                     <h3 class="av-pauta-title">{{ $aluno->nome }}</h3>
                                                     <p class="av-pauta-meta">CGM: {{ $aluno->cgm }}</p>
@@ -786,12 +809,12 @@
                                                         <span class="av-pauta-check {{ $progressoAluno['concluida'] ? '' : 'av-pauta-check--pending' }}">
                                                             {{ $progressoAluno['concluida'] ? 'Concluída' : 'Em andamento' }}
                                                         </span>
-                                                        <span class="av-pauta-arrow {{ $alunoExpandido ? 'is-open' : '' }}">v</span>
+                                                        <span class="av-pauta-arrow {{ $alunoSelecionado ? 'is-open' : '' }}">{{ $alunoSelecionado ? '−' : '›' }}</span>
                                                     </div>
                                                 </div>
-                                            </button>
+                                            </a>
 
-                                            @if ($alunoExpandido)
+                                            @if ($alunoSelecionado)
                                                 <div class="av-pauta-content">
                                                     @foreach ($this->pautasAgrupadasPorComponenteDaTurma($turmaIdAtual) as $componenteNome => $pautasDoComponente)
                                                         <section class="av-aluno-componente">
