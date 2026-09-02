@@ -8,15 +8,6 @@ use Illuminate\Support\Collection;
 
 class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
 {
-    /**
-     * Na tela "Minhas Avaliações", quando a navegação já informa uma turma,
-     * mantém todo o workspace restrito a ela.
-     *
-     * O componente base também é usado pelo acompanhamento administrativo.
-     * Por isso o ajuste fica isolado no workspace do professor, evitando que
-     * uma interação Livewire volte a carregar todas as turmas da série e todo
-     * o conjunto de alunos/pautas.
-     */
     public function getTurmasDisponiveisProperty(): Collection
     {
         if ($this->turmasDisponiveisCache instanceof Collection) {
@@ -34,17 +25,9 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
             ->values();
     }
 
-    /**
-     * A troca de modo altera uma árvore DOM grande. Fazemos um carregamento
-     * completo da rota para impedir morph/hidratação residual do Livewire.
-     */
     public function definirVisualizacao(string $visualizacao): void
     {
-        if (! in_array($visualizacao, ['pautas', 'alunos'], true)) {
-            return;
-        }
-
-        if ($this->visualizacao === $visualizacao) {
+        if (! in_array($visualizacao, ['pautas', 'alunos'], true) || $this->visualizacao === $visualizacao) {
             return;
         }
 
