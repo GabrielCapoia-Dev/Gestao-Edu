@@ -187,6 +187,10 @@ class AvaliacaoTurmaWorkspace extends Component
 
         if ($this->avaliacao && $this->serie) {
             $this->carregarDadosDoEscopo();
+
+            if (! $this->modoAcompanhamento() && $this->turma) {
+                $this->turmasExpandidas = [(int) $this->turma];
+            }
         }
     }
 
@@ -980,7 +984,7 @@ class AvaliacaoTurmaWorkspace extends Component
 
         $turmas = $this->filtrarTurmasDaAvaliacao($this->avaliacaoAtual);
 
-        if ($this->modoAcompanhamento() && $this->turma) {
+        if ($this->turma) {
             return $this->turmasDisponiveisCache = $turmas
                 ->filter(fn (Turma $turma): bool => (int) $turma->id === (int) $this->turma)
                 ->values();
