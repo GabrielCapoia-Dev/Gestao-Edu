@@ -229,18 +229,13 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->assertSet('turmasExpandidas', [])
             ->assertSee('Turma A')
             ->assertSee('Turma B')
-            ->assertDontSee('Pauta do primeiro ano')
-            ->set('turma', $turmaA->id)
-            ->assertSet('turmasExpandidas', [])
             ->assertSee('Lingua Portuguesa - PROFESSOR SERIE')
-            ->assertDontSee('Pauta do primeiro ano')
             ->call('alternarComponente', $turmaA->id, $componente->id)
             ->assertSee('Pauta do primeiro ano')
-            ->assertDontSee('Turma B')
             ->assertDontSee('Turma C')
             ->call('definirVisualizacao', 'alunos')
             ->assertSee('Aluno Turma A')
-            ->assertDontSee('Aluno Turma B')
+            ->assertSee('Aluno Turma B')
             ->assertDontSee('Aluno Outra Escola')
             ->set('serieEscola', $outraEscola->id.':'.$serie->id)
             ->assertDontSee('Turma C')
@@ -260,7 +255,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->assertSet('alunoEmFoco', $alunoTurmaA->id)
             ->assertSee('Selecione um aluno para avaliar')
             ->assertSee('Pauta do primeiro ano')
-            ->assertDontSee('Aluno Turma B');
+            ->assertSee('Aluno Turma B');
     }
 
     public function test_professor_visualiza_apenas_avaliacoes_e_turmas_das_escolas_e_turmas_vinculadas(): void

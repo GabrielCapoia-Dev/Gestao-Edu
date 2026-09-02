@@ -9,7 +9,7 @@
     .av-floating-save {
         position: fixed;
         z-index: 50;
-        left: max(1rem, env(safe-area-inset-left));
+        left: calc(var(--sidebar-width, 16rem) + 1.5rem);
         bottom: max(1rem, env(safe-area-inset-bottom));
         min-width: 7rem;
         min-height: 2.75rem;
@@ -922,6 +922,10 @@
     }
 
     @media (max-width: 64rem) {
+        .av-floating-save {
+            left: max(1rem, env(safe-area-inset-left));
+        }
+
         .av-form-grid,
         .av-form-grid--three,
         .av-form-grid--two,

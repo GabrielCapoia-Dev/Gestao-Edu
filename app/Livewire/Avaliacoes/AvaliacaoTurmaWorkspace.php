@@ -522,7 +522,6 @@ class AvaliacaoTurmaWorkspace extends Component
                 $this->autoSalvarInformacaoComplementar((int) $componenteId, (int) $alunoId);
                 $this->informacoesComplementaresPersistidas[(int) $componenteId][(int) $alunoId] =
                     $this->informacoesComplementares[(int) $componenteId][(int) $alunoId] ?? null;
-                $this->dispatch('avaliacao-salva');
             }
 
             return;
@@ -546,7 +545,6 @@ class AvaliacaoTurmaWorkspace extends Component
         }
 
         $this->autoSalvarResposta((int) $pautaId, (int) $alunoId, $campo);
-        $this->dispatch('avaliacao-salva');
     }
 
     public function salvarAlteracoes(): void
@@ -586,7 +584,7 @@ class AvaliacaoTurmaWorkspace extends Component
 
         if ($respostasAlteradas === [] && $informacoesAlteradas === []) {
             $this->dispatch('avaliacao-salva');
-            Notification::make()->title('Não há alterações para salvar.')->info()->send();
+            Notification::make()->title('Alterações confirmadas.')->success()->send();
 
             return;
         }
@@ -1075,7 +1073,7 @@ class AvaliacaoTurmaWorkspace extends Component
 
         $turmas = $this->filtrarTurmasDaAvaliacao($this->avaliacaoAtual);
 
-        if ($this->turma) {
+        if ($this->modoAcompanhamento() && $this->turma) {
             return $this->turmasDisponiveisCache = $turmas
                 ->filter(fn (Turma $turma): bool => (int) $turma->id === (int) $this->turma)
                 ->values();
