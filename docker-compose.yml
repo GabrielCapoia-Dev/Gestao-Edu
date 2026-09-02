@@ -16,6 +16,9 @@ x-production-env: &production-env
   REDIS_QUEUE_CONNECTION: default
   REDIS_QUEUE_RETRY_AFTER: 2100
   PERMISSION_CACHE_STORE: redis
+  PULSE_ENABLED: "true"
+  PULSE_SERVER_NAME: gestao-edu-producao
+  PULSE_STORAGE_KEEP: "7 days"
   PERF_HEARTBEAT_INTERVAL: 120
   PERF_PRESENCE_TOUCH_MIN_INTERVAL: 90
   PERF_PRESENCE_ONLINE_WINDOW: 180
@@ -94,6 +97,32 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    networks:
+      - laravel_gestao-edu
+
+  pulse:
+    image: laravel-app-gestao-edu
+    container_name: laravel-pulse-gestao-edu
+    working_dir: /var/www
+    env_file:
+      - .env
+    environment:
+      <<: *production-env
+    entrypoint: []
+    command: ["php", "artisan", "pulse:check"]
+    volumes:
+      - .:/var/www
+    depends_on:
+      app:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    cpus: "0.10"
+    mem_limit: "192m"
+    restart: unless-stopped
+    stop_grace_period: 20s
     networks:
       - laravel_gestao-edu
 
