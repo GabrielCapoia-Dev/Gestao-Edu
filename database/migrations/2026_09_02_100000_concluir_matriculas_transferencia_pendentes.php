@@ -7,6 +7,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (DB::getDriverName() !== 'mysql') {
+            return;
+        }
+
         // Conversão set-based: não carrega alunos nem chama services por registro.
         DB::table('alunos as origem')
             ->join('alunos as destino', 'destino.pendencia_origem_aluno_id', '=', 'origem.id')
