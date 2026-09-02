@@ -35,10 +35,28 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
     }
 
     /**
-     * Trocar entre "Por pautas" e "Por alunos" pode substituir uma árvore DOM
-     * muito grande. Na tela do professor fazemos uma navegação limpa para
-     * remontar o workspace no novo modo, evitando erros de morph/hidratação e
-     * estados residuais do Livewire durante a troca de visualização.
+     * Mantém o componente do professor sempre restrito à turma selecionada
+     * também nas coleções usadas diretamente pela view. O componente base
+     * expõe "turmasDaSerieDisponiveis" para a visão geral; na tela do professor
+     * isso fazia cada interação Livewire remontar todas as turmas da série,
+     * mesmo quando o usuário estava trabalhando em uma única turma.
+     */
+    public function getTurmasDaSerieDisponiveisProperty(): Collection
+    {
+        $turmas = parent::getTurmasDaSerieDisponiveisProperty();
+
+        if (! $this->turma) {
+            return $turmas;
+        }
+
+        return $turmas
+            ->filter(fn (Turma $turma): bool => (int) $turma->id === (int) $this->turma)
+            ->values();
+    }
+
+    /**
+     * A troca de modo altera uma árvore DOM grande. Fazemos um carregamento
+     * completo da rota para impedir morph/hidratação residual do Livewire.
      */
     public function definirVisualizacao(string $visualizacao): void
     {
@@ -58,8 +76,6 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
             'visualizacao' => $visualizacao,
         ], static fn ($valor): bool => $valor !== null && $valor !== ''));
 
-        // Redirecionamento completo intencional: evita reaproveitar a árvore
-        // Livewire pesada da visualização anterior.
         $this->redirect($url, navigate: false);
     }
 }
