@@ -124,6 +124,8 @@ class AvaliacaoTurmaWorkspace extends Component
 
     protected ?array $progressoPorAlunoCache = null;
 
+    protected ?array $progressoAbasCache = null;
+
     protected ?array $componentesDisponiveisNoWorkspaceCache = null;
 
     public function mount(
@@ -1096,6 +1098,8 @@ class AvaliacaoTurmaWorkspace extends Component
             return [];
         }
 
+        $progressos = $this->progressoAbas['turmas'] ?? [];
+
         return $this->filtrarTurmasDaAvaliacao($this->avaliacaoAtual)
             ->filter(fn (Turma $turma): bool => (int) $turma->id_serie === (int) $this->serie
                 && (! $this->escola || (int) $turma->id_escola === (int) $this->escola))
@@ -1103,6 +1107,7 @@ class AvaliacaoTurmaWorkspace extends Component
                 'id' => (int) $turma->id,
                 'label' => $this->rotuloTurma($turma),
                 'meta' => (string) ($turma->escola?->nome ?? ''),
+                'progresso' => $progressos[(int) $turma->id] ?? $this->montarResumoProgresso(0, 0),
                 'url' => \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl([
                     'avaliacao' => $this->avaliacao,
                     'escola' => $this->escola,
@@ -1121,6 +1126,8 @@ class AvaliacaoTurmaWorkspace extends Component
             return [];
         }
 
+        $progressos = $this->progressoAbas['componentes'][(int) $this->turma] ?? [];
+
         return $this->pautasBaseDisponiveis
             ->filter(fn (Pauta $pauta): bool => $pauta->componente_curricular_id !== null)
             ->groupBy(fn (Pauta $pauta): int => (int) $pauta->componente_curricular_id)
@@ -1131,6 +1138,7 @@ class AvaliacaoTurmaWorkspace extends Component
                     'id' => $componenteId,
                     'label' => (string) ($primeiraPauta?->componente?->nome ?? 'Componente'),
                     'count' => $pautas->count(),
+                    'progresso' => $progressos[$componenteId] ?? $this->montarResumoProgresso(0, 0),
                     'url' => \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl([
                         'avaliacao' => $this->avaliacao,
                         'escola' => $this->escola,
@@ -1144,6 +1152,94 @@ class AvaliacaoTurmaWorkspace extends Component
             ->sortBy(fn (array $tab): string => mb_strtolower($tab['label']))
             ->values()
             ->all();
+    }
+
+    public function getProgressoAbasProperty(): array
+    {
+        if (is_array($this->progressoAbasCache)) {
+            return $this->progressoAbasCache;
+        }
+
+        $turmas = $this->turmasDaSerieDisponiveis;
+        $alunosPorTurma = $turmas->mapWithKeys(fn (Turma $turma): array => [
+            (int) $turma->id => $this->alunosRespondiveisDaTurma((int) $turma->id),
+        ]);
+        $alunosIds = $alunosPorTurma
+            ->flatten(1)
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if (! $this->avaliacao || $alunosIds === []) {
+            return $this->progressoAbasCache = ['turmas' => [], 'componentes' => []];
+        }
+
+        $persistencia = app(AvaliacaoPersistencia::class);
+        $respostas = $persistencia->leRelacional()
+            ? app(AvaliacaoRespostaStore::class)->respostasDaAvaliacaoParaAlunos((int) $this->avaliacao, $alunosIds)
+            : app(AvaliacaoAlunoDocumentoService::class)->documentosDaAvaliacaoParaAlunos((int) $this->avaliacao, collect($alunosPorTurma)->flatten(1));
+
+        $alternativasIds = collect($respostas)
+            ->flatMap(function ($resposta): array {
+                if ($resposta instanceof AvaliacaoAlunoDocumento) {
+                    return collect($resposta->pautasPayload())->pluck('alternativa_id')->filter()->all();
+                }
+
+                return collect($resposta)->pluck('alternativa_id')->filter()->all();
+            })
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+        $alternativasComObservacao = Alternativa::query()
+            ->whereIn('id', $alternativasIds)
+            ->where('tem_observacao', true)
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->flip();
+
+        $resultado = ['turmas' => [], 'componentes' => []];
+
+        foreach ($turmas as $turma) {
+            $turmaId = (int) $turma->id;
+            $alunos = $alunosPorTurma->get($turmaId, collect());
+            $pautas = $this->pautasBaseDisponiveis
+                ->filter(fn (Pauta $pauta): bool => $this->pautaEhDaSerieDaTurma($pauta, $turma)
+                    && $this->pautaEhRelevanteParaTurma($pauta, $turma));
+            $preenchidasTurma = 0;
+            $totalTurma = 0;
+
+            foreach ($pautas->groupBy(fn (Pauta $pauta): int => (int) ($pauta->componente_curricular_id ?? 0)) as $componenteId => $pautasComponente) {
+                $preenchidas = 0;
+                $total = $pautasComponente->count() * $alunos->count();
+
+                foreach ($alunos as $aluno) {
+                    foreach ($pautasComponente as $pauta) {
+                        $respostaAluno = $respostas->get((int) $aluno->id);
+                        $dados = $respostaAluno instanceof AvaliacaoAlunoDocumento
+                            ? $respostaAluno->respostaDaPauta((int) $pauta->id)
+                            : $respostaAluno?->get((int) $pauta->id);
+                        $alternativaId = (int) ($dados['alternativa_id'] ?? 0);
+
+                        if ($alternativaId > 0
+                            && (! $alternativasComObservacao->has($alternativaId)
+                                || trim((string) ($dados['observacao'] ?? '')) !== '')) {
+                            $preenchidas++;
+                        }
+                    }
+                }
+
+                $resultado['componentes'][$turmaId][(int) $componenteId] = $this->montarResumoProgresso($preenchidas, $total);
+                $preenchidasTurma += $preenchidas;
+                $totalTurma += $total;
+            }
+
+            $resultado['turmas'][$turmaId] = $this->montarResumoProgresso($preenchidasTurma, $totalTurma);
+        }
+
+        return $this->progressoAbasCache = $resultado;
     }
 
     public function getAlunosPorTurmaProperty(): Collection
@@ -2418,6 +2514,7 @@ class AvaliacaoTurmaWorkspace extends Component
         $this->progressoPorTurmaCache = null;
         $this->progressoPorPautaCache = null;
         $this->progressoPorAlunoCache = null;
+        $this->progressoAbasCache = null;
     }
 
     private function limitarTextoCampo(mixed $valor): string

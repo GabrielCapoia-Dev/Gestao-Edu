@@ -9,14 +9,21 @@
 
     <div class="av-tabs-track" role="tablist">
         @foreach ($tabs as $tab)
+            @php($progresso = $tab['progresso'])
             <a
                 href="{{ $tab['url'] }}"
                 wire:navigate
                 role="tab"
                 aria-selected="{{ (int) $activeId === (int) $tab['id'] ? 'true' : 'false' }}"
-                class="av-workspace-tab {{ (int) $activeId === (int) $tab['id'] ? 'is-active' : '' }}">
-                <span>{{ $tab['label'] }}</span>
+                class="av-workspace-tab {{ (int) $activeId === (int) $tab['id'] ? 'is-active' : '' }} {{ $progresso['concluida'] ? 'is-complete' : '' }}">
+                <span class="av-workspace-tab__title">
+                    <span>{{ $tab['label'] }}</span>
+                    <small>{{ $progresso['percentual'] }}%</small>
+                </span>
                 <small>{{ $tab['meta'] }}</small>
+                <span class="av-workspace-tab__progress" aria-label="{{ $progresso['percentual'] }}% concluído">
+                    <span style="width: {{ $progresso['percentual'] }}%"></span>
+                </span>
             </a>
         @endforeach
     </div>
