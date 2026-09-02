@@ -137,22 +137,18 @@ ensure_pulse_installed() {
     cp composer.lock "$composer_lock_backup"
 
     if [ "$APP_ENV" = "production" ]; then
-        if ! composer require "laravel/pulse:${PULSE_PACKAGE_VERSION:-^1.8}" \
+        composer require "laravel/pulse:${PULSE_PACKAGE_VERSION:-^1.8}" \
             --no-dev \
             --no-interaction \
             --prefer-dist \
             --with-dependencies \
-            --optimize-autoloader; then
-            status=$?
-        fi
+            --optimize-autoloader || status=$?
     else
-        if ! composer require "laravel/pulse:${PULSE_PACKAGE_VERSION:-^1.8}" \
+        composer require "laravel/pulse:${PULSE_PACKAGE_VERSION:-^1.8}" \
             --no-interaction \
             --prefer-dist \
             --with-dependencies \
-            --optimize-autoloader; then
-            status=$?
-        fi
+            --optimize-autoloader || status=$?
     fi
 
     # A instalacao do Pulse e feita no vendor do runtime. Mantemos os manifests
