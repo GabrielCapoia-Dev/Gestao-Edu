@@ -118,6 +118,62 @@ run_queue_worker() {
     exec su -s /bin/sh www-data -c "$worker_command"
 }
 
+ensure_pulse_installed() {
+    if php -r "require 'vendor/autoload.php'; exit(class_exists('Laravel\\Pulse\\PulseServiceProvider') ? 0 : 1);"; then
+        echo "[pulse] Laravel Pulse ja esta instalado."
+        return
+    fi
+
+    echo "[pulse] Instalando Laravel Pulse ${PULSE_PACKAGE_VERSION:-^1.8}..."
+
+    local composer_json_backup
+    local composer_lock_backup
+    local status=0
+
+    composer_json_backup="$(mktemp)"
+    composer_lock_backup="$(mktemp)"
+
+    cp composer.json "$composer_json_backup"
+    cp composer.lock "$composer_lock_backup"
+
+    if [ "$APP_ENV" = "production" ]; then
+        if ! composer require "laravel/pulse:${PULSE_PACKAGE_VERSION:-^1.8}" \
+            --no-dev \
+            --no-interaction \
+            --prefer-dist \
+            --with-dependencies \
+            --optimize-autoloader; then
+            status=$?
+        fi
+    else
+        if ! composer require "laravel/pulse:${PULSE_PACKAGE_VERSION:-^1.8}" \
+            --no-interaction \
+            --prefer-dist \
+            --with-dependencies \
+            --optimize-autoloader; then
+            status=$?
+        fi
+    fi
+
+    # A instalacao do Pulse e feita no vendor do runtime. Mantemos os manifests
+    # versionados intactos para que o deploy nao deixe composer.json/lock sujos.
+    cp "$composer_json_backup" composer.json
+    cp "$composer_lock_backup" composer.lock
+    rm -f "$composer_json_backup" "$composer_lock_backup"
+
+    if [ "$status" -ne 0 ]; then
+        echo "[pulse] Falha ao instalar Laravel Pulse." >&2
+        exit "$status"
+    fi
+
+    if ! php -r "require 'vendor/autoload.php'; exit(class_exists('Laravel\\Pulse\\PulseServiceProvider') ? 0 : 1);"; then
+        echo "[pulse] Pacote nao ficou disponivel no autoload apos a instalacao." >&2
+        exit 1
+    fi
+
+    echo "[pulse] Laravel Pulse instalado com sucesso."
+}
+
 if [ "${1:-}" = "queue-worker" ]; then
     run_queue_worker "${2:-default}"
 fi
@@ -138,6 +194,10 @@ if [ "$APP_ENV" = "production" ]; then
 else
     composer install --no-interaction --prefer-dist --optimize-autoloader
 fi
+
+# Pulse fica preparado automaticamente no runtime sem exigir alteracao manual
+# de composer.json/composer.lock no servidor.
+ensure_pulse_installed
 
 # ── APP_KEY ────────────────────────────────────────────────────────────────
 if [ -z "$APP_KEY" ] || [ "$APP_KEY" = "base64:" ]; then
