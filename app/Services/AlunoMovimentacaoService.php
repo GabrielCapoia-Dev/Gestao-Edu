@@ -93,9 +93,21 @@ class AlunoMovimentacaoService
                 );
             }
 
-            if ($aluno->estaPendente()) {
-                app(AlunoTransferenciaPendenteService::class)
-                    ->notificarPendencia($aluno, $usuario, true);
+            if ($origemPendente) {
+                $origemPendente->forceFill([
+                    'status' => Aluno::STATUS_TRANSFERIDO,
+                    'status_alterado_em' => now(),
+                    'status_alterado_por' => $usuario?->id,
+                    'status_motivo' => 'Transferência concluída automaticamente pela matrícula em outra escola.',
+                ])->save();
+
+                $this->alinharContraTurnoAoPrincipal(
+                    $origemPendente,
+                    $usuario,
+                    'Transferência concluída automaticamente pela matrícula em outra escola.'
+                );
+
+                $this->resolverPendenciasDeTransferencia($origemPendente, $usuario);
             }
 
             return $aluno;
@@ -349,6 +361,10 @@ class AlunoMovimentacaoService
             ->first();
 
         if ($pendente) {
+            if ($permitirPendencia) {
+                return $pendente;
+            }
+
             throw new MatriculaAlunoBloqueadaException(
                 $pendente,
                 'Este CGM ja possui uma matricula pendente em outra unidade. Resolva a pendencia antes de criar uma nova matricula.'

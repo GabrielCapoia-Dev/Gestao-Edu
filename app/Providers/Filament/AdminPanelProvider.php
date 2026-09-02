@@ -10,7 +10,6 @@ use App\Filament\Admin\Resources\Pedidos\Pages\ListPedidos;
 use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Middleware\ApplyProfilePreviewUser;
 use App\Http\Middleware\BlockProfilePreviewWrites;
-use App\Http\Middleware\BloquearProfessorPendenciaTransferencia;
 use App\Http\Middleware\EnsurePasswordIsChanged;
 use App\Http\Middleware\NormalizeSessionCookieDomain;
 use App\Models\NotificacaoEnvio;
@@ -218,7 +217,6 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
                 EnsurePasswordIsChanged::class,
-                BloquearProfessorPendenciaTransferencia::class,
             ], isPersistent: true)
             ->renderHook(
                 PanelsRenderHook::USER_MENU_BEFORE,

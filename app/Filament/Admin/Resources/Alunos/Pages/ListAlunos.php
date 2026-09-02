@@ -9,14 +9,12 @@ use App\Models\Aluno;
 use App\Models\ExportRequest;
 use App\Services\AlunoMovimentacaoService;
 use App\Services\Alunos\AlunoImportacaoSpreadsheetService;
-use App\Services\AlunoTransferenciaPendenteService;
 use App\Services\Exports\ExportSessionService;
 use Filament\Actions;
 use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\EmbeddedTable;
-use Filament\Schemas\Components\Html;
 use Filament\Schemas\Components\RenderHook;
 use Filament\Schemas\Schema;
 use Filament\View\PanelsRenderHook;
@@ -67,8 +65,6 @@ class ListAlunos extends ListRecords
     {
         return $schema
             ->components([
-                Html::make(fn (): string => $this->bannerPendenciaProfessor())
-                    ->visible(fn (): bool => $this->alunoPendenciaProfessor() !== null),
                 $this->getTabsContentComponent(),
                 RenderHook::make(PanelsRenderHook::RESOURCE_PAGES_LIST_RECORDS_TABLE_BEFORE),
                 EmbeddedTable::make(),
@@ -90,8 +86,7 @@ class ListAlunos extends ListRecords
                 ->label('Sincronizar Matriculados')
                 ->icon('heroicon-o-arrow-up-tray')
                 ->color('primary')
-                ->visible(fn (): bool => ! app(AlunoTransferenciaPendenteService::class)->professorEstaBloqueado(Auth::user())
-                    && Gate::allows('import', Aluno::class))
+                ->visible(fn (): bool => Gate::allows('import', Aluno::class))
                 ->schema([
                     FileUpload::make('arquivo')
                         ->label('Arquivo da planilha')
@@ -128,7 +123,6 @@ class ListAlunos extends ListRecords
 
             Actions\CreateAction::make()
                 ->modalWidth('4xl')
-                ->visible(fn (): bool => ! app(AlunoTransferenciaPendenteService::class)->professorEstaBloqueado(Auth::user()))
                 ->using(function (array $data): Model {
                     $data = AlunoResource::alunoService()->prepararDadosCadastroAluno($data, Auth::user());
 
@@ -159,31 +153,6 @@ class ListAlunos extends ListRecords
         }
 
         return parent::getTitle();
-    }
-
-    private function alunoPendenciaProfessor(): ?Aluno
-    {
-        return app(AlunoTransferenciaPendenteService::class)->pendenciaAtivaParaProfessor(Auth::user());
-    }
-
-    private function bannerPendenciaProfessor(): string
-    {
-        $aluno = $this->alunoPendenciaProfessor();
-
-        if (! $aluno) {
-            return '';
-        }
-
-        $mensagem = e(sprintf(
-            'O aluno %s está com transferência pendente, suas ações estão limitadas enquanto as pendências não forem solucionadas',
-            $aluno->nome
-        ));
-
-        return <<<HTML
-<div class="rounded-lg border border-warning-200 bg-warning-50 px-4 py-3 text-sm font-medium text-warning-900 shadow-sm">
-    {$mensagem}
-</div>
-HTML;
     }
 
     private function spreadsheetService(): AlunoImportacaoSpreadsheetService
