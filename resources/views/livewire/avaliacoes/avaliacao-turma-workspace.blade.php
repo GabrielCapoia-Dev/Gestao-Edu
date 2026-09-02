@@ -94,17 +94,18 @@
         @else
             @php($turmasDaSerie = $this->turmasDaSerieDisponiveis)
 
-            @if (! $this->modoAcompanhamento() && $turma)
-                @php($visaoGeralUrl = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie]))
-                @php($turmaEmFoco = $turmasDaSerie->first())
-                <section class="av-focus-bar">
-                    <div>
-                        <span class="av-focus-kicker">Turma em edição</span>
-                        <strong>{{ $turmaEmFoco ? $this->rotuloTurma($turmaEmFoco) : 'Turma selecionada' }}</strong>
-                        <small>{{ $turmaEmFoco?->escola?->nome }} · {{ $turmaEmFoco?->serie?->nome }}</small>
-                    </div>
-                    <a class="gi-action gi-action--secondary" href="{{ $visaoGeralUrl }}" wire:navigate>Voltar para todas as turmas</a>
-                </section>
+            @if (! $this->modoAcompanhamento())
+                @livewire('avaliacoes.turma-tabs', [
+                    'tabs' => $this->turmaTabs,
+                    'activeId' => $turma,
+                ], key('turma-tabs-'.$avaliacao.'-'.$escola.'-'.$serie.'-'.($turma ?? 'nenhuma')))
+
+                @if ($turma)
+                    @livewire('avaliacoes.componente-tabs', [
+                        'tabs' => $this->componenteTabs,
+                        'activeId' => (int) $componenteWorkspaceId,
+                    ], key('componente-tabs-'.$avaliacao.'-'.$turma.'-'.$componenteWorkspaceId))
+                @endif
             @endif
 
             @if ($this->modoAcompanhamento() || $turma)
@@ -183,8 +184,8 @@
                                 <button type="button" class="{{ $visualizacao === 'pautas' ? 'is-active' : '' }}" wire:click="definirVisualizacao('pautas')">Por pautas</button>
                                 <button type="button" class="{{ $visualizacao === 'alunos' ? 'is-active' : '' }}" wire:click="definirVisualizacao('alunos')">Por alunos</button>
                             @else
-                                @php($urlPautas = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie, 'turma' => $turma, 'visualizacao' => 'pautas']))
-                                @php($urlAlunos = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie, 'turma' => $turma, 'visualizacao' => 'alunos']))
+                                @php($urlPautas = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie, 'turma' => $turma, 'componente' => $componenteWorkspaceId, 'visualizacao' => 'pautas']))
+                                @php($urlAlunos = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie, 'turma' => $turma, 'componente' => $componenteWorkspaceId, 'visualizacao' => 'alunos']))
                                 <a class="{{ $visualizacao === 'pautas' ? 'is-active' : '' }}" href="{{ $urlPautas }}" wire:navigate>Por pautas</a>
                                 <a class="{{ $visualizacao === 'alunos' ? 'is-active' : '' }}" href="{{ $urlAlunos }}" wire:navigate>Por alunos</a>
                             @endif
@@ -359,6 +360,7 @@
                         @endforelse
                     </div>
                 @else
+                @if ($turma)
                 <div class="av-stack {{ $turma ? '' : 'av-turma-grid' }}">
                     @foreach ($turmasDaSerie as $turmaItem)
                         @php($turmaIdAtual = (int) $turmaItem->id)
@@ -368,7 +370,7 @@
                         @php($turmaSelecionada = (int) ($this->turma ?? 0) === $turmaIdAtual)
                         @php($turmaUrl = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie, 'turma' => $turmaIdAtual]))
 
-                        <section wire:key="workspace-turma-pautas-{{ $turmaIdAtual }}" x-data="{ aberto: @js($turmaSelecionada) }" :class="{ 'is-open': aberto }" class="gi-panel av-turma-section">
+                        <section wire:key="workspace-turma-pautas-{{ $turmaIdAtual }}" x-data="{ aberto: @js($turmaSelecionada) }" :class="{ 'is-open': aberto }" class="gi-panel av-turma-section av-turma-workspace-panel">
                             <a class="av-pauta-toggle" href="{{ $turmaUrl }}" wire:navigate>
                                 <div class="av-pauta-toggle-main">
                                     <h3 class="av-pauta-title">{{ $this->rotuloTurma($turmaItem) }}</h3>
@@ -395,11 +397,11 @@
                             @if ($turmaSelecionada)
                                 <div class="av-turma-content">
                                     @forelse ($gruposDaTurma as $grupo)
-                                        @php($componenteExpandido = $this->componenteEstaExpandido($turmaIdAtual, (int) $grupo['componente_id']))
+                                        @php($componenteExpandido = (int) $componenteWorkspaceId === (int) $grupo['componente_id'] || $this->componenteEstaExpandido($turmaIdAtual, (int) $grupo['componente_id']))
                                         @php($progressoComponentePreenchidas = collect($grupo['pautas'])->sum(fn ($pauta) => (int) ($this->progressoPorPauta[$turmaIdAtual][$pauta->id]['preenchidas'] ?? 0)))
                                         @php($progressoComponenteTotal = collect($grupo['pautas'])->sum(fn ($pauta) => (int) ($this->progressoPorPauta[$turmaIdAtual][$pauta->id]['total'] ?? $alunosDaTurma->count())))
                                         @php($progressoComponentePercentual = $progressoComponenteTotal > 0 ? min(100, (int) round(($progressoComponentePreenchidas / $progressoComponenteTotal) * 100)) : 0)
-                                        <section wire:key="workspace-turma-{{ $turmaIdAtual }}-componente-{{ $grupo['componente_id'] }}" class="av-pauta-section av-pauta-section--nested {{ $componenteExpandido ? 'is-open' : '' }}">
+                                        <section wire:key="workspace-turma-{{ $turmaIdAtual }}-componente-{{ $grupo['componente_id'] }}" class="av-pauta-section av-pauta-section--nested av-component-workspace-panel {{ $componenteExpandido ? 'is-open' : '' }}">
                                             <button type="button" class="av-pauta-toggle" wire:click="alternarComponente({{ $turmaIdAtual }}, {{ $grupo['componente_id'] }})">
                                                 <div class="av-pauta-toggle-main">
                                                     <h3 class="av-pauta-title">{{ $grupo['titulo'] }}</h3>
@@ -549,6 +551,7 @@
                         </section>
                     @endforeach
                 </div>
+                @endif
                 @endif
             @else
                 @if ($this->modoAcompanhamento())
@@ -728,6 +731,7 @@
                         @endforelse
                     </div>
                 @else
+                @if ($turma)
                 <div class="av-stack {{ $turma ? '' : 'av-turma-grid' }}">
                     @foreach ($turmasDaSerie as $turmaItem)
                         @php($turmaIdAtual = (int) $turmaItem->id)
@@ -736,7 +740,7 @@
                         @php($turmaSelecionada = (int) ($this->turma ?? 0) === $turmaIdAtual)
                         @php($turmaUrl = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie, 'turma' => $turmaIdAtual]))
 
-                        <section wire:key="workspace-turma-alunos-{{ $turmaIdAtual }}" x-data="{ aberto: @js($turmaSelecionada) }" :class="{ 'is-open': aberto }" class="gi-panel av-turma-section">
+                        <section wire:key="workspace-turma-alunos-{{ $turmaIdAtual }}" x-data="{ aberto: @js($turmaSelecionada) }" :class="{ 'is-open': aberto }" class="gi-panel av-turma-section av-turma-workspace-panel">
                             <a class="av-pauta-toggle" href="{{ $turmaUrl }}" wire:navigate>
                                 <div class="av-pauta-toggle-main">
                                     <h3 class="av-pauta-title">{{ $this->rotuloTurma($turmaItem) }}</h3>
@@ -773,7 +777,7 @@
                                             <select x-on:change="if ($event.target.value) Livewire.navigate($event.target.value)">
                                                 <option value="">Selecione um aluno</option>
                                                 @foreach ($alunosDaTurma as $alunoOpcao)
-                                                    @php($alunoOpcaoUrl = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie, 'turma' => $turmaIdAtual, 'visualizacao' => 'alunos', 'aluno' => $alunoOpcao->id]))
+                                                    @php($alunoOpcaoUrl = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie, 'turma' => $turmaIdAtual, 'componente' => $componenteWorkspaceId, 'visualizacao' => 'alunos', 'aluno' => $alunoOpcao->id]))
                                                     <option value="{{ $alunoOpcaoUrl }}" @selected((int) ($this->alunoEmFoco ?? 0) === (int) $alunoOpcao->id)>
                                                         {{ $alunoOpcao->nome }} · CGM {{ $alunoOpcao->cgm }}
                                                     </option>
@@ -785,7 +789,7 @@
                                         @php($progressoAluno = $this->progressoPorAluno[$aluno->id] ?? ['preenchidas' => 0, 'total' => 0, 'percentual' => 0, 'concluida' => false])
                                         @php($alunoBloqueadoTransferencia = $this->alunoEstaBloqueadoParaAvaliacao($aluno))
                                         @php($alunoSelecionado = (int) ($this->alunoEmFoco ?? 0) === (int) $aluno->id)
-                                        @php($alunoUrl = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie, 'turma' => $turmaIdAtual, 'visualizacao' => 'alunos', 'aluno' => $aluno->id]))
+                                        @php($alunoUrl = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie, 'turma' => $turmaIdAtual, 'componente' => $componenteWorkspaceId, 'visualizacao' => 'alunos', 'aluno' => $aluno->id]))
 
                                         <section wire:key="workspace-turma-{{ $turmaIdAtual }}-aluno-{{ $aluno->id }}" class="av-pauta-section av-pauta-section--nested {{ $alunoSelecionado ? 'is-open' : '' }}">
                                             <a class="av-pauta-toggle" href="{{ $alunoUrl }}" wire:navigate>
@@ -943,9 +947,10 @@
                     @endforeach
                 </div>
                 @endif
+                @endif
             @endif
 
-            @if (! $this->modoAcompanhamento())
+            @if (! $this->modoAcompanhamento() && $turma)
             <section class="gi-panel">
                 <div class="gi-toolbar">
                     <div></div>

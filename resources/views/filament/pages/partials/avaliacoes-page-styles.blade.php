@@ -6,6 +6,141 @@
         gap: 1rem;
     }
 
+    .av-tabs-shell {
+        display: grid;
+        gap: 0.75rem;
+        padding: 1rem;
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-xl);
+        background: #fff;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+    }
+
+    .av-tabs-shell--componentes {
+        border-color: color-mix(in oklab, var(--primary-200) 58%, var(--gray-200));
+        background: color-mix(in oklab, var(--primary-50) 36%, #fff);
+    }
+
+    .av-tabs-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .av-tabs-heading > div {
+        display: grid;
+        gap: 0.1rem;
+    }
+
+    .av-tabs-heading strong {
+        color: var(--gray-950);
+        font-size: var(--text-sm);
+    }
+
+    .av-tabs-heading > span {
+        color: var(--gray-500);
+        font-size: var(--text-xs);
+    }
+
+    .av-tabs-kicker {
+        color: var(--primary-700);
+        font-size: 0.68rem;
+        font-weight: var(--font-weight-semibold);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+    }
+
+    .av-tabs-track {
+        display: flex;
+        gap: 0.45rem;
+        padding: 0.3rem;
+        overflow-x: auto;
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg);
+        background: var(--gray-50);
+        scrollbar-width: thin;
+    }
+
+    .av-workspace-tab {
+        display: grid;
+        flex: 0 0 auto;
+        min-width: 9.5rem;
+        gap: 0.1rem;
+        padding: 0.7rem 0.85rem;
+        border: 1px solid transparent;
+        border-radius: calc(var(--radius-lg) - 0.2rem);
+        color: var(--gray-600);
+        text-decoration: none;
+        transition: background 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+    }
+
+    .av-workspace-tab:hover {
+        border-color: var(--gray-200);
+        background: #fff;
+        color: var(--gray-900);
+    }
+
+    .av-workspace-tab.is-active {
+        border-color: var(--primary-600);
+        background: linear-gradient(135deg, var(--primary-700), var(--primary-500));
+        color: #fff;
+        box-shadow: 0 7px 16px rgba(23, 54, 141, 0.2);
+    }
+
+    .av-workspace-tab span {
+        font-size: var(--text-sm);
+        font-weight: var(--font-weight-semibold);
+    }
+
+    .av-workspace-tab small {
+        color: var(--gray-500);
+        font-size: var(--text-xs);
+    }
+
+    .av-workspace-tab.is-active small {
+        color: rgba(255, 255, 255, 0.78);
+    }
+
+    .av-workspace-tab--component {
+        min-width: 11rem;
+    }
+
+    .av-turma-workspace-panel {
+        padding: 0;
+        overflow: visible;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    .av-turma-workspace-panel > .av-pauta-toggle {
+        display: none;
+    }
+
+    .av-turma-workspace-panel > .av-turma-content {
+        padding: 0;
+        border: 0;
+        background: transparent;
+    }
+
+    .av-component-workspace-panel {
+        padding: 0;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    .av-component-workspace-panel > .av-pauta-toggle {
+        display: none;
+    }
+
+    .av-component-workspace-panel > .av-pauta-content {
+        padding: 0;
+        border: 0;
+        background: transparent;
+    }
+
     .av-focus-bar {
         display: flex;
         align-items: center;

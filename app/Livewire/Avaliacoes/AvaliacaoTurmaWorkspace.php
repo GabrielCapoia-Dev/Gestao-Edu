@@ -149,6 +149,10 @@ class AvaliacaoTurmaWorkspace extends Component
         }
 
         $this->alunoEmFoco = $this->normalizarQueryId(request()->query('aluno'));
+        $componenteQuery = $this->normalizarQueryId(request()->query('componente'));
+        if ($componenteQuery) {
+            $this->componenteWorkspaceId = (string) $componenteQuery;
+        }
 
         if (! $this->modoAcompanhamento()) {
             $this->sincronizarVinculosProfessor();
@@ -1037,7 +1041,14 @@ class AvaliacaoTurmaWorkspace extends Component
             return $this->pautasDisponiveisCache = collect();
         }
 
-        $pautas = $pautas->values();
+        if ($this->componenteWorkspaceId !== '') {
+            $componenteId = (int) $this->componenteWorkspaceId;
+            $pautas = $pautas
+                ->filter(fn (Pauta $pauta): bool => (int) ($pauta->componente_curricular_id ?? 0) === $componenteId)
+                ->values();
+        } else {
+            $pautas = $pautas->values();
+        }
 
         $this->carregarAlternativasPorPauta($pautas);
 
@@ -1077,6 +1088,62 @@ class AvaliacaoTurmaWorkspace extends Component
             ->filter(fn (Turma $turma): bool => (int) $turma->id_serie === (int) $this->serie
                 && (! $this->escola || (int) $turma->id_escola === (int) $this->escola))
             ->values();
+    }
+
+    public function getTurmaTabsProperty(): array
+    {
+        if (! $this->avaliacaoAtual || ! $this->serie) {
+            return [];
+        }
+
+        return $this->filtrarTurmasDaAvaliacao($this->avaliacaoAtual)
+            ->filter(fn (Turma $turma): bool => (int) $turma->id_serie === (int) $this->serie
+                && (! $this->escola || (int) $turma->id_escola === (int) $this->escola))
+            ->map(fn (Turma $turma): array => [
+                'id' => (int) $turma->id,
+                'label' => $this->rotuloTurma($turma),
+                'meta' => (string) ($turma->escola?->nome ?? ''),
+                'url' => \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl([
+                    'avaliacao' => $this->avaliacao,
+                    'escola' => $this->escola,
+                    'serie' => $this->serie,
+                    'turma' => $turma->id,
+                    'visualizacao' => $this->visualizacao,
+                ]),
+            ])
+            ->values()
+            ->all();
+    }
+
+    public function getComponenteTabsProperty(): array
+    {
+        if (! $this->turma) {
+            return [];
+        }
+
+        return $this->pautasBaseDisponiveis
+            ->filter(fn (Pauta $pauta): bool => $pauta->componente_curricular_id !== null)
+            ->groupBy(fn (Pauta $pauta): int => (int) $pauta->componente_curricular_id)
+            ->map(function (Collection $pautas, int $componenteId): array {
+                $primeiraPauta = $pautas->first();
+
+                return [
+                    'id' => $componenteId,
+                    'label' => (string) ($primeiraPauta?->componente?->nome ?? 'Componente'),
+                    'count' => $pautas->count(),
+                    'url' => \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl([
+                        'avaliacao' => $this->avaliacao,
+                        'escola' => $this->escola,
+                        'serie' => $this->serie,
+                        'turma' => $this->turma,
+                        'componente' => $componenteId,
+                        'visualizacao' => $this->visualizacao,
+                    ]),
+                ];
+            })
+            ->sortBy(fn (array $tab): string => mb_strtolower($tab['label']))
+            ->values()
+            ->all();
     }
 
     public function getAlunosPorTurmaProperty(): Collection
@@ -1413,6 +1480,20 @@ class AvaliacaoTurmaWorkspace extends Component
 
         $this->limparCachesDoEscopo();
         $this->precarregarProfessoresPorTurmaComponente();
+        $this->getPautasBaseDisponiveisProperty();
+
+        if (! $this->modoAcompanhamento() && $this->turma && $this->componenteWorkspaceId === '') {
+            $primeiroComponenteId = (int) ($this->pautasBaseDisponiveis
+                ->pluck('componente_curricular_id')
+                ->filter()
+                ->sort()
+                ->first() ?? 0);
+
+            if ($primeiroComponenteId > 0) {
+                $this->componenteWorkspaceId = (string) $primeiroComponenteId;
+            }
+        }
+
         $this->getPautasDisponiveisProperty();
         $this->getAlunosPorTurmaProperty();
         $this->carregarCiclosDoEscopo();
