@@ -1,6 +1,6 @@
 <x-filament-panels::page>
     @livewire(
-        'avaliacoes.avaliacao-turma-workspace',
+        'avaliacoes.avaliacao-turma-professor-workspace',
         [
             'avaliacaoId' => $initialAvaliacaoId,
             'turmaId' => $initialTurmaId,
