@@ -232,9 +232,11 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->assertDontSee('Pauta do primeiro ano')
             ->set('turma', $turmaA->id)
             ->assertSet('turmasExpandidas', [])
-            ->assertSee('Selecione o componente curricular')
             ->assertSee('Lingua Portuguesa - PROFESSOR SERIE')
+            ->assertDontSee('Pauta do primeiro ano')
+            ->call('alternarComponente', $turmaA->id, $componente->id)
             ->assertSee('Pauta do primeiro ano')
+            ->assertDontSee('Turma B')
             ->assertDontSee('Turma C')
             ->call('definirVisualizacao', 'alunos')
             ->assertSee('Aluno Turma A')
@@ -775,7 +777,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->set("respostas.{$pauta->id}.{$aluno->id}.alternativa_id", $alternativaOverride->id)
             ->assertSee('Informe o contexto da participação.')
             ->set("respostas.{$pauta->id}.{$aluno->id}.observacao", 'Observação informada pelo professor.')
-            ->call('salvarRespostas');
+            ->call('salvarAlteracoes');
 
         $this->assertDatabaseHas('avaliacao_aluno_documentos', [
             'avaliacao_id' => $avaliacao->id,
@@ -796,7 +798,7 @@ class AvaliacaoProfessorPageTest extends TestCase
         ]);
     }
 
-    public function test_professor_autosalva_informacoes_complementares_por_aluno(): void
+    public function test_professor_autosalva_e_mantem_acao_explicita_de_salvar(): void
     {
         Permission::findOrCreate('Responder Avaliações');
 
@@ -862,25 +864,34 @@ class AvaliacaoProfessorPageTest extends TestCase
         $informacoesComplementares = str_repeat('b', 1600);
         $informacoesLimitadas = str_repeat('b', 1500);
 
-        Livewire::actingAs($userProfessor)
+        $workspace = Livewire::actingAs($userProfessor)
             ->test(AvaliacaoTurmaWorkspace::class, $this->workspaceProfessorParams())
             ->set('avaliacao', $avaliacao->id)
             ->set('turma', $turma->id)
             ->set("respostas.{$pauta->id}.{$aluno->id}.alternativa_id", $alternativa->id)
-            ->set("informacoesComplementares.{$componente->id}.{$aluno->id}", $informacoesComplementares)
-            ->call('salvarRespostas');
+            ->set("informacoesComplementares.{$componente->id}.{$aluno->id}", $informacoesComplementares);
 
-        $this->assertDatabaseHas('avaliacao_aluno_documentos', [
+        $workspace->call('salvarAlteracoes');
+
+        $this->assertDatabaseHas('avaliacao_respostas_operacionais', [
             'avaliacao_id' => $avaliacao->id,
-            'turma_id' => $turma->id,
+            'turma_avaliativa_id' => $turma->id,
+            'aluno_id' => $aluno->id,
+            'pauta_id' => $pauta->id,
+            'alternativa_id' => $alternativa->id,
+        ]);
+
+        $this->assertDatabaseHas('avaliacao_informacoes_operacionais', [
+            'avaliacao_id' => $avaliacao->id,
+            'turma_avaliativa_id' => $turma->id,
             'aluno_id' => $aluno->id,
             'componente_curricular_id' => $componente->id,
             'professor_id' => $professor->id,
-            'informacoes_complementares' => $informacoesLimitadas,
+            'texto' => $informacoesLimitadas,
         ]);
     }
 
-    public function test_workspace_do_professor_mantem_botao_de_validar_pendencias(): void
+    public function test_workspace_do_professor_mantem_salvar_e_oculta_exportacao_e_conclusao(): void
     {
         Permission::findOrCreate('Responder AvaliaÃ§Ãµes');
 
@@ -946,7 +957,9 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->test(AvaliacaoTurmaWorkspace::class, $this->workspaceProfessorParams())
             ->set('avaliacao', $avaliacao->id)
             ->set('serieEscola', $escola->id . ':' . $serie->id)
-            ->assertSee('Validar pend');
+            ->assertSee('Salvar')
+            ->assertDontSee('Exportar')
+            ->assertDontSee('Concluir turma');
     }
 
     private function criarAvaliacao(string $nome, TipoAvaliacao $tipo, PeriodoAvaliacao $periodo): Avaliacao

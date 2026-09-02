@@ -1,4 +1,9 @@
-<div class="av-livewire-root">
+<div
+    class="av-livewire-root"
+    x-data="{ alteracoesPendentes: false }"
+    x-on:input.capture="if ($event.target.matches('[data-av-editavel]')) alteracoesPendentes = true"
+    x-on:change.capture="if ($event.target.matches('[data-av-editavel]')) alteracoesPendentes = true"
+    x-on:avaliacao-salva.window="alteracoesPendentes = false">
     <div class="gi-page av-page av-professor-page">
         @if ($this->modoAcompanhamento())
             <section class="gi-panel av-professor-control-panel">
@@ -94,18 +99,17 @@
         @else
             @php($turmasDaSerie = $this->turmasDaSerieDisponiveis)
 
-            @if (! $this->modoAcompanhamento())
-                @livewire('avaliacoes.turma-tabs', [
-                    'tabs' => $this->turmaTabs,
-                    'activeId' => $turma,
-                ], key('turma-tabs-'.$avaliacao.'-'.$escola.'-'.$serie.'-'.($turma ?? 'nenhuma')))
-
-                @if ($turma)
-                    @livewire('avaliacoes.componente-tabs', [
-                        'tabs' => $this->componenteTabs,
-                        'activeId' => (int) $componenteWorkspaceId,
-                    ], key('componente-tabs-'.$avaliacao.'-'.$turma.'-'.$componenteWorkspaceId))
-                @endif
+            @if (! $this->modoAcompanhamento() && $turma)
+                @php($visaoGeralUrl = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie]))
+                @php($turmaEmFoco = $turmasDaSerie->first())
+                <section class="av-focus-bar">
+                    <div>
+                        <span class="av-focus-kicker">Turma em edição</span>
+                        <strong>{{ $turmaEmFoco ? $this->rotuloTurma($turmaEmFoco) : 'Turma selecionada' }}</strong>
+                        <small>{{ $turmaEmFoco?->escola?->nome }} · {{ $turmaEmFoco?->serie?->nome }}</small>
+                    </div>
+                    <a class="gi-action gi-action--secondary" href="{{ $visaoGeralUrl }}" wire:navigate>Voltar para todas as turmas</a>
+                </section>
             @endif
 
             @if ($this->modoAcompanhamento() || $turma)
@@ -184,8 +188,8 @@
                                 <button type="button" class="{{ $visualizacao === 'pautas' ? 'is-active' : '' }}" wire:click="definirVisualizacao('pautas')">Por pautas</button>
                                 <button type="button" class="{{ $visualizacao === 'alunos' ? 'is-active' : '' }}" wire:click="definirVisualizacao('alunos')">Por alunos</button>
                             @else
-                                @php($urlPautas = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie, 'turma' => $turma, 'componente' => $componenteWorkspaceId, 'visualizacao' => 'pautas']))
-                                @php($urlAlunos = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie, 'turma' => $turma, 'componente' => $componenteWorkspaceId, 'visualizacao' => 'alunos']))
+                                @php($urlPautas = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie, 'turma' => $turma, 'visualizacao' => 'pautas']))
+                                @php($urlAlunos = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie, 'turma' => $turma, 'visualizacao' => 'alunos']))
                                 <a class="{{ $visualizacao === 'pautas' ? 'is-active' : '' }}" href="{{ $urlPautas }}" wire:navigate>Por pautas</a>
                                 <a class="{{ $visualizacao === 'alunos' ? 'is-active' : '' }}" href="{{ $urlAlunos }}" wire:navigate>Por alunos</a>
                             @endif
@@ -297,7 +301,7 @@
                                                                         </td>
                                                                         <td data-label="Alternativa">
                                                                             <div class="av-input-wrap">
-                                                                                <select class="av-table-input" wire:model.live="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id" @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)>
+                                                                                <select data-av-editavel class="av-table-input" wire:model.live="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id" @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)>
                                                                                     <option value="">Selecione</option>
                                                                                     @foreach ($alternativasPauta as $alternativa)
                                                                                         <option value="{{ $alternativa['id'] }}">
@@ -306,10 +310,6 @@
                                                                                     @endforeach
                                                                                 </select>
 
-                                                                                <span class="av-saving-indicator" wire:loading.flex wire:target="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id">
-                                                                                    <span class="av-spinner"></span>
-                                                                                    Salvando...
-                                                                                </span>
                                                                             </div>
                                                                         </td>
                                                                         <td data-label="Observação da pauta">
@@ -325,13 +325,10 @@
                                                                                         maxlength="1500"
                                                                                         placeholder="{{ $this->placeholderObservacaoAlternativa((int) $pauta->id, $alternativaSelecionadaId) }}"
                                                                                         class="av-table-input av-textarea-input"
-                                                                                        wire:model.live.debounce.500ms="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao"
+                                                                                    data-av-editavel
+                                                                                    wire:model.live.debounce.700ms="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao"
                                                                                         @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)></textarea>
 
-                                                                                    <span class="av-saving-indicator" wire:loading.flex wire:target="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao">
-                                                                                        <span class="av-spinner"></span>
-                                                                                        Salvando...
-                                                                                    </span>
                                                                                     <div class="av-field-meta">
                                                                                         <small class="av-field-hint av-field-hint--danger">Obrigatória para esta alternativa.</small>
                                                                                         <small class="av-char-count" x-text="`${count}/1500`"></small>
@@ -360,7 +357,6 @@
                         @endforelse
                     </div>
                 @else
-                @if ($turma)
                 <div class="av-stack {{ $turma ? '' : 'av-turma-grid' }}">
                     @foreach ($turmasDaSerie as $turmaItem)
                         @php($turmaIdAtual = (int) $turmaItem->id)
@@ -370,7 +366,7 @@
                         @php($turmaSelecionada = (int) ($this->turma ?? 0) === $turmaIdAtual)
                         @php($turmaUrl = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie, 'turma' => $turmaIdAtual]))
 
-                        <section wire:key="workspace-turma-pautas-{{ $turmaIdAtual }}" x-data="{ aberto: @js($turmaSelecionada) }" :class="{ 'is-open': aberto }" class="gi-panel av-turma-section av-turma-workspace-panel">
+                        <section wire:key="workspace-turma-pautas-{{ $turmaIdAtual }}" x-data="{ aberto: @js($turmaSelecionada) }" :class="{ 'is-open': aberto }" class="gi-panel av-turma-section">
                             <a class="av-pauta-toggle" href="{{ $turmaUrl }}" wire:navigate>
                                 <div class="av-pauta-toggle-main">
                                     <h3 class="av-pauta-title">{{ $this->rotuloTurma($turmaItem) }}</h3>
@@ -397,11 +393,11 @@
                             @if ($turmaSelecionada)
                                 <div class="av-turma-content">
                                     @forelse ($gruposDaTurma as $grupo)
-                                        @php($componenteExpandido = (int) $componenteWorkspaceId === (int) $grupo['componente_id'] || $this->componenteEstaExpandido($turmaIdAtual, (int) $grupo['componente_id']))
+                                        @php($componenteExpandido = $this->componenteEstaExpandido($turmaIdAtual, (int) $grupo['componente_id']))
                                         @php($progressoComponentePreenchidas = collect($grupo['pautas'])->sum(fn ($pauta) => (int) ($this->progressoPorPauta[$turmaIdAtual][$pauta->id]['preenchidas'] ?? 0)))
                                         @php($progressoComponenteTotal = collect($grupo['pautas'])->sum(fn ($pauta) => (int) ($this->progressoPorPauta[$turmaIdAtual][$pauta->id]['total'] ?? $alunosDaTurma->count())))
                                         @php($progressoComponentePercentual = $progressoComponenteTotal > 0 ? min(100, (int) round(($progressoComponentePreenchidas / $progressoComponenteTotal) * 100)) : 0)
-                                        <section wire:key="workspace-turma-{{ $turmaIdAtual }}-componente-{{ $grupo['componente_id'] }}" class="av-pauta-section av-pauta-section--nested av-component-workspace-panel {{ $componenteExpandido ? 'is-open' : '' }}">
+                                        <section wire:key="workspace-turma-{{ $turmaIdAtual }}-componente-{{ $grupo['componente_id'] }}" class="av-pauta-section av-pauta-section--nested {{ $componenteExpandido ? 'is-open' : '' }}">
                                             <button type="button" class="av-pauta-toggle" wire:click="alternarComponente({{ $turmaIdAtual }}, {{ $grupo['componente_id'] }})">
                                                 <div class="av-pauta-toggle-main">
                                                     <h3 class="av-pauta-title">{{ $grupo['titulo'] }}</h3>
@@ -485,7 +481,7 @@
                                                                         </td>
                                                                         <td data-label="Alternativa">
                                                                             <div class="av-input-wrap">
-                                                                                <select class="av-table-input" wire:model.live="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id" @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)>
+                                                                                <select data-av-editavel class="av-table-input" wire:model.live="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id" @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)>
                                                                                     <option value="">Selecione</option>
                                                                                     @foreach ($alternativasPauta as $alternativa)
                                                                                         <option value="{{ $alternativa['id'] }}">
@@ -494,10 +490,6 @@
                                                                                     @endforeach
                                                                                 </select>
 
-                                                                                <span class="av-saving-indicator" wire:loading.flex wire:target="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id">
-                                                                                    <span class="av-spinner"></span>
-                                                                                    Salvando...
-                                                                                </span>
                                                                             </div>
                                                                         </td>
                                                                         <td data-label="Observação da pauta">
@@ -513,13 +505,10 @@
                                                                                         maxlength="1500"
                                                                                         placeholder="{{ $this->placeholderObservacaoAlternativa((int) $pauta->id, $alternativaSelecionadaId) }}"
                                                                                         class="av-table-input av-textarea-input"
-                                                                                        wire:model.live.debounce.500ms="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao"
+                                                                                        data-av-editavel
+                                                                                        wire:model.live.debounce.700ms="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao"
                                                                                         @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)></textarea>
 
-                                                                                    <span class="av-saving-indicator" wire:loading.flex wire:target="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao">
-                                                                                        <span class="av-spinner"></span>
-                                                                                        Salvando...
-                                                                                    </span>
                                                                                     <div class="av-field-meta">
                                                                                         <small class="av-field-hint av-field-hint--danger">Obrigatória para esta alternativa.</small>
                                                                                         <small class="av-char-count" x-text="`${count}/1500`"></small>
@@ -551,7 +540,6 @@
                         </section>
                     @endforeach
                 </div>
-                @endif
                 @endif
             @else
                 @if ($this->modoAcompanhamento())
@@ -632,7 +620,7 @@
                                                                             </td>
                                                                             <td data-label="Alternativa">
                                                                                 <div class="av-input-wrap">
-                                                                                    <select class="av-table-input" wire:model.live="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id" @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)>
+                                                                                    <select data-av-editavel class="av-table-input" wire:model.live="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id" @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)>
                                                                                         <option value="">Selecione</option>
                                                                                         @foreach ($alternativasPauta as $alternativa)
                                                                                             <option value="{{ $alternativa['id'] }}">
@@ -641,10 +629,6 @@
                                                                                         @endforeach
                                                                                     </select>
 
-                                                                                    <span class="av-saving-indicator" wire:loading.flex wire:target="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id">
-                                                                                        <span class="av-spinner"></span>
-                                                                                        Salvando...
-                                                                                    </span>
                                                                                 </div>
                                                                             </td>
                                                                             <td data-label="Observação da pauta">
@@ -660,13 +644,10 @@
                                                                                             maxlength="1500"
                                                                                             placeholder="{{ $this->placeholderObservacaoAlternativa((int) $pauta->id, $alternativaSelecionadaId) }}"
                                                                                             class="av-table-input av-textarea-input"
-                                                                                            wire:model.live.debounce.500ms="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao"
+                                                                                            data-av-editavel
+                                                                                            wire:model.live.debounce.700ms="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao"
                                                                                             @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)></textarea>
 
-                                                                                        <span class="av-saving-indicator" wire:loading.flex wire:target="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao">
-                                                                                            <span class="av-spinner"></span>
-                                                                                            Salvando...
-                                                                                        </span>
                                                                                         <div class="av-field-meta">
                                                                                             <small class="av-field-hint av-field-hint--danger">Obrigatória para esta alternativa.</small>
                                                                                             <small class="av-char-count" x-text="`${count}/1500`"></small>
@@ -700,13 +681,10 @@
                                                                     maxlength="1500"
                                                                     placeholder="Informações complementares (opcional)"
                                                                     class="av-table-input av-textarea-input"
-                                                                    wire:model.live.debounce.600ms="informacoesComplementares.{{ $componenteId }}.{{ $aluno->id }}"
+                                                                    data-av-editavel
+                                                                    wire:model.live.debounce.900ms="informacoesComplementares.{{ $componenteId }}.{{ $aluno->id }}"
                                                                     @disabled(! $this->podeResponder() || $informacaoBloqueada || $alunoBloqueadoTransferencia)></textarea>
 
-                                                                <span class="av-saving-indicator" wire:loading.flex wire:target="informacoesComplementares.{{ $componenteId }}.{{ $aluno->id }}">
-                                                                    <span class="av-spinner"></span>
-                                                                    Salvando...
-                                                                </span>
                                                                 <div class="av-field-meta">
                                                                     <span></span>
                                                                     <small class="av-char-count" x-text="`${count}/1500`"></small>
@@ -731,7 +709,6 @@
                         @endforelse
                     </div>
                 @else
-                @if ($turma)
                 <div class="av-stack {{ $turma ? '' : 'av-turma-grid' }}">
                     @foreach ($turmasDaSerie as $turmaItem)
                         @php($turmaIdAtual = (int) $turmaItem->id)
@@ -740,7 +717,7 @@
                         @php($turmaSelecionada = (int) ($this->turma ?? 0) === $turmaIdAtual)
                         @php($turmaUrl = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie, 'turma' => $turmaIdAtual]))
 
-                        <section wire:key="workspace-turma-alunos-{{ $turmaIdAtual }}" x-data="{ aberto: @js($turmaSelecionada) }" :class="{ 'is-open': aberto }" class="gi-panel av-turma-section av-turma-workspace-panel">
+                        <section wire:key="workspace-turma-alunos-{{ $turmaIdAtual }}" x-data="{ aberto: @js($turmaSelecionada) }" :class="{ 'is-open': aberto }" class="gi-panel av-turma-section">
                             <a class="av-pauta-toggle" href="{{ $turmaUrl }}" wire:navigate>
                                 <div class="av-pauta-toggle-main">
                                     <h3 class="av-pauta-title">{{ $this->rotuloTurma($turmaItem) }}</h3>
@@ -777,7 +754,7 @@
                                             <select x-on:change="if ($event.target.value) Livewire.navigate($event.target.value)">
                                                 <option value="">Selecione um aluno</option>
                                                 @foreach ($alunosDaTurma as $alunoOpcao)
-                                                    @php($alunoOpcaoUrl = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie, 'turma' => $turmaIdAtual, 'componente' => $componenteWorkspaceId, 'visualizacao' => 'alunos', 'aluno' => $alunoOpcao->id]))
+                                                    @php($alunoOpcaoUrl = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie, 'turma' => $turmaIdAtual, 'visualizacao' => 'alunos', 'aluno' => $alunoOpcao->id]))
                                                     <option value="{{ $alunoOpcaoUrl }}" @selected((int) ($this->alunoEmFoco ?? 0) === (int) $alunoOpcao->id)>
                                                         {{ $alunoOpcao->nome }} · CGM {{ $alunoOpcao->cgm }}
                                                     </option>
@@ -789,7 +766,7 @@
                                         @php($progressoAluno = $this->progressoPorAluno[$aluno->id] ?? ['preenchidas' => 0, 'total' => 0, 'percentual' => 0, 'concluida' => false])
                                         @php($alunoBloqueadoTransferencia = $this->alunoEstaBloqueadoParaAvaliacao($aluno))
                                         @php($alunoSelecionado = (int) ($this->alunoEmFoco ?? 0) === (int) $aluno->id)
-                                        @php($alunoUrl = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie, 'turma' => $turmaIdAtual, 'componente' => $componenteWorkspaceId, 'visualizacao' => 'alunos', 'aluno' => $aluno->id]))
+                                        @php($alunoUrl = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacao, 'escola' => $escola, 'serie' => $serie, 'turma' => $turmaIdAtual, 'visualizacao' => 'alunos', 'aluno' => $aluno->id]))
 
                                         <section wire:key="workspace-turma-{{ $turmaIdAtual }}-aluno-{{ $aluno->id }}" class="av-pauta-section av-pauta-section--nested {{ $alunoSelecionado ? 'is-open' : '' }}">
                                             <a class="av-pauta-toggle" href="{{ $alunoUrl }}" wire:navigate>
@@ -851,7 +828,7 @@
                                                                                 </td>
                                                                                 <td data-label="Alternativa">
                                                                                     <div class="av-input-wrap">
-                                                                                        <select class="av-table-input" wire:model.live="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id" @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)>
+                                                                                        <select data-av-editavel class="av-table-input" wire:model.live="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id" @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)>
                                                                                             <option value="">Selecione</option>
                                                                                             @foreach ($alternativasPauta as $alternativa)
                                                                                                 <option value="{{ $alternativa['id'] }}">
@@ -860,10 +837,6 @@
                                                                                             @endforeach
                                                                                         </select>
 
-                                                                                        <span class="av-saving-indicator" wire:loading.flex wire:target="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id">
-                                                                                            <span class="av-spinner"></span>
-                                                                                            Salvando...
-                                                                                        </span>
                                                                                     </div>
                                                                                 </td>
                                                                                 <td data-label="Observação da pauta">
@@ -879,13 +852,10 @@
                                                                                                 maxlength="1500"
                                                                                                 placeholder="{{ $this->placeholderObservacaoAlternativa((int) $pauta->id, $alternativaSelecionadaId) }}"
                                                                                                 class="av-table-input av-textarea-input"
-                                                                                                wire:model.live.debounce.500ms="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao"
+                                                                                                data-av-editavel
+                                                                                                wire:model.live.debounce.700ms="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao"
                                                                                                 @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)></textarea>
 
-                                                                                            <span class="av-saving-indicator" wire:loading.flex wire:target="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao">
-                                                                                                <span class="av-spinner"></span>
-                                                                                                Salvando...
-                                                                                            </span>
                                                                                             <div class="av-field-meta">
                                                                                                 <small class="av-field-hint av-field-hint--danger">Obrigatória para esta alternativa.</small>
                                                                                                 <small class="av-char-count" x-text="`${count}/1500`"></small>
@@ -918,13 +888,10 @@
                                                                         maxlength="1500"
                                                                         placeholder="Informações complementares (opcional)"
                                                                         class="av-table-input av-textarea-input"
-                                                                        wire:model.live.debounce.600ms="informacoesComplementares.{{ $componenteId }}.{{ $aluno->id }}"
+                                                                        data-av-editavel
+                                                                        wire:model.live.debounce.900ms="informacoesComplementares.{{ $componenteId }}.{{ $aluno->id }}"
                                                                         @disabled(! $this->podeResponder() || $informacaoBloqueada || $alunoBloqueadoTransferencia)></textarea>
 
-                                                                    <span class="av-saving-indicator" wire:loading.flex wire:target="informacoesComplementares.{{ $componenteId }}.{{ $aluno->id }}">
-                                                                        <span class="av-spinner"></span>
-                                                                        Salvando...
-                                                                    </span>
                                                                     <div class="av-field-meta">
                                                                         <span></span>
                                                                         <small class="av-char-count" x-text="`${count}/1500`"></small>
@@ -947,41 +914,25 @@
                     @endforeach
                 </div>
                 @endif
-                @endif
             @endif
 
-            @if (! $this->modoAcompanhamento() && $turma)
-            <section class="gi-panel">
-                <div class="gi-toolbar">
-                    <div></div>
-                    <div class="gi-toolbar-right">
-                        @foreach ($this->turmasDaSerieDisponiveis as $turmaAcao)
-                            @if ($this->podeExportarTurma((int) $turmaAcao->id))
-                                <button type="button" class="gi-action" wire:click="exportarTurma({{ (int) $turmaAcao->id }})">
-                                    Exportar — {{ $this->rotuloTurma($turmaAcao) }}
-                                </button>
-                            @endif
-
-                            @if ($this->podeConcluirTurma((int) $turmaAcao->id))
-                                <button
-                                    type="button"
-                                    class="gi-action gi-action--primary"
-                                    wire:click="concluirTurmaEExportar({{ (int) $turmaAcao->id }})"
-                                    wire:confirm="Concluir esta turma? As respostas serão arquivadas no snapshot final e a turma ficará bloqueada para edição.">
-                                    Concluir turma e exportar — {{ $this->rotuloTurma($turmaAcao) }}
-                                </button>
-                            @endif
-                        @endforeach
-
-                        <button type="button" class="gi-action gi-action--primary" wire:click="salvarRespostas" @disabled(! $this->podeResponder())>
-                            {{ $this->modoAcompanhamento() ? 'Validar pendências da turma' : 'Validar pendências da série' }}
-                        </button>
-                    </div>
-                </div>
-            </section>
-            @endif
         @endif
     </div>
+
+    @if ($this->podeResponder())
+        <button
+            x-cloak
+            x-show="alteracoesPendentes"
+            x-transition.opacity
+            type="button"
+            class="av-floating-save"
+            wire:click="salvarAlteracoes"
+            wire:loading.attr="disabled"
+            wire:target="salvarAlteracoes">
+            <span wire:loading.remove wire:target="salvarAlteracoes">Salvar</span>
+            <span wire:loading wire:target="salvarAlteracoes">Salvando...</span>
+        </button>
+    @endif
 
     @include('filament.pages.partials.avaliacoes-page-styles')
 

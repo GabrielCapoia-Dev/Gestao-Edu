@@ -6,220 +6,26 @@
         gap: 1rem;
     }
 
-    .av-tabs-shell {
-        display: grid;
-        gap: 0.75rem;
-        padding: 1rem;
-        border: 1px solid var(--gray-200);
-        border-radius: var(--radius-xl);
-        background: #fff;
-        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.045);
-    }
-
-    .av-tabs-shell--componentes {
-        border-color: color-mix(in oklab, var(--primary-200) 34%, var(--gray-200));
-        background: color-mix(in oklab, var(--primary-50) 16%, #fff);
-    }
-
-    .av-tabs-heading {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-    }
-
-    .av-tabs-heading > div {
-        display: grid;
-        gap: 0.1rem;
-    }
-
-    .av-tabs-heading strong {
-        color: var(--gray-950);
-        font-size: var(--text-sm);
-    }
-
-    .av-tabs-heading > span {
-        color: var(--gray-500);
-        font-size: var(--text-xs);
-    }
-
-    .av-tabs-kicker {
-        color: var(--primary-700);
-        font-size: 0.68rem;
-        font-weight: var(--font-weight-semibold);
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-    }
-
-    .av-tabs-track {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
-        gap: 0.45rem;
-        padding: 0.3rem;
-        overflow: hidden;
-        border: 1px solid var(--gray-200);
-        border-radius: var(--radius-lg);
-        background: var(--gray-50);
-    }
-
-    .av-workspace-tab {
-        display: grid;
-        min-width: 0;
-        gap: 0.1rem;
-        padding: 0.65rem 0.75rem;
-        border: 1px solid transparent;
-        border-radius: calc(var(--radius-lg) - 0.2rem);
-        color: var(--gray-600);
-        text-decoration: none;
-        transition: background 150ms ease, border-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
-    }
-
-    .av-workspace-tab:hover {
-        border-color: var(--gray-200);
-        background: #fff;
-        color: var(--gray-900);
-    }
-
-    .av-workspace-tab.is-active {
-        border-color: color-mix(in oklab, var(--primary-400) 58%, var(--gray-200));
-        background: color-mix(in oklab, var(--primary-100) 60%, #fff);
-        color: var(--primary-900);
-        box-shadow: 0 3px 10px rgba(23, 54, 141, 0.08);
-    }
-
-    .av-workspace-tab span {
-        font-size: var(--text-sm);
-        font-weight: var(--font-weight-semibold);
-    }
-
-    .av-workspace-tab small {
-        color: var(--gray-500);
-        font-size: var(--text-xs);
-    }
-
-    .av-workspace-tab.is-active small {
-        color: var(--primary-700);
-    }
-
-    .av-workspace-tab--component {
-        min-width: 0;
-    }
-
-    .av-workspace-tab__title {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 0.35rem;
-        min-width: 0;
-    }
-
-    .av-workspace-tab__title > span {
-        min-width: 0;
-        overflow-wrap: anywhere;
-    }
-
-    .av-workspace-tab__title > small {
-        flex: 0 0 auto;
-        font-weight: var(--font-weight-semibold);
-    }
-
-    .av-workspace-tab__progress {
-        display: block;
-        height: 0.25rem;
-        margin-top: 0.35rem;
-        overflow: hidden;
+    .av-floating-save {
+        position: fixed;
+        z-index: 50;
+        left: max(1rem, env(safe-area-inset-left));
+        bottom: max(1rem, env(safe-area-inset-bottom));
+        min-width: 7rem;
+        min-height: 2.75rem;
+        padding: 0.7rem 1.15rem;
+        border: 1px solid var(--primary-700);
         border-radius: 999px;
-        background: var(--gray-200);
+        background: var(--primary-700);
+        color: #fff;
+        font-weight: var(--font-weight-semibold);
+        box-shadow: 0 10px 26px rgba(23, 54, 141, 0.24);
+        cursor: pointer;
     }
 
-    .av-workspace-tab__progress > span {
-        display: block;
-        height: 100%;
-        border-radius: inherit;
-        background: color-mix(in oklab, var(--primary-500) 72%, var(--gray-400));
-        transition: width 180ms ease;
-    }
-
-    .av-workspace-tab.is-complete {
-        border-color: color-mix(in oklab, var(--success-300) 48%, var(--gray-200));
-        background: color-mix(in oklab, var(--success-50) 48%, #fff);
-    }
-
-    .av-workspace-tab.is-complete .av-workspace-tab__progress > span {
-        background: color-mix(in oklab, var(--success-500) 66%, var(--gray-400));
-    }
-
-    .av-workspace-tab.is-complete.is-active {
-        color: color-mix(in oklab, var(--success-800) 78%, var(--gray-900));
-        background: color-mix(in oklab, var(--success-100) 54%, #fff);
-    }
-
-    .av-workspace-tab.is-complete.is-active small {
-        color: color-mix(in oklab, var(--success-700) 75%, var(--gray-600));
-    }
-
-    :root.dark .av-tabs-shell,
-    :root.dark .av-tabs-shell--componentes {
-        border-color: var(--gray-800);
-        background: var(--gray-900);
-        box-shadow: none;
-    }
-
-    :root.dark .av-tabs-track {
-        border-color: var(--gray-800);
-        background: var(--gray-950);
-    }
-
-    :root.dark .av-workspace-tab:hover {
-        border-color: var(--gray-700);
-        background: var(--gray-800);
-        color: var(--gray-100);
-    }
-
-    :root.dark .av-workspace-tab.is-active {
-        border-color: color-mix(in oklab, var(--primary-600) 58%, var(--gray-700));
-        background: color-mix(in oklab, var(--primary-950) 50%, var(--gray-800));
-        color: var(--primary-100);
-    }
-
-    :root.dark .av-workspace-tab.is-complete {
-        border-color: color-mix(in oklab, var(--success-700) 42%, var(--gray-800));
-        background: color-mix(in oklab, var(--success-950) 28%, var(--gray-900));
-    }
-
-    .av-turma-workspace-panel {
-        padding: 0;
-        overflow: visible;
-        border: 0;
-        background: transparent;
-        box-shadow: none;
-    }
-
-    .av-turma-workspace-panel > .av-pauta-toggle {
-        display: none;
-    }
-
-    .av-turma-workspace-panel > .av-turma-content {
-        padding: 0;
-        border: 0;
-        background: transparent;
-    }
-
-    .av-component-workspace-panel {
-        padding: 0;
-        border: 0;
-        background: transparent;
-        box-shadow: none;
-    }
-
-    .av-component-workspace-panel > .av-pauta-toggle {
-        display: none;
-    }
-
-    .av-component-workspace-panel > .av-pauta-content {
-        padding: 0;
-        border: 0;
-        background: transparent;
+    .av-floating-save:disabled {
+        cursor: wait;
+        opacity: 0.72;
     }
 
     .av-focus-bar {
@@ -1430,36 +1236,6 @@
     }
 
     @media (max-width: 40rem) {
-        .av-tabs-shell {
-            gap: 0.65rem;
-            padding: 0.75rem;
-            border-radius: var(--radius-lg);
-        }
-
-        .av-tabs-heading {
-            align-items: flex-start;
-            gap: 0.5rem;
-        }
-
-        .av-tabs-track {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 0.35rem;
-            padding: 0.25rem;
-        }
-
-        .av-workspace-tab {
-            min-height: 4.35rem;
-            padding: 0.6rem;
-        }
-
-        .av-workspace-tab span {
-            font-size: 0.8rem;
-        }
-
-        .av-workspace-tab small {
-            font-size: 0.68rem;
-        }
-
         .av-professor-page {
             gap: 0.75rem;
         }
@@ -1661,13 +1437,4 @@
         }
     }
 
-    @media (max-width: 27rem) {
-        .av-tabs-track {
-            grid-template-columns: 1fr;
-        }
-
-        .av-workspace-tab {
-            min-height: 3.9rem;
-        }
-    }
 </style>
