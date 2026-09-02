@@ -35,26 +35,6 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
     }
 
     /**
-     * Mantém o componente do professor sempre restrito à turma selecionada
-     * também nas coleções usadas diretamente pela view. O componente base
-     * expõe "turmasDaSerieDisponiveis" para a visão geral; na tela do professor
-     * isso fazia cada interação Livewire remontar todas as turmas da série,
-     * mesmo quando o usuário estava trabalhando em uma única turma.
-     */
-    public function getTurmasDaSerieDisponiveisProperty(): Collection
-    {
-        $turmas = parent::getTurmasDaSerieDisponiveisProperty();
-
-        if (! $this->turma) {
-            return $turmas;
-        }
-
-        return $turmas
-            ->filter(fn (Turma $turma): bool => (int) $turma->id === (int) $this->turma)
-            ->values();
-    }
-
-    /**
      * A troca de modo altera uma árvore DOM grande. Fazemos um carregamento
      * completo da rota para impedir morph/hidratação residual do Livewire.
      */
