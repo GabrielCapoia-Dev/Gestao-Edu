@@ -136,9 +136,13 @@ function livewireSnapshot(html) {
 }
 
 function livewireUpdateEndpoint(html) {
-  const match = String(html || '').match(/(?:src|href)=["'](\/livewire-[^"']+)\/livewire(?:\.csp)?(?:\.min)?\.js[^"']*["']/i);
+  const match = String(html || '').match(/(\/livewire-[A-Za-z0-9_-]+)\/livewire(?:\.csp)?(?:\.min)?\.js/i);
 
-  return match ? `${BASE_URL}${match[1]}/update` : `${BASE_URL}/livewire/update`;
+  if (!match) {
+    throw new Error('Endpoint versionado do Livewire não encontrado na página da avaliação.');
+  }
+
+  return `${BASE_URL}${match[1]}/update`;
 }
 
 function csrfFromForm(html) {
