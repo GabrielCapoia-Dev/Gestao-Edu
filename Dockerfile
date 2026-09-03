@@ -40,17 +40,17 @@ RUN echo "opcache.enable=1"                    >> /usr/local/etc/php/conf.d/opca
     && echo "opcache.save_comments=1"             >> /usr/local/etc/php/conf.d/opcache.ini \
     && echo "opcache.jit=0"                       >> /usr/local/etc/php/conf.d/opcache.ini
 
-# PHP-FPM pool sized for a 4 vCPU / 8 GB VPS that also runs MySQL and Redis.
-# Keep the pool below the CPU count multiplier: evaluation Livewire requests
-# are CPU-heavy and an oversized pool only increases contention and queue time.
+# Safe fallback for the PHP-FPM pool. The entrypoint recalculates these values
+# from the CPUs visible at runtime; PHP_FPM_MAX_CHILDREN can override it per
+# environment when the host has a deliberately reserved capacity.
 RUN { \
         echo ""; \
         echo "; Gestao Edu production pool overrides"; \
         echo "pm = dynamic"; \
-        echo "pm.max_children = 12"; \
-        echo "pm.start_servers = 4"; \
-        echo "pm.min_spare_servers = 2"; \
-        echo "pm.max_spare_servers = 6"; \
+        echo "pm.max_children = 2"; \
+        echo "pm.start_servers = 1"; \
+        echo "pm.min_spare_servers = 1"; \
+        echo "pm.max_spare_servers = 2"; \
         echo "pm.max_requests = 300"; \
         echo "request_terminate_timeout = 60s"; \
         echo "pm.status_path = /fpm-status"; \

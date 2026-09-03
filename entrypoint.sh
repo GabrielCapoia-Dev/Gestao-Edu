@@ -192,6 +192,58 @@ if command -v gzip >/dev/null 2>&1; then
     done
 fi
 
+# PHP-FPM must follow the CPU capacity actually assigned to the container.
+# Evaluation Livewire requests are CPU-bound; a large pool on a one-CPU host
+# only creates contention and makes every request slower. Keep an explicit
+# environment override for hosts with reserved capacity.
+configure_php_fpm_pool() {
+    local detected_cpus="$(nproc 2>/dev/null || echo 1)"
+    local max_children="${PHP_FPM_MAX_CHILDREN:-2}"
+    local start_servers="${PHP_FPM_START_SERVERS:-1}"
+    local min_spare_servers="${PHP_FPM_MIN_SPARE_SERVERS:-1}"
+    local max_spare_servers="${PHP_FPM_MAX_SPARE_SERVERS:-2}"
+
+    [[ "$detected_cpus" =~ ^[0-9]+$ ]] || detected_cpus=1
+    if [ -z "${PHP_FPM_MAX_CHILDREN:-}" ]; then
+        max_children=$((detected_cpus * 2))
+    fi
+    if [ -z "${PHP_FPM_START_SERVERS:-}" ]; then
+        start_servers="$detected_cpus"
+    fi
+    if [ -z "${PHP_FPM_MIN_SPARE_SERVERS:-}" ]; then
+        min_spare_servers="$detected_cpus"
+    fi
+    if [ -z "${PHP_FPM_MAX_SPARE_SERVERS:-}" ]; then
+        max_spare_servers="$max_children"
+    fi
+
+    [[ "$max_children" =~ ^[0-9]+$ ]] || max_children=2
+    [[ "$start_servers" =~ ^[0-9]+$ ]] || start_servers=1
+    [[ "$min_spare_servers" =~ ^[0-9]+$ ]] || min_spare_servers=1
+    [[ "$max_spare_servers" =~ ^[0-9]+$ ]] || max_spare_servers="$max_children"
+
+    (( max_children < 2 )) && max_children=2
+    (( start_servers < 1 )) && start_servers=1
+    (( min_spare_servers < 1 )) && min_spare_servers=1
+    (( start_servers > max_children )) && start_servers="$max_children"
+    (( min_spare_servers > max_children )) && min_spare_servers="$max_children"
+    (( max_spare_servers < min_spare_servers )) && max_spare_servers="$min_spare_servers"
+    (( max_spare_servers > max_children )) && max_spare_servers="$max_children"
+
+    cat >> /usr/local/etc/php-fpm.d/www.conf <<EOF
+
+; Runtime pool sizing based on container CPU capacity.
+pm.max_children = ${max_children}
+pm.start_servers = ${start_servers}
+pm.min_spare_servers = ${min_spare_servers}
+pm.max_spare_servers = ${max_spare_servers}
+EOF
+
+    echo "[php-fpm] Pool runtime: cpus=${detected_cpus} max_children=${max_children} start=${start_servers} min_spare=${min_spare_servers} max_spare=${max_spare_servers}"
+}
+
+configure_php_fpm_pool
+
 # ── Inicia php-fpm em background e nginx em foreground ─────────────────────
 php-fpm -D
 nginx -g "daemon off;"
