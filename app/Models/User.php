@@ -37,6 +37,11 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
 
     private ?bool $ehProfessorCache = null;
 
+    private ?bool $canAuthenticateCache = null;
+
+    /** @var array<string, bool> */
+    private array $permissionLikeCache = [];
+
     /** @var array<string, mixed> */
     protected $attributes = [
         'ativo' => true,
@@ -135,8 +140,12 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
 
     public function canAuthenticate(): bool
     {
+        if ($this->canAuthenticateCache !== null) {
+            return $this->canAuthenticateCache;
+        }
+
         if ($this->trashed()) {
-            return false;
+            return $this->canAuthenticateCache = false;
         }
 
         $pessoasAtivas = $this->servidores()
@@ -151,7 +160,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
             ->limit(2)
             ->count();
 
-        return $pessoasAtivas === 1;
+        return $this->canAuthenticateCache = $pessoasAtivas === 1;
     }
 
     public function scopeCanAuthenticate(Builder $query): Builder
@@ -199,7 +208,11 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     {
         $needle = Str::lower(Str::ascii($fragment));
 
-        return $this->getAllPermissions()->contains(function ($permission) use ($needle): bool {
+        if (array_key_exists($needle, $this->permissionLikeCache)) {
+            return $this->permissionLikeCache[$needle];
+        }
+
+        return $this->permissionLikeCache[$needle] = $this->getAllPermissions()->contains(function ($permission) use ($needle): bool {
             $name = Str::lower(Str::ascii((string) $permission->name));
 
             return str_contains($name, $needle);
