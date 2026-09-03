@@ -107,11 +107,15 @@ function bootstrap(user) {
   }
 
   const path = `/admin/avaliacoes-professor?avaliacao=${user.avaliacaoId}&turma=${user.turmaId}`;
-  const workspace = http.get(`${BASE_URL}${path}`, { responseType: 'text' });
+  const loginCookieHeader = mergeResponseCookies('', login);
+  const workspace = http.get(`${BASE_URL}${path}`, {
+    responseType: 'text',
+    headers: { Cookie: loginCookieHeader },
+  });
   const csrf = csrfFromMeta(workspace.body);
   const snapshot = livewireSnapshot(workspace.body);
   const livewireUpdateUrl = livewireUpdateEndpoint(workspace.body);
-  const cookieHeader = mergeResponseCookies('', workspace);
+  const cookieHeader = mergeResponseCookies(loginCookieHeader, workspace);
 
   const ok = check(workspace, {
     'workspace loaded': (item) => item.status === 200,
