@@ -46,6 +46,7 @@ export default function () {
       'Content-Type': 'application/json',
       'X-CSRF-TOKEN': state.csrf,
       'X-Livewire': 'true',
+      'Cookie': state.cookieHeader,
     },
     tags: {
       kind: 'avaliacao_autosave',
@@ -69,6 +70,7 @@ export default function () {
   if (ok) {
     state.snapshot = body.components[0].snapshot;
   }
+  state.cookieHeader = mergeResponseCookies(state.cookieHeader, response);
   sleep(Number(__ENV.K6_AVALIACAO_INTERVAL_SECONDS || 0.7));
 }
 
@@ -92,6 +94,7 @@ function bootstrap(user) {
   const csrf = csrfFromMeta(workspace.body);
   const snapshot = livewireSnapshot(workspace.body);
   const livewireUpdateUrl = livewireUpdateEndpoint(workspace.body);
+  const cookieHeader = mergeResponseCookies('', workspace);
 
   const ok = check(workspace, {
     'workspace loaded': (item) => item.status === 200,
@@ -99,7 +102,7 @@ function bootstrap(user) {
     'csrf found': () => Boolean(csrf),
   });
 
-  return ok && snapshot && csrf ? { user, csrf, snapshot, livewireUpdateUrl } : null;
+  return ok && snapshot && csrf ? { user, csrf, snapshot, livewireUpdateUrl, cookieHeader } : null;
 }
 
 function parseUsers(csv) {
@@ -162,4 +165,19 @@ function decodeHtml(value) {
 
 function safeJson(value) {
   try { return JSON.parse(value); } catch (_) { return null; }
+}
+
+function mergeResponseCookies(previous, response) {
+  const cookies = {};
+  String(previous || '').split(';').forEach((item) => {
+    const separator = item.indexOf('=');
+    if (separator > 0) cookies[item.slice(0, separator).trim()] = item.slice(separator + 1).trim();
+  });
+
+  Object.entries(response.cookies || {}).forEach(([name, values]) => {
+    const latest = values?.[values.length - 1];
+    if (latest?.value !== undefined) cookies[name] = latest.value;
+  });
+
+  return Object.entries(cookies).map(([name, value]) => `${name}=${value}`).join('; ');
 }
