@@ -80,9 +80,9 @@ function bootstrap(user) {
     email: user.email,
     password: user.password,
     remember: '1',
-  }, { redirects: 5, responseType: 'text' });
+  }, { redirects: 0, responseType: 'text' });
 
-  if (login.status >= 400 || String(login.url || '').includes('/admin/login')) {
+  if (login.status < 300 || login.status >= 400) {
     autosaveSuccess.add(false);
     return null;
   }
