@@ -10,9 +10,9 @@ return new class extends Migration
     {
         Schema::create('avaliacao_dashboard_turma_resumos', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('avaliacao_id')->constrained('avaliacoes')->cascadeOnDelete();
-            $table->foreignId('turma_id')->constrained('turmas')->cascadeOnDelete();
-            $table->foreignId('componente_curricular_id')->nullable()->constrained('componentes_curriculares')->nullOnDelete();
+            $table->unsignedBigInteger('avaliacao_id');
+            $table->unsignedBigInteger('turma_id');
+            $table->unsignedBigInteger('componente_curricular_id')->nullable();
             $table->unsignedBigInteger('componente_chave')->default(0);
             $table->unsignedInteger('preenchimentos_esperados')->default(0);
             $table->unsignedInteger('preenchimentos_respondidos')->default(0);
@@ -26,6 +26,9 @@ return new class extends Migration
             $table->unique(['avaliacao_id', 'turma_id', 'componente_chave'], 'uniq_av_dashboard_turma_componente');
             $table->index(['avaliacao_id', 'turma_id'], 'idx_av_dashboard_turma_av_turma');
             $table->index(['avaliacao_id', 'componente_chave'], 'idx_av_dashboard_turma_av_comp');
+            $table->foreign('avaliacao_id', 'fk_av_dash_res_av')->references('id')->on('avaliacoes')->cascadeOnDelete();
+            $table->foreign('turma_id', 'fk_av_dash_res_turma')->references('id')->on('turmas')->cascadeOnDelete();
+            $table->foreign('componente_curricular_id', 'fk_av_dash_res_comp')->references('id')->on('componentes_curriculares')->nullOnDelete();
         });
     }
 
