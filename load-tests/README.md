@@ -75,13 +75,34 @@ npm run k6:300
 
 ### Autosave concorrente de avaliações
 
-Copie `data/avaliacoes-users.example.csv` para `data/avaliacoes-users.local.csv` e informe professores reais do ambiente de teste. Cada linha representa um componente/pauta; use a mesma turma e os mesmos alunos em ao menos duas linhas para reproduzir o preenchimento simultâneo por professores diferentes.
+No Hub de Testes, prepare uma massa reversível com professores elegíveis, alvos exclusivos e alunos sintéticos:
+
+```bash
+php artisan loadtest:avaliacoes prepare --run-id=baseline-001 --count=20 --students=5 --force
+```
+
+O comando grava o CSV fora do Git em `storage/app/private/load-tests/avaliacoes/<run-id>/users.csv`. Copie esse arquivo para o gerador externo e nunca registre seu conteúdo em logs ou commits.
 
 ```bash
 npm run k6:avaliacoes
 ```
 
-Variáveis específicas: `K6_AVALIACAO_USERS_FILE`, `K6_AVALIACAO_VUS`, `K6_AVALIACAO_DURATION`, `K6_AVALIACAO_P95_MS` e `K6_AVALIACAO_INTERVAL_SECONDS`. O cenário autentica cada professor, carrega o snapshot real do Livewire e envia patches de autosave. Execute o mesmo conjunto contra os commits de baseline e contra o cutover relacional; não reutilize o banco entre as três medições.
+Variáveis específicas: `K6_AVALIACAO_USERS_FILE`, `K6_AVALIACAO_VUS`, `K6_AVALIACAO_RAMP_UP`, `K6_AVALIACAO_HOLD`, `K6_AVALIACAO_RAMP_DOWN` e `K6_AVALIACAO_INTERVAL_SECONDS`. O cenário autentica cada professor, carrega o workspace real e usa o endpoint leve com `expected_version` e duas alternativas válidas.
+
+Entre repetições, valide e limpe somente as respostas sintéticas:
+
+```bash
+php artisan loadtest:avaliacoes verify --run-id=baseline-001 --force
+php artisan loadtest:avaliacoes reset --run-id=baseline-001 --force
+```
+
+Ao encerrar os testes, remova os alunos sintéticos e restaure exatamente os campos de autenticação dos professores:
+
+```bash
+php artisan loadtest:avaliacoes restore --run-id=baseline-001 --force
+```
+
+O gate de rajada usa `scenarios/avaliacoes-login-burst.js`, com vinte VUs e uma iteração por VU.
 
 Os testes de integração do armazenamento e dos locks devem ser repetidos em MySQL 8 com um banco descartável terminado em `_testing`:
 

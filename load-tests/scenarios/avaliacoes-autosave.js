@@ -4,25 +4,45 @@ import { check, sleep } from 'k6';
 import { Rate, Trend } from 'k6/metrics';
 
 const BASE_URL = String(__ENV.K6_BASE_URL || 'https://edu.hubdetestes.online').replace(/\/+$/, '');
-const USERS_FILE = __ENV.K6_AVALIACAO_USERS_FILE || '/scripts/data/avaliacoes-users.local.csv';
-const VUS = Number(__ENV.K6_AVALIACAO_VUS || 10);
-const DURATION = __ENV.K6_AVALIACAO_DURATION || '5m';
-const P95_GATE = Number(__ENV.K6_AVALIACAO_P95_MS || 1200);
-const AUTOSAVE_MODE = String(__ENV.K6_AVALIACAO_AUTOSAVE_MODE || 'light').toLowerCase();
+const USERS_FILE = __ENV.K6_AVALIACAO_USERS_FILE || '../data/avaliacoes-users.local.csv';
+const VUS = Number(__ENV.K6_AVALIACAO_VUS || 20);
+const RAMP_UP = __ENV.K6_AVALIACAO_RAMP_UP || '2m';
+const HOLD = __ENV.K6_AVALIACAO_HOLD || '10m';
+const RAMP_DOWN = __ENV.K6_AVALIACAO_RAMP_DOWN || '1m';
+const INTERVAL_SECONDS = Number(__ENV.K6_AVALIACAO_INTERVAL_SECONDS || 0.7);
 const users = parseUsers(open(USERS_FILE));
 
+const loginDuration = new Trend('avaliacao_login_duration', true);
+const workspaceDuration = new Trend('avaliacao_workspace_duration', true);
 const autosaveDuration = new Trend('avaliacao_autosave_duration', true);
 const autosaveSuccess = new Rate('avaliacao_autosave_success');
 const conflictRate = new Rate('avaliacao_autosave_conflict');
 
+if (users.length < VUS) {
+  throw new Error(`O CSV possui ${users.length} usuarios; o teste exige ao menos ${VUS}.`);
+}
+
 export const options = {
-  vus: VUS,
-  duration: DURATION,
+  scenarios: {
+    sustained: {
+      executor: 'ramping-vus',
+      startVUs: 0,
+      stages: [
+        { duration: RAMP_UP, target: VUS },
+        { duration: HOLD, target: VUS },
+        { duration: RAMP_DOWN, target: 0 },
+      ],
+      gracefulRampDown: '15s',
+    },
+  },
   thresholds: {
-    avaliacao_autosave_success: ['rate>0.99'],
-    avaliacao_autosave_conflict: ['rate<0.01'],
-    avaliacao_autosave_duration: [`p(95)<${P95_GATE}`],
-    http_req_failed: ['rate<0.01'],
+    checks: ['rate==1'],
+    http_req_failed: ['rate==0'],
+    avaliacao_autosave_success: ['rate==1'],
+    avaliacao_autosave_conflict: ['rate==0'],
+    avaliacao_login_duration: ['p(95)<2500', 'p(99)<4000'],
+    avaliacao_workspace_duration: ['p(95)<2000', 'p(99)<4000'],
+    avaliacao_autosave_duration: ['p(95)<1200', 'p(99)<4000'],
   },
 };
 
@@ -32,39 +52,37 @@ export default function () {
   if (!state) {
     state = bootstrap(users[(exec.vu.idInTest - 1) % users.length]);
   }
+
   if (!state) {
-    return;
+    exec.test.abort('Falha ao autenticar ou carregar o workspace.');
   }
 
-  const alunoId = state.user.alunoIds[exec.scenario.iterationInTest % state.user.alunoIds.length];
-  const property = `respostas.${state.user.pautaId}.${alunoId}.alternativa_id`;
+  const student = state.user.students[exec.scenario.iterationInTest % state.user.students.length];
+  const alternativeId = state.user.alternativeIds[exec.scenario.iterationInTest % state.user.alternativeIds.length];
+  const expectedVersion = state.versions[student.id] ?? student.version;
+  const previousAlternativeId = state.values[student.id] ?? null;
   const started = Date.now();
-  const lightAutosave = AUTOSAVE_MODE === 'light';
-  const response = http.post(
-    lightAutosave ? `${BASE_URL}/admin/avaliacoes/respostas/autosave` : state.livewireUpdateUrl,
-    JSON.stringify(lightAutosave ? {
-      _token: state.csrf,
-      avaliacao_id: state.user.avaliacaoId,
-      turma_id: state.user.turmaId,
-      aluno_id: alunoId,
-      tipo: 'resposta',
-      pauta_id: state.user.pautaId,
-      campo: 'alternativa_id',
-      valor: state.user.alternativaId,
-      alternativa_id: state.user.alternativaId,
-      observacao: null,
-    } : {
-      _token: state.csrf,
-      components: [{ snapshot: state.snapshot, updates: { [property]: state.user.alternativaId }, calls: [] }],
-    }), {
+  const response = http.post(`${BASE_URL}/admin/avaliacoes/respostas/autosave`, JSON.stringify({
+    _token: state.csrf,
+    avaliacao_id: state.user.avaliacaoId,
+    turma_id: state.user.turmaId,
+    aluno_id: student.id,
+    tipo: 'resposta',
+    pauta_id: state.user.pautaId,
+    campo: 'alternativa_id',
+    valor: alternativeId,
+    alternativa_id: alternativeId,
+    observacao: null,
+    expected_version: expectedVersion,
+    expected_values: { alternativa_id: previousAlternativeId, observacao: null },
+  }), {
     headers: {
       'Content-Type': 'application/json',
       'X-CSRF-TOKEN': state.csrf,
-      ...(lightAutosave ? {} : { 'X-Livewire': 'true' }),
       'Cookie': state.cookieHeader,
     },
     tags: {
-      kind: 'avaliacao_autosave',
+      operation: 'autosave',
       professor: state.user.label,
       pauta_id: String(state.user.pautaId),
       turma_id: String(state.user.turmaId),
@@ -73,76 +91,94 @@ export default function () {
   autosaveDuration.add(Date.now() - started);
 
   const body = safeJson(response.body);
-  const conflict = response.status === 409 || String(response.body || '').includes('alterada por outro usuário');
-  const ok = lightAutosave
-    ? response.status === 200 && body?.saved === true
-    : response.status === 200 && body?.components?.[0]?.snapshot;
+  const conflict = response.status === 409;
+  const ok = response.status === 200 && body?.saved === true && Number(body?.version) > expectedVersion;
   conflictRate.add(conflict);
   autosaveSuccess.add(Boolean(ok));
   check(response, {
     'autosave accepted': () => Boolean(ok),
-    'no silent server error': (item) => item.status < 500,
+    'autosave version advanced': () => Number(body?.version) > expectedVersion,
+    'no server error': (item) => item.status < 500,
   });
 
-  if (ok && !lightAutosave) {
-    state.snapshot = body.components[0].snapshot;
+  if (ok) {
+    state.versions[student.id] = Number(body.version);
+    state.values[student.id] = alternativeId;
   }
+
   state.cookieHeader = mergeResponseCookies(state.cookieHeader, response);
-  sleep(Number(__ENV.K6_AVALIACAO_INTERVAL_SECONDS || 0.7));
+  sleep(INTERVAL_SECONDS);
 }
 
 function bootstrap(user) {
-  const loginPage = http.get(`${BASE_URL}/admin/login`, { responseType: 'text' });
+  const loginStarted = Date.now();
+  const loginPage = http.get(`${BASE_URL}/admin/login`, { responseType: 'text', tags: { operation: 'login_form' } });
   const loginToken = csrfFromForm(loginPage.body);
   const login = http.post(`${BASE_URL}/admin/login`, {
     _token: loginToken,
     email: user.email,
     password: user.password,
     remember: '1',
-  }, { redirects: 0, responseType: 'text' });
+  }, { redirects: 0, responseType: 'text', tags: { operation: 'login_submit' } });
+  loginDuration.add(Date.now() - loginStarted);
 
-  if (login.status < 300 || login.status >= 400) {
-    autosaveSuccess.add(false);
-    return null;
-  }
+  const loginOk = check(login, {
+    'login redirects after authentication': (item) => item.status >= 300 && item.status < 400,
+    'login session cookie received': (item) => Object.keys(item.cookies || {}).length > 0,
+  });
+
+  if (!loginOk) return null;
 
   const path = `/admin/avaliacoes-professor?avaliacao=${user.avaliacaoId}&turma=${user.turmaId}`;
   const loginCookieHeader = mergeResponseCookies('', login);
+  const workspaceStarted = Date.now();
   const workspace = http.get(`${BASE_URL}${path}`, {
     responseType: 'text',
     headers: { Cookie: loginCookieHeader },
+    tags: { operation: 'workspace' },
   });
+  workspaceDuration.add(Date.now() - workspaceStarted);
+
   const csrf = csrfFromMeta(workspace.body);
   const snapshot = livewireSnapshot(workspace.body);
-  const livewireUpdateUrl = livewireUpdateEndpoint(workspace.body);
   const cookieHeader = mergeResponseCookies(loginCookieHeader, workspace);
-
   const ok = check(workspace, {
     'workspace loaded': (item) => item.status === 200,
+    'workspace is authenticated': (item) => !String(item.url || '').includes('/admin/login'),
     'livewire snapshot found': () => Boolean(snapshot),
     'csrf found': () => Boolean(csrf),
   });
 
-  return ok && snapshot && csrf ? { user, csrf, snapshot, livewireUpdateUrl, cookieHeader } : null;
+  return ok && snapshot && csrf ? {
+    user,
+    csrf,
+    cookieHeader,
+    versions: Object.fromEntries(user.students.map((student) => [student.id, student.version])),
+    values: Object.fromEntries(user.students.map((student) => [student.id, null])),
+  } : null;
 }
 
 function parseUsers(csv) {
   const rows = String(csv || '').split(/\r?\n/).map((line) => line.trim()).filter((line) => line && !line.startsWith('#'));
-  if (rows.length < 2) throw new Error('CSV de professores de avaliação vazio.');
+  if (rows.length < 2) throw new Error('CSV de professores de avaliacao vazio.');
 
   return rows.slice(1).map((line, index) => {
-    const [email, password, avaliacaoId, turmaId, pautaId, alternativaId, alunoIds] = line.split(',').map((value) => value.trim());
-    if (![email, password, avaliacaoId, turmaId, pautaId, alternativaId, alunoIds].every(Boolean)) {
-      throw new Error(`Linha ${index + 2} inválida no CSV de avaliações.`);
+    const [email, password, avaliacaoId, turmaId, pautaId, alternativeIds, studentVersions] = line.split(',').map((value) => value.trim());
+    if (![email, password, avaliacaoId, turmaId, pautaId, alternativeIds, studentVersions].every(Boolean)) {
+      throw new Error(`Linha ${index + 2} invalida no CSV de avaliacoes.`);
     }
+
     return {
       email,
       password,
       avaliacaoId: Number(avaliacaoId),
       turmaId: Number(turmaId),
       pautaId: Number(pautaId),
-      alternativaId: Number(alternativaId),
-      alunoIds: alunoIds.split('|').map(Number).filter(Boolean),
+      alternativeIds: alternativeIds.split('|').map(Number).filter(Boolean),
+      students: studentVersions.split('|').map((item) => {
+        const [id, version] = item.split(':').map(Number);
+        return { id, version };
+      }).filter((item) => item.id > 0 && item.version >= 0),
       label: email.split('@')[0],
     };
   });
@@ -152,24 +188,9 @@ function livewireSnapshot(html) {
   const matches = String(html || '').matchAll(/wire:snapshot="([\s\S]*?)"/g);
   for (const match of matches) {
     const decoded = decodeHtml(match[1]);
-    if (decoded.includes('avaliacao-turma-workspace') || decoded.includes('avaliacao-turma-professor-workspace')) {
-      return decoded;
-    }
+    if (decoded.includes('avaliacao-turma-workspace') || decoded.includes('avaliacao-turma-professor-workspace')) return decoded;
   }
   return null;
-}
-
-function livewireUpdateEndpoint(html) {
-  const configured = String(html || '').match(/data-update-uri=["']([^"']+)["']/i);
-  if (configured) return configured[1];
-
-  const match = String(html || '').match(/(\/livewire-[A-Za-z0-9_-]+)\/livewire(?:\.csp)?(?:\.min)?\.js/i);
-
-  if (!match) {
-    throw new Error('Endpoint versionado do Livewire não encontrado na página da avaliação.');
-  }
-
-  return `${BASE_URL}${match[1]}/update`;
 }
 
 function csrfFromForm(html) {
