@@ -22,7 +22,7 @@ next_status=0
 next_diagnostics=0
 
 while (( SECONDS < end )); do
-    timestamp="$(date --iso-8601=ns)"
+    timestamp="$(date '+%Y-%m-%dT%H:%M:%S.%N%:z')"
 
     docker stats --no-stream \
         --format '{{.Name}},{{.CPUPerc}},{{.MemUsage}}' \
