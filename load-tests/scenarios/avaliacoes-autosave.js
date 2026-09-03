@@ -8,6 +8,7 @@ const USERS_FILE = __ENV.K6_AVALIACAO_USERS_FILE || '/scripts/data/avaliacoes-us
 const VUS = Number(__ENV.K6_AVALIACAO_VUS || 10);
 const DURATION = __ENV.K6_AVALIACAO_DURATION || '5m';
 const P95_GATE = Number(__ENV.K6_AVALIACAO_P95_MS || 1200);
+const AUTOSAVE_MODE = String(__ENV.K6_AVALIACAO_AUTOSAVE_MODE || 'light').toLowerCase();
 const users = parseUsers(open(USERS_FILE));
 
 const autosaveDuration = new Trend('avaliacao_autosave_duration', true);
@@ -38,14 +39,28 @@ export default function () {
   const alunoId = state.user.alunoIds[exec.scenario.iterationInTest % state.user.alunoIds.length];
   const property = `respostas.${state.user.pautaId}.${alunoId}.alternativa_id`;
   const started = Date.now();
-  const response = http.post(state.livewireUpdateUrl, JSON.stringify({
-    _token: state.csrf,
-    components: [{ snapshot: state.snapshot, updates: { [property]: state.user.alternativaId }, calls: [] }],
-  }), {
+  const lightAutosave = AUTOSAVE_MODE === 'light';
+  const response = http.post(
+    lightAutosave ? `${BASE_URL}/admin/avaliacoes/respostas/autosave` : state.livewireUpdateUrl,
+    JSON.stringify(lightAutosave ? {
+      _token: state.csrf,
+      avaliacao_id: state.user.avaliacaoId,
+      turma_id: state.user.turmaId,
+      aluno_id: alunoId,
+      tipo: 'resposta',
+      pauta_id: state.user.pautaId,
+      campo: 'alternativa_id',
+      valor: state.user.alternativaId,
+      alternativa_id: state.user.alternativaId,
+      observacao: null,
+    } : {
+      _token: state.csrf,
+      components: [{ snapshot: state.snapshot, updates: { [property]: state.user.alternativaId }, calls: [] }],
+    }), {
     headers: {
       'Content-Type': 'application/json',
       'X-CSRF-TOKEN': state.csrf,
-      'X-Livewire': 'true',
+      ...(lightAutosave ? {} : { 'X-Livewire': 'true' }),
       'Cookie': state.cookieHeader,
     },
     tags: {
@@ -59,7 +74,9 @@ export default function () {
 
   const body = safeJson(response.body);
   const conflict = response.status === 409 || String(response.body || '').includes('alterada por outro usuário');
-  const ok = response.status === 200 && body?.components?.[0]?.snapshot;
+  const ok = lightAutosave
+    ? response.status === 200 && body?.saved === true
+    : response.status === 200 && body?.components?.[0]?.snapshot;
   conflictRate.add(conflict);
   autosaveSuccess.add(Boolean(ok));
   check(response, {
@@ -67,7 +84,7 @@ export default function () {
     'no silent server error': (item) => item.status < 500,
   });
 
-  if (ok) {
+  if (ok && !lightAutosave) {
     state.snapshot = body.components[0].snapshot;
   }
   state.cookieHeader = mergeResponseCookies(state.cookieHeader, response);

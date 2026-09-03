@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Controllers\Auth\ForcePasswordChangeController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\AvaliacaoDocumentoExportController;
+use App\Http\Controllers\AvaliacaoRespostaAutosaveController;
 use App\Http\Controllers\BaixasEstoqueRelatorioController;
 use App\Http\Controllers\BalancoEstoqueRelatorioController;
 use App\Http\Controllers\BalancoInventarioRelatorioController;
@@ -105,6 +106,9 @@ Route::prefix('admin')
 
         Route::get('/avaliacoes/documento/csv', [AvaliacaoDocumentoExportController::class, 'exportarCsv'])
             ->name('avaliacoes.documento.csv');
+
+        Route::post('/avaliacoes/respostas/autosave', AvaliacaoRespostaAutosaveController::class)
+            ->name('avaliacoes.respostas.autosave');
 
         Route::get(
             '/pedidos/arquivos/{pedidoArquivo}/download',

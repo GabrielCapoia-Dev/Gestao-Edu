@@ -1,5 +1,7 @@
 <div
     class="av-livewire-root"
+    data-av-autosave-root
+    data-av-autosave-url="{{ route('avaliacoes.respostas.autosave') }}"
     x-data="{ alteracoesPendentes: false }"
     x-on:input.capture="if ($event.target.matches('[data-av-editavel]')) alteracoesPendentes = true"
     x-on:change.capture="if ($event.target.matches('[data-av-editavel]')) alteracoesPendentes = true"
@@ -270,10 +272,10 @@
                                                                         </td>
                                                                         <td data-label="Alternativa">
                                                                             <div class="av-input-wrap">
-                                                                                <select data-av-editavel class="av-table-input" wire:model.live="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id" @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)>
+                                                                                <select data-av-editavel data-av-autosave-turma-id="{{ $turmaIdAtual }}" data-av-autosave-version="{{ $respostaVersoes[$pauta->id][$aluno->id] ?? 0 }}" data-av-autosave-expected-alternativa="{{ $respostas[$pauta->id][$aluno->id]['alternativa_id'] ?? '' }}" data-av-autosave-expected-observacao="{{ $respostas[$pauta->id][$aluno->id]['observacao'] ?? '' }}" class="av-table-input" wire:model.live="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id" @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)>
                                                                                     <option value="">Selecione</option>
                                                                                     @foreach ($alternativasPauta as $alternativa)
-                                                                                        <option value="{{ $alternativa['id'] }}">
+                                                                                        <option value="{{ $alternativa['id'] }}" data-requires-observation="{{ ($alternativa['tem_observacao'] ?? false) ? 1 : 0 }}">
                                                                                             {{ $alternativa['nome'] }}{{ ($alternativa['tem_observacao'] ?? false) ? ' (exige observação)' : '' }}
                                                                                         </option>
                                                                                     @endforeach
@@ -294,7 +296,7 @@
                                                                                         maxlength="1500"
                                                                                         placeholder="{{ $this->placeholderObservacaoAlternativa((int) $pauta->id, $alternativaSelecionadaId) }}"
                                                                                         class="av-table-input av-textarea-input"
-                                                                                    data-av-editavel
+                                                                                    data-av-editavel data-av-autosave-turma-id="{{ $turmaIdAtual }}" data-av-autosave-version="{{ $respostaVersoes[$pauta->id][$aluno->id] ?? 0 }}" data-av-autosave-expected-alternativa="{{ $respostas[$pauta->id][$aluno->id]['alternativa_id'] ?? '' }}" data-av-autosave-expected-observacao="{{ $respostas[$pauta->id][$aluno->id]['observacao'] ?? '' }}"
                                                                                     wire:model.live.debounce.700ms="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao"
                                                                                         @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)></textarea>
 
@@ -446,10 +448,10 @@
                                                                         </td>
                                                                         <td data-label="Alternativa">
                                                                             <div class="av-input-wrap">
-                                                                                <select data-av-editavel class="av-table-input" wire:model.live="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id" @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)>
+                                                                                <select data-av-editavel data-av-autosave-turma-id="{{ $turmaIdAtual }}" data-av-autosave-version="{{ $respostaVersoes[$pauta->id][$aluno->id] ?? 0 }}" data-av-autosave-expected-alternativa="{{ $respostas[$pauta->id][$aluno->id]['alternativa_id'] ?? '' }}" data-av-autosave-expected-observacao="{{ $respostas[$pauta->id][$aluno->id]['observacao'] ?? '' }}" class="av-table-input" wire:model.live="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id" @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)>
                                                                                     <option value="">Selecione</option>
                                                                                     @foreach ($alternativasPauta as $alternativa)
-                                                                                        <option value="{{ $alternativa['id'] }}">
+                                                                                        <option value="{{ $alternativa['id'] }}" data-requires-observation="{{ ($alternativa['tem_observacao'] ?? false) ? 1 : 0 }}">
                                                                                             {{ $alternativa['nome'] }}{{ ($alternativa['tem_observacao'] ?? false) ? ' (exige observação)' : '' }}
                                                                                         </option>
                                                                                     @endforeach
@@ -470,7 +472,7 @@
                                                                                         maxlength="1500"
                                                                                         placeholder="{{ $this->placeholderObservacaoAlternativa((int) $pauta->id, $alternativaSelecionadaId) }}"
                                                                                         class="av-table-input av-textarea-input"
-                                                                                        data-av-editavel
+                                                                                        data-av-editavel data-av-autosave-turma-id="{{ $turmaIdAtual }}" data-av-autosave-version="{{ $respostaVersoes[$pauta->id][$aluno->id] ?? 0 }}" data-av-autosave-expected-alternativa="{{ $respostas[$pauta->id][$aluno->id]['alternativa_id'] ?? '' }}" data-av-autosave-expected-observacao="{{ $respostas[$pauta->id][$aluno->id]['observacao'] ?? '' }}"
                                                                                         wire:model.live.debounce.700ms="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao"
                                                                                         @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)></textarea>
 
@@ -584,10 +586,10 @@
                                                                             </td>
                                                                             <td data-label="Alternativa">
                                                                                 <div class="av-input-wrap">
-                                                                                    <select data-av-editavel class="av-table-input" wire:model.live="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id" @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)>
+                                                                                    <select data-av-editavel data-av-autosave-turma-id="{{ $turmaIdAtual }}" data-av-autosave-version="{{ $respostaVersoes[$pauta->id][$aluno->id] ?? 0 }}" data-av-autosave-expected-alternativa="{{ $respostas[$pauta->id][$aluno->id]['alternativa_id'] ?? '' }}" data-av-autosave-expected-observacao="{{ $respostas[$pauta->id][$aluno->id]['observacao'] ?? '' }}" class="av-table-input" wire:model.live="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id" @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)>
                                                                                         <option value="">Selecione</option>
                                                                                         @foreach ($alternativasPauta as $alternativa)
-                                                                                            <option value="{{ $alternativa['id'] }}">
+                                                                                            <option value="{{ $alternativa['id'] }}" data-requires-observation="{{ ($alternativa['tem_observacao'] ?? false) ? 1 : 0 }}">
                                                                                                 {{ $alternativa['nome'] }}{{ ($alternativa['tem_observacao'] ?? false) ? ' (exige observação)' : '' }}
                                                                                             </option>
                                                                                         @endforeach
@@ -608,7 +610,7 @@
                                                                                             maxlength="1500"
                                                                                             placeholder="{{ $this->placeholderObservacaoAlternativa((int) $pauta->id, $alternativaSelecionadaId) }}"
                                                                                             class="av-table-input av-textarea-input"
-                                                                                            data-av-editavel
+                                                                                            data-av-editavel data-av-autosave-turma-id="{{ $turmaIdAtual }}" data-av-autosave-version="{{ $respostaVersoes[$pauta->id][$aluno->id] ?? 0 }}" data-av-autosave-expected-alternativa="{{ $respostas[$pauta->id][$aluno->id]['alternativa_id'] ?? '' }}" data-av-autosave-expected-observacao="{{ $respostas[$pauta->id][$aluno->id]['observacao'] ?? '' }}"
                                                                                             wire:model.live.debounce.700ms="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao"
                                                                                             @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)></textarea>
 
@@ -645,7 +647,7 @@
                                                                     maxlength="1500"
                                                                     placeholder="Informações complementares (opcional)"
                                                                     class="av-table-input av-textarea-input"
-                                                                    data-av-editavel
+                                                                    data-av-editavel data-av-autosave-turma-id="{{ $turmaIdAtual }}" data-av-autosave-version="{{ $informacaoVersoes[$componenteId][$aluno->id] ?? 0 }}"
                                                                     wire:model.live.debounce.900ms="informacoesComplementares.{{ $componenteId }}.{{ $aluno->id }}"
                                                                     @disabled(! $this->podeResponder() || $informacaoBloqueada || $alunoBloqueadoTransferencia)></textarea>
 
@@ -788,10 +790,10 @@
                                                                                 </td>
                                                                                 <td data-label="Alternativa">
                                                                                     <div class="av-input-wrap">
-                                                                                        <select data-av-editavel class="av-table-input" wire:model.live="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id" @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)>
+                                                                                        <select data-av-editavel data-av-autosave-turma-id="{{ $turmaIdAtual }}" data-av-autosave-version="{{ $respostaVersoes[$pauta->id][$aluno->id] ?? 0 }}" data-av-autosave-expected-alternativa="{{ $respostas[$pauta->id][$aluno->id]['alternativa_id'] ?? '' }}" data-av-autosave-expected-observacao="{{ $respostas[$pauta->id][$aluno->id]['observacao'] ?? '' }}" class="av-table-input" wire:model.live="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id" @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)>
                                                                                             <option value="">Selecione</option>
                                                                                             @foreach ($alternativasPauta as $alternativa)
-                                                                                                <option value="{{ $alternativa['id'] }}">
+                                                                                                <option value="{{ $alternativa['id'] }}" data-requires-observation="{{ ($alternativa['tem_observacao'] ?? false) ? 1 : 0 }}">
                                                                                                     {{ $alternativa['nome'] }}{{ ($alternativa['tem_observacao'] ?? false) ? ' (exige observação)' : '' }}
                                                                                                 </option>
                                                                                             @endforeach
@@ -812,7 +814,7 @@
                                                                                                 maxlength="1500"
                                                                                                 placeholder="{{ $this->placeholderObservacaoAlternativa((int) $pauta->id, $alternativaSelecionadaId) }}"
                                                                                                 class="av-table-input av-textarea-input"
-                                                                                                data-av-editavel
+                                                                                                data-av-editavel data-av-autosave-turma-id="{{ $turmaIdAtual }}" data-av-autosave-version="{{ $respostaVersoes[$pauta->id][$aluno->id] ?? 0 }}" data-av-autosave-expected-alternativa="{{ $respostas[$pauta->id][$aluno->id]['alternativa_id'] ?? '' }}" data-av-autosave-expected-observacao="{{ $respostas[$pauta->id][$aluno->id]['observacao'] ?? '' }}"
                                                                                                 wire:model.live.debounce.700ms="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao"
                                                                                                 @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)></textarea>
 
@@ -848,7 +850,7 @@
                                                                         maxlength="1500"
                                                                         placeholder="Informações complementares (opcional)"
                                                                         class="av-table-input av-textarea-input"
-                                                                        data-av-editavel
+                                                                        data-av-editavel data-av-autosave-turma-id="{{ $turmaIdAtual }}" data-av-autosave-version="{{ $informacaoVersoes[$componenteId][$aluno->id] ?? 0 }}"
                                                                         wire:model.live.debounce.900ms="informacoesComplementares.{{ $componenteId }}.{{ $aluno->id }}"
                                                                         @disabled(! $this->podeResponder() || $informacaoBloqueada || $alunoBloqueadoTransferencia)></textarea>
 
@@ -908,4 +910,246 @@
             font-weight: 600;
         }
     </style>
+
+    <script>
+        (() => {
+            if (window.__gestaoEduAvaliacaoAutosaveInitialized) {
+                return;
+            }
+
+            window.__gestaoEduAvaliacaoAutosaveInitialized = true;
+
+            const timers = new Map();
+            const queues = new Map();
+            const versions = new Map();
+
+            const wirePath = (element) => {
+                const attribute = element.getAttributeNames().find((name) => name.startsWith('wire:model'));
+
+                return attribute ? element.getAttribute(attribute) : null;
+            };
+
+            const componentFor = (element) => {
+                let node = element;
+
+                while (node && !node.hasAttribute('wire:id')) {
+                    node = node.parentElement;
+                }
+
+                const id = node?.getAttribute('wire:id');
+
+                return id && window.Livewire ? window.Livewire.find(id) : null;
+            };
+
+            const rowFor = (element) => element.closest('tr') || element.closest('[data-av-autosave-root]');
+
+            const fieldInRow = (row, suffix) => Array.from(row?.querySelectorAll('[data-av-editavel]') || [])
+                .find((field) => String(wirePath(field) || '').endsWith(suffix));
+
+            const directAutosaveAllowed = (element, path) => {
+                if (element.tagName !== 'SELECT' || !path.startsWith('respostas.')) {
+                    return true;
+                }
+
+                const row = rowFor(element);
+                const requiresObservation = element.selectedOptions[0]?.dataset.requiresObservation === '1';
+                const hasObservationField = Boolean(fieldInRow(row, '.observacao'));
+
+                // A normal alternative can be saved without rebuilding the matrix.
+                // Transitions that show/hide the required textarea still use the
+                // existing Livewire render once to preserve the current UX.
+                return !requiresObservation && !hasObservationField;
+            };
+
+            const stateFor = (element, path) => {
+                const row = rowFor(element);
+                const response = path.match(/^respostas\.(\d+)\.(\d+)\.(alternativa_id|observacao)$/);
+
+                if (response) {
+                    const alternativeField = fieldInRow(row, '.alternativa_id');
+                    const observationField = fieldInRow(row, '.observacao');
+                    const alternativaId = alternativeField?.value ? Number(alternativeField.value) : null;
+                    const observacao = observationField?.value?.trim() || null;
+
+                    return {
+                        tipo: 'resposta',
+                        pauta_id: Number(response[1]),
+                        aluno_id: Number(response[2]),
+                        campo: response[3],
+                        valor: element.tagName === 'SELECT'
+                            ? (element.value ? Number(element.value) : null)
+                            : element.value,
+                        alternativa_id: alternativaId,
+                        observacao,
+                        expected_values: {
+                            alternativa_id: alternativeField?.dataset.avAutosaveExpectedAlternativa || null,
+                            observacao: alternativeField?.dataset.avAutosaveExpectedObservacao || null,
+                        },
+                    };
+                }
+
+                const info = path.match(/^informacoesComplementares\.(\d+)\.(\d+)$/);
+                if (info) {
+                    return {
+                        tipo: 'informacao',
+                        componente_id: Number(info[1]),
+                        aluno_id: Number(info[2]),
+                        campo: 'observacao',
+                        valor: element.value,
+                    };
+                }
+
+                return null;
+            };
+
+            const syncLocalState = (component, path, state, version) => {
+                if (!component?.$wire?.set) {
+                    return;
+                }
+
+                component.$wire.set(path, state.valor === '' ? null : state.valor, false);
+
+                if (state.tipo === 'resposta') {
+                    const prefix = `respostas.${state.pauta_id}.${state.aluno_id}`;
+                    component.$wire.set(`respostaVersoes.${state.pauta_id}.${state.aluno_id}`, version, false);
+                    component.$wire.set(`${prefix}.alternativa_id`, state.alternativa_id, false);
+                    component.$wire.set(`${prefix}.observacao`, state.observacao, false);
+
+                    const persisted = version > 0
+                        ? { alternativa_id: state.alternativa_id, observacao: state.observacao }
+                        : { alternativa_id: null, observacao: null };
+                    component.$wire.set(`respostasPersistidas.${state.pauta_id}.${state.aluno_id}`, persisted, false);
+                } else {
+                    component.$wire.set(`informacaoVersoes.${state.componente_id}.${state.aluno_id}`, version, false);
+                    component.$wire.set(`informacoesComplementaresPersistidas.${state.componente_id}.${state.aluno_id}`, state.valor, false);
+                }
+            };
+
+            const syncFieldMetadata = (element, state, version) => {
+                element.dataset.avAutosaveVersion = String(version);
+
+                if (state.tipo !== 'resposta') {
+                    return;
+                }
+
+                const row = rowFor(element);
+                Array.from(row?.querySelectorAll('[data-av-editavel]') || [])
+                    .filter((field) => String(wirePath(field) || '').startsWith(`respostas.${state.pauta_id}.${state.aluno_id}.`))
+                    .forEach((field) => {
+                        field.dataset.avAutosaveVersion = String(version);
+                        field.dataset.avAutosaveExpectedAlternativa = state.alternativa_id || '';
+                        field.dataset.avAutosaveExpectedObservacao = state.observacao || '';
+                    });
+            };
+
+            const save = async (element, path) => {
+                const root = element.closest('[data-av-autosave-root]');
+                const component = componentFor(element);
+                const state = stateFor(element, path);
+
+                if (!root || !component || !state) {
+                    return;
+                }
+
+                const key = `${component.id}:${path}`;
+                const previous = queues.get(key) || Promise.resolve();
+                const next = previous.catch(() => {}).then(async () => {
+                    const expectedVersion = Number(element.dataset.avAutosaveVersion || versions.get(key) || 0);
+                    const payload = {
+                        avaliacao_id: component.$wire.get('avaliacao'),
+                        turma_id: Number(element.dataset.avAutosaveTurmaId || 0),
+                        aluno_id: state.aluno_id,
+                        tipo: state.tipo,
+                        pauta_id: state.pauta_id,
+                        componente_id: state.componente_id,
+                        campo: state.campo,
+                        valor: state.valor,
+                        alternativa_id: state.alternativa_id,
+                        observacao: state.observacao,
+                        expected_version: expectedVersion,
+                        expected_values: state.expected_values,
+                    };
+
+                    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+                    const response = await fetch(root.dataset.avAutosaveUrl, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrf,
+                        },
+                        body: JSON.stringify(payload),
+                    });
+                    const body = await response.json().catch(() => ({}));
+
+                    if (!response.ok || body.saved !== true) {
+                        const error = new Error(body.message || 'Não foi possível salvar a avaliação.');
+                        error.status = response.status;
+                        throw error;
+                    }
+
+                    const version = Number(body.version || 0);
+                    versions.set(key, version);
+                    syncFieldMetadata(element, state, version);
+                    syncLocalState(component, path, state, version);
+                    element.removeAttribute('data-av-autosave-error');
+                }).catch((error) => {
+                    element.dataset.avAutosaveError = '1';
+                    element.title = error.message;
+
+                    // Conflicts are rare and may use the existing Livewire path
+                    // to keep its current notification and recovery behavior.
+                    if (error.status === 409 && component?.$wire?.set) {
+                        component.$wire.set(path, element.value, true);
+                    }
+                });
+
+                queues.set(key, next);
+                await next;
+            };
+
+            const schedule = (element, path, delay) => {
+                const key = `${componentFor(element)?.id || 'unknown'}:${path}`;
+                clearTimeout(timers.get(key));
+                timers.set(key, setTimeout(() => save(element, path), delay));
+            };
+
+            const handle = (event) => {
+                const element = event.target;
+                if (!(element instanceof HTMLElement) || !element.matches('[data-av-editavel]')) {
+                    return;
+                }
+
+                const path = wirePath(element);
+                if (!path || !directAutosaveAllowed(element, path)) {
+                    return;
+                }
+
+                const component = componentFor(element);
+                if (!component) {
+                    return;
+                }
+
+                event.stopImmediatePropagation();
+                if (element.tagName === 'TEXTAREA') {
+                    const count = element.closest('.av-input-wrap')?.querySelector('.av-char-count');
+                    if (count) {
+                        count.textContent = `${element.value.length}/1500`;
+                    }
+                }
+
+                if (component.$wire?.set) {
+                    component.$wire.set(path, element.tagName === 'SELECT'
+                        ? (element.value ? Number(element.value) : null)
+                        : element.value, false);
+                }
+
+                schedule(element, path, element.tagName === 'TEXTAREA' ? 700 : 0);
+            };
+
+            document.addEventListener('change', handle, true);
+            document.addEventListener('input', handle, true);
+        })();
+    </script>
 </div>
