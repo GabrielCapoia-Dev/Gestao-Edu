@@ -526,6 +526,11 @@ class AvaliacaoTurmaWorkspace extends Component
                     $this->informacoesComplementares[(int) $componenteId][(int) $alunoId] ?? null;
             }
 
+            // Autosave already updates the input and its persisted state. A
+            // complete Blade render here repeats the whole evaluation matrix
+            // for every keystroke and turns concurrent use into CPU pressure.
+            $this->skipRender();
+
             return;
         }
 
@@ -547,6 +552,7 @@ class AvaliacaoTurmaWorkspace extends Component
         }
 
         $this->autoSalvarResposta((int) $pautaId, (int) $alunoId, $campo);
+        $this->skipRender();
     }
 
     public function salvarAlteracoes(): void
