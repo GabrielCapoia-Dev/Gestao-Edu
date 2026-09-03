@@ -3,6 +3,7 @@
 namespace Tests\Feature\Exports;
 
 use App\Jobs\ImportAlunosMatriculadosJob;
+use App\Jobs\Middleware\LimitAvaliacaoExportConcurrency;
 use App\Jobs\ProcessExportRequestJob;
 use App\Models\ExportRequest;
 use App\Models\User;
@@ -34,6 +35,33 @@ class ExportQueueRoutingTest extends TestCase
             (int) config('exports.job_timeout', 900),
             (int) config('queue.connections.exports_redis.retry_after'),
         );
+    }
+
+    public function test_exportacao_de_avaliacao_aplica_limite_global_distribuido(): void
+    {
+        $user = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+
+        $request = ExportRequest::query()->create([
+            'user_id' => $user->id,
+            'type' => 'avaliacao_documento',
+            'format' => 'pdf',
+            'filters' => ['avaliacao_id' => 1],
+            'metadata' => [],
+            'fingerprint' => fake()->sha256(),
+            'status' => ExportRequest::STATUS_QUEUED,
+            'status_message' => 'Aguardando processamento.',
+            'progress_current' => 0,
+            'progress_total' => 100,
+        ]);
+
+        $middleware = (new ProcessExportRequestJob((string) $request->getKey()))->middleware();
+
+        $this->assertCount(1, $middleware);
+        $this->assertInstanceOf(LimitAvaliacaoExportConcurrency::class, $middleware[0]);
+        $this->assertSame(2, (int) config('exports.avaliacao_max_concurrent'));
     }
 
     public function test_exportacao_de_arquivo_habilita_download_automatico_por_padrao(): void

@@ -50,7 +50,7 @@ class AvaliacaoRespostaStoreLazy extends AvaliacaoRespostaStore
             'pauta_id' => $pautaId,
         ]);
 
-        return DB::transaction(function () use (
+        $version = DB::transaction(function () use (
             $avaliacaoId,
             $turmaAvaliativaId,
             $aluno,
@@ -142,6 +142,10 @@ class AvaliacaoRespostaStoreLazy extends AvaliacaoRespostaStore
 
             return (int) $existente->version;
         }, 3);
+
+        $this->agendarResumoDashboard($avaliacaoId, $turmaAvaliativaId);
+
+        return $version;
     }
 
     public function removerPauta(
@@ -170,6 +174,8 @@ class AvaliacaoRespostaStoreLazy extends AvaliacaoRespostaStore
 
             $existente->delete();
         }, 3);
+
+        $this->agendarResumoDashboard($avaliacaoId, $turmaAvaliativaId);
     }
 
     public function salvarInformacao(
@@ -184,7 +190,7 @@ class AvaliacaoRespostaStoreLazy extends AvaliacaoRespostaStore
         $ciclo = $this->migracaoLazy->garantirTurma($avaliacaoId, $turmaAvaliativaId);
         $texto = $this->normalizarTexto($texto);
 
-        return DB::transaction(function () use (
+        $version = DB::transaction(function () use (
             $avaliacaoId,
             $turmaAvaliativaId,
             $aluno,
@@ -261,6 +267,10 @@ class AvaliacaoRespostaStoreLazy extends AvaliacaoRespostaStore
 
             return (int) $existente->version;
         }, 3);
+
+        $this->agendarResumoDashboard($avaliacaoId, $turmaAvaliativaId);
+
+        return $version;
     }
 
     public function salvarPautasEmMassaParaAlunos(
@@ -285,18 +295,18 @@ class AvaliacaoRespostaStoreLazy extends AvaliacaoRespostaStore
         );
     }
 
-    public function respostasDaAvaliacaoParaAlunos(int $avaliacaoId, array $alunoIds): Collection
+    public function respostasDaAvaliacaoParaAlunos(int $avaliacaoId, array $alunoIds, ?array $turmaAvaliativaIds = null): Collection
     {
-        $this->migracaoLazy->garantirParaAlunos($avaliacaoId, $alunoIds);
+        $this->migracaoLazy->garantirParaAlunos($avaliacaoId, $alunoIds, $turmaAvaliativaIds);
 
-        return parent::respostasDaAvaliacaoParaAlunos($avaliacaoId, $alunoIds);
+        return parent::respostasDaAvaliacaoParaAlunos($avaliacaoId, $alunoIds, $turmaAvaliativaIds);
     }
 
-    public function informacoesDaAvaliacaoParaAlunos(int $avaliacaoId, array $alunoIds): Collection
+    public function informacoesDaAvaliacaoParaAlunos(int $avaliacaoId, array $alunoIds, ?array $turmaAvaliativaIds = null): Collection
     {
-        $this->migracaoLazy->garantirParaAlunos($avaliacaoId, $alunoIds);
+        $this->migracaoLazy->garantirParaAlunos($avaliacaoId, $alunoIds, $turmaAvaliativaIds);
 
-        return parent::informacoesDaAvaliacaoParaAlunos($avaliacaoId, $alunoIds);
+        return parent::informacoesDaAvaliacaoParaAlunos($avaliacaoId, $alunoIds, $turmaAvaliativaIds);
     }
 
     private function bloquearResposta(

@@ -41,9 +41,7 @@ class AvaliacaoMigracaoLazySeguraService extends AvaliacaoMigracaoLazyService
         }
 
         $turmas = Turma::query()
-            ->whereIn('id', DB::table('avaliacao_turma')
-                ->where('avaliacao_id', $avaliacaoId)
-                ->select('turma_id'))
+            ->whereKey($turmaAvaliativaId)
             ->get();
         $escopos = $this->escoposSeguros->escoposPorTurma($turmas);
         $escopoAtual = $escopos[$turmaAvaliativaId] ?? null;
@@ -56,7 +54,12 @@ class AvaliacaoMigracaoLazySeguraService extends AvaliacaoMigracaoLazyService
                 ->get(['id', 'aluno_id', 'payload']);
 
             if ($documentos->isNotEmpty()) {
-                $candidatas = collect($escopos)
+                $turmasCandidatas = Turma::query()
+                    ->whereIn('id', DB::table('avaliacao_turma')
+                        ->where('avaliacao_id', $avaliacaoId)
+                        ->select('turma_id'))
+                    ->get();
+                $candidatas = collect($this->escoposSeguros->escoposPorTurma($turmasCandidatas))
                     ->filter(fn (array $escopo): bool => (int) $escopo['turma_origem_id'] === $turmaOrigemId)
                     ->keys()
                     ->map(fn ($id): int => (int) $id)

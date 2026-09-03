@@ -28,11 +28,23 @@ class AvaliacaoDocumentoExportService
 {
     private const VIEW = 'relatorios.Avaliacoes.documento';
 
+    /** @var array<int, string> */
+    private array $nomesProfessores = [];
+
+    /** @var array<int, string> */
+    private array $nomesAlternativas = [];
+
+    /** @var array<string, string> */
+    private array $nomesProfessoresPorTurmaComponente = [];
+
     /**
      * @param  array<string, mixed>  $params
      */
     public function exportar(array $params, ?User $usuario): Response
     {
+        $this->nomesProfessores = [];
+        $this->nomesAlternativas = [];
+        $this->nomesProfessoresPorTurmaComponente = [];
         $avaliacao = $this->buscarAvaliacao((int) ($params['avaliacao_id'] ?? 0));
         $escopo = (string) ($params['escopo'] ?? 'turma');
         $turmas = $this->resolverTurmas($avaliacao, $escopo, $params, $usuario);
@@ -88,6 +100,9 @@ class AvaliacaoDocumentoExportService
      */
     public function exportarCsv(array $params, ?User $usuario): StreamedResponse
     {
+        $this->nomesProfessores = [];
+        $this->nomesAlternativas = [];
+        $this->nomesProfessoresPorTurmaComponente = [];
         $avaliacao = $this->buscarAvaliacao((int) ($params['avaliacao_id'] ?? 0));
         $escopo = (string) ($params['escopo'] ?? 'turma');
         $turmas = $this->resolverTurmas($avaliacao, $escopo, $params, $usuario);
@@ -405,6 +420,8 @@ class AvaliacaoDocumentoExportService
     {
         $documentos = collect();
         $logoDataUri = $this->logoDataUri();
+        $reader = app(AvaliacaoDocumentoBatchReader::class);
+        $this->precarregarProfessoresPorTurmaComponente($turmas);
 
         foreach ($turmas as $turma) {
             $alunos = $this->alunosDaTurma($turma, $escopo, $params);
@@ -421,6 +438,9 @@ class AvaliacaoDocumentoExportService
 
             $alternativasPorPauta = $this->alternativasPorPauta($avaliacao, $pautas);
             $legenda = $this->montarLegenda($alternativasPorPauta);
+            $documentosPorAluno = $reader->lerParaAlunos((int) $avaliacao->id, $alunos, $turma);
+            $this->precarregarNomesProfessores($documentosPorAluno);
+            $this->precarregarNomesAlternativas($documentosPorAluno);
             foreach ($alunos as $aluno) {
                 $documentos->push($this->montarDocumentoAluno(
                     $avaliacao,
@@ -429,7 +449,9 @@ class AvaliacaoDocumentoExportService
                     $pautas,
                     $legenda,
                     ['diretor' => '', 'coordenacao' => ''],
-                    $logoDataUri
+                    $logoDataUri,
+                    null,
+                    $documentosPorAluno->get((int) $aluno->id),
                 ));
             }
         }
@@ -580,9 +602,10 @@ class AvaliacaoDocumentoExportService
         Collection $legenda,
         array $gestores,
         string $logoDataUri,
-        ?string $documentoTipo = null
+        ?string $documentoTipo = null,
+        ?\App\Data\Avaliacoes\AvaliacaoDocumentoData $documento = null,
     ): array {
-        $documento = app(AvaliacaoDocumentoReader::class)->ler((int) $avaliacao->id, $aluno, $turma);
+        $documento ??= app(AvaliacaoDocumentoReader::class)->ler((int) $avaliacao->id, $aluno, $turma);
 
         if ($documento->responsaveisSnapshot === []) {
             throw new ResponsaveisParecerInvalidosException(
@@ -611,9 +634,19 @@ class AvaliacaoDocumentoExportService
             ->values()
             ->all();
 
-        $nomesAlternativas = $alternativaIds === []
-            ? collect()
-            : Alternativa::query()->whereIn('id', $alternativaIds)->pluck('nome', 'id');
+        $nomesAlternativas = collect($this->nomesAlternativas);
+        $alternativasFaltantes = collect($alternativaIds)
+            ->reject(fn (int $id): bool => $nomesAlternativas->has($id))
+            ->values();
+
+        if ($alternativasFaltantes->isNotEmpty()) {
+            $nomesAlternativas = $nomesAlternativas->merge(
+                Alternativa::query()
+                    ->whereIn('id', $alternativasFaltantes->all())
+                    ->pluck('nome', 'id')
+            );
+            $this->nomesAlternativas = $nomesAlternativas->all();
+        }
 
         $componentes = $pautas
             ->groupBy(fn (Pauta $pauta): string => $pauta->componente_curricular_id ? (string) $pauta->componente_curricular_id : 'geral')
@@ -720,9 +753,17 @@ class AvaliacaoDocumentoExportService
 
         $professorIds = array_values(array_unique(array_filter($professorIds)));
         if ($professorIds !== []) {
-            $nomesAtuais = Professor::query()
-                ->whereIn('id', $professorIds)
-                ->pluck('nome')
+            $faltantes = array_values(array_diff($professorIds, array_keys($this->nomesProfessores)));
+            if ($faltantes !== []) {
+                $this->nomesProfessores += Professor::query()
+                    ->whereIn('id', $faltantes)
+                    ->pluck('nome', 'id')
+                    ->map(fn ($nome): string => (string) $nome)
+                    ->all();
+            }
+
+            $nomesAtuais = collect($professorIds)
+                ->map(fn (int $id): ?string => $this->nomesProfessores[$id] ?? null)
                 ->filter()
                 ->unique()
                 ->values()
@@ -734,6 +775,11 @@ class AvaliacaoDocumentoExportService
         }
 
         if ($componenteId) {
+            $chave = (int) $turma->id.':'.$componenteId;
+            if (array_key_exists($chave, $this->nomesProfessoresPorTurmaComponente)) {
+                return $this->nomesProfessoresPorTurmaComponente[$chave];
+            }
+
             $vinculo = TurmaComponenteProfessor::query()
                 ->where('turma_id', (int) $turma->id)
                 ->where('componente_curricular_id', $componenteId)
@@ -746,6 +792,70 @@ class AvaliacaoDocumentoExportService
         }
 
         return '';
+    }
+
+    /** @param Collection<int, \App\Data\Avaliacoes\AvaliacaoDocumentoData> $documentos */
+    private function precarregarNomesProfessores(Collection $documentos): void
+    {
+        $ids = $documentos
+            ->flatMap(fn (\App\Data\Avaliacoes\AvaliacaoDocumentoData $documento): Collection => collect([
+                $documento->pautas(),
+                $documento->informacoes(),
+            ])->flatten(1))
+            ->pluck('professor_id')
+            ->filter()
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($ids->isNotEmpty()) {
+            $this->nomesProfessores = $this->nomesProfessores + Professor::query()
+                ->whereIn('id', $ids->all())
+                ->pluck('nome', 'id')
+                ->map(fn ($nome): string => (string) $nome)
+                ->all();
+        }
+    }
+
+    /** @param Collection<int, \App\Data\Avaliacoes\AvaliacaoDocumentoData> $documentos */
+    private function precarregarNomesAlternativas(Collection $documentos): void
+    {
+        $ids = $documentos
+            ->flatMap(fn (\App\Data\Avaliacoes\AvaliacaoDocumentoData $documento): Collection => collect($documento->pautas()))
+            ->pluck('alternativa_id')
+            ->filter()
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->reject(fn (int $id): bool => array_key_exists($id, $this->nomesAlternativas))
+            ->values();
+
+        if ($ids->isNotEmpty()) {
+            $this->nomesAlternativas += Alternativa::query()
+                ->whereIn('id', $ids->all())
+                ->pluck('nome', 'id')
+                ->map(fn ($nome): string => (string) $nome)
+                ->all();
+        }
+    }
+
+    /** @param Collection<int, Turma> $turmas */
+    private function precarregarProfessoresPorTurmaComponente(Collection $turmas): void
+    {
+        $vinculos = TurmaComponenteProfessor::query()
+            ->whereIn('turma_id', $turmas->pluck('id')->map(fn ($id): int => (int) $id)->all())
+            ->with('professor:id,nome')
+            ->get(['turma_id', 'componente_curricular_id', 'professor_id']);
+
+        foreach ($vinculos as $vinculo) {
+            $nome = trim((string) ($vinculo->professor?->nome ?? ''));
+            if ($nome === '') {
+                continue;
+            }
+
+            $this->nomesProfessoresPorTurmaComponente[
+                (int) $vinculo->turma_id.':'.(int) $vinculo->componente_curricular_id
+            ] = $nome;
+        }
     }
 
     /**
@@ -798,8 +908,10 @@ class AvaliacaoDocumentoExportService
      */
     private function montarDadosCsv(Avaliacao $avaliacao, Collection $turmas, string $escopo, array $params): Collection
     {
+        $reader = app(AvaliacaoDocumentoBatchReader::class);
+
         return $turmas
-            ->map(function (Turma $turma) use ($avaliacao, $escopo, $params): ?array {
+            ->map(function (Turma $turma) use ($avaliacao, $escopo, $params, $reader): ?array {
                 $alunos = $this->alunosDaTurma($turma, $escopo, $params);
                 $pautas = $this->pautasDaTurma($avaliacao, $turma);
 
@@ -810,10 +922,12 @@ class AvaliacaoDocumentoExportService
                 $respostas = collect();
                 $informacoesComplementares = collect();
                 $alternativaIds = [];
+                $documentosPorAluno = $reader->lerParaAlunos((int) $avaliacao->id, $alunos, $turma, false);
+                $this->precarregarNomesAlternativas($documentosPorAluno);
 
                 foreach ($alunos as $aluno) {
                     $alunoId = (int) $aluno->id;
-                    $documento = app(AvaliacaoDocumentoReader::class)->ler((int) $avaliacao->id, $aluno, $turma);
+                    $documento = $documentosPorAluno->get($alunoId);
 
                     foreach ($documento->pautas() as $pautaId => $item) {
                         if (! is_array($item) || empty($item['alternativa_id'])) {
@@ -845,9 +959,7 @@ class AvaliacaoDocumentoExportService
                     }
                 }
 
-                $nomesAlternativas = $alternativaIds === []
-                    ? collect()
-                    : Alternativa::query()->whereIn('id', array_unique($alternativaIds))->pluck('nome', 'id');
+                $nomesAlternativas = collect($this->nomesAlternativas);
 
                 $respostas = $respostas->map(function (object $resposta) use ($nomesAlternativas): object {
                     $resposta->alternativa = (object) [

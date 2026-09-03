@@ -3,6 +3,7 @@
 namespace App\Services\Avaliacoes;
 
 use App\Exceptions\AvaliacaoRespostaConcorrenteException;
+use App\Jobs\AtualizarAvaliacaoDashboardTurmaResumoJob;
 use App\Jobs\ProjetarAvaliacaoDocumentoCompatibilidadeJob;
 use App\Models\Aluno;
 use App\Models\AvaliacaoInformacaoOperacional;
@@ -11,10 +12,13 @@ use App\Models\AvaliacaoTurmaCiclo;
 use App\Models\AvaliacaoAlunoSnapshot;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use App\Support\Avaliacoes\AvaliacaoPerformanceContext;
 
 class AvaliacaoRespostaStore
 {
+    private static ?bool $dashboardResumoDisponivel = null;
+
     public function __construct(
         private readonly AvaliacaoPersistencia $persistencia,
         private readonly AvaliacaoTurmaCicloService $ciclos,
@@ -34,7 +38,7 @@ class AvaliacaoRespostaStore
         ?int $expectedVersion = null,
         array $expectedValues = [],
     ): int {
-        return DB::transaction(function () use ($avaliacaoId, $turmaAvaliativaId, $aluno, $pautaId, $dados, $expectedVersion, $expectedValues): int {
+        $version = DB::transaction(function () use ($avaliacaoId, $turmaAvaliativaId, $aluno, $pautaId, $dados, $expectedVersion, $expectedValues): int {
             $version = 0;
 
             if ($this->persistencia->gravaRelacional()) {
@@ -58,6 +62,10 @@ class AvaliacaoRespostaStore
 
             return $version;
         }, 3);
+
+        $this->agendarResumoDashboard($avaliacaoId, $turmaAvaliativaId);
+
+        return $version;
     }
 
     public function removerPauta(
@@ -92,6 +100,8 @@ class AvaliacaoRespostaStore
 
             $this->projetarCompatibilidade($avaliacaoId, (int) $aluno->id);
         }, 3);
+
+        $this->agendarResumoDashboard($avaliacaoId, $turmaAvaliativaId);
     }
 
     public function salvarInformacao(
@@ -103,7 +113,7 @@ class AvaliacaoRespostaStore
         ?int $professorId,
         ?int $expectedVersion = null,
     ): int {
-        return DB::transaction(function () use ($avaliacaoId, $turmaAvaliativaId, $aluno, $componenteId, $texto, $professorId, $expectedVersion): int {
+        $version = DB::transaction(function () use ($avaliacaoId, $turmaAvaliativaId, $aluno, $componenteId, $texto, $professorId, $expectedVersion): int {
             $version = 0;
 
             if ($this->persistencia->gravaRelacional()) {
@@ -151,6 +161,232 @@ class AvaliacaoRespostaStore
 
             return $version;
         }, 3);
+
+        $this->agendarResumoDashboard($avaliacaoId, $turmaAvaliativaId);
+
+        return $version;
+    }
+
+    /**
+     * Persiste alterações de várias respostas e informações em uma única
+     * transação, reduzindo as leituras repetidas do estado operacional.
+     *
+     * @param array<int, array{chave: string, avaliacao_id: int, turma_avaliativa_id: int, aluno: Aluno, pauta_id: int, dados: array<string, mixed>, expected_version: int|null, expected_values: array<string, mixed>}> $respostas
+     * @param array<int, array{chave: string, avaliacao_id: int, turma_avaliativa_id: int, aluno: Aluno, componente_id: int, texto: string|null, professor_id: int|null, expected_version: int|null}> $informacoes
+     * @return array{respostas: array<string, int>, informacoes: array<string, int>}
+     */
+    public function salvarAlteracoesEmMassa(array $respostas, array $informacoes): array
+    {
+        $resultado = DB::transaction(function () use ($respostas, $informacoes): array {
+            $resultado = ['respostas' => [], 'informacoes' => []];
+            $alunosParaProjetar = [];
+
+            if ($this->persistencia->gravaRelacional()) {
+                $grupos = collect($respostas)
+                    ->groupBy('turma_avaliativa_id')
+                    ->merge(collect($informacoes)->groupBy('turma_avaliativa_id'))
+                    ->keys()
+                    ->map(fn ($id): int => (int) $id)
+                    ->filter(fn (int $id): bool => $id > 0)
+                    ->unique()
+                    ->sort()
+                    ->values();
+
+                foreach ($grupos as $turmaAvaliativaId) {
+                    $registrosRespostas = collect($respostas)
+                        ->filter(fn (array $registro): bool => (int) $registro['turma_avaliativa_id'] === $turmaAvaliativaId)
+                        ->values();
+                    $registrosInformacoes = collect($informacoes)
+                        ->filter(fn (array $registro): bool => (int) $registro['turma_avaliativa_id'] === $turmaAvaliativaId)
+                        ->values();
+                    $primeiroRegistro = $registrosRespostas->first() ?? $registrosInformacoes->first();
+
+                    if (! $primeiroRegistro) {
+                        continue;
+                    }
+
+                    $ciclo = $this->cicloBloqueadoParaEscrita(
+                        (int) $primeiroRegistro['avaliacao_id'],
+                        $turmaAvaliativaId,
+                        (int) $primeiroRegistro['aluno']->id_turma,
+                    );
+                    $alunoIds = $registrosRespostas
+                        ->pluck('aluno.id')
+                        ->merge($registrosInformacoes->pluck('aluno.id'))
+                        ->map(fn ($id): int => (int) $id)
+                        ->unique()
+                        ->values()
+                        ->all();
+
+                    $respostasExistentes = $registrosRespostas->isEmpty()
+                        ? collect()
+                        : AvaliacaoRespostaOperacional::query()
+                            ->where('ciclo_id', (int) $ciclo->id)
+                            ->whereIn('aluno_id', $alunoIds)
+                            ->whereIn('pauta_id', $registrosRespostas->pluck('pauta_id')->map(fn ($id): int => (int) $id)->unique()->all())
+                            ->lockForUpdate()
+                            ->get()
+                            ->keyBy(fn (AvaliacaoRespostaOperacional $linha): string => $linha->aluno_id.':'.$linha->pauta_id);
+                    $informacoesExistentes = $registrosInformacoes->isEmpty()
+                        ? collect()
+                        : AvaliacaoInformacaoOperacional::query()
+                            ->where('ciclo_id', (int) $ciclo->id)
+                            ->whereIn('aluno_id', $alunoIds)
+                            ->whereIn('componente_chave', $registrosInformacoes->pluck('componente_id')->map(fn ($id): int => max(0, (int) $id))->unique()->all())
+                            ->lockForUpdate()
+                            ->get()
+                            ->keyBy(fn (AvaliacaoInformacaoOperacional $linha): string => $linha->aluno_id.':'.$linha->componente_chave);
+
+                    foreach ($registrosRespostas as $registro) {
+                        $aluno = $registro['aluno'];
+                        $pautaId = (int) $registro['pauta_id'];
+                        $chaveExistente = (int) $aluno->id.':'.$pautaId;
+                        $existente = $respostasExistentes->get($chaveExistente);
+                        $expectedVersion = $registro['expected_version'];
+                        $dados = $registro['dados'];
+
+                        if ($existente && $expectedVersion !== null && (int) $existente->version !== (int) $expectedVersion) {
+                            foreach (['alternativa_id', 'observacao'] as $campo) {
+                                if (! array_key_exists($campo, $dados)) {
+                                    continue;
+                                }
+
+                                $atual = $campo === 'alternativa_id'
+                                    ? ((int) ($existente->{$campo} ?? 0) ?: null)
+                                    : $this->normalizarTexto($existente->{$campo});
+                                $esperado = $campo === 'alternativa_id'
+                                    ? ((int) ($registro['expected_values'][$campo] ?? 0) ?: null)
+                                    : $this->normalizarTexto($registro['expected_values'][$campo] ?? null);
+
+                                if (! array_key_exists($campo, $registro['expected_values']) || $atual !== $esperado) {
+                                    throw new AvaliacaoRespostaConcorrenteException('A resposta foi alterada por outro usuário.');
+                                }
+                            }
+                        }
+
+                        $alternativaId = array_key_exists('alternativa_id', $dados)
+                            ? ((int) ($dados['alternativa_id'] ?? 0) ?: null)
+                            : $existente?->alternativa_id;
+
+                        if ($alternativaId === null) {
+                            $existente?->delete();
+                            $resultado['respostas'][$registro['chave']] = 0;
+                        } else {
+                            $atributos = [
+                                'alternativa_id' => $alternativaId,
+                                'observacao' => array_key_exists('observacao', $dados)
+                                    ? $this->normalizarTexto($dados['observacao'])
+                                    : $existente?->observacao,
+                                'professor_id' => $dados['professor_id'] ?? $existente?->professor_id,
+                                'componente_curricular_id' => $dados['componente_curricular_id'] ?? $existente?->componente_curricular_id,
+                                'respondido_em' => $dados['respondido_em'] ?? now(),
+                            ];
+
+                            if ($existente) {
+                                $existente->forceFill([...$atributos, 'version' => (int) $existente->version + 1])->save();
+                                $resultado['respostas'][$registro['chave']] = (int) $existente->version;
+                            } else {
+                                $nova = AvaliacaoRespostaOperacional::query()->create([
+                                    ...$this->contexto($ciclo, (int) $registro['avaliacao_id'], $turmaAvaliativaId, $aluno),
+                                    'aluno_id' => (int) $aluno->id,
+                                    'pauta_id' => $pautaId,
+                                    ...$atributos,
+                                    'version' => 1,
+                                ]);
+                                $resultado['respostas'][$registro['chave']] = (int) $nova->version;
+                            }
+                        }
+
+                        $alunosParaProjetar[(int) $aluno->id] = true;
+                    }
+
+                    foreach ($registrosInformacoes as $registro) {
+                        $aluno = $registro['aluno'];
+                        $componenteId = (int) $registro['componente_id'];
+                        $chaveExistente = (int) $aluno->id.':'.max(0, $componenteId);
+                        $existente = $informacoesExistentes->get($chaveExistente);
+                        $expectedVersion = $registro['expected_version'];
+
+                        if ($existente && $expectedVersion !== null && (int) $existente->version !== (int) $expectedVersion) {
+                            throw new AvaliacaoRespostaConcorrenteException('A informação complementar foi alterada por outro usuário.');
+                        }
+
+                        $texto = $this->normalizarTexto($registro['texto']);
+                        if ($texto === null) {
+                            $existente?->delete();
+                            $resultado['informacoes'][$registro['chave']] = 0;
+                        } elseif ($existente) {
+                            $existente->forceFill([
+                                'texto' => $texto,
+                                'professor_id' => $registro['professor_id'],
+                                'version' => (int) $existente->version + 1,
+                            ])->save();
+                            $resultado['informacoes'][$registro['chave']] = (int) $existente->version;
+                        } else {
+                            $nova = AvaliacaoInformacaoOperacional::query()->create([
+                                ...$this->contexto($ciclo, (int) $registro['avaliacao_id'], $turmaAvaliativaId, $aluno),
+                                'aluno_id' => (int) $aluno->id,
+                                'componente_curricular_id' => $componenteId > 0 ? $componenteId : null,
+                                'componente_chave' => max(0, $componenteId),
+                                'professor_id' => $registro['professor_id'],
+                                'texto' => $texto,
+                                'version' => 1,
+                            ]);
+                            $resultado['informacoes'][$registro['chave']] = (int) $nova->version;
+                        }
+
+                        $alunosParaProjetar[(int) $aluno->id] = true;
+                    }
+                }
+            }
+
+            if ($this->persistencia->gravaDocumentoLegado()) {
+                foreach ($respostas as $registro) {
+                    $documento = $this->documentos->obterOuCriar((int) $registro['avaliacao_id'], $registro['aluno'], false);
+                    $this->documentos->salvarPauta(
+                        $documento,
+                        (int) $registro['pauta_id'],
+                        $registro['dados'],
+                        $registro['expected_version'],
+                    );
+                    $resultado['respostas'][$registro['chave']] = 0;
+                    $alunosParaProjetar[(int) $registro['aluno']->id] = true;
+                }
+
+                foreach ($informacoes as $registro) {
+                    $documento = $this->documentos->obterOuCriar((int) $registro['avaliacao_id'], $registro['aluno'], false);
+                    $this->documentos->salvarInfoComplementar(
+                        $documento,
+                        (int) $registro['componente_id'],
+                        $registro['texto'],
+                        $registro['professor_id'],
+                        $registro['expected_version'],
+                    );
+                    $resultado['informacoes'][$registro['chave']] = 0;
+                    $alunosParaProjetar[(int) $registro['aluno']->id] = true;
+                }
+            }
+
+            $avaliacaoId = (int) ($respostas[0]['avaliacao_id'] ?? $informacoes[0]['avaliacao_id'] ?? 0);
+            foreach (array_keys($alunosParaProjetar) as $alunoId) {
+                $this->projetarCompatibilidade($avaliacaoId, (int) $alunoId);
+            }
+
+            return $resultado;
+        }, 3);
+
+        collect($respostas)
+            ->merge($informacoes)
+            ->pluck('turma_avaliativa_id')
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->each(fn (int $turmaId) => $this->agendarResumoDashboard(
+                (int) ($respostas[0]['avaliacao_id'] ?? $informacoes[0]['avaliacao_id'] ?? 0),
+                $turmaId,
+            ));
+
+        return $resultado;
     }
 
     /**
@@ -164,7 +400,7 @@ class AvaliacaoRespostaStore
         array $respostasPorAluno,
         array $turmaAvaliativaPorAluno,
     ): int {
-        return DB::transaction(function () use ($avaliacaoId, $alunos, $respostasPorAluno, $turmaAvaliativaPorAluno): int {
+        $alterados = DB::transaction(function () use ($avaliacaoId, $alunos, $respostasPorAluno, $turmaAvaliativaPorAluno): int {
             $alterados = 0;
             $alunosPorId = $alunos->keyBy(fn (Aluno $aluno): int => (int) $aluno->id);
 
@@ -240,14 +476,35 @@ class AvaliacaoRespostaStore
 
             return $alterados;
         }, 3);
+
+        collect($turmaAvaliativaPorAluno)
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->each(fn (int $turmaId) => $this->agendarResumoDashboard($avaliacaoId, $turmaId));
+
+        return $alterados;
     }
 
     /** @return Collection<int, Collection<int, array<string, mixed>>> */
-    public function respostasDaAvaliacaoParaAlunos(int $avaliacaoId, array $alunoIds): Collection
+    public function respostasDaAvaliacaoParaAlunos(int $avaliacaoId, array $alunoIds, ?array $turmaAvaliativaIds = null): Collection
     {
+        $turmaAvaliativaIds = $turmaAvaliativaIds === null
+            ? null
+            : collect($turmaAvaliativaIds)
+                ->map(fn ($id): int => (int) $id)
+                ->filter(fn (int $id): bool => $id > 0)
+                ->unique()
+                ->values()
+                ->all();
+
         $resultado = AvaliacaoRespostaOperacional::query()
             ->where('avaliacao_id', $avaliacaoId)
             ->whereIn('aluno_id', $alunoIds)
+            ->when(
+                $turmaAvaliativaIds !== null,
+                fn ($query) => $query->whereIn('turma_avaliativa_id', $turmaAvaliativaIds),
+            )
             ->get()
             ->groupBy('aluno_id')
             ->map(fn (Collection $linhas): Collection => $linhas->keyBy('pauta_id')->map(fn (AvaliacaoRespostaOperacional $linha): array => [
@@ -259,7 +516,7 @@ class AvaliacaoRespostaStore
                 'version' => (int) $linha->version,
             ]));
 
-        foreach ($this->snapshotsFinaisAtuais($avaliacaoId, $alunoIds) as $snapshot) {
+        foreach ($this->snapshotsFinaisAtuais($avaliacaoId, $alunoIds, $turmaAvaliativaIds) as $snapshot) {
             $alunoId = (int) $snapshot->aluno_id;
             if ($resultado->has($alunoId)) {
                 continue;
@@ -273,11 +530,24 @@ class AvaliacaoRespostaStore
     }
 
     /** @return Collection<int, Collection<int, array<string, mixed>>> */
-    public function informacoesDaAvaliacaoParaAlunos(int $avaliacaoId, array $alunoIds): Collection
+    public function informacoesDaAvaliacaoParaAlunos(int $avaliacaoId, array $alunoIds, ?array $turmaAvaliativaIds = null): Collection
     {
+        $turmaAvaliativaIds = $turmaAvaliativaIds === null
+            ? null
+            : collect($turmaAvaliativaIds)
+                ->map(fn ($id): int => (int) $id)
+                ->filter(fn (int $id): bool => $id > 0)
+                ->unique()
+                ->values()
+                ->all();
+
         $resultado = AvaliacaoInformacaoOperacional::query()
             ->where('avaliacao_id', $avaliacaoId)
             ->whereIn('aluno_id', $alunoIds)
+            ->when(
+                $turmaAvaliativaIds !== null,
+                fn ($query) => $query->whereIn('turma_avaliativa_id', $turmaAvaliativaIds),
+            )
             ->get()
             ->groupBy('aluno_id')
             ->map(fn (Collection $linhas): Collection => $linhas->keyBy('componente_chave')->map(fn (AvaliacaoInformacaoOperacional $linha): array => [
@@ -286,7 +556,7 @@ class AvaliacaoRespostaStore
                 'version' => (int) $linha->version,
             ]));
 
-        foreach ($this->snapshotsFinaisAtuais($avaliacaoId, $alunoIds) as $snapshot) {
+        foreach ($this->snapshotsFinaisAtuais($avaliacaoId, $alunoIds, $turmaAvaliativaIds) as $snapshot) {
             $alunoId = (int) $snapshot->aluno_id;
             if ($resultado->has($alunoId)) {
                 continue;
@@ -299,7 +569,7 @@ class AvaliacaoRespostaStore
         return $resultado;
     }
 
-    private function snapshotsFinaisAtuais(int $avaliacaoId, array $alunoIds): Collection
+    private function snapshotsFinaisAtuais(int $avaliacaoId, array $alunoIds, ?array $turmaAvaliativaIds = null): Collection
     {
         return AvaliacaoAlunoSnapshot::query()
             ->select('avaliacao_aluno_snapshots.*')
@@ -309,6 +579,10 @@ class AvaliacaoRespostaStore
             })
             ->where('avaliacao_aluno_snapshots.avaliacao_id', $avaliacaoId)
             ->whereIn('avaliacao_aluno_snapshots.aluno_id', $alunoIds)
+            ->when(
+                $turmaAvaliativaIds !== null,
+                fn ($query) => $query->whereIn('avaliacao_aluno_snapshots.turma_avaliativa_id', $turmaAvaliativaIds),
+            )
             ->where('ciclo_snapshot.status', AvaliacaoTurmaCiclo::STATUS_CONCLUIDA)
             ->get();
     }
@@ -439,5 +713,14 @@ class AvaliacaoRespostaStore
         }
 
         ProjetarAvaliacaoDocumentoCompatibilidadeJob::dispatch($avaliacaoId, $alunoId)->afterCommit();
+    }
+
+    protected function agendarResumoDashboard(int $avaliacaoId, int $turmaId): void
+    {
+        if ($avaliacaoId <= 0 || $turmaId <= 0 || ! (self::$dashboardResumoDisponivel ??= Schema::hasTable('avaliacao_dashboard_turma_resumos'))) {
+            return;
+        }
+
+        AtualizarAvaliacaoDashboardTurmaResumoJob::dispatch($avaliacaoId, $turmaId);
     }
 }

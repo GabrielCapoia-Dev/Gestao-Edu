@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Middleware\LimitAvaliacaoExportConcurrency;
 use App\Models\ExportRequest;
 use App\Notifications\SistemaNotification;
 use App\Services\Exports\ExportManager;
@@ -86,6 +87,17 @@ class ProcessExportRequestJob implements ShouldQueue
 
             throw $exception;
         }
+    }
+
+    /** @return array<int, object> */
+    public function middleware(): array
+    {
+        return ExportRequest::query()
+            ->whereKey($this->exportRequestId)
+            ->where('type', 'avaliacao_documento')
+            ->exists()
+            ? [new LimitAvaliacaoExportConcurrency()]
+            : [];
     }
 
     private function claim(ExportSessionService $sessions): ?ExportRequest

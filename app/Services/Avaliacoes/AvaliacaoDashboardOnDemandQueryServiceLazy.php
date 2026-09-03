@@ -215,18 +215,29 @@ SQL))
     /** @param list<int> $avaliacaoIds */
     private function garantirEstrutura(array $avaliacaoIds): void
     {
-        foreach ($avaliacaoIds as $avaliacaoId) {
-            if (isset($this->estruturaSincronizada[$avaliacaoId])) {
-                continue;
-            }
+        $pendentes = array_values(array_filter(
+            $avaliacaoIds,
+            fn (int $avaliacaoId): bool => ! isset($this->estruturaSincronizada[$avaliacaoId]),
+        ));
 
-            $totalTurmas = DB::table('avaliacao_turma')
-                ->where('avaliacao_id', $avaliacaoId)
-                ->count();
-            $totalCiclos = DB::table('avaliacao_turma_ciclos')
-                ->where('avaliacao_id', $avaliacaoId)
-                ->count();
+        if ($pendentes === []) {
+            return;
+        }
 
+        $turmasPorAvaliacao = DB::table('avaliacao_turma')
+            ->whereIn('avaliacao_id', $pendentes)
+            ->selectRaw('avaliacao_id, COUNT(*) as total')
+            ->groupBy('avaliacao_id')
+            ->pluck('total', 'avaliacao_id');
+        $ciclosPorAvaliacao = DB::table('avaliacao_turma_ciclos')
+            ->whereIn('avaliacao_id', $pendentes)
+            ->selectRaw('avaliacao_id, COUNT(*) as total')
+            ->groupBy('avaliacao_id')
+            ->pluck('total', 'avaliacao_id');
+
+        foreach ($pendentes as $avaliacaoId) {
+            $totalTurmas = (int) ($turmasPorAvaliacao[$avaliacaoId] ?? 0);
+            $totalCiclos = (int) ($ciclosPorAvaliacao[$avaliacaoId] ?? 0);
             if ($totalTurmas > $totalCiclos) {
                 $avaliacao = Avaliacao::query()->find($avaliacaoId);
                 if ($avaliacao) {

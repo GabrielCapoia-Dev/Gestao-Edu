@@ -56,9 +56,8 @@ class AvaliacaoParecerSnapshotService
             $snapshot = $this->responsaveisResolver->resolver($turma, bloquear: true);
             $capturadoEm = $snapshot['capturado_em'] ?? now()->toIso8601String();
 
-            $documentos = $alunos
-                ->map(fn (Aluno $aluno): AvaliacaoAlunoDocumento => $this->documentoService
-                    ->obterOuCriar($avaliacaoId, $aluno, somentePrincipal: false))
+            $documentos = $this->documentoService
+                ->obterOuCriarEmMassa($avaliacaoId, $alunos, somentePrincipal: false)
                 ->values();
 
             $documentos = AvaliacaoAlunoDocumento::query()

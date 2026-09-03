@@ -11,6 +11,7 @@ use App\Models\AvaliacaoTurmaCiclo;
 use App\Models\AvaliacaoTurmaTokenEscrita;
 use App\Models\Turma;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use RuntimeException;
@@ -41,7 +42,7 @@ class AvaliacaoMigracaoLazyService
      *
      * @param list<int> $alunoIds
      */
-    public function garantirParaAlunos(int $avaliacaoId, array $alunoIds): void
+    public function garantirParaAlunos(int $avaliacaoId, array $alunoIds, ?array $turmaAvaliativaIds = null): void
     {
         $alunoIds = collect($alunoIds)
             ->map(fn ($id): int => (int) $id)
@@ -65,7 +66,7 @@ class AvaliacaoMigracaoLazyService
             return;
         }
 
-        $turmasAvaliativas = $this->turmasDaAvaliacao($avaliacaoId);
+        $turmasAvaliativas = $this->turmasDaAvaliacao($avaliacaoId, $turmaAvaliativaIds);
         if ($turmasAvaliativas->isEmpty()) {
             return;
         }
@@ -114,6 +115,28 @@ class AvaliacaoMigracaoLazyService
     }
 
     public function garantirTurma(int $avaliacaoId, int $turmaAvaliativaId): AvaliacaoTurmaCiclo
+    {
+        $pronto = AvaliacaoTurmaCiclo::query()
+            ->where('avaliacao_id', $avaliacaoId)
+            ->where('turma_avaliativa_id', $turmaAvaliativaId)
+            ->where(function ($query): void {
+                $query
+                    ->where('status', AvaliacaoTurmaCiclo::STATUS_CONCLUIDA)
+                    ->orWhereNotNull('operacional_inicializado_em');
+            })
+            ->first();
+
+        if ($pronto) {
+            return $pronto;
+        }
+
+        return Cache::lock(
+            'avaliacao-lazy-inicializacao:'.$avaliacaoId.':'.$turmaAvaliativaId,
+            (int) config('exports.lock_expiration', 1200),
+        )->block(30, fn (): AvaliacaoTurmaCiclo => $this->garantirTurmaSemLock($avaliacaoId, $turmaAvaliativaId));
+    }
+
+    private function garantirTurmaSemLock(int $avaliacaoId, int $turmaAvaliativaId): AvaliacaoTurmaCiclo
     {
         $chave = $avaliacaoId.':'.$turmaAvaliativaId;
 
@@ -236,11 +259,12 @@ class AvaliacaoMigracaoLazyService
     }
 
     /** @return Collection<int, Turma> */
-    private function turmasDaAvaliacao(int $avaliacaoId): Collection
+    private function turmasDaAvaliacao(int $avaliacaoId, ?array $turmaAvaliativaIds = null): Collection
     {
         return Turma::query()
             ->whereIn('id', DB::table('avaliacao_turma')
                 ->where('avaliacao_id', $avaliacaoId)
+                ->when($turmaAvaliativaIds !== null, fn ($query) => $query->whereIn('turma_id', $turmaAvaliativaIds))
                 ->select('turma_id'))
             ->get();
     }

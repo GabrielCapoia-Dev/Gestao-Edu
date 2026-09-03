@@ -16,6 +16,9 @@ use App\Models\Serie;
 use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Services\Avaliacoes\AvaliacaoAlunoDocumentoService;
+use App\Services\Avaliacoes\AvaliacaoDashboardTurmaResumoService;
+use App\Services\Avaliacoes\AvaliacaoRespostaStore;
+use App\Services\Avaliacoes\AvaliacaoTurmaCicloService;
 use App\Services\Avaliacoes\AvaliacaoDashboardFactsService;
 use App\Services\Avaliacoes\AvaliacaoDashboardOnDemandQueryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -78,6 +81,36 @@ class AvaliacaoDashboardOnDemandTest extends TestCase
         $this->assertDatabaseCount('avaliacao_dashboard_pendencias', 0);
         $this->assertDatabaseCount('avaliacao_dashboard_escopo_pendencias', 0);
         Queue::assertNothingPushed();
+    }
+
+    public function test_resumo_por_turma_consolida_indicadores_sem_fatos_legados(): void
+    {
+        $cenario = $this->criarCenario();
+        app(AvaliacaoTurmaCicloService::class)->sincronizarAvaliacao($cenario['avaliacao']);
+        app(AvaliacaoRespostaStore::class)->salvarPauta(
+            (int) $cenario['avaliacao']->id,
+            (int) $cenario['turma']->id,
+            $cenario['aluno'],
+            (int) $cenario['pauta']->id,
+            [
+                'alternativa_id' => (int) $cenario['alternativa']->id,
+                'componente_curricular_id' => (int) $cenario['componente']->id,
+            ],
+        );
+
+        $service = app(AvaliacaoDashboardTurmaResumoService::class);
+        $service->recalcular((int) $cenario['avaliacao']->id, (int) $cenario['turma']->id);
+
+        $this->assertDatabaseHas('avaliacao_dashboard_turma_resumos', [
+            'avaliacao_id' => $cenario['avaliacao']->id,
+            'turma_id' => $cenario['turma']->id,
+            'componente_chave' => 0,
+            'preenchimentos_esperados' => 1,
+            'preenchimentos_respondidos' => 1,
+            'alunos_total' => 1,
+            'alunos_pendentes' => 0,
+            'pautas_total' => 1,
+        ]);
     }
 
     /**

@@ -17,6 +17,8 @@ return [
     'unbound_lifetime_minutes' => (int) env('EXPORTS_UNBOUND_LIFETIME_MINUTES', 15),
     'expired_record_retention_hours' => (int) env('EXPORTS_EXPIRED_RECORD_RETENTION_HOURS', 24),
     'max_active_per_user' => (int) env('EXPORTS_MAX_ACTIVE_PER_USER', 3),
+    'avaliacao_max_concurrent' => (int) env('EXPORTS_AVALIACAO_MAX_CONCURRENT', 2),
+    'avaliacao_lock_wait' => (int) env('EXPORTS_AVALIACAO_LOCK_WAIT', 840),
     'job_timeout' => (int) env('EXPORTS_JOB_TIMEOUT', 900),
     'xlsx_memory_limit' => env('EXPORTS_XLSX_MEMORY_LIMIT', '512M'),
     'lock_expiration' => (int) env('EXPORTS_LOCK_EXPIRATION', 1200),

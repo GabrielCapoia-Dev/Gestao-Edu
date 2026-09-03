@@ -83,6 +83,89 @@ class AvaliacaoAlunoDocumentoService
     }
 
     /**
+     * Resolve documentos de vários alunos com consultas agrupadas.
+     *
+     * @param  Collection<int, Aluno>  $alunos
+     * @return Collection<int, AvaliacaoAlunoDocumento>
+     */
+    public function obterOuCriarEmMassa(
+        Avaliacao|int $avaliacao,
+        Collection $alunos,
+        bool $somentePrincipal = true,
+    ): Collection {
+        $avaliacaoId = $avaliacao instanceof Avaliacao ? (int) $avaliacao->id : (int) $avaliacao;
+        $alunos = $alunos
+            ->filter(fn (mixed $aluno): bool => $aluno instanceof Aluno)
+            ->when($somentePrincipal, fn (Collection $items): Collection => $items->filter(fn (Aluno $aluno): bool => $aluno->isPrincipal()))
+            ->values();
+
+        if ($alunos->isEmpty()) {
+            return collect();
+        }
+
+        $alunoIds = $alunos->pluck('id')->map(fn ($id): int => (int) $id)->all();
+        $existentes = AvaliacaoAlunoDocumento::query()
+            ->where('avaliacao_id', $avaliacaoId)
+            ->whereIn('aluno_id', $alunoIds)
+            ->get()
+            ->keyBy('aluno_id');
+        $faltantes = $alunos->reject(fn (Aluno $aluno): bool => $existentes->has((int) $aluno->id));
+
+        if ($faltantes->isNotEmpty()) {
+            $turmas = Turma::query()
+                ->whereIn('id', $faltantes->pluck('id_turma')->map(fn ($id): int => (int) $id)->unique()->all())
+                ->get(['id', 'id_escola', 'id_serie'])
+                ->keyBy('id');
+            $totais = [];
+            $agora = now();
+            $linhas = [];
+
+            foreach ($faltantes as $aluno) {
+                $turma = $turmas->get((int) $aluno->id_turma);
+                if (! $turma) {
+                    throw new RuntimeException('Turma do aluno nao encontrada para documento avaliativo.');
+                }
+
+                $chave = (int) $turma->id;
+                $totais[$chave] ??= $this->contarPautasEsperadas(
+                    $avaliacaoId,
+                    $turma->id_serie ? (int) $turma->id_serie : null,
+                    (int) $turma->id,
+                );
+
+                $linhas[] = [
+                    'avaliacao_id' => $avaliacaoId,
+                    'aluno_id' => (int) $aluno->id,
+                    'cgm' => (string) $aluno->cgm,
+                    'turma_id' => (int) $turma->id,
+                    'escola_id' => (int) $turma->id_escola,
+                    'serie_id' => $turma->id_serie ? (int) $turma->id_serie : null,
+                    'payload' => json_encode(AvaliacaoAlunoDocumento::payloadVazio(), JSON_THROW_ON_ERROR),
+                    'alternativa_ids' => json_encode([], JSON_THROW_ON_ERROR),
+                    'professor_ids' => json_encode([], JSON_THROW_ON_ERROR),
+                    'pauta_ids_respondidas' => json_encode([], JSON_THROW_ON_ERROR),
+                    'total_pautas_esperadas' => $totais[$chave],
+                    'total_pautas_respondidas' => 0,
+                    'total_infos_complementares' => 0,
+                    'status_preenchimento' => AvaliacaoAlunoDocumento::STATUS_VAZIO,
+                    'observacoes_obrigatorias_pendentes' => 0,
+                    'version' => 1,
+                    'created_at' => $agora,
+                    'updated_at' => $agora,
+                ];
+            }
+
+            AvaliacaoAlunoDocumento::query()->insertOrIgnore($linhas);
+        }
+
+        return AvaliacaoAlunoDocumento::query()
+            ->where('avaliacao_id', $avaliacaoId)
+            ->whereIn('aluno_id', $alunoIds)
+            ->get()
+            ->keyBy('aluno_id');
+    }
+
+    /**
      * @param  array{alternativa_id?: int|null, observacao?: string|null, professor_id?: int|null, professor_nome?: string|null, componente_curricular_id?: int|null, respondido_em?: mixed}  $dados
      */
     public function salvarPauta(
