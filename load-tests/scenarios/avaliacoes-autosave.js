@@ -127,7 +127,9 @@ function livewireSnapshot(html) {
   const matches = String(html || '').matchAll(/wire:snapshot="([\s\S]*?)"/g);
   for (const match of matches) {
     const decoded = decodeHtml(match[1]);
-    if (decoded.includes('avaliacao-turma-workspace')) return decoded;
+    if (decoded.includes('avaliacao-turma-workspace') || decoded.includes('avaliacao-turma-professor-workspace')) {
+      return decoded;
+    }
   }
   return null;
 }
