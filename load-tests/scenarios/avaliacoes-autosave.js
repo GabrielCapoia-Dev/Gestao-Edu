@@ -38,7 +38,7 @@ export default function () {
   const alunoId = state.user.alunoIds[exec.scenario.iterationInTest % state.user.alunoIds.length];
   const property = `respostas.${state.user.pautaId}.${alunoId}.alternativa_id`;
   const started = Date.now();
-  const response = http.post(`${BASE_URL}/livewire/update`, JSON.stringify({
+  const response = http.post(state.livewireUpdateUrl, JSON.stringify({
     _token: state.csrf,
     components: [{ snapshot: state.snapshot, updates: { [property]: state.user.alternativaId }, calls: [] }],
   }), {
@@ -91,6 +91,7 @@ function bootstrap(user) {
   const workspace = http.get(`${BASE_URL}${path}`, { responseType: 'text' });
   const csrf = csrfFromMeta(workspace.body);
   const snapshot = livewireSnapshot(workspace.body);
+  const livewireUpdateUrl = livewireUpdateEndpoint(workspace.body);
 
   const ok = check(workspace, {
     'workspace loaded': (item) => item.status === 200,
@@ -98,7 +99,7 @@ function bootstrap(user) {
     'csrf found': () => Boolean(csrf),
   });
 
-  return ok && snapshot && csrf ? { user, csrf, snapshot } : null;
+  return ok && snapshot && csrf ? { user, csrf, snapshot, livewireUpdateUrl } : null;
 }
 
 function parseUsers(csv) {
@@ -132,6 +133,12 @@ function livewireSnapshot(html) {
     }
   }
   return null;
+}
+
+function livewireUpdateEndpoint(html) {
+  const match = String(html || '').match(/(?:src|href)=["'](\/livewire-[^"']+)\/livewire(?:\.csp)?(?:\.min)?\.js[^"']*["']/i);
+
+  return match ? `${BASE_URL}${match[1]}/update` : `${BASE_URL}/livewire/update`;
 }
 
 function csrfFromForm(html) {
