@@ -13,7 +13,7 @@ end=$((SECONDS + duration))
 next_status=0
 
 while (( SECONDS < end )); do
-    timestamp="$(date --iso-8601=milliseconds)"
+    timestamp="$(date --iso-8601=ns)"
 
     docker stats --no-stream \
         --format '{{.Name}},{{.CPUPerc}},{{.MemUsage}}' \

@@ -92,7 +92,9 @@ use App\Policies\VeiculoTransportePolicy;
 use App\Services\Avaliacoes\AvaliacaoDashboardOnDemandQueryService;
 use App\Services\Exports\ExportSessionService;
 use App\Services\NotificationCenterService;
+use App\Services\PessoaScopeService;
 use App\Services\UserPresenceService;
+use App\Support\Avaliacoes\AvaliacaoPerformanceContext;
 use Filament\Actions\ViewAction;
 use Filament\Auth\Http\Responses\Contracts\LoginResponse as LoginResponseContract;
 use Filament\Support\Assets\Css;
@@ -107,7 +109,6 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
-use App\Support\Avaliacoes\AvaliacaoPerformanceContext;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -116,6 +117,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(LoginResponseContract::class, PasswordChangeLoginResponse::class);
         $this->app->scoped(AvaliacaoDashboardOnDemandQueryService::class);
         $this->app->scoped(AvaliacaoPerformanceContext::class);
+        $this->app->scoped(PessoaScopeService::class);
     }
 
     public function boot(): void

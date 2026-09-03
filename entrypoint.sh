@@ -83,6 +83,7 @@ run_queue_worker() {
             memory_mb="${NOTIFICATIONS_QUEUE_MEMORY_MB:-384}"
             max_jobs="${NOTIFICATIONS_QUEUE_MAX_JOBS:-500}"
             php_memory_limit="256M"
+            nice_level="${NOTIFICATIONS_QUEUE_NICE:-10}"
 
             # O bootstrap atual do Laravel ultrapassa 128 MB no Hub. Abaixo
             # deste piso o worker encerra imediatamente com código 12.
@@ -91,7 +92,9 @@ run_queue_worker() {
             fi
             ;;
         default)
-            queue_name="default"
+            # A conexao dashboard_redis usa o mesmo backend Redis. Consumir
+            # dashboard antes de default evita backlog sem outro processo PHP.
+            queue_name="dashboard,default"
             queue_connection="redis"
             sleep_seconds="${DEFAULT_QUEUE_SLEEP:-3}"
             rest_seconds="${DEFAULT_QUEUE_REST:-0}"
@@ -100,6 +103,7 @@ run_queue_worker() {
             memory_mb="${DEFAULT_QUEUE_MEMORY_MB:-384}"
             max_jobs="${DEFAULT_QUEUE_MAX_JOBS:-500}"
             php_memory_limit="256M"
+            nice_level="${DEFAULT_QUEUE_NICE:-10}"
             ;;
         *)
             echo "[queue] Papel de worker invalido: ${role}" >&2
@@ -165,7 +169,7 @@ php artisan config:cache
 php artisan route:cache
 php artisan event:cache
 php artisan view:cache
-php artisan filament:cache-components
+php artisan filament:optimize
 php artisan livewire:publish --assets
 php artisan filament:assets
 
@@ -198,7 +202,9 @@ fi
 # environment override for hosts with reserved capacity.
 configure_php_fpm_pool() {
     local detected_cpus="$(nproc 2>/dev/null || echo 1)"
+    local process_manager="${PHP_FPM_PM:-static}"
     local max_children="${PHP_FPM_MAX_CHILDREN:-2}"
+    local max_requests="${PHP_FPM_MAX_REQUESTS:-300}"
     local start_servers="${PHP_FPM_START_SERVERS:-1}"
     local min_spare_servers="${PHP_FPM_MIN_SPARE_SERVERS:-1}"
     local max_spare_servers="${PHP_FPM_MAX_SPARE_SERVERS:-2}"
@@ -218,6 +224,7 @@ configure_php_fpm_pool() {
     fi
 
     [[ "$max_children" =~ ^[0-9]+$ ]] || max_children=2
+    [[ "$max_requests" =~ ^[0-9]+$ ]] || max_requests=300
     [[ "$start_servers" =~ ^[0-9]+$ ]] || start_servers=1
     [[ "$min_spare_servers" =~ ^[0-9]+$ ]] || min_spare_servers=1
     [[ "$max_spare_servers" =~ ^[0-9]+$ ]] || max_spare_servers="$max_children"
@@ -230,16 +237,27 @@ configure_php_fpm_pool() {
     (( max_spare_servers < min_spare_servers )) && max_spare_servers="$min_spare_servers"
     (( max_spare_servers > max_children )) && max_spare_servers="$max_children"
 
+    if [ "$process_manager" != "static" ] && [ "$process_manager" != "dynamic" ]; then
+        process_manager="static"
+    fi
+
     cat >> /usr/local/etc/php-fpm.d/www.conf <<EOF
 
 ; Runtime pool sizing based on container CPU capacity.
+pm = ${process_manager}
 pm.max_children = ${max_children}
+pm.max_requests = ${max_requests}
+EOF
+
+    if [ "$process_manager" = "dynamic" ]; then
+        cat >> /usr/local/etc/php-fpm.d/www.conf <<EOF
 pm.start_servers = ${start_servers}
 pm.min_spare_servers = ${min_spare_servers}
 pm.max_spare_servers = ${max_spare_servers}
 EOF
+    fi
 
-    echo "[php-fpm] Pool runtime: cpus=${detected_cpus} max_children=${max_children} start=${start_servers} min_spare=${min_spare_servers} max_spare=${max_spare_servers}"
+    echo "[php-fpm] Pool runtime: cpus=${detected_cpus} pm=${process_manager} max_children=${max_children} max_requests=${max_requests}"
 }
 
 configure_php_fpm_pool

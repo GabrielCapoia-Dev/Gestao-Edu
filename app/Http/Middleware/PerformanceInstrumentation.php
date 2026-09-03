@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\Avaliacoes\AvaliacaoPerformanceContext;
 use Closure;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Http\Request;
@@ -9,7 +10,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
-use App\Support\Avaliacoes\AvaliacaoPerformanceContext;
 
 class PerformanceInstrumentation
 {
@@ -20,6 +20,7 @@ class PerformanceInstrumentation
         }
 
         $start = microtime(true);
+        $cpuStart = $this->cpuTimeMilliseconds();
         $queryCount = 0;
         $queryTime = 0.0;
         $slowestQuery = null;
@@ -40,6 +41,7 @@ class PerformanceInstrumentation
         $response = $next($request);
 
         $elapsed = (microtime(true) - $start) * 1000;
+        $cpuElapsed = max(0.0, $this->cpuTimeMilliseconds() - $cpuStart);
         $routeName = (string) ($request->route()?->getName() ?? '');
         $threshold = $this->thresholdFor($request, $routeName);
 
@@ -55,11 +57,15 @@ class PerformanceInstrumentation
             'route' => $routeName ?: null,
             'status' => $response->getStatusCode(),
             'elapsed_ms' => round($elapsed, 2),
+            'php_cpu_ms' => round($cpuElapsed, 2),
+            'php_cpu_ratio' => $elapsed > 0 ? round($cpuElapsed / $elapsed, 4) : null,
             'query_count' => $queryCount,
             'query_time_ms' => round($queryTime, 2),
             'slowest_query' => $slowestQuery,
             'memory_peak_mb' => round(memory_get_peak_usage(true) / 1024 / 1024, 2),
             'response_bytes' => $this->responseBytes($response),
+            'request_bytes' => strlen((string) $request->getContent()),
+            'livewire_snapshot_bytes' => $this->livewireSnapshotBytes($request),
             'livewire_components' => $this->livewireComponents($request),
             'user_id' => $user?->getAuthIdentifier(),
             'user_roles' => $user && method_exists($user, 'getRoleNames')
@@ -108,6 +114,38 @@ class PerformanceInstrumentation
         $content = $response->getContent();
 
         return is_string($content) ? strlen($content) : null;
+    }
+
+    private function cpuTimeMilliseconds(): float
+    {
+        if (! function_exists('getrusage')) {
+            return 0.0;
+        }
+
+        $usage = getrusage();
+
+        return (((float) ($usage['ru_utime.tv_sec'] ?? 0)) * 1000)
+            + (((float) ($usage['ru_utime.tv_usec'] ?? 0)) / 1000)
+            + (((float) ($usage['ru_stime.tv_sec'] ?? 0)) * 1000)
+            + (((float) ($usage['ru_stime.tv_usec'] ?? 0)) / 1000);
+    }
+
+    private function livewireSnapshotBytes(Request $request): ?int
+    {
+        if (! Str::is(['livewire/update', 'livewire-*/*'], $request->path())) {
+            return null;
+        }
+
+        $components = $request->input('components', []);
+
+        if (! is_array($components)) {
+            return null;
+        }
+
+        return strlen((string) json_encode(
+            array_column($components, 'snapshot'),
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
+        ));
     }
 
     /**

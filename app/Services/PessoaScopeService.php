@@ -8,10 +8,32 @@ use App\Models\Setor;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 
 class PessoaScopeService
 {
+    /** @var array<int, bool> */
+    private array $globalAccess = [];
+
+    /** @var array<int, Servidor|null> */
+    private array $servidores = [];
+
+    /** @var array<int, Collection> */
+    private array $vinculos = [];
+
+    /** @var array<int, bool> */
+    private array $equipesGestoras = [];
+
+    /** @var array<int, array<int, int>> */
+    private array $escolas = [];
+
+    /** @var array<int, array<int, int>> */
+    private array $setores = [];
+
+    /** @var array<int, array<int, int>> */
+    private array $setoresVisiveis = [];
+
     public function __construct(private readonly SetorHierarchyService $hierarchy) {}
 
     public function hasGlobalAccess(?User $user): bool
@@ -20,7 +42,9 @@ class PessoaScopeService
             return false;
         }
 
-        return $user->hasRole('Admin')
+        $userId = (int) $user->getKey();
+
+        return $this->globalAccess[$userId] ??= $user->hasRole('Admin')
             || Gate::forUser($user)->allows('accessGlobalScope', Setor::class)
             || Gate::forUser($user)->allows('admin-only');
     }
@@ -31,6 +55,12 @@ class PessoaScopeService
             return null;
         }
 
+        $userId = (int) $user->getKey();
+
+        if (array_key_exists($userId, $this->servidores)) {
+            return $this->servidores[$userId];
+        }
+
         $pessoas = Servidor::query()
             ->where('user_id', $user->getKey())
             ->where('status', Servidor::STATUS_ATIVO)
@@ -38,18 +68,28 @@ class PessoaScopeService
             ->limit(2)
             ->get();
 
-        return $pessoas->count() === 1 ? $pessoas->first() : null;
+        return $this->servidores[$userId] = $pessoas->count() === 1 ? $pessoas->first() : null;
     }
 
-    public function vinculosAtivos(?User $user)
+    public function vinculosAtivos(?User $user): Collection
     {
+        if (! $user) {
+            return collect();
+        }
+
+        $userId = (int) $user->getKey();
+
+        if (isset($this->vinculos[$userId])) {
+            return $this->vinculos[$userId];
+        }
+
         $servidor = $this->servidorDaPessoa($user);
 
         if (! $servidor) {
             return collect();
         }
 
-        return $servidor->vinculosAtivos()
+        return $this->vinculos[$userId] = $servidor->vinculosAtivos()
             ->with([
                 'funcaoAdministrativa',
                 'setor:id,nome,contexto,exige_vinculo_escola',
@@ -60,7 +100,13 @@ class PessoaScopeService
 
     public function ehEquipeGestora(?User $user): bool
     {
-        return $this->temVinculoGestorEmQualquerPessoa($user);
+        if (! $user) {
+            return false;
+        }
+
+        $userId = (int) $user->getKey();
+
+        return $this->equipesGestoras[$userId] ??= $this->temVinculoGestorEmQualquerPessoa($user);
     }
 
     public function usaEscopoPorVinculos(?User $user): bool
@@ -102,7 +148,13 @@ class PessoaScopeService
     /** @return array<int, int> */
     public function setorIdsDosVinculos(?User $user): array
     {
-        return $this->vinculosAtivos($user)
+        if (! $user) {
+            return [];
+        }
+
+        $userId = (int) $user->getKey();
+
+        return $this->setores[$userId] ??= $this->vinculosAtivos($user)
             ->pluck('setor_id')
             ->filter(fn ($id): bool => filled($id))
             ->map(fn ($id): int => (int) $id)
@@ -116,6 +168,12 @@ class PessoaScopeService
     {
         if (! $user) {
             return [];
+        }
+
+        $userId = (int) $user->getKey();
+
+        if (isset($this->escolas[$userId])) {
+            return $this->escolas[$userId];
         }
 
         $vinculos = $this->vinculosAtivos($user);
@@ -140,7 +198,7 @@ class PessoaScopeService
 
         // Equipe gestora opera em uma unica escola. Massa legada ambigua falha fechada.
         if ($temVinculoGestor) {
-            return $vinculosGestores->isNotEmpty()
+            return $this->escolas[$userId] = $vinculosGestores->isNotEmpty()
                 && count($escolasGestoras) === 1
                 && count($escolasVinculo) === 1
                 && $escolasGestoras === $escolasVinculo
@@ -149,10 +207,10 @@ class PessoaScopeService
         }
 
         if ($escolasVinculo !== []) {
-            return $escolasVinculo;
+            return $this->escolas[$userId] = $escolasVinculo;
         }
 
-        return $user->idsEscolasVinculadas();
+        return $this->escolas[$userId] = $user->idsEscolasVinculadas();
     }
 
     public function canAccessEscola(?User $user, ?int $escolaId): bool
@@ -289,8 +347,14 @@ class PessoaScopeService
             return [];
         }
 
+        $userId = (int) $user->getKey();
+
+        if (isset($this->setoresVisiveis[$userId])) {
+            return $this->setoresVisiveis[$userId];
+        }
+
         if ($this->hasGlobalAccess($user)) {
-            return Setor::query()
+            return $this->setoresVisiveis[$userId] = Setor::query()
                 ->where('ativo', true)
                 ->orderBy('path')
                 ->orderBy('id')
@@ -303,10 +367,10 @@ class PessoaScopeService
             $escolaIds = $this->escolaIdsDosVinculos($user);
 
             if ($escolaIds === []) {
-                return [];
+                return $this->setoresVisiveis[$userId] = [];
             }
 
-            return $this->vinculosAtivos($user)
+            return $this->setoresVisiveis[$userId] = $this->vinculosAtivos($user)
                 ->filter(fn ($vinculo): bool => $vinculo->funcaoAdministrativa?->tipoEquipeGestora() !== null)
                 ->whereIn('id_escola', $escolaIds)
                 ->pluck('setor_id')
@@ -320,7 +384,7 @@ class PessoaScopeService
         $setorIds = $this->setorIdsDosVinculos($user);
 
         if ($setorIds !== []) {
-            return collect($setorIds)
+            return $this->setoresVisiveis[$userId] = collect($setorIds)
                 ->flatMap(fn (int $setorId): array => $this->hierarchy->selfAndDescendantIds($setorId))
                 ->unique()
                 ->values()
@@ -329,7 +393,7 @@ class PessoaScopeService
 
         $legacyPrimary = $this->legacyPrimarySetorId($user);
 
-        return $this->hierarchy->selfAndDescendantIds($legacyPrimary);
+        return $this->setoresVisiveis[$userId] = $this->hierarchy->selfAndDescendantIds($legacyPrimary);
     }
 
     public function canAccessSetor(?User $user, ?int $setorId): bool
