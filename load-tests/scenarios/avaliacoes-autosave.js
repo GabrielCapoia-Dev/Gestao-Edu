@@ -136,6 +136,9 @@ function livewireSnapshot(html) {
 }
 
 function livewireUpdateEndpoint(html) {
+  const configured = String(html || '').match(/data-update-uri=["']([^"']+)["']/i);
+  if (configured) return configured[1];
+
   const match = String(html || '').match(/(\/livewire-[A-Za-z0-9_-]+)\/livewire(?:\.csp)?(?:\.min)?\.js/i);
 
   if (!match) {
