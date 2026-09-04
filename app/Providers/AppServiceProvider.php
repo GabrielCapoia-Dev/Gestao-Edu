@@ -243,7 +243,7 @@ class AppServiceProvider extends ServiceProvider
                     request()->session()->put('auth_version', (int) $event->user->auth_version);
                 }
 
-                app(UserPresenceService::class)->touch($event->user, markLogin: true);
+                app(UserPresenceService::class)->touchLoginDeferred($event->user);
             }
         });
 

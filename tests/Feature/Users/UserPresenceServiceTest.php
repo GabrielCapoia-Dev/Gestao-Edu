@@ -2,11 +2,13 @@
 
 namespace Tests\Feature\Users;
 
+use App\Jobs\SyncUserLoginPresenceJob;
 use App\Models\User;
 use App\Services\UserPresenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class UserPresenceServiceTest extends TestCase
@@ -25,6 +27,35 @@ class UserPresenceServiceTest extends TestCase
 
         $this->assertSame('2026-05-11 09:00:00', $user->last_seen_at?->format('Y-m-d H:i:s'));
         $this->assertSame('2026-05-11 09:00:00', $user->last_login_at?->format('Y-m-d H:i:s'));
+
+        Carbon::setTestNow();
+    }
+
+    public function test_login_touch_marks_presence_and_defers_history_persistence(): void
+    {
+        Queue::fake();
+        Carbon::setTestNow('2026-05-11 09:30:00');
+
+        $user = User::factory()->create([
+            'last_seen_at' => null,
+            'last_login_at' => null,
+        ]);
+
+        app(UserPresenceService::class)->touchLoginDeferred($user);
+
+        $this->assertNull($user->refresh()->last_login_at);
+        Queue::assertPushed(
+            SyncUserLoginPresenceJob::class,
+            fn (SyncUserLoginPresenceJob $job): bool => $job->userId === $user->getKey()
+                && $job->seenAt === now()->getTimestamp(),
+        );
+
+        $job = new SyncUserLoginPresenceJob((int) $user->getKey(), now()->getTimestamp());
+        $job->handle(app(UserPresenceService::class));
+
+        $user->refresh();
+        $this->assertSame('2026-05-11 09:30:00', $user->last_seen_at?->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-05-11 09:30:00', $user->last_login_at?->format('Y-m-d H:i:s'));
 
         Carbon::setTestNow();
     }

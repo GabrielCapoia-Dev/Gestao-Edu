@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Jobs\SyncUserLoginPresenceJob;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Redis;
 use Throwable;
 
 class UserPresenceService
@@ -16,6 +18,8 @@ class UserPresenceService
     private const ACTIVE_USERS_CACHE_KEY = 'presence:active-users';
 
     private const ACTIVE_USERS_LOCK_KEY = 'presence:active-users:lock';
+
+    private const ACTIVE_USERS_REDIS_KEY = 'presence:active-users:zset:v2';
 
     public function touch(User $user, bool $markLogin = false): void
     {
@@ -40,21 +44,30 @@ class UserPresenceService
             return;
         }
 
-        $data = ['last_seen_at' => $now];
+        $this->syncHistory($user, $now, $markLogin);
+    }
 
-        if ($markLogin) {
-            $data['last_login_at'] = $now;
-        }
+    public function touchLoginDeferred(User $user): void
+    {
+        $now = now();
+        $minInterval = max(5, (int) config('performance.presence_touch_min_interval_seconds', 20));
 
-        User::query()
-            ->whereKey($user->getKey())
-            ->update($data);
+        $this->markOnline((int) $user->getKey(), $now->getTimestamp());
+        $this->cachePut(
+            'presence:touch:user:'.$user->getKey(),
+            true,
+            now()->addSeconds($minInterval),
+        );
 
-        $this->cachePut($historyCacheKey, true, now()->addSeconds($historySyncInterval));
+        SyncUserLoginPresenceJob::dispatch(
+            (int) $user->getKey(),
+            $now->getTimestamp(),
+        )->onQueue('default');
+    }
 
-        if ($markLogin) {
-            $this->forgetCache();
-        }
+    public function syncLoginHistory(User $user, \Illuminate\Support\Carbon $seenAt): void
+    {
+        $this->syncHistory($user, $seenAt, true);
     }
 
     public function onlineCount(): int
@@ -185,6 +198,21 @@ class UserPresenceService
 
     private function markOnline(int $userId, int $seenAt): void
     {
+        if ($this->usesRedisPresence()) {
+            try {
+                $redis = Redis::connection((string) config('cache.stores.redis.connection', 'cache'));
+                $cutoff = $seenAt - $this->onlineWindowSeconds();
+
+                $redis->zadd(self::ACTIVE_USERS_REDIS_KEY, $seenAt, (string) $userId);
+                $redis->zremrangebyscore(self::ACTIVE_USERS_REDIS_KEY, '-inf', (string) ($cutoff - 1));
+                $redis->expire(self::ACTIVE_USERS_REDIS_KEY, $this->onlineWindowSeconds() * 2);
+
+                return;
+            } catch (Throwable) {
+                // Continua no armazenamento compativel quando o Redis falhar.
+            }
+        }
+
         try {
             Cache::lock(self::ACTIVE_USERS_LOCK_KEY, 5)->block(2, function () use ($userId, $seenAt): void {
                 $activeUsers = $this->normalizedActiveUsers(Cache::get(self::ACTIVE_USERS_CACHE_KEY, []));
@@ -209,6 +237,25 @@ class UserPresenceService
     /** @return list<int>|null */
     private function activeUserIds(): ?array
     {
+        if ($this->usesRedisPresence()) {
+            try {
+                $redis = Redis::connection((string) config('cache.stores.redis.connection', 'cache'));
+                $cutoff = now()->getTimestamp() - $this->onlineWindowSeconds();
+
+                return collect($redis->zrangebyscore(
+                    self::ACTIVE_USERS_REDIS_KEY,
+                    (string) $cutoff,
+                    '+inf',
+                ))
+                    ->map(static fn (int|string $id): int => (int) $id)
+                    ->filter(static fn (int $id): bool => $id > 0)
+                    ->values()
+                    ->all();
+            } catch (Throwable) {
+                // Continua no armazenamento compativel quando o Redis falhar.
+            }
+        }
+
         try {
             $activeUsers = $this->normalizedActiveUsers(Cache::get(self::ACTIVE_USERS_CACHE_KEY, []));
             $cutoff = now()->getTimestamp() - $this->onlineWindowSeconds();
@@ -248,5 +295,38 @@ class UserPresenceService
             30,
             (int) config('performance.presence_online_window_seconds', self::DEFAULT_ONLINE_WINDOW_SECONDS),
         );
+    }
+
+    private function usesRedisPresence(): bool
+    {
+        return config('cache.default') === 'redis';
+    }
+
+    private function syncHistory(User $user, \Illuminate\Support\Carbon $seenAt, bool $markLogin): void
+    {
+        $data = ['last_seen_at' => $seenAt];
+
+        if ($markLogin) {
+            $data['last_login_at'] = $seenAt;
+        }
+
+        User::query()
+            ->whereKey($user->getKey())
+            ->update($data);
+
+        $historySyncInterval = max(
+            (int) config('performance.presence_touch_min_interval_seconds', 20),
+            (int) config('performance.presence_history_sync_interval_seconds', 900),
+        );
+
+        $this->cachePut(
+            'presence:last-seen-sync:user:'.$user->getKey(),
+            true,
+            $seenAt->copy()->addSeconds($historySyncInterval),
+        );
+
+        if ($markLogin) {
+            $this->forgetCache();
+        }
     }
 }
