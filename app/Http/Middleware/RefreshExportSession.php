@@ -12,6 +12,10 @@ class RefreshExportSession
 {
     public function handle(Request $request, Closure $next): Response
     {
+        if ($request->is('admin/avaliacoes/respostas/autosave')) {
+            return $next($request);
+        }
+
         $response = $next($request);
         $user = $request->user();
 

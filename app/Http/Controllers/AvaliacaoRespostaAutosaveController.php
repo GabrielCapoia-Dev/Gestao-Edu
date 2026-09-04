@@ -52,7 +52,9 @@ class AvaliacaoRespostaAutosaveController extends Controller
         $dados['alternativa_contexto_id'] = $alternativaIdSolicitado;
 
         $user = $request->user();
-        $contexto = $contextos->resolver($dados, $user);
+        // EnsurePasswordIsChanged ja validou canAuthenticate nesta mesma
+        // requisicao. O contexto ainda confere a permissao e o vinculo exatos.
+        $contexto = $contextos->resolver($dados, $user, acessoOperacionalValidado: true);
         if (! $contexto) {
             Gate::forUser($user)->authorize('respond', Avaliacao::class);
         }

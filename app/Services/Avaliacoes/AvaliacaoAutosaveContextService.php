@@ -25,7 +25,11 @@ class AvaliacaoAutosaveContextService
      * @param array<string, mixed> $dados
      * @return array{avaliacao:Avaliacao,turma:Turma,ciclo:AvaliacaoTurmaCiclo,aluno:Aluno,pauta:Pauta|null,professor_id:int|null,alternativa:Alternativa|null}|null
      */
-    public function resolver(array $dados, User $user): ?array
+    public function resolver(
+        array $dados,
+        User $user,
+        bool $acessoOperacionalValidado = false,
+    ): ?array
     {
         if ($user->trashed()) {
             return null;
@@ -75,7 +79,7 @@ class AvaliacaoAutosaveContextService
                 'aluno.pendencia_origem_aluno_id as aluno_pendencia_origem_id',
             ]);
 
-        $this->aplicarAutorizacao($query, $user);
+        $this->aplicarAutorizacao($query, $user, $acessoOperacionalValidado);
 
         if ($dados['tipo'] === 'resposta') {
             $query
@@ -237,30 +241,32 @@ class AvaliacaoAutosaveContextService
         ];
     }
 
-    private function aplicarAutorizacao($query, User $user): void
+    private function aplicarAutorizacao($query, User $user, bool $acessoOperacionalValidado): void
     {
-        $query->whereRaw(
-            '(SELECT COUNT(*) FROM servidores servidor_acesso'
-            .' WHERE servidor_acesso.user_id = ?'
-            .' AND servidor_acesso.deleted_at IS NULL'
-            .' AND servidor_acesso.status = ?'
-            .' AND ('
-            .'EXISTS (SELECT 1 FROM professores professor_acesso'
-            .' WHERE professor_acesso.servidor_id = servidor_acesso.id'
-            .' AND professor_acesso.ativo = 1)'
-            .' OR EXISTS (SELECT 1 FROM servidor_funcao_administrativa vinculo_acesso'
-            .' INNER JOIN funcao_administrativa funcao_acesso'
-            .' ON funcao_acesso.id = vinculo_acesso.funcao_administrativa_id'
-            .' WHERE vinculo_acesso.servidor_id = servidor_acesso.id'
-            .' AND vinculo_acesso.status = ?'
-            .' AND funcao_acesso.codigo <> ?))) = 1',
-            [
-                (int) $user->getKey(),
-                Pessoa::STATUS_ATIVO,
-                ServidorFuncaoAdministrativa::STATUS_ATIVO,
-                Pessoa::CARGO_PENDENTE_CODIGO,
-            ],
-        );
+        if (! $acessoOperacionalValidado) {
+            $query->whereRaw(
+                '(SELECT COUNT(*) FROM servidores servidor_acesso'
+                .' WHERE servidor_acesso.user_id = ?'
+                .' AND servidor_acesso.deleted_at IS NULL'
+                .' AND servidor_acesso.status = ?'
+                .' AND ('
+                .'EXISTS (SELECT 1 FROM professores professor_acesso'
+                .' WHERE professor_acesso.servidor_id = servidor_acesso.id'
+                .' AND professor_acesso.ativo = 1)'
+                .' OR EXISTS (SELECT 1 FROM servidor_funcao_administrativa vinculo_acesso'
+                .' INNER JOIN funcao_administrativa funcao_acesso'
+                .' ON funcao_acesso.id = vinculo_acesso.funcao_administrativa_id'
+                .' WHERE vinculo_acesso.servidor_id = servidor_acesso.id'
+                .' AND vinculo_acesso.status = ?'
+                .' AND funcao_acesso.codigo <> ?))) = 1',
+                [
+                    (int) $user->getKey(),
+                    Pessoa::STATUS_ATIVO,
+                    ServidorFuncaoAdministrativa::STATUS_ATIVO,
+                    Pessoa::CARGO_PENDENTE_CODIGO,
+                ],
+            );
+        }
 
         $needle = Str::lower(Str::ascii('responder avaliacoes'));
         $permissionIds = app(PermissionRegistrar::class)
