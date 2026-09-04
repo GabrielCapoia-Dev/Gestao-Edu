@@ -48,13 +48,15 @@ class AvaliacaoRespostaAutosaveController extends Controller
         abort_unless($avaliacao->estaAbertaParaPreenchimento(), 403);
 
         $turma = Turma::query()->findOrFail((int) $dados['turma_id']);
-        $this->validarTurmaNoEscopo($user, $avaliacao, $turma);
-
-        $escopo = $escopos->escoposPorTurma(collect([$turma]))[(int) $turma->id] ?? null;
-        abort_unless(is_array($escopo), 403);
+        $this->validarTurmaNaAvaliacao($avaliacao, $turma);
 
         $cicloAtual = app(AvaliacaoTurmaCicloService::class)
             ->obter((int) $avaliacao->id, (int) $turma->id);
+        $escopo = $cicloAtual
+            ? ['turma_origem_id' => (int) $cicloAtual->turma_origem_id]
+            : ($escopos->escoposPorTurma(collect([$turma]))[(int) $turma->id] ?? null);
+        abort_unless(is_array($escopo), 403);
+
         abort_unless($cicloAtual === null || $cicloAtual->aceitaEscrita(), 403);
 
         $aluno = Aluno::query()
@@ -151,44 +153,66 @@ class AvaliacaoRespostaAutosaveController extends Controller
         }
     }
 
-    private function validarTurmaNoEscopo($user, Avaliacao $avaliacao, Turma $turma): void
+    private function validarTurmaNaAvaliacao(Avaliacao $avaliacao, Turma $turma): void
     {
         abort_unless(DB::table('avaliacao_turma')
             ->where('avaliacao_id', (int) $avaliacao->id)
             ->where('turma_id', (int) $turma->id)
             ->exists(), 403);
+    }
+
+    private function validarVinculoProfessor($user, Turma $turma, ?int $componenteId): ?int
+    {
+        $identidadeProfessor = fn ($query) => $query
+            ->where('prof.user_id', (int) $user->getKey())
+            ->orWhere(function ($servidor) use ($user): void {
+                $servidor
+                    ->where('serv.user_id', (int) $user->getKey())
+                    ->where('serv.status', 'ativo')
+                    ->whereNull('serv.deleted_at');
+            });
+
+        $query = DB::table('turma_componente_professor as tcp')
+            ->join('professores as prof', 'prof.id', '=', 'tcp.professor_id')
+            ->leftJoin('servidores as serv', 'serv.id', '=', 'prof.servidor_id')
+            ->where('tcp.turma_id', (int) $turma->id)
+            ->where('tcp.tem_professor', true)
+            ->where('prof.ativo', true)
+            ->where('prof.id_escola', (int) $turma->id_escola)
+            ->where($identidadeProfessor);
+
+        if ($componenteId !== null) {
+            $query->where('tcp.componente_curricular_id', $componenteId);
+        }
+
+        $vinculo = $query->orderBy('tcp.professor_id')->first(['tcp.professor_id']);
+        if ($vinculo) {
+            return (int) $vinculo->professor_id;
+        }
+
+        $possuiProfessorAtivo = DB::table('professores as prof')
+            ->leftJoin('servidores as serv', 'serv.id', '=', 'prof.servidor_id')
+            ->where('prof.ativo', true)
+            ->where($identidadeProfessor)
+            ->exists();
+        abort_if($possuiProfessorAtivo, 403);
 
         $scope = app(PessoaScopeService::class);
         if (! $scope->hasGlobalAccess($user)) {
             abort_unless(in_array((int) $turma->id_escola, $scope->escolaIdsDosVinculos($user), true), 403);
         }
-    }
 
-    private function validarVinculoProfessor($user, Turma $turma, ?int $componenteId): ?int
-    {
-        $professorIds = $user->professores()
-            ->where('ativo', true)
-            ->pluck('id')
-            ->map(fn ($id): int => (int) $id)
-            ->values();
-
-        $query = DB::table('turma_componente_professor')
+        $fallback = DB::table('turma_componente_professor')
             ->where('turma_id', (int) $turma->id)
-            ->where('tem_professor', true);
+            ->where('tem_professor', true)
+            ->when($componenteId !== null, fn ($fallback) => $fallback
+                ->where('componente_curricular_id', $componenteId))
+            ->orderBy('professor_id')
+            ->first(['professor_id']);
 
-        if ($professorIds->isNotEmpty()) {
-            $query->whereIn('professor_id', $professorIds->all());
-        }
+        abort_unless($fallback, 403);
 
-        if ($componenteId !== null) {
-            $query->where('componente_curricular_id', $componenteId);
-        }
-
-        $vinculo = $query->orderBy('professor_id')->first(['professor_id']);
-
-        abort_unless($vinculo || $professorIds->isEmpty(), 403);
-
-        return $vinculo ? (int) $vinculo->professor_id : null;
+        return (int) $fallback->professor_id;
     }
 
     private function alternativaPermitida(Avaliacao $avaliacao, Pauta $pauta, int $alternativaId): ?Alternativa
@@ -196,29 +220,35 @@ class AvaliacaoRespostaAutosaveController extends Controller
         $alternativa = Alternativa::query()
             ->whereKey($alternativaId)
             ->where('status', true)
+            ->select('alternativas.*')
+            ->selectRaw(
+                'EXISTS (SELECT 1 FROM avaliacao_pauta_alternativa apa WHERE apa.avaliacao_id = ? AND apa.pauta_id = ?) AS possui_overrides',
+                [(int) $avaliacao->id, (int) $pauta->id],
+            )
+            ->selectRaw(
+                'EXISTS (SELECT 1 FROM avaliacao_pauta_alternativa apa WHERE apa.avaliacao_id = ? AND apa.pauta_id = ? AND apa.alternativa_id = alternativas.id) AS override_permitido',
+                [(int) $avaliacao->id, (int) $pauta->id],
+            )
+            ->selectRaw(
+                'EXISTS (SELECT 1 FROM alternativa_pauta ap WHERE ap.pauta_id = ?) AS possui_alternativas_pauta',
+                [(int) $pauta->id],
+            )
+            ->selectRaw(
+                'EXISTS (SELECT 1 FROM alternativa_pauta ap WHERE ap.pauta_id = ? AND ap.alternativa_id = alternativas.id) AS alternativa_pauta_permitida',
+                [(int) $pauta->id],
+            )
             ->first();
 
         if (! $alternativa) {
             return null;
         }
 
-        $overrides = DB::table('avaliacao_pauta_alternativa')
-            ->where('avaliacao_id', (int) $avaliacao->id)
-            ->where('pauta_id', (int) $pauta->id)
-            ->pluck('alternativa_id')
-            ->map(fn ($id): int => (int) $id);
-
-        if ($overrides->isNotEmpty()) {
-            return $overrides->contains($alternativaId) ? $alternativa : null;
+        if ((bool) $alternativa->possui_overrides) {
+            return (bool) $alternativa->override_permitido ? $alternativa : null;
         }
 
-        $alternativasDaPauta = DB::table('alternativa_pauta')
-            ->where('pauta_id', (int) $pauta->id)
-            ->pluck('alternativa_id')
-            ->map(fn ($id): int => (int) $id);
-
-        if ($alternativasDaPauta->isNotEmpty()) {
-            return $alternativasDaPauta->contains($alternativaId) ? $alternativa : null;
+        if ((bool) $alternativa->possui_alternativas_pauta) {
+            return (bool) $alternativa->alternativa_pauta_permitida ? $alternativa : null;
         }
 
         if ((int) $alternativa->tipo_avaliacao_id === (int) $pauta->tipo_avaliacao_id) {
