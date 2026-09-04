@@ -23,6 +23,8 @@ use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
+use Spatie\Permission\PermissionRegistrar;
 
 class User extends Authenticatable implements FilamentUser, HasAvatar
 {
@@ -212,11 +214,85 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
             return $this->permissionLikeCache[$needle];
         }
 
-        return $this->permissionLikeCache[$needle] = $this->getAllPermissions()->contains(function ($permission) use ($needle): bool {
-            $name = Str::lower(Str::ascii((string) $permission->name));
+        $permissionIds = app(PermissionRegistrar::class)
+            ->getPermissions()
+            ->filter(function ($permission) use ($needle): bool {
+                $name = Str::lower(Str::ascii((string) $permission->name));
 
-            return str_contains($name, $needle);
-        });
+                return str_contains($name, $needle);
+            })
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+
+        if ($permissionIds === []) {
+            return $this->permissionLikeCache[$needle] = false;
+        }
+
+        $tables = config('permission.table_names');
+        $columns = config('permission.column_names');
+        $permissionPivotKey = $columns['permission_pivot_key'] ?? 'permission_id';
+        $rolePivotKey = $columns['role_pivot_key'] ?? 'role_id';
+        $modelKey = $columns['model_morph_key'] ?? 'model_id';
+        $modelType = $this->getMorphClass();
+        $modelId = $this->getKey();
+
+        $permitido = DB::table($tables['permissions'].' as permission_candidate')
+            ->whereIn('permission_candidate.id', $permissionIds)
+            ->where(function ($query) use (
+                $tables,
+                $permissionPivotKey,
+                $rolePivotKey,
+                $modelKey,
+                $modelType,
+                $modelId,
+            ): void {
+                $query
+                    ->whereExists(function ($direta) use (
+                        $tables,
+                        $permissionPivotKey,
+                        $modelKey,
+                        $modelType,
+                        $modelId,
+                    ): void {
+                        $direta
+                            ->selectRaw('1')
+                            ->from($tables['model_has_permissions'].' as user_permission')
+                            ->whereColumn(
+                                'user_permission.'.$permissionPivotKey,
+                                'permission_candidate.id',
+                            )
+                            ->where('user_permission.model_type', $modelType)
+                            ->where('user_permission.'.$modelKey, $modelId);
+                    })
+                    ->orWhereExists(function ($viaRole) use (
+                        $tables,
+                        $permissionPivotKey,
+                        $rolePivotKey,
+                        $modelKey,
+                        $modelType,
+                        $modelId,
+                    ): void {
+                        $viaRole
+                            ->selectRaw('1')
+                            ->from($tables['role_has_permissions'].' as role_permission')
+                            ->join(
+                                $tables['model_has_roles'].' as user_role',
+                                'user_role.'.$rolePivotKey,
+                                '=',
+                                'role_permission.'.$rolePivotKey,
+                            )
+                            ->whereColumn(
+                                'role_permission.'.$permissionPivotKey,
+                                'permission_candidate.id',
+                            )
+                            ->where('user_role.model_type', $modelType)
+                            ->where('user_role.'.$modelKey, $modelId);
+                    });
+            })
+            ->exists();
+
+        return $this->permissionLikeCache[$needle] = $permitido;
     }
 
     public function getFilamentAvatarUrl(): ?string
