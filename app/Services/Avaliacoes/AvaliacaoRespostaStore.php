@@ -3,7 +3,6 @@
 namespace App\Services\Avaliacoes;
 
 use App\Exceptions\AvaliacaoRespostaConcorrenteException;
-use App\Jobs\AtualizarAvaliacaoDashboardTurmaResumoJob;
 use App\Jobs\ProjetarAvaliacaoDocumentoCompatibilidadeJob;
 use App\Models\Aluno;
 use App\Models\AvaliacaoInformacaoOperacional;
@@ -12,13 +11,10 @@ use App\Models\AvaliacaoTurmaCiclo;
 use App\Models\AvaliacaoAlunoSnapshot;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use App\Support\Avaliacoes\AvaliacaoPerformanceContext;
 
 class AvaliacaoRespostaStore
 {
-    private static ?bool $dashboardResumoDisponivel = null;
-
     public function __construct(
         private readonly AvaliacaoPersistencia $persistencia,
         private readonly AvaliacaoTurmaCicloService $ciclos,
@@ -717,10 +713,7 @@ class AvaliacaoRespostaStore
 
     protected function agendarResumoDashboard(int $avaliacaoId, int $turmaId): void
     {
-        if ($avaliacaoId <= 0 || $turmaId <= 0 || ! (self::$dashboardResumoDisponivel ??= Schema::hasTable('avaliacao_dashboard_turma_resumos'))) {
-            return;
-        }
-
-        AtualizarAvaliacaoDashboardTurmaResumoJob::dispatch($avaliacaoId, $turmaId);
+        // O caminho de escrita não consolida indicadores. O dashboard consulta
+        // as tabelas operacionais atuais apenas quando a tela é acessada.
     }
 }

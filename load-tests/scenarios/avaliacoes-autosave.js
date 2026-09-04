@@ -57,8 +57,11 @@ export default function () {
     exec.test.abort('Falha ao autenticar ou carregar o workspace.');
   }
 
-  const student = state.user.students[exec.scenario.iterationInTest % state.user.students.length];
-  const alternativeId = state.user.alternativeIds[exec.scenario.iterationInTest % state.user.alternativeIds.length];
+  // Cada VU representa uma conta. O contador global fazia VUs mais lentos
+  // saltarem alunos e podia encerrar o gate sem cobrir toda a massa.
+  const iteration = exec.vu.iterationInScenario;
+  const student = state.user.students[iteration % state.user.students.length];
+  const alternativeId = state.user.alternativeIds[iteration % state.user.alternativeIds.length];
   const expectedVersion = state.versions[student.id] ?? student.version;
   const previousAlternativeId = state.values[student.id] ?? null;
   const started = Date.now();

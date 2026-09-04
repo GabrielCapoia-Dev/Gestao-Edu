@@ -15,7 +15,6 @@ use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
 use App\Services\Avaliacoes\AvaliacaoDashboardOnDemandQueryService;
-use App\Services\Avaliacoes\AvaliacaoDashboardTurmaResumoService;
 use App\Services\Avaliacoes\AvaliacaoDocumentoExportService;
 use App\Services\Avaliacoes\AvaliacaoMigracaoLazyService;
 use App\Services\Avaliacoes\AvaliacaoPersistencia;
@@ -167,8 +166,6 @@ class DashboardAvaliacoes extends Page implements HasForms
     private array $parecerTurmaElegibilidade = [];
 
     /** @var array<string, bool> */
-    private array $dashboardResumosProntos = [];
-
     public function mount(): void
     {
         $this->filtros = $this->filtrosPadrao();
@@ -3343,47 +3340,9 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     private function dashboardResumosEstaoProntos(array $avaliacaoIds, ?array $filtros = null): bool
     {
-        $service = app(AvaliacaoDashboardTurmaResumoService::class);
-        if (! $service->disponivel()) {
-            return false;
-        }
-
-        $filtros ??= $this->filtros;
-        foreach (['professores_ids', 'pautas_ids', 'alternativas_ids', 'componentes_ids'] as $filtro) {
-            if (($filtros[$filtro] ?? []) !== []) {
-                return false;
-            }
-        }
-
-        $chave = sha1(serialize([$avaliacaoIds, $filtros]));
-        if (array_key_exists($chave, $this->dashboardResumosProntos)) {
-            return $this->dashboardResumosProntos[$chave];
-        }
-
-        $ciclos = DB::table('avaliacao_turma_ciclos')
-            ->whereIn('avaliacao_id', $avaliacaoIds)
-            ->whereIn('status', [AvaliacaoTurmaCiclo::STATUS_ABERTA, AvaliacaoTurmaCiclo::STATUS_REABERTA])
-            ->selectRaw('avaliacao_id, COUNT(DISTINCT turma_avaliativa_id) as total')
-            ->groupBy('avaliacao_id')
-            ->pluck('total', 'avaliacao_id');
-        $concluidos = DB::table('avaliacao_turma_ciclos')
-            ->whereIn('avaliacao_id', $avaliacaoIds)
-            ->where('status', AvaliacaoTurmaCiclo::STATUS_CONCLUIDA)
-            ->exists();
-        $resumos = DB::table('avaliacao_dashboard_turma_resumos')
-            ->whereIn('avaliacao_id', $avaliacaoIds)
-            ->where('componente_chave', 0)
-            ->selectRaw('avaliacao_id, COUNT(DISTINCT turma_id) as total')
-            ->groupBy('avaliacao_id')
-            ->pluck('total', 'avaliacao_id');
-
-        $pronto = ! $concluidos;
-        foreach ($avaliacaoIds as $avaliacaoId) {
-            $totalCiclos = (int) ($ciclos[$avaliacaoId] ?? 0);
-            $pronto = $pronto && $totalCiclos > 0 && $totalCiclos === (int) ($resumos[$avaliacaoId] ?? 0);
-        }
-
-        return $this->dashboardResumosProntos[$chave] = $pronto;
+        // A tela calcula os indicadores a partir das tabelas operacionais no
+        // momento do acesso; projeções assíncronas não entram na leitura.
+        return false;
     }
 
     private function queryResumosDeTurmas(array $avaliacaoIds, array $filtros): QueryBuilder

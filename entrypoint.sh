@@ -92,9 +92,7 @@ run_queue_worker() {
             fi
             ;;
         default)
-            # A conexao dashboard_redis usa o mesmo backend Redis. Consumir
-            # dashboard antes de default evita backlog sem outro processo PHP.
-            queue_name="dashboard,default"
+            queue_name="default"
             queue_connection="redis"
             sleep_seconds="${DEFAULT_QUEUE_SLEEP:-3}"
             rest_seconds="${DEFAULT_QUEUE_REST:-0}"

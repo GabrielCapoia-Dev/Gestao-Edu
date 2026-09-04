@@ -77,6 +77,7 @@ return [
 
     'instrumentation' => [
         'enabled' => filter_var(env('PERF_INSTRUMENTATION_ENABLED', false), FILTER_VALIDATE_BOOL),
+        'sample_rate' => (float) env('PERF_INSTRUMENTATION_SAMPLE_RATE', 1),
         'livewire_enabled' => filter_var(env('PERF_LIVEWIRE_INSTRUMENTATION_ENABLED', false), FILTER_VALIDATE_BOOL),
         'log_all' => filter_var(env('PERF_INSTRUMENTATION_LOG_ALL', false), FILTER_VALIDATE_BOOL),
         'slow_request_ms' => (int) env('PERF_SLOW_REQUEST_MS', 2000),

@@ -5,6 +5,7 @@ namespace Tests\Feature\Avaliacoes;
 use App\Jobs\RebuildAvaliacaoDashboardFactsJob;
 use App\Jobs\SyncAvaliacaoDashboardAlunoJob;
 use App\Jobs\SyncAvaliacaoDashboardScopeJob;
+use App\Jobs\AtualizarAvaliacaoDashboardTurmaResumoJob;
 use App\Models\Alternativa;
 use App\Models\Aluno;
 use App\Models\Avaliacao;
@@ -85,6 +86,7 @@ class AvaliacaoDashboardOnDemandTest extends TestCase
 
     public function test_resumo_por_turma_consolida_indicadores_sem_fatos_legados(): void
     {
+        Queue::fake();
         $cenario = $this->criarCenario();
         app(AvaliacaoTurmaCicloService::class)->sincronizarAvaliacao($cenario['avaliacao']);
         app(AvaliacaoRespostaStore::class)->salvarPauta(
@@ -97,6 +99,7 @@ class AvaliacaoDashboardOnDemandTest extends TestCase
                 'componente_curricular_id' => (int) $cenario['componente']->id,
             ],
         );
+        Queue::assertNotPushed(AtualizarAvaliacaoDashboardTurmaResumoJob::class);
 
         $service = app(AvaliacaoDashboardTurmaResumoService::class);
         $service->recalcular((int) $cenario['avaliacao']->id, (int) $cenario['turma']->id);

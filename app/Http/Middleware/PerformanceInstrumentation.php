@@ -4,7 +4,6 @@ namespace App\Http\Middleware;
 
 use App\Support\Avaliacoes\AvaliacaoPerformanceContext;
 use Closure;
-use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -19,26 +18,32 @@ class PerformanceInstrumentation
             return $next($request);
         }
 
+        $sampleRate = max(0.0, min(1.0, (float) config('performance.instrumentation.sample_rate', 1.0)));
+        if ($sampleRate <= 0.0 || ($sampleRate < 1.0 && mt_rand() / mt_getrandmax() > $sampleRate)) {
+            return $next($request);
+        }
+
         $start = microtime(true);
         $cpuStart = $this->cpuTimeMilliseconds();
-        $queryCount = 0;
-        $queryTime = 0.0;
-        $slowestQuery = null;
-
-        DB::listen(function (QueryExecuted $query) use (&$queryCount, &$queryTime, &$slowestQuery): void {
-            $queryCount++;
-            $queryTime += (float) $query->time;
-
-            if ($slowestQuery === null || (float) $query->time > $slowestQuery['time_ms']) {
-                $slowestQuery = [
-                    'time_ms' => round((float) $query->time, 2),
-                    'sql' => $this->sanitizeSql((string) $query->sql),
-                ];
-            }
-        });
+        DB::flushQueryLog();
+        DB::enableQueryLog();
 
         /** @var Response $response */
-        $response = $next($request);
+        try {
+            $response = $next($request);
+        } finally {
+            $queries = DB::getQueryLog();
+            DB::disableQueryLog();
+            DB::flushQueryLog();
+        }
+
+        $queryCount = count($queries);
+        $queryTime = (float) collect($queries)->sum('time');
+        $slowest = collect($queries)->sortByDesc('time')->first();
+        $slowestQuery = is_array($slowest) ? [
+            'time_ms' => round((float) ($slowest['time'] ?? 0), 2),
+            'sql' => $this->sanitizeSql((string) ($slowest['query'] ?? '')),
+        ] : null;
 
         $elapsed = (microtime(true) - $start) * 1000;
         $cpuElapsed = max(0.0, $this->cpuTimeMilliseconds() - $cpuStart);
