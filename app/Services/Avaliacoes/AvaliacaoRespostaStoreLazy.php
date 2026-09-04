@@ -324,7 +324,8 @@ class AvaliacaoRespostaStoreLazy extends AvaliacaoRespostaStore
 
     private function tokenId(AvaliacaoTurmaCiclo $ciclo): int
     {
-        $tokenId = (int) $ciclo->tokenEscrita()->value('id');
+        $tokenId = (int) ($ciclo->getAttribute('token_escrita_bloqueado_id')
+            ?: $ciclo->tokenEscrita()->value('id'));
 
         if ($tokenId <= 0) {
             throw new RuntimeException('A turma não possui token de escrita ativo.');

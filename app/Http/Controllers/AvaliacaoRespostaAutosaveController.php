@@ -10,6 +10,7 @@ use App\Models\Avaliacao;
 use App\Models\Pauta;
 use App\Models\Turma;
 use App\Services\Avaliacoes\AvaliacaoRespostaStore;
+use App\Services\Avaliacoes\AvaliacaoMigracaoLazyService;
 use App\Services\Avaliacoes\AvaliacaoTurmaCicloService;
 use App\Services\Avaliacoes\TurmaAvaliacaoAlunoScopeService;
 use App\Services\PessoaScopeService;
@@ -18,20 +19,22 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class AvaliacaoRespostaAutosaveController extends Controller
 {
     public function __invoke(
         Request $request,
         AvaliacaoRespostaStore $store,
+        AvaliacaoMigracaoLazyService $migracaoLazy,
         TurmaAvaliacaoAlunoScopeService $escopos,
     ): JsonResponse {
         $dados = $request->validate([
-            'avaliacao_id' => ['required', 'integer', 'exists:avaliacoes,id'],
-            'turma_id' => ['required', 'integer', 'exists:turmas,id'],
-            'aluno_id' => ['required', 'integer', 'exists:alunos,id'],
+            'avaliacao_id' => ['required', 'integer'],
+            'turma_id' => ['required', 'integer'],
+            'aluno_id' => ['required', 'integer'],
             'tipo' => ['required', Rule::in(['resposta', 'informacao'])],
-            'pauta_id' => ['nullable', 'integer', 'exists:pautas,id'],
+            'pauta_id' => ['required_if:tipo,resposta', 'nullable', 'integer'],
             'componente_id' => ['nullable', 'integer', 'min:0'],
             'campo' => ['required', Rule::in(['alternativa_id', 'observacao'])],
             'valor' => ['nullable'],
@@ -44,14 +47,19 @@ class AvaliacaoRespostaAutosaveController extends Controller
         $user = $request->user();
         Gate::forUser($user)->authorize('respond', Avaliacao::class);
 
-        $avaliacao = Avaliacao::query()->findOrFail((int) $dados['avaliacao_id']);
+        $avaliacao = Avaliacao::query()->find((int) $dados['avaliacao_id']);
+        $this->validarModeloExistente($avaliacao, 'avaliacao_id');
         abort_unless($avaliacao->estaAbertaParaPreenchimento(), 403);
 
-        $turma = Turma::query()->findOrFail((int) $dados['turma_id']);
+        $turma = Turma::query()->find((int) $dados['turma_id']);
+        $this->validarModeloExistente($turma, 'turma_id');
         $this->validarTurmaNaAvaliacao($avaliacao, $turma);
 
         $cicloAtual = app(AvaliacaoTurmaCicloService::class)
-            ->obter((int) $avaliacao->id, (int) $turma->id);
+            ->obterComToken((int) $avaliacao->id, (int) $turma->id);
+        if ($cicloAtual) {
+            $migracaoLazy->adotarCicloPronto($cicloAtual);
+        }
         $escopo = $cicloAtual
             ? ['turma_origem_id' => (int) $cicloAtual->turma_origem_id]
             : ($escopos->escoposPorTurma(collect([$turma]))[(int) $turma->id] ?? null);
@@ -63,7 +71,14 @@ class AvaliacaoRespostaAutosaveController extends Controller
             ->whereKey((int) $dados['aluno_id'])
             ->where('id_turma', (int) $escopo['turma_origem_id'])
             ->whereIn('status', [Aluno::STATUS_MATRICULADO, Aluno::STATUS_PENDENTE])
-            ->firstOrFail();
+            ->first();
+        if (! $aluno) {
+            $this->validarModeloExistente(
+                Aluno::query()->whereKey((int) $dados['aluno_id'])->first(['id']),
+                'aluno_id',
+            );
+            abort(404);
+        }
         abort_unless(! $this->alunoBloqueado($aluno), 403);
 
         $pauta = null;
@@ -75,7 +90,14 @@ class AvaliacaoRespostaAutosaveController extends Controller
                 ->whereKey((int) ($dados['pauta_id'] ?? 0))
                 ->where('status', true)
                 ->whereHas('avaliacoes', fn ($query) => $query->whereKey($avaliacao->id))
-                ->firstOrFail();
+                ->first();
+            if (! $pauta) {
+                $this->validarModeloExistente(
+                    Pauta::query()->whereKey((int) ($dados['pauta_id'] ?? 0))->first(['id']),
+                    'pauta_id',
+                );
+                abort(404);
+            }
 
             abort_unless($pauta->serie_id === null || (int) $pauta->serie_id === (int) $turma->id_serie, 403);
             $componenteId = $pauta->componente_curricular_id !== null
@@ -151,6 +173,17 @@ class AvaliacaoRespostaAutosaveController extends Controller
                 'message' => $exception->getMessage(),
             ], 409);
         }
+    }
+
+    private function validarModeloExistente(mixed $modelo, string $campo): void
+    {
+        if ($modelo !== null) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            $campo => trans('validation.exists', ['attribute' => str_replace('_id', '', $campo)]),
+        ]);
     }
 
     private function validarTurmaNaAvaliacao(Avaliacao $avaliacao, Turma $turma): void

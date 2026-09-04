@@ -28,6 +28,10 @@ class AvaliacaoMigracaoLazySeguraService extends AvaliacaoMigracaoLazyService
 
     public function garantirTurma(int $avaliacaoId, int $turmaAvaliativaId): AvaliacaoTurmaCiclo
     {
+        if ($ciclo = $this->cicloConhecido($avaliacaoId, $turmaAvaliativaId)) {
+            return $ciclo;
+        }
+
         $ciclo = AvaliacaoTurmaCiclo::query()
             ->where('avaliacao_id', $avaliacaoId)
             ->where('turma_avaliativa_id', $turmaAvaliativaId)

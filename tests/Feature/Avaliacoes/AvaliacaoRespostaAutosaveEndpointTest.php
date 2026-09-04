@@ -74,6 +74,30 @@ class AvaliacaoRespostaAutosaveEndpointTest extends TestCase
             ->assertJsonPath('saved', false);
     }
 
+    public function test_autosave_retorna_erro_de_validacao_para_identificadores_inexistentes(): void
+    {
+        $cenario = $this->cenario();
+
+        foreach (['avaliacao_id', 'turma_id', 'aluno_id', 'pauta_id'] as $campo) {
+            $payload = [
+                'avaliacao_id' => $cenario['avaliacao']->id,
+                'turma_id' => $cenario['turma']->id,
+                'aluno_id' => $cenario['aluno']->id,
+                'tipo' => 'resposta',
+                'pauta_id' => $cenario['pauta']->id,
+                'campo' => 'alternativa_id',
+                'valor' => $cenario['alternativa']->id,
+                'expected_version' => 0,
+            ];
+            $payload[$campo] = 999999;
+
+            $this->actingAs($cenario['user'])
+                ->postJson(route('avaliacoes.respostas.autosave'), $payload)
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors($campo);
+        }
+    }
+
     /** @return array<string, mixed> */
     private function cenario(): array
     {

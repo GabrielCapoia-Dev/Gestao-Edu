@@ -30,6 +30,9 @@ class AvaliacaoMigracaoLazyService
     /** @var array<string, true> */
     private array $garantidos = [];
 
+    /** @var array<string, AvaliacaoTurmaCiclo> */
+    private array $ciclosConhecidos = [];
+
     public function __construct(
         private readonly AvaliacaoTurmaCicloService $ciclos,
         private readonly TurmaAvaliacaoAlunoScopeService $escopos,
@@ -116,6 +119,10 @@ class AvaliacaoMigracaoLazyService
 
     public function garantirTurma(int $avaliacaoId, int $turmaAvaliativaId): AvaliacaoTurmaCiclo
     {
+        if ($ciclo = $this->cicloConhecido($avaliacaoId, $turmaAvaliativaId)) {
+            return $ciclo;
+        }
+
         $pronto = AvaliacaoTurmaCiclo::query()
             ->where('avaliacao_id', $avaliacaoId)
             ->where('turma_avaliativa_id', $turmaAvaliativaId)
@@ -134,6 +141,25 @@ class AvaliacaoMigracaoLazyService
             'avaliacao-lazy-inicializacao:'.$avaliacaoId.':'.$turmaAvaliativaId,
             (int) config('exports.lock_expiration', 1200),
         )->block(30, fn (): AvaliacaoTurmaCiclo => $this->garantirTurmaSemLock($avaliacaoId, $turmaAvaliativaId));
+    }
+
+    public function adotarCicloPronto(AvaliacaoTurmaCiclo $ciclo): void
+    {
+        if (
+            $ciclo->status !== AvaliacaoTurmaCiclo::STATUS_CONCLUIDA
+            && $ciclo->operacional_inicializado_em === null
+        ) {
+            return;
+        }
+
+        $chave = (int) $ciclo->avaliacao_id.':'.(int) $ciclo->turma_avaliativa_id;
+        $this->ciclosConhecidos[$chave] = $ciclo;
+        $this->garantidos[$chave] = true;
+    }
+
+    protected function cicloConhecido(int $avaliacaoId, int $turmaAvaliativaId): ?AvaliacaoTurmaCiclo
+    {
+        return $this->ciclosConhecidos[$avaliacaoId.':'.$turmaAvaliativaId] ?? null;
     }
 
     private function garantirTurmaSemLock(int $avaliacaoId, int $turmaAvaliativaId): AvaliacaoTurmaCiclo

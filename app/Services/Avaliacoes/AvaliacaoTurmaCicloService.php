@@ -103,6 +103,22 @@ class AvaliacaoTurmaCicloService
             ->first();
     }
 
+    public function obterComToken(int $avaliacaoId, int $turmaAvaliativaId): ?AvaliacaoTurmaCiclo
+    {
+        return AvaliacaoTurmaCiclo::query()
+            ->select('avaliacao_turma_ciclos.*')
+            ->addSelect('avaliacao_turma_tokens_escrita.id as token_escrita_bloqueado_id')
+            ->leftJoin(
+                'avaliacao_turma_tokens_escrita',
+                'avaliacao_turma_tokens_escrita.ciclo_id',
+                '=',
+                'avaliacao_turma_ciclos.id',
+            )
+            ->where('avaliacao_turma_ciclos.avaliacao_id', $avaliacaoId)
+            ->where('avaliacao_turma_ciclos.turma_avaliativa_id', $turmaAvaliativaId)
+            ->first();
+    }
+
     public function obterParaEscritaCompartilhada(int $avaliacaoId, int $turmaAvaliativaId): ?AvaliacaoTurmaCiclo
     {
         $ciclo = AvaliacaoTurmaCiclo::query()
