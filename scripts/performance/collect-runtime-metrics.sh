@@ -46,7 +46,7 @@ while (( SECONDS < end )); do
     fi
 
     docker exec laravel-app-gestao-edu ps --no-headers -eo pid,comm,pcpu,rss 2>/dev/null \
-        | awk -v timestamp="$timestamp" '$2 ~ /^(php-fpm|nginx)$/ { print timestamp "," $1 "," $2 "," $3 "," $4 }' \
+        | awk -v timestamp="$timestamp" '$2 ~ /^(php-fpm|php|nginx)$/ { print timestamp "," $1 "," $2 "," $3 "," $4 }' \
         >> "$process_output" || true
 
     mem_available="$(awk '/^MemAvailable:/ { print $2 }' /proc/meminfo)"

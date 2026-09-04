@@ -241,6 +241,9 @@ class ManageAvaliacaoLoadTestFixtures extends Command
 
         DB::transaction(function () use ($manifest): void {
             $studentIds = array_map('intval', $manifest['student_ids'] ?? []);
+
+            DB::table('avaliacao_respostas_operacionais')->whereIn('aluno_id', $studentIds)->delete();
+            DB::table('avaliacao_informacoes_operacionais')->whereIn('aluno_id', $studentIds)->delete();
             Aluno::query()->whereIn('id', $studentIds)->delete();
 
             foreach ($manifest['users'] ?? [] as $user) {

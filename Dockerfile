@@ -20,8 +20,8 @@ RUN apt-get update && apt-get install -y \
     libicu-dev \
     && docker-php-ext-install \
     intl pdo pdo_mysql zip mbstring exif pcntl bcmath gd opcache \
-    && pecl install redis \
-    && docker-php-ext-enable redis \
+    && pecl install redis swoole \
+    && docker-php-ext-enable redis swoole \
     && apt-get purge -y --auto-remove $PHPIZE_DEPS \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -33,6 +33,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
 # OPcache tuned for production. Deploys should restart the container so the
 # opcode cache is rebuilt with the new code.
 RUN echo "opcache.enable=1"                    >> /usr/local/etc/php/conf.d/opcache.ini \
+    && echo "opcache.enable_cli=1"                >> /usr/local/etc/php/conf.d/opcache.ini \
     && echo "opcache.memory_consumption=256"      >> /usr/local/etc/php/conf.d/opcache.ini \
     && echo "opcache.interned_strings_buffer=16"  >> /usr/local/etc/php/conf.d/opcache.ini \
     && echo "opcache.max_accelerated_files=20000" >> /usr/local/etc/php/conf.d/opcache.ini \
@@ -76,6 +77,7 @@ WORKDIR /var/www
 
 # ── Nginx ──────────────────────────────────────────────────────────────────
 COPY docker/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf
+COPY docker/nginx/conf.d /etc/nginx/runtime-templates
 
 # ── Entrypoint ─────────────────────────────────────────────────────────────
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh

@@ -258,8 +258,38 @@ EOF
     echo "[php-fpm] Pool runtime: cpus=${detected_cpus} pm=${process_manager} max_children=${max_children} max_requests=${max_requests}"
 }
 
-configure_php_fpm_pool
+start_web_runtime() {
+    local runtime="${APP_RUNTIME:-fpm}"
+    local nginx_templates="/etc/nginx/runtime-templates"
+
+    if [ -d /etc/nginx/templates ]; then
+        nginx_templates="/etc/nginx/templates"
+    fi
+
+    case "$runtime" in
+        octane)
+            cp "${nginx_templates}/octane.conf" /etc/nginx/conf.d/default.conf
+            nginx -t
+            nginx
+
+            echo "[octane] Runtime: server=${OCTANE_SERVER:-swoole} workers=${OCTANE_WORKERS:-1} max_requests=${OCTANE_MAX_REQUESTS:-500}"
+
+            exec su -s /bin/sh www-data -c \
+                "php artisan octane:start --server=${OCTANE_SERVER:-swoole} --host=127.0.0.1 --port=8000 --workers=${OCTANE_WORKERS:-1} --max-requests=${OCTANE_MAX_REQUESTS:-500}"
+            ;;
+        fpm)
+            cp "${nginx_templates}/default.conf" /etc/nginx/conf.d/default.conf
+            configure_php_fpm_pool
+            php-fpm -D
+            exec nginx -g "daemon off;"
+            ;;
+        *)
+            echo "[runtime] APP_RUNTIME invalido: ${runtime}. Use fpm ou octane." >&2
+            exit 1
+            ;;
+    esac
+}
+
+start_web_runtime
 
 # ── Inicia php-fpm em background e nginx em foreground ─────────────────────
-php-fpm -D
-nginx -g "daemon off;"
