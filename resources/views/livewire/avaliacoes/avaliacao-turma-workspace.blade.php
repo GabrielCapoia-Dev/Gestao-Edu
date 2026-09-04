@@ -55,7 +55,7 @@
             <section class="gi-panel av-professor-control-panel">
                 @php($progresso = $this->progresso)
                 @php($percentual = $progresso['total'] > 0 ? min(100, (int) round(($progresso['preenchidas'] / $progresso['total']) * 100)) : 0)
-                <div class="av-progress">
+                <div class="av-progress" data-av-progress-type="global" data-av-progress-filled="{{ $progresso['preenchidas'] }}" data-av-progress-total="{{ $progresso['total'] }}">
                     <div class="av-progress-head">
                         <span>Progresso do preenchimento</span>
                         <span>{{ $progresso['preenchidas'] }}/{{ $progresso['total'] }}</span>
@@ -100,7 +100,7 @@
 
                 @php($progresso = $this->progresso)
                 @php($percentual = $progresso['total'] > 0 ? min(100, (int) round(($progresso['preenchidas'] / $progresso['total']) * 100)) : 0)
-                <div class="av-progress">
+                <div class="av-progress" data-av-progress-type="global" data-av-progress-filled="{{ $progresso['preenchidas'] }}" data-av-progress-total="{{ $progresso['total'] }}">
                     <div class="av-progress-head">
                         <span>Progresso do preenchimento</span>
                         <span>{{ $progresso['preenchidas'] }}/{{ $progresso['total'] }}</span>
@@ -242,7 +242,7 @@
                                         <p class="av-pauta-meta">{{ $turmaAtual?->escola?->nome }} - {{ $turmaAtual?->serie?->nome }} - {{ $this->rotuloTurma($turmaAtual) }}</p>
                                     </div>
                                     <div class="av-pauta-toggle-side">
-                                        <div class="av-pauta-progress-head">
+                                        <div class="av-pauta-progress-head" data-av-progress-type="componente" data-av-progress-turma="{{ $turmaIdAtual }}" data-av-progress-pautas="{{ collect($grupo['pautas'])->pluck('id')->implode(',') }}" data-av-progress-filled="{{ $progressoComponentePreenchidas }}" data-av-progress-total="{{ $progressoComponenteTotal }}">
                                             <span>{{ $progressoComponentePreenchidas }}/{{ $progressoComponenteTotal }}</span>
                                             <span>{{ $progressoComponentePercentual }}%</span>
                                         </div>
@@ -268,7 +268,7 @@
                                                 </div>
 
                                                 <div class="av-pauta-toggle-side">
-                                                    <div class="av-pauta-progress-head">
+                                                    <div class="av-pauta-progress-head" data-av-progress-type="pauta" data-av-progress-turma="{{ $turmaIdAtual }}" data-av-progress-pauta="{{ $pauta->id }}" data-av-progress-filled="{{ $progressoPauta['preenchidas'] }}" data-av-progress-total="{{ $progressoPauta['total'] }}">
                                                         <span>{{ $progressoPauta['preenchidas'] }}/{{ $progressoPauta['total'] }}</span>
                                                         <span>{{ $progressoPauta['percentual'] }}%</span>
                                                     </div>
@@ -386,7 +386,7 @@
                                 </div>
 
                                 <div class="av-pauta-toggle-side">
-                                    <div class="av-pauta-progress-head">
+                                    <div class="av-pauta-progress-head" data-av-progress-type="turma" data-av-progress-turma="{{ $turmaIdAtual }}" data-av-progress-filled="{{ $progressoTurma['preenchidas'] }}" data-av-progress-total="{{ $progressoTurma['total'] }}">
                                         <span>{{ $progressoTurma['preenchidas'] }}/{{ $progressoTurma['total'] }}</span>
                                         <span>{{ $progressoTurma['percentual'] }}%</span>
                                     </div>
@@ -416,7 +416,7 @@
                                                 </div>
 
                                                 <div class="av-pauta-toggle-side">
-                                                    <div class="av-pauta-progress-head">
+                                                    <div class="av-pauta-progress-head" data-av-progress-type="componente" data-av-progress-turma="{{ $turmaIdAtual }}" data-av-progress-pautas="{{ collect($grupo['pautas'])->pluck('id')->implode(',') }}" data-av-progress-filled="{{ $progressoComponentePreenchidas }}" data-av-progress-total="{{ $progressoComponenteTotal }}">
                                                         <span>{{ $progressoComponentePreenchidas }}/{{ $progressoComponenteTotal }}</span>
                                                         <span>{{ $progressoComponentePercentual }}%</span>
                                                     </div>
@@ -444,7 +444,7 @@
                                                 </div>
 
                                                 <div class="av-pauta-toggle-side">
-                                                    <div class="av-pauta-progress-head">
+                                                    <div class="av-pauta-progress-head" data-av-progress-type="pauta" data-av-progress-turma="{{ $turmaIdAtual }}" data-av-progress-pauta="{{ $pauta->id }}" data-av-progress-filled="{{ $progressoPauta['preenchidas'] }}" data-av-progress-total="{{ $progressoPauta['total'] }}">
                                                         <span>{{ $progressoPauta['preenchidas'] }}/{{ $progressoPauta['total'] }}</span>
                                                         <span>{{ $progressoPauta['percentual'] }}%</span>
                                                     </div>
@@ -583,7 +583,7 @@
                                                 </div>
 
                                                 <div class="av-pauta-toggle-side">
-                                                    <div class="av-pauta-progress-head">
+                                                    <div class="av-pauta-progress-head" data-av-progress-type="aluno" data-av-progress-turma="{{ $turmaIdAtual }}" data-av-progress-aluno="{{ $aluno->id }}" data-av-progress-filled="{{ $progressoAluno['preenchidas'] }}" data-av-progress-total="{{ $progressoAluno['total'] }}">
                                                         <span>{{ $progressoAluno['preenchidas'] }}/{{ $progressoAluno['total'] }}</span>
                                                         <span>{{ $progressoAluno['percentual'] }}%</span>
                                                     </div>
@@ -732,7 +732,7 @@
                                 </div>
 
                                 <div class="av-pauta-toggle-side">
-                                    <div class="av-pauta-progress-head">
+                                    <div class="av-pauta-progress-head" data-av-progress-type="turma" data-av-progress-turma="{{ $turmaIdAtual }}" data-av-progress-filled="{{ $progressoTurma['preenchidas'] }}" data-av-progress-total="{{ $progressoTurma['total'] }}">
                                         <span>{{ $progressoTurma['preenchidas'] }}/{{ $progressoTurma['total'] }}</span>
                                         <span>{{ $progressoTurma['percentual'] }}%</span>
                                     </div>
@@ -785,7 +785,7 @@
                                                 </div>
 
                                                 <div class="av-pauta-toggle-side">
-                                                    <div class="av-pauta-progress-head">
+                                                    <div class="av-pauta-progress-head" data-av-progress-type="aluno" data-av-progress-turma="{{ $turmaIdAtual }}" data-av-progress-aluno="{{ $aluno->id }}" data-av-progress-filled="{{ $progressoAluno['preenchidas'] }}" data-av-progress-total="{{ $progressoAluno['total'] }}">
                                                         <span>{{ $progressoAluno['preenchidas'] }}/{{ $progressoAluno['total'] }}</span>
                                                         <span>{{ $progressoAluno['percentual'] }}%</span>
                                                     </div>
@@ -972,6 +972,64 @@
             const queues = new Map();
             const versions = new Map();
 
+            const respostaEstaCompleta = (alternativaId, observacao, requerObservacao) =>
+                Number(alternativaId || 0) > 0
+                && (!requerObservacao || String(observacao || '').trim() !== '');
+
+            const atualizarProgressoLocal = (root, detail) => {
+                if (!root || detail.tipo !== 'resposta' || detail.delta === 0) {
+                    return;
+                }
+
+                root.querySelectorAll('[data-av-progress-type]').forEach((scope) => {
+                    const type = scope.dataset.avProgressType;
+                    const matchesTurma = String(scope.dataset.avProgressTurma || '') === String(detail.turmaId);
+                    const matches = type === 'global'
+                        || (matchesTurma && type === 'turma')
+                        || (matchesTurma && type === 'pauta'
+                            && String(scope.dataset.avProgressPauta || '') === String(detail.pautaId))
+                        || (matchesTurma && type === 'aluno'
+                            && String(scope.dataset.avProgressAluno || '') === String(detail.alunoId))
+                        || (matchesTurma && type === 'componente'
+                            && String(scope.dataset.avProgressPautas || '')
+                                .split(',')
+                                .includes(String(detail.pautaId)));
+
+                    if (!matches) {
+                        return;
+                    }
+
+                    const total = Math.max(0, Number(scope.dataset.avProgressTotal || 0));
+                    const preenchidas = Math.max(0, Math.min(
+                        total,
+                        Number(scope.dataset.avProgressFilled || 0) + Number(detail.delta),
+                    ));
+                    const percentual = total > 0
+                        ? Math.min(100, Math.round((preenchidas / total) * 100))
+                        : 0;
+                    const cabecalho = type === 'global'
+                        ? scope.querySelector('.av-progress-head')
+                        : scope;
+                    const spans = Array.from(cabecalho?.children || [])
+                        .filter((child) => child.tagName === 'SPAN');
+                    const contador = type === 'global' ? spans[spans.length - 1] : spans[0];
+                    const percentualNode = type === 'global' ? null : spans[1];
+                    const container = type === 'global' ? scope : scope.parentElement;
+                    const barra = container?.querySelector('.av-progress-bar');
+                    const status = container?.querySelector('.av-pauta-check');
+                    const concluida = total > 0 && preenchidas === total;
+
+                    scope.dataset.avProgressFilled = String(preenchidas);
+                    if (contador) contador.textContent = `${preenchidas}/${total}`;
+                    if (percentualNode) percentualNode.textContent = `${percentual}%`;
+                    if (barra) barra.style.width = `${percentual}%`;
+                    if (status) {
+                        status.textContent = concluida ? 'Concluída' : 'Em andamento';
+                        status.classList.toggle('av-pauta-check--pending', !concluida);
+                    }
+                });
+            };
+
             const wirePath = (element) => {
                 const attribute = element.getAttributeNames().find((name) => name.startsWith('wire:model'));
 
@@ -1023,6 +1081,9 @@
                     const observationField = fieldInRow(row, '.observacao');
                     const alternativaId = alternativeField?.value ? Number(alternativeField.value) : null;
                     const observacao = observationField?.value?.trim() || null;
+                    const requerObservacao = alternativeField?.selectedOptions[0]?.dataset.requiresObservation === '1';
+                    const alternativaPersistida = alternativeField?.dataset.avAutosaveExpectedAlternativa || null;
+                    const observacaoPersistida = alternativeField?.dataset.avAutosaveExpectedObservacao || null;
 
                     return {
                         tipo: 'resposta',
@@ -1034,9 +1095,15 @@
                             : element.value,
                         alternativa_id: alternativaId,
                         observacao,
+                        completaAntes: respostaEstaCompleta(
+                            alternativaPersistida,
+                            observacaoPersistida,
+                            requerObservacao,
+                        ),
+                        completaDepois: respostaEstaCompleta(alternativaId, observacao, requerObservacao),
                         expected_values: {
-                            alternativa_id: alternativeField?.dataset.avAutosaveExpectedAlternativa || null,
-                            observacao: alternativeField?.dataset.avAutosaveExpectedObservacao || null,
+                            alternativa_id: alternativaPersistida,
+                            observacao: observacaoPersistida,
                         },
                     };
                 }
@@ -1148,6 +1215,15 @@
                     syncLocalState(component, path, state, version);
                     element.removeAttribute('data-av-autosave-error');
                     element.removeAttribute('title');
+                    atualizarProgressoLocal(root, {
+                        tipo: state.tipo,
+                        turmaId: Number(element.dataset.avAutosaveTurmaId || 0),
+                        pautaId: state.pauta_id,
+                        alunoId: state.aluno_id,
+                        delta: state.tipo === 'resposta'
+                            ? Number(state.completaDepois) - Number(state.completaAntes)
+                            : 0,
+                    });
                     window.dispatchEvent(new CustomEvent('avaliacao-autosave-confirmado'));
                 }).catch((error) => {
                     element.dataset.avAutosaveError = '1';
