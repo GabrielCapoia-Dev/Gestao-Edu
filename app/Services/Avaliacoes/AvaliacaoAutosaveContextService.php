@@ -3,10 +3,12 @@
 namespace App\Services\Avaliacoes;
 
 use App\Models\Aluno;
+use App\Models\Alternativa;
 use App\Models\Avaliacao;
 use App\Models\AvaliacaoTurmaCiclo;
 use App\Models\Pauta;
 use App\Models\Turma;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class AvaliacaoAutosaveContextService
@@ -17,9 +19,9 @@ class AvaliacaoAutosaveContextService
      * dados invalidos e para turmas que ainda dependem da migracao lazy.
      *
      * @param array<string, mixed> $dados
-     * @return array{avaliacao:Avaliacao,turma:Turma,ciclo:AvaliacaoTurmaCiclo,aluno:Aluno,pauta:Pauta|null}|null
+     * @return array{avaliacao:Avaliacao,turma:Turma,ciclo:AvaliacaoTurmaCiclo,aluno:Aluno,pauta:Pauta|null,professor_id:int|null,alternativa:Alternativa|null}|null
      */
-    public function resolver(array $dados): ?array
+    public function resolver(array $dados, User $user): ?array
     {
         $query = DB::table('avaliacoes as avaliacao')
             ->join('avaliacao_turma as vinculo_turma', function ($join): void {
@@ -84,7 +86,68 @@ class AvaliacaoAutosaveContextService
                     'pauta.componente_curricular_id as pauta_componente_id',
                     'pauta.status as pauta_status',
                 ]);
+
+            $alternativaId = (int) ($dados['alternativa_contexto_id'] ?? 0);
+            if ($alternativaId > 0) {
+                $query
+                    ->leftJoin('alternativas as alternativa', function ($join) use ($alternativaId): void {
+                        $join
+                            ->where('alternativa.id', $alternativaId)
+                            ->where('alternativa.status', true);
+                    })
+                    ->addSelect([
+                        'alternativa.id as alternativa_id',
+                        'alternativa.tipo_avaliacao_id as alternativa_tipo_id',
+                        'alternativa.tem_observacao as alternativa_tem_observacao',
+                    ])
+                    ->selectRaw(
+                        'EXISTS (SELECT 1 FROM avaliacao_pauta_alternativa apa WHERE apa.avaliacao_id = avaliacao.id AND apa.pauta_id = pauta.id) AS possui_overrides',
+                    )
+                    ->selectRaw(
+                        'EXISTS (SELECT 1 FROM avaliacao_pauta_alternativa apa WHERE apa.avaliacao_id = avaliacao.id AND apa.pauta_id = pauta.id AND apa.alternativa_id = alternativa.id) AS override_permitido',
+                    )
+                    ->selectRaw(
+                        'EXISTS (SELECT 1 FROM alternativa_pauta ap WHERE ap.pauta_id = pauta.id) AS possui_alternativas_pauta',
+                    )
+                    ->selectRaw(
+                        'EXISTS (SELECT 1 FROM alternativa_pauta ap WHERE ap.pauta_id = pauta.id AND ap.alternativa_id = alternativa.id) AS alternativa_pauta_permitida',
+                    );
+            }
         }
+
+        $componenteId = $dados['tipo'] === 'resposta'
+            ? null
+            : max(0, (int) ($dados['componente_id'] ?? 0));
+        $professor = DB::table('turma_componente_professor as tcp_contexto')
+            ->join('professores as prof_contexto', 'prof_contexto.id', '=', 'tcp_contexto.professor_id')
+            ->leftJoin('servidores as serv_contexto', 'serv_contexto.id', '=', 'prof_contexto.servidor_id')
+            ->select('tcp_contexto.professor_id')
+            ->whereColumn('tcp_contexto.turma_id', 'turma.id')
+            ->where('tcp_contexto.tem_professor', true)
+            ->where('prof_contexto.ativo', true)
+            ->whereColumn('prof_contexto.id_escola', 'turma.id_escola')
+            ->where(function ($identidade) use ($user): void {
+                $identidade
+                    ->where('prof_contexto.user_id', (int) $user->getKey())
+                    ->orWhere(function ($servidor) use ($user): void {
+                        $servidor
+                            ->where('serv_contexto.user_id', (int) $user->getKey())
+                            ->where('serv_contexto.status', 'ativo')
+                            ->whereNull('serv_contexto.deleted_at');
+                    });
+            });
+
+        if ($dados['tipo'] === 'resposta') {
+            $professor->where(function ($componente): void {
+                $componente
+                    ->whereNull('pauta.componente_curricular_id')
+                    ->orWhereColumn('tcp_contexto.componente_curricular_id', 'pauta.componente_curricular_id');
+            });
+        } elseif ($componenteId > 0) {
+            $professor->where('tcp_contexto.componente_curricular_id', $componenteId);
+        }
+
+        $query->selectSub($professor->orderBy('tcp_contexto.professor_id')->limit(1), 'professor_vinculado_id');
 
         $contexto = $query->first();
         if (! $contexto) {
@@ -130,6 +193,37 @@ class AvaliacaoAutosaveContextService
             ])
             : null;
 
-        return compact('avaliacao', 'turma', 'ciclo', 'aluno', 'pauta');
+        $alternativa = null;
+        if ($pauta && (int) ($dados['alternativa_contexto_id'] ?? 0) > 0 && $contexto->alternativa_id) {
+            $permitida = (bool) $contexto->possui_overrides
+                ? (bool) $contexto->override_permitido
+                : ((bool) $contexto->possui_alternativas_pauta
+                    ? (bool) $contexto->alternativa_pauta_permitida
+                    : (
+                        (int) $contexto->alternativa_tipo_id === (int) $contexto->pauta_tipo_id
+                        || (int) $contexto->alternativa_tipo_id === (int) $contexto->avaliacao_tipo_id
+                    ));
+
+            if ($permitida) {
+                $alternativa = (new Alternativa)->newFromBuilder([
+                    'id' => $contexto->alternativa_id,
+                    'tipo_avaliacao_id' => $contexto->alternativa_tipo_id,
+                    'tem_observacao' => $contexto->alternativa_tem_observacao,
+                    'status' => true,
+                ]);
+            }
+        }
+
+        $professorId = (int) ($contexto->professor_vinculado_id ?? 0) ?: null;
+
+        return [
+            'avaliacao' => $avaliacao,
+            'turma' => $turma,
+            'ciclo' => $ciclo,
+            'aluno' => $aluno,
+            'pauta' => $pauta,
+            'professor_id' => $professorId,
+            'alternativa' => $alternativa,
+        ];
     }
 }

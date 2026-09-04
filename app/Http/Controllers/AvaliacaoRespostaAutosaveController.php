@@ -46,10 +46,15 @@ class AvaliacaoRespostaAutosaveController extends Controller
             'expected_values' => ['nullable', 'array'],
         ]);
 
+        $alternativaIdSolicitado = $this->normalizarId($dados['campo'] === 'alternativa_id'
+            ? ($dados['valor'] ?? null)
+            : ($dados['alternativa_id'] ?? null));
+        $dados['alternativa_contexto_id'] = $alternativaIdSolicitado;
+
         $user = $request->user();
         Gate::forUser($user)->authorize('respond', Avaliacao::class);
 
-        $contexto = $contextos->resolver($dados);
+        $contexto = $contextos->resolver($dados, $user);
         $avaliacao = $contexto['avaliacao'] ?? Avaliacao::query()->find((int) $dados['avaliacao_id']);
         $this->validarModeloExistente($avaliacao, 'avaliacao_id');
         abort_unless($avaliacao->estaAbertaParaPreenchimento(), 403);
@@ -111,10 +116,12 @@ class AvaliacaoRespostaAutosaveController extends Controller
             $componenteId = $pauta->componente_curricular_id !== null
                 ? (int) $pauta->componente_curricular_id
                 : null;
-            $professorId = $this->validarVinculoProfessor($user, $turma, $componenteId);
+            $professorId = $contexto['professor_id']
+                ?? $this->validarVinculoProfessor($user, $turma, $componenteId);
         } else {
             $componenteId = max(0, (int) ($dados['componente_id'] ?? 0));
-            $professorId = $this->validarVinculoProfessor($user, $turma, $componenteId > 0 ? $componenteId : null);
+            $professorId = $contexto['professor_id']
+                ?? $this->validarVinculoProfessor($user, $turma, $componenteId > 0 ? $componenteId : null);
         }
 
         try {
@@ -135,13 +142,13 @@ class AvaliacaoRespostaAutosaveController extends Controller
                 return response()->json(['saved' => true, 'version' => $version]);
             }
 
-            $alternativaId = $this->normalizarId($dados['campo'] === 'alternativa_id'
-                ? ($dados['valor'] ?? null)
-                : ($dados['alternativa_id'] ?? null));
+            $alternativaId = $alternativaIdSolicitado;
 
-            $alternativa = $alternativaId !== null
-                ? $this->alternativaPermitida($avaliacao, $pauta, $alternativaId)
-                : null;
+            $alternativa = $contexto
+                ? $contexto['alternativa']
+                : ($alternativaId !== null
+                    ? $this->alternativaPermitida($avaliacao, $pauta, $alternativaId)
+                    : null);
             abort_unless($alternativaId === null || $alternativa !== null, 422);
 
             $observacao = $this->normalizarTexto($dados['observacao'] ?? null);

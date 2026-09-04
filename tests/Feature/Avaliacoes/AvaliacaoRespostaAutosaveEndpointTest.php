@@ -34,9 +34,12 @@ class AvaliacaoRespostaAutosaveEndpointTest extends TestCase
             'aluno_id' => $cenario['aluno']->id,
             'tipo' => 'resposta',
             'pauta_id' => $cenario['pauta']->id,
-        ]);
+            'alternativa_contexto_id' => $cenario['alternativa']->id,
+        ], $cenario['user']);
         $this->assertNotNull($contexto);
         $this->assertSame($cenario['aluno']->id, $contexto['aluno']->id);
+        $this->assertSame($cenario['professor']->id, $contexto['professor_id']);
+        $this->assertSame($cenario['alternativa']->id, $contexto['alternativa']->id);
 
         $response = $this->actingAs($cenario['user'])->postJson(route('avaliacoes.respostas.autosave'), [
             'avaliacao_id' => $cenario['avaliacao']->id,
@@ -183,6 +186,6 @@ class AvaliacaoRespostaAutosaveEndpointTest extends TestCase
         $avaliacao->escolas()->attach($escola->id);
         app(AvaliacaoTurmaCicloService::class)->sincronizarAvaliacao($avaliacao);
 
-        return compact('user', 'avaliacao', 'turma', 'aluno', 'componente', 'pauta', 'alternativa');
+        return compact('user', 'professor', 'avaliacao', 'turma', 'aluno', 'componente', 'pauta', 'alternativa');
     }
 }
