@@ -52,9 +52,10 @@ class AvaliacaoRespostaAutosaveController extends Controller
         $dados['alternativa_contexto_id'] = $alternativaIdSolicitado;
 
         $user = $request->user();
-        Gate::forUser($user)->authorize('respond', Avaliacao::class);
-
         $contexto = $contextos->resolver($dados, $user);
+        if (! $contexto) {
+            Gate::forUser($user)->authorize('respond', Avaliacao::class);
+        }
         $avaliacao = $contexto['avaliacao'] ?? Avaliacao::query()->find((int) $dados['avaliacao_id']);
         $this->validarModeloExistente($avaliacao, 'avaliacao_id');
         abort_unless($avaliacao->estaAbertaParaPreenchimento(), 403);

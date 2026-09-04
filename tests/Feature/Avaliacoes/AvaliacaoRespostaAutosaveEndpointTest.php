@@ -28,18 +28,26 @@ class AvaliacaoRespostaAutosaveEndpointTest extends TestCase
     {
         $cenario = $this->cenario();
 
-        $contexto = app(AvaliacaoAutosaveContextService::class)->resolver([
+        $payloadContexto = [
             'avaliacao_id' => $cenario['avaliacao']->id,
             'turma_id' => $cenario['turma']->id,
             'aluno_id' => $cenario['aluno']->id,
             'tipo' => 'resposta',
             'pauta_id' => $cenario['pauta']->id,
             'alternativa_contexto_id' => $cenario['alternativa']->id,
-        ], $cenario['user']);
+        ];
+        $contexto = app(AvaliacaoAutosaveContextService::class)
+            ->resolver($payloadContexto, $cenario['user']);
         $this->assertNotNull($contexto);
         $this->assertSame($cenario['aluno']->id, $contexto['aluno']->id);
         $this->assertSame($cenario['professor']->id, $contexto['professor_id']);
         $this->assertSame($cenario['alternativa']->id, $contexto['alternativa']->id);
+
+        $permissaoResponder = $cenario['user']->permissions()->firstOrFail();
+        $cenario['user']->revokePermissionTo($permissaoResponder);
+        $this->assertNull(app(AvaliacaoAutosaveContextService::class)
+            ->resolver($payloadContexto, $cenario['user']));
+        $cenario['user']->givePermissionTo($permissaoResponder);
 
         $response = $this->actingAs($cenario['user'])->postJson(route('avaliacoes.respostas.autosave'), [
             'avaliacao_id' => $cenario['avaliacao']->id,

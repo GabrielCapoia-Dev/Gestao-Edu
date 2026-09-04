@@ -7,9 +7,13 @@ use App\Models\Alternativa;
 use App\Models\Avaliacao;
 use App\Models\AvaliacaoTurmaCiclo;
 use App\Models\Pauta;
+use App\Models\Pessoa;
+use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\Turma;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Spatie\Permission\PermissionRegistrar;
 
 class AvaliacaoAutosaveContextService
 {
@@ -23,6 +27,10 @@ class AvaliacaoAutosaveContextService
      */
     public function resolver(array $dados, User $user): ?array
     {
+        if ($user->trashed()) {
+            return null;
+        }
+
         $query = DB::table('avaliacoes as avaliacao')
             ->join('avaliacao_turma as vinculo_turma', function ($join): void {
                 $join->on('vinculo_turma.avaliacao_id', '=', 'avaliacao.id');
@@ -66,6 +74,8 @@ class AvaliacaoAutosaveContextService
                 'aluno.status as aluno_status',
                 'aluno.pendencia_origem_aluno_id as aluno_pendencia_origem_id',
             ]);
+
+        $this->aplicarAutorizacao($query, $user);
 
         if ($dados['tipo'] === 'resposta') {
             $query
@@ -225,5 +235,105 @@ class AvaliacaoAutosaveContextService
             'professor_id' => $professorId,
             'alternativa' => $alternativa,
         ];
+    }
+
+    private function aplicarAutorizacao($query, User $user): void
+    {
+        $query->whereRaw(
+            '(SELECT COUNT(*) FROM servidores servidor_acesso'
+            .' WHERE servidor_acesso.user_id = ?'
+            .' AND servidor_acesso.deleted_at IS NULL'
+            .' AND servidor_acesso.status = ?'
+            .' AND ('
+            .'EXISTS (SELECT 1 FROM professores professor_acesso'
+            .' WHERE professor_acesso.servidor_id = servidor_acesso.id'
+            .' AND professor_acesso.ativo = 1)'
+            .' OR EXISTS (SELECT 1 FROM servidor_funcao_administrativa vinculo_acesso'
+            .' INNER JOIN funcao_administrativa funcao_acesso'
+            .' ON funcao_acesso.id = vinculo_acesso.funcao_administrativa_id'
+            .' WHERE vinculo_acesso.servidor_id = servidor_acesso.id'
+            .' AND vinculo_acesso.status = ?'
+            .' AND funcao_acesso.codigo <> ?))) = 1',
+            [
+                (int) $user->getKey(),
+                Pessoa::STATUS_ATIVO,
+                ServidorFuncaoAdministrativa::STATUS_ATIVO,
+                Pessoa::CARGO_PENDENTE_CODIGO,
+            ],
+        );
+
+        $needle = Str::lower(Str::ascii('responder avaliacoes'));
+        $permissionIds = app(PermissionRegistrar::class)
+            ->getPermissions()
+            ->filter(fn ($permission): bool => str_contains(
+                Str::lower(Str::ascii((string) $permission->name)),
+                $needle,
+            ))
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+
+        if ($permissionIds === []) {
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $tables = config('permission.table_names');
+        $columns = config('permission.column_names');
+        $permissionPivotKey = $columns['permission_pivot_key'] ?? 'permission_id';
+        $rolePivotKey = $columns['role_pivot_key'] ?? 'role_id';
+        $modelKey = $columns['model_morph_key'] ?? 'model_id';
+        $modelType = $user->getMorphClass();
+        $modelId = $user->getKey();
+
+        $query->where(function ($permissao) use (
+            $tables,
+            $permissionIds,
+            $permissionPivotKey,
+            $rolePivotKey,
+            $modelKey,
+            $modelType,
+            $modelId,
+        ): void {
+            $permissao
+                ->whereExists(function ($direta) use (
+                    $tables,
+                    $permissionIds,
+                    $permissionPivotKey,
+                    $modelKey,
+                    $modelType,
+                    $modelId,
+                ): void {
+                    $direta
+                        ->selectRaw('1')
+                        ->from($tables['model_has_permissions'].' as autosave_user_permission')
+                        ->whereIn('autosave_user_permission.'.$permissionPivotKey, $permissionIds)
+                        ->where('autosave_user_permission.model_type', $modelType)
+                        ->where('autosave_user_permission.'.$modelKey, $modelId);
+                })
+                ->orWhereExists(function ($viaRole) use (
+                    $tables,
+                    $permissionIds,
+                    $permissionPivotKey,
+                    $rolePivotKey,
+                    $modelKey,
+                    $modelType,
+                    $modelId,
+                ): void {
+                    $viaRole
+                        ->selectRaw('1')
+                        ->from($tables['role_has_permissions'].' as autosave_role_permission')
+                        ->join(
+                            $tables['model_has_roles'].' as autosave_user_role',
+                            'autosave_user_role.'.$rolePivotKey,
+                            '=',
+                            'autosave_role_permission.'.$rolePivotKey,
+                        )
+                        ->whereIn('autosave_role_permission.'.$permissionPivotKey, $permissionIds)
+                        ->where('autosave_user_role.model_type', $modelType)
+                        ->where('autosave_user_role.'.$modelKey, $modelId);
+                });
+        });
     }
 }
