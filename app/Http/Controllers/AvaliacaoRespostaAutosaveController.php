@@ -10,6 +10,7 @@ use App\Models\Avaliacao;
 use App\Models\Pauta;
 use App\Models\Turma;
 use App\Services\Avaliacoes\AvaliacaoRespostaStore;
+use App\Services\Avaliacoes\AvaliacaoAutosaveContextService;
 use App\Services\Avaliacoes\AvaliacaoMigracaoLazyService;
 use App\Services\Avaliacoes\AvaliacaoTurmaCicloService;
 use App\Services\Avaliacoes\TurmaAvaliacaoAlunoScopeService;
@@ -26,6 +27,7 @@ class AvaliacaoRespostaAutosaveController extends Controller
     public function __invoke(
         Request $request,
         AvaliacaoRespostaStore $store,
+        AvaliacaoAutosaveContextService $contextos,
         AvaliacaoMigracaoLazyService $migracaoLazy,
         TurmaAvaliacaoAlunoScopeService $escopos,
     ): JsonResponse {
@@ -47,15 +49,18 @@ class AvaliacaoRespostaAutosaveController extends Controller
         $user = $request->user();
         Gate::forUser($user)->authorize('respond', Avaliacao::class);
 
-        $avaliacao = Avaliacao::query()->find((int) $dados['avaliacao_id']);
+        $contexto = $contextos->resolver($dados);
+        $avaliacao = $contexto['avaliacao'] ?? Avaliacao::query()->find((int) $dados['avaliacao_id']);
         $this->validarModeloExistente($avaliacao, 'avaliacao_id');
         abort_unless($avaliacao->estaAbertaParaPreenchimento(), 403);
 
-        $turma = Turma::query()->find((int) $dados['turma_id']);
+        $turma = $contexto['turma'] ?? Turma::query()->find((int) $dados['turma_id']);
         $this->validarModeloExistente($turma, 'turma_id');
-        $this->validarTurmaNaAvaliacao($avaliacao, $turma);
+        if (! $contexto) {
+            $this->validarTurmaNaAvaliacao($avaliacao, $turma);
+        }
 
-        $cicloAtual = app(AvaliacaoTurmaCicloService::class)
+        $cicloAtual = $contexto['ciclo'] ?? app(AvaliacaoTurmaCicloService::class)
             ->obterComToken((int) $avaliacao->id, (int) $turma->id);
         if ($cicloAtual) {
             $migracaoLazy->adotarCicloPronto($cicloAtual);
@@ -67,17 +72,20 @@ class AvaliacaoRespostaAutosaveController extends Controller
 
         abort_unless($cicloAtual === null || $cicloAtual->aceitaEscrita(), 403);
 
-        $aluno = Aluno::query()
-            ->whereKey((int) $dados['aluno_id'])
-            ->where('id_turma', (int) $escopo['turma_origem_id'])
-            ->whereIn('status', [Aluno::STATUS_MATRICULADO, Aluno::STATUS_PENDENTE])
-            ->first();
+        $aluno = $contexto['aluno'] ?? null;
         if (! $aluno) {
-            $this->validarModeloExistente(
-                Aluno::query()->whereKey((int) $dados['aluno_id'])->first(['id']),
-                'aluno_id',
-            );
-            abort(404);
+            $aluno = Aluno::query()
+                ->whereKey((int) $dados['aluno_id'])
+                ->where('id_turma', (int) $escopo['turma_origem_id'])
+                ->whereIn('status', [Aluno::STATUS_MATRICULADO, Aluno::STATUS_PENDENTE])
+                ->first();
+            if (! $aluno) {
+                $this->validarModeloExistente(
+                    Aluno::query()->whereKey((int) $dados['aluno_id'])->first(['id']),
+                    'aluno_id',
+                );
+                abort(404);
+            }
         }
         abort_unless(! $this->alunoBloqueado($aluno), 403);
 
@@ -86,7 +94,7 @@ class AvaliacaoRespostaAutosaveController extends Controller
         $professorId = null;
 
         if ($dados['tipo'] === 'resposta') {
-            $pauta = Pauta::query()
+            $pauta = $contexto['pauta'] ?? Pauta::query()
                 ->whereKey((int) ($dados['pauta_id'] ?? 0))
                 ->where('status', true)
                 ->whereHas('avaliacoes', fn ($query) => $query->whereKey($avaliacao->id))

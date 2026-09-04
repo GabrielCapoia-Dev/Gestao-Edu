@@ -14,6 +14,7 @@ use App\Models\Serie;
 use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
+use App\Services\Avaliacoes\AvaliacaoAutosaveContextService;
 use App\Services\Avaliacoes\AvaliacaoTurmaCicloService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
@@ -26,6 +27,16 @@ class AvaliacaoRespostaAutosaveEndpointTest extends TestCase
     public function test_autosave_leve_persiste_resposta_sem_snapshot_livewire(): void
     {
         $cenario = $this->cenario();
+
+        $contexto = app(AvaliacaoAutosaveContextService::class)->resolver([
+            'avaliacao_id' => $cenario['avaliacao']->id,
+            'turma_id' => $cenario['turma']->id,
+            'aluno_id' => $cenario['aluno']->id,
+            'tipo' => 'resposta',
+            'pauta_id' => $cenario['pauta']->id,
+        ]);
+        $this->assertNotNull($contexto);
+        $this->assertSame($cenario['aluno']->id, $contexto['aluno']->id);
 
         $response = $this->actingAs($cenario['user'])->postJson(route('avaliacoes.respostas.autosave'), [
             'avaliacao_id' => $cenario['avaliacao']->id,
@@ -47,6 +58,34 @@ class AvaliacaoRespostaAutosaveEndpointTest extends TestCase
             'aluno_id' => $cenario['aluno']->id,
             'pauta_id' => $cenario['pauta']->id,
             'alternativa_id' => $cenario['alternativa']->id,
+            'version' => 1,
+        ]);
+    }
+
+    public function test_autosave_leve_persiste_informacao_complementar(): void
+    {
+        $cenario = $this->cenario();
+
+        $this->actingAs($cenario['user'])
+            ->postJson(route('avaliacoes.respostas.autosave'), [
+                'avaliacao_id' => $cenario['avaliacao']->id,
+                'turma_id' => $cenario['turma']->id,
+                'aluno_id' => $cenario['aluno']->id,
+                'tipo' => 'informacao',
+                'componente_id' => $cenario['componente']->id,
+                'campo' => 'observacao',
+                'valor' => 'Informacao complementar do aluno',
+                'expected_version' => 0,
+            ])
+            ->assertOk()
+            ->assertJson(['saved' => true, 'version' => 1]);
+
+        $this->assertDatabaseHas('avaliacao_informacoes_operacionais', [
+            'avaliacao_id' => $cenario['avaliacao']->id,
+            'turma_avaliativa_id' => $cenario['turma']->id,
+            'aluno_id' => $cenario['aluno']->id,
+            'componente_curricular_id' => $cenario['componente']->id,
+            'texto' => 'Informacao complementar do aluno',
             'version' => 1,
         ]);
     }
@@ -144,6 +183,6 @@ class AvaliacaoRespostaAutosaveEndpointTest extends TestCase
         $avaliacao->escolas()->attach($escola->id);
         app(AvaliacaoTurmaCicloService::class)->sincronizarAvaliacao($avaliacao);
 
-        return compact('user', 'avaliacao', 'turma', 'aluno', 'pauta', 'alternativa');
+        return compact('user', 'avaliacao', 'turma', 'aluno', 'componente', 'pauta', 'alternativa');
     }
 }
