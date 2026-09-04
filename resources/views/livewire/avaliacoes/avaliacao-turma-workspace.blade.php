@@ -5,6 +5,7 @@
     x-data="{ alteracoesPendentes: false }"
     x-on:input.capture="if ($event.target.matches('[data-av-editavel]')) alteracoesPendentes = true"
     x-on:change.capture="if ($event.target.matches('[data-av-editavel]')) alteracoesPendentes = true"
+    x-on:avaliacao-alterada="alteracoesPendentes = true"
     x-on:avaliacao-salva.window="alteracoesPendentes = false">
     <div class="gi-page av-page av-professor-page">
         @if ($this->modoAcompanhamento())
@@ -938,7 +939,11 @@
 
                 const id = node?.getAttribute('wire:id');
 
-                return id && window.Livewire ? window.Livewire.find(id) : null;
+                const wire = id && window.Livewire ? window.Livewire.find(id) : null;
+
+                // No Livewire 4, find() devolve o proxy $wire, e não a
+                // instância interna do componente.
+                return wire ? { id, $wire: wire } : null;
             };
 
             const rowFor = (element) => element.closest('tr') || element.closest('[data-av-autosave-root]');
@@ -1098,10 +1103,10 @@
                     element.dataset.avAutosaveError = '1';
                     element.title = error.message;
 
-                    // Conflicts are rare and may use the existing Livewire path
-                    // to keep its current notification and recovery behavior.
-                    if (error.status === 409 && component?.$wire?.set) {
-                        component.$wire.set(path, element.value, true);
+                    // Falhas são raras e usam o salvamento completo já existente
+                    // como contingência, preservando a alteração feita na tela.
+                    if (component?.$wire?.salvarAlteracoes) {
+                        component.$wire.salvarAlteracoes();
                     }
                 });
 
@@ -1131,6 +1136,8 @@
                     return;
                 }
 
+                element.closest('[data-av-autosave-root]')
+                    ?.dispatchEvent(new CustomEvent('avaliacao-alterada'));
                 event.stopImmediatePropagation();
                 if (element.tagName === 'TEXTAREA') {
                     const count = element.closest('.av-input-wrap')?.querySelector('.av-char-count');
