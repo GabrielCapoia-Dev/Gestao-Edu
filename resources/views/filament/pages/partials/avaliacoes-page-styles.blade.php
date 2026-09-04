@@ -28,6 +28,18 @@
         opacity: 0.72;
     }
 
+    .av-floating-save.is-confirmed {
+        border-color: #15803d;
+        background: #15803d;
+        cursor: default;
+        opacity: 1;
+    }
+
+    .av-floating-save.is-error {
+        border-color: #b91c1c;
+        background: #b91c1c;
+    }
+
     .av-focus-bar {
         display: flex;
         align-items: center;

@@ -2,11 +2,54 @@
     class="av-livewire-root"
     data-av-autosave-root
     data-av-autosave-url="{{ route('avaliacoes.respostas.autosave') }}"
-    x-data="{ alteracoesPendentes: false }"
-    x-on:input.capture="if ($event.target.matches('[data-av-editavel]')) alteracoesPendentes = true"
-    x-on:change.capture="if ($event.target.matches('[data-av-editavel]')) alteracoesPendentes = true"
-    x-on:avaliacao-alterada="alteracoesPendentes = true"
-    x-on:avaliacao-salva.window="alteracoesPendentes = false">
+    x-data="{
+        alteracoesPendentes: false,
+        autosaveEmAndamento: false,
+        autosaveConfirmado: false,
+        autosaveFalhou: false,
+        confirmacaoTimer: null,
+    }"
+    x-on:input.capture="if ($event.target.matches('[data-av-editavel]')) {
+        clearTimeout(confirmacaoTimer);
+        alteracoesPendentes = true;
+        autosaveEmAndamento = false;
+        autosaveConfirmado = false;
+        autosaveFalhou = false;
+    }"
+    x-on:change.capture="if ($event.target.matches('[data-av-editavel]')) {
+        clearTimeout(confirmacaoTimer);
+        alteracoesPendentes = true;
+        autosaveEmAndamento = false;
+        autosaveConfirmado = false;
+        autosaveFalhou = false;
+    }"
+    x-on:avaliacao-alterada="
+        clearTimeout(confirmacaoTimer);
+        alteracoesPendentes = true;
+        autosaveEmAndamento = true;
+        autosaveConfirmado = false;
+        autosaveFalhou = false;
+    "
+    x-on:avaliacao-salva.window="
+        alteracoesPendentes = false;
+        autosaveEmAndamento = false;
+        autosaveConfirmado = false;
+        autosaveFalhou = false;
+    "
+    x-on:avaliacao-autosave-confirmado.window="
+        alteracoesPendentes = false;
+        autosaveEmAndamento = false;
+        autosaveConfirmado = true;
+        autosaveFalhou = false;
+        clearTimeout(confirmacaoTimer);
+        confirmacaoTimer = setTimeout(() => autosaveConfirmado = false, 1800);
+    "
+    x-on:avaliacao-autosave-falhou.window="
+        alteracoesPendentes = true;
+        autosaveEmAndamento = false;
+        autosaveConfirmado = false;
+        autosaveFalhou = true;
+    ">
     <div class="gi-page av-page av-professor-page">
         @if ($this->modoAcompanhamento())
             <section class="gi-panel av-professor-control-panel">
@@ -884,14 +927,19 @@
     @if ($this->podeResponder())
         <button
             x-cloak
-            x-show="alteracoesPendentes"
+            x-show="alteracoesPendentes || autosaveConfirmado"
             x-transition.opacity
             type="button"
             class="av-floating-save"
+            x-bind:class="{ 'is-confirmed': autosaveConfirmado, 'is-error': autosaveFalhou }"
+            x-bind:disabled="autosaveEmAndamento || autosaveConfirmado"
             wire:click="salvarAlteracoes"
             wire:loading.attr="disabled"
             wire:target="salvarAlteracoes">
-            <span wire:loading.remove wire:target="salvarAlteracoes">Salvar</span>
+            <span x-show="autosaveEmAndamento" wire:loading.remove wire:target="salvarAlteracoes">Salvando...</span>
+            <span x-show="autosaveConfirmado" wire:loading.remove wire:target="salvarAlteracoes">Salvo automaticamente</span>
+            <span x-show="! autosaveEmAndamento && ! autosaveConfirmado && ! autosaveFalhou" wire:loading.remove wire:target="salvarAlteracoes">Salvar</span>
+            <span x-show="autosaveFalhou" wire:loading.remove wire:target="salvarAlteracoes">Tentar salvar</span>
             <span wire:loading wire:target="salvarAlteracoes">Salvando...</span>
         </button>
     @endif
@@ -1099,15 +1147,12 @@
                     syncFieldMetadata(element, state, version);
                     syncLocalState(component, path, state, version);
                     element.removeAttribute('data-av-autosave-error');
+                    element.removeAttribute('title');
+                    window.dispatchEvent(new CustomEvent('avaliacao-autosave-confirmado'));
                 }).catch((error) => {
                     element.dataset.avAutosaveError = '1';
                     element.title = error.message;
-
-                    // Falhas são raras e usam o salvamento completo já existente
-                    // como contingência, preservando a alteração feita na tela.
-                    if (component?.$wire?.salvarAlteracoes) {
-                        component.$wire.salvarAlteracoes();
-                    }
+                    window.dispatchEvent(new CustomEvent('avaliacao-autosave-falhou'));
                 });
 
                 queues.set(key, next);

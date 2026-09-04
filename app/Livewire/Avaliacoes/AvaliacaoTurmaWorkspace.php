@@ -24,7 +24,6 @@ use App\Services\PessoaScopeService;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
@@ -1104,17 +1103,10 @@ class AvaliacaoTurmaWorkspace extends Component
             });
         }
 
-        $cacheKey = 'avaliacoes:workspace:referencias:v2:'.sha1(json_encode([
-            'user' => Auth::id(),
-            'modo' => $this->modo,
-            'professores' => $this->professorIds,
-            'turmas' => $this->turmaIdsProfessor,
-            'turma' => $this->turma,
-            'serie' => $this->serie,
-            'data' => now()->toDateString(),
-        ], JSON_THROW_ON_ERROR));
-
-        $carregarAvaliacoes = fn () => $query
+        // O cache local da instância já evita consultas duplicadas durante a
+        // requisição. Persistir este grafo Eloquent completo no Redis produz
+        // valores com vários megabytes e pode estourar a memória ao desserializar.
+        $avaliacoes = $query
             ->with([
                 'tipo' => fn ($tipo) => $tipo->with([
                     'alternativas' => fn ($alternativas) => $alternativas->where('status', true),
@@ -1143,9 +1135,6 @@ class AvaliacaoTurmaWorkspace extends Component
             ])
             ->orderBy('data_inicio')
             ->get();
-        $avaliacoes = app()->runningUnitTests()
-            ? $carregarAvaliacoes()
-            : Cache::remember($cacheKey, now()->addMinutes(10), $carregarAvaliacoes);
 
         return $this->avaliacoesDisponiveisCache = $avaliacoes
             ->filter(fn (Avaliacao $avaliacao): bool => $this->filtrarTurmasDaAvaliacao($avaliacao)->isNotEmpty())
