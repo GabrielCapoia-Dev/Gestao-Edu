@@ -68,7 +68,6 @@ class AvaliacaoTurmaWorkspace extends Component
 
     public array $informacaoVersoes = [];
 
-    public array $informacoesComplementaresBloqueadas = [];
 
     public array $alternativasPorPauta = [];
 
@@ -126,6 +125,9 @@ class AvaliacaoTurmaWorkspace extends Component
 
     /** @var array<int, Collection> */
     protected array $pautasPorTurmaCache = [];
+
+    /** @var array<int, Collection> */
+    protected array $gruposPorComponenteDaTurmaCache = [];
 
     /** @var array<int, Turma> */
     protected array $turmasDaSeriePorIdCache = [];
@@ -1557,7 +1559,11 @@ class AvaliacaoTurmaWorkspace extends Component
 
     public function gruposPorComponenteDaTurma(int $turmaId): Collection
     {
-        return $this->pautasDaTurma($turmaId)
+        if (array_key_exists($turmaId, $this->gruposPorComponenteDaTurmaCache)) {
+            return $this->gruposPorComponenteDaTurmaCache[$turmaId];
+        }
+
+        return $this->gruposPorComponenteDaTurmaCache[$turmaId] = $this->pautasDaTurma($turmaId)
             ->groupBy(fn (Pauta $pauta): string => (string) ($pauta->componente_curricular_id ?? 0))
             ->map(function (Collection $pautasDoComponente, string $componenteKey) use ($turmaId): array {
                 $componenteId = (int) $componenteKey;
@@ -2083,7 +2089,6 @@ class AvaliacaoTurmaWorkspace extends Component
         if ($alunosIds === []) {
             $this->informacoesComplementares = [];
             $this->informacoesComplementaresPersistidas = [];
-            $this->informacoesComplementaresBloqueadas = [];
 
             return;
         }
@@ -2109,7 +2114,6 @@ class AvaliacaoTurmaWorkspace extends Component
             : collect();
 
         $informacoes = [];
-        $bloqueadas = [];
         $versoes = [];
 
         foreach ($this->pautasDisponiveis as $pauta) {
@@ -2121,14 +2125,12 @@ class AvaliacaoTurmaWorkspace extends Component
                     ? $informacoesRelacionais->get($alunoId)?->get($componenteId)
                     : $documentos->get($alunoId)?->informacaoDoComponente($componenteId);
                 $informacoes[$componenteId][$alunoId] = (string) ($info['texto'] ?? '');
-                $bloqueadas[$componenteId][$alunoId] = $this->alunoEstaBloqueadoParaAvaliacao($aluno);
                 $versoes[$componenteId][$alunoId] = (int) ($info['version'] ?? 0);
             }
         }
 
         $this->informacoesComplementares = $informacoes;
         $this->informacoesComplementaresPersistidas = $informacoes;
-        $this->informacoesComplementaresBloqueadas = $bloqueadas;
         $this->informacaoVersoes = $versoes;
     }
 
@@ -2611,6 +2613,7 @@ class AvaliacaoTurmaWorkspace extends Component
         $this->alunosDaSerieCache = null;
         $this->documentosAvaliacaoCache = null;
         $this->pautasPorTurmaCache = [];
+        $this->gruposPorComponenteDaTurmaCache = [];
         $this->turmasDaSeriePorIdCache = [];
         $this->alunosPorIdCache = [];
         $this->turmaIdPorAlunoIdCache = [];
