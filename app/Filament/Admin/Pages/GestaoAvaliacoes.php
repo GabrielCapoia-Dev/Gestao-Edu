@@ -581,6 +581,28 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
             'form.escolas_ids.*' => ['required'],
         ]);
 
+        // Respostas/snapshots tornam a estrutura imutável, mas não devem
+        // impedir a correção do prazo da avaliação. Neste caso preservamos
+        // todos os vínculos e alternativas e atualizamos somente os campos
+        // escalares permitidos.
+        if ($isEdicao && $this->podeAtualizarSomentePrazos($validated['form'])) {
+            $avaliacao = Avaliacao::query()->findOrFail($this->avaliacaoIdEditando);
+            $avaliacao->update([
+                'data_inicio' => $validated['form']['data_inicio'],
+                'data_fim' => $validated['form']['data_fim'],
+                'data_inicio_preenchimento' => $validated['form']['data_inicio_preenchimento'],
+                'data_fim_preenchimento' => $validated['form']['data_fim_preenchimento'],
+            ]);
+
+            $this->fecharModal();
+            Notification::make()
+                ->title('Prazo da avaliação atualizado com sucesso.')
+                ->success()
+                ->send();
+
+            return;
+        }
+
         $novoPeriodoNome = Str::of((string) ($validated['form']['novo_periodo_nome'] ?? ''))->trim()->toString();
         $periodoAvaliacaoId = (int) ($validated['form']['periodo_avaliacao_id'] ?? 0);
 
@@ -845,6 +867,33 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
                 ->values()
                 ->all();
         }
+    }
+
+    private function podeAtualizarSomentePrazos(array $form): bool
+    {
+        $avaliacao = Avaliacao::query()
+            ->with(['series:id', 'componentes:id', 'escolas:id'])
+            ->find($this->avaliacaoIdEditando);
+
+        if (! $avaliacao || ! app(AvaliacaoEstruturaService::class)->possuiDados($avaliacao)) {
+            return false;
+        }
+
+        $normalizar = static fn (array $ids): array => collect($ids)
+            ->map(fn ($id): int => (int) $id)
+            ->sort()
+            ->values()
+            ->all();
+
+        return (string) $form['nome'] === (string) $avaliacao->nome
+            && (int) $form['tipo_avaliacao_id'] === (int) $avaliacao->tipo_avaliacao_id
+            && (int) ($form['periodo_avaliacao_id'] ?? 0) === (int) $avaliacao->periodo_avaliacao_id
+            && (string) $form['status'] === (string) $avaliacao->status
+            && blank($form['novo_periodo_nome'] ?? null)
+            && $normalizar($form['series_ids']) === $normalizar($avaliacao->series->pluck('id')->all())
+            && $normalizar($form['componentes_ids']) === $normalizar($avaliacao->componentes->pluck('id')->all())
+            && $normalizar(collect($form['escolas_ids'])->reject(fn ($id): bool => $id === 'todas')->all())
+                === $normalizar($avaliacao->escolas->pluck('id')->all());
     }
 
     private function limparCacheAlternativasOverrideForm(): void
