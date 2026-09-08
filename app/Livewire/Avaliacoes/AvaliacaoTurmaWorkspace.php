@@ -122,6 +122,25 @@ class AvaliacaoTurmaWorkspace extends Component
 
     protected ?Collection $alunosDaSerieCache = null;
 
+    protected ?Collection $documentosAvaliacaoCache = null;
+
+    /** @var array<int, Collection> */
+    protected array $pautasPorTurmaCache = [];
+
+    /** @var array<int, Turma> */
+    protected array $turmasDaSeriePorIdCache = [];
+
+    /** @var array<int, Aluno> */
+    protected array $alunosPorIdCache = [];
+
+    /** @var array<int, int> */
+    protected array $turmaIdPorAlunoIdCache = [];
+
+    /** @var array<int, array<int, array>> */
+    protected array $alternativasPorPautaPorIdCache = [];
+
+    protected bool $professoresPrecarregados = false;
+
     protected ?array $progressoConsolidadoCache = null;
 
     protected ?array $componentesDisponiveisNoWorkspaceCache = null;
@@ -1113,7 +1132,7 @@ class AvaliacaoTurmaWorkspace extends Component
                 ]),
                 'pautas' => fn ($pautas) => $pautas
                     ->where('status', true)
-                    ->when($this->modoAcompanhamento() && $this->serie, fn ($query) => $query
+                    ->when($this->serie, fn ($query) => $query
                         ->where(fn ($serieQuery) => $serieQuery
                             ->whereNull('serie_id')
                             ->orWhere('serie_id', (int) $this->serie)))
@@ -1262,6 +1281,9 @@ class AvaliacaoTurmaWorkspace extends Component
             ->all();
 
         if ($turmasIds === []) {
+            $this->alunosPorIdCache = [];
+            $this->turmaIdPorAlunoIdCache = [];
+
             return $this->alunosPorTurmaCache = collect();
         }
 
@@ -1293,13 +1315,40 @@ class AvaliacaoTurmaWorkspace extends Component
             ->groupBy(fn (Aluno $aluno): int => (int) $aluno->id_turma)
             ->map(fn (Collection $alunos): Collection => $alunos->values());
 
-        return $this->alunosPorTurmaCache = collect($escopos)
+        $alunosPorTurma = collect($escopos)
             ->mapWithKeys(fn (array $escopo, int $turmaId): array => [
                 $turmaId => $alunosPorOrigem->get(
                     (int) $escopo['turma_origem_id'],
                     collect()
                 ),
             ]);
+
+        $this->turmaIdPorAlunoIdCache = [];
+        $this->alunosPorIdCache = [];
+        foreach ($alunosPorTurma as $turmaId => $alunos) {
+            foreach ($alunos as $aluno) {
+                $alunoId = (int) $aluno->id;
+                $this->alunosPorIdCache[$alunoId] = $aluno;
+                $this->turmaIdPorAlunoIdCache[$alunoId] = (int) $turmaId;
+            }
+        }
+
+        return $this->alunosPorTurmaCache = $alunosPorTurma;
+    }
+
+    private function carregarIndicesDeAlunos(): void
+    {
+        if ($this->alunosPorIdCache !== [] || $this->alunosPorTurma->isEmpty()) {
+            return;
+        }
+
+        foreach ($this->alunosPorTurma as $turmaId => $alunos) {
+            foreach ($alunos as $aluno) {
+                $alunoId = (int) $aluno->id;
+                $this->alunosPorIdCache[$alunoId] = $aluno;
+                $this->turmaIdPorAlunoIdCache[$alunoId] = (int) $turmaId;
+            }
+        }
     }
 
     public function getAlunosDaSerieProperty(): Collection
@@ -1320,13 +1369,17 @@ class AvaliacaoTurmaWorkspace extends Component
 
     private function turmaAvaliativaDoAluno(Aluno $aluno): ?Turma
     {
-        foreach ($this->alunosPorTurma as $turmaId => $alunos) {
-            if ($alunos->contains('id', (int) $aluno->id)) {
-                return $this->turmasDaSerieDisponiveis->firstWhere('id', (int) $turmaId);
-            }
+        $turmaId = $this->turmaIdPorAlunoIdCache[(int) $aluno->id] ?? null;
+
+        if ($turmaId === null) {
+            $this->carregarIndicesDeAlunos();
+            $turmaId = $this->turmaIdPorAlunoIdCache[(int) $aluno->id] ?? null;
         }
 
-        return null;
+        return $turmaId === null
+            ? null
+            : ($this->turmasDaSeriePorIdCache[$turmaId]
+                ??= $this->turmasDaSerieDisponiveis->firstWhere('id', $turmaId));
     }
 
     public function getAlunosEmMassaDisponiveisProperty(): Collection
@@ -1382,13 +1435,17 @@ class AvaliacaoTurmaWorkspace extends Component
 
     public function pautasDaTurma(int $turmaId): Collection
     {
+        if (array_key_exists($turmaId, $this->pautasPorTurmaCache)) {
+            return $this->pautasPorTurmaCache[$turmaId];
+        }
+
         $turma = $this->turmasDaSerieDisponiveis->firstWhere('id', $turmaId);
 
         if (! $turma || ! $this->avaliacaoAtual) {
-            return collect();
+            return $this->pautasPorTurmaCache[$turmaId] = collect();
         }
 
-        return $this->pautasDisponiveis
+        return $this->pautasPorTurmaCache[$turmaId] = $this->pautasDisponiveis
             ->filter(fn (Pauta $pauta): bool => $this->pautaEhDaSerieDaTurma($pauta, $turma)
                 && $this->pautaEhRelevanteParaTurma($pauta, $turma))
             ->values();
@@ -1546,13 +1603,14 @@ class AvaliacaoTurmaWorkspace extends Component
     public function respostaEstaBloqueada(int $pautaId, int $alunoId): bool
     {
         // Bloqueio apenas por pendência de transferência (aluno destino).
-        $aluno = $this->alunoDaSerieSelecionada($alunoId);
+        $aluno = $this->alunosPorIdCache[$alunoId] ?? $this->alunoDaSerieSelecionada($alunoId);
 
         if (! $aluno instanceof Aluno) {
             return false;
         }
 
-        $turmaId = (int) ($this->turmaAvaliativaDoAluno($aluno)?->id ?? 0);
+        $turmaId = $this->turmaIdPorAlunoIdCache[$alunoId]
+            ?? (int) ($this->turmaAvaliativaDoAluno($aluno)?->id ?? 0);
 
         return $this->alunoEstaBloqueadoParaAvaliacao($aluno)
             || (($this->ciclosPorTurma[$turmaId]['status'] ?? null) === AvaliacaoTurmaCiclo::STATUS_CONCLUIDA);
@@ -1764,6 +1822,7 @@ class AvaliacaoTurmaWorkspace extends Component
     private function carregarAlternativasPorPauta(Collection $pautas): void
     {
         $this->alternativasPorPauta = [];
+        $this->alternativasPorPautaPorIdCache = [];
 
         if (! $this->avaliacaoAtual || $pautas->isEmpty()) {
             return;
@@ -1834,11 +1893,25 @@ class AvaliacaoTurmaWorkspace extends Component
                 ])
                 ->values()
                 ->all();
+
+            $this->alternativasPorPautaPorIdCache[(int) $pauta->id] = collect(
+                $this->alternativasPorPauta[(int) $pauta->id]
+            )->keyBy(fn (array $alternativa): int => (int) $alternativa['id'])->all();
         }
     }
 
     private function precarregarProfessoresPorTurmaComponente(): void
     {
+        if ($this->professoresPrecarregados) {
+            return;
+        }
+
+        $this->professoresPrecarregados = true;
+
+        if ($this->professoresPorTurmaComponente !== []) {
+            return;
+        }
+
         $turmasIds = $this->turmasDaSerieDisponiveis
             ->pluck('id')
             ->map(fn ($id): int => (int) $id)
@@ -1910,6 +1983,9 @@ class AvaliacaoTurmaWorkspace extends Component
         $documentos = $persistencia->leRelacional()
             ? collect()
             : $service->documentosDaAvaliacaoParaAlunos((int) $this->avaliacao, $alunos);
+        if (! $persistencia->leRelacional()) {
+            $this->documentosAvaliacaoCache = $documentos;
+        }
         $respostasRelacionais = $persistencia->leRelacional()
             ? $store->respostasDaAvaliacaoParaAlunos(
                 (int) $this->avaliacao,
@@ -2015,8 +2091,9 @@ class AvaliacaoTurmaWorkspace extends Component
         $persistencia = app(AvaliacaoPersistencia::class);
         $documentos = $persistencia->leRelacional()
             ? collect()
-            : app(AvaliacaoAlunoDocumentoService::class)
-                ->documentosDaAvaliacaoParaAlunos((int) $this->avaliacao, $alunos);
+            : ($this->documentosAvaliacaoCache
+                ??= app(AvaliacaoAlunoDocumentoService::class)
+                    ->documentosDaAvaliacaoParaAlunos((int) $this->avaliacao, $alunos));
         $informacoesRelacionais = $persistencia->leRelacional()
             ? app(AvaliacaoRespostaStore::class)->informacoesDaAvaliacaoParaAlunos(
                 (int) $this->avaliacao,
@@ -2304,6 +2381,8 @@ class AvaliacaoTurmaWorkspace extends Component
             return null;
         }
 
+        $this->precarregarProfessoresPorTurmaComponente();
+
         $cacheKey = $turmaId.':'.$componenteId;
 
         if (! array_key_exists($cacheKey, $this->professoresPorTurmaComponente)) {
@@ -2338,15 +2417,24 @@ class AvaliacaoTurmaWorkspace extends Component
             return 'Sem Professor';
         }
 
+        $this->precarregarProfessoresPorTurmaComponente();
+
         if (! array_key_exists($professorId, $this->nomesProfessoresPorId)) {
-            $this->nomesProfessoresPorId[$professorId] = (string) (Professor::query()
-                ->whereKey($professorId)
-                ->value('nome') ?? '');
+            $this->nomesProfessoresPorId = Professor::query()
+                ->whereIn('id', collect($this->professoresPorTurmaComponente)
+                    ->flatten()
+                    ->map(fn ($id): int => (int) $id)
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->all())
+                ->pluck('nome', 'id')
+                ->all();
         }
 
-        return $this->nomesProfessoresPorId[$professorId] !== ''
-            ? $this->nomesProfessoresPorId[$professorId]
-            : 'Sem Professor';
+        $nome = (string) ($this->nomesProfessoresPorId[$professorId] ?? '');
+
+        return $nome !== '' ? $nome : 'Sem Professor';
     }
 
     private function turmasAlvoAvaliacaoEmMassa(): Collection
@@ -2395,6 +2483,10 @@ class AvaliacaoTurmaWorkspace extends Component
     {
         if (! $alternativaId) {
             return null;
+        }
+
+        if (array_key_exists($pautaId, $this->alternativasPorPautaPorIdCache)) {
+            return $this->alternativasPorPautaPorIdCache[$pautaId][$alternativaId] ?? null;
         }
 
         return collect($this->alternativasDaPauta($pautaId))
@@ -2471,7 +2563,11 @@ class AvaliacaoTurmaWorkspace extends Component
 
     private function alunoDaSerieSelecionada(int $alunoId): ?Aluno
     {
-        return $this->alunosDaSerie->firstWhere('id', $alunoId);
+        if (! array_key_exists($alunoId, $this->alunosPorIdCache)) {
+            $this->carregarIndicesDeAlunos();
+        }
+
+        return $this->alunosPorIdCache[$alunoId] ?? null;
     }
 
     private function montarResumoProgresso(int $preenchidas, int $total): array
@@ -2513,6 +2609,13 @@ class AvaliacaoTurmaWorkspace extends Component
         $this->pautasDisponiveisCache = null;
         $this->alunosPorTurmaCache = null;
         $this->alunosDaSerieCache = null;
+        $this->documentosAvaliacaoCache = null;
+        $this->pautasPorTurmaCache = [];
+        $this->turmasDaSeriePorIdCache = [];
+        $this->alunosPorIdCache = [];
+        $this->turmaIdPorAlunoIdCache = [];
+        $this->alternativasPorPautaPorIdCache = [];
+        $this->professoresPrecarregados = false;
         $this->componentesDisponiveisNoWorkspaceCache = null;
         $this->escolasPermitidasIdsCacheCarregado = false;
         $this->escolasPermitidasIdsCache = null;
