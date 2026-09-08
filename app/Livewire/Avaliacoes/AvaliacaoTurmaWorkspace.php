@@ -2116,8 +2116,12 @@ class AvaliacaoTurmaWorkspace extends Component
         $informacoes = [];
         $versoes = [];
 
-        foreach ($this->pautasDisponiveis as $pauta) {
-            $componenteId = (int) ($pauta->componente_curricular_id ?? 0);
+        $componentesIds = $this->pautasDisponiveis
+            ->map(fn (Pauta $pauta): int => (int) ($pauta->componente_curricular_id ?? 0))
+            ->unique()
+            ->values();
+
+        foreach ($componentesIds as $componenteId) {
 
             foreach ($alunos as $aluno) {
                 $alunoId = (int) $aluno->id;
