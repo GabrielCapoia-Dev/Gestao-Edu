@@ -33,3 +33,13 @@ yarn-error.log
 /load-tests/data/avaliacoes-users.local.csv
 /load-tests/results/
 .codex/tmp_srm
+
+# Scripts locais de auditoria e manutencao SQL
+/database/sql/auditar_consolidacao_srm.py
+/database/sql/auditar_limpeza_srm.py
+/database/sql/gerar_limpeza_srm_etapa2.py
+/database/sql/validar_consolidacao_srm.py
+/database/sql/validar_limpeza_srm_etapa2.py
+/database/sql/validar_matematica_portugues_backup.py
+/database/sql/validar_sim_backup.py
+__pycache__/
