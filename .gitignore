@@ -28,11 +28,16 @@ yarn-error.log
 /public/fonts/filament
 /public/**/*.gz
 .tmp
+.tmp-artifact
+/outputs
 /load-tests/.env.local
 /load-tests/data/users.local.csv
 /load-tests/data/avaliacoes-users.local.csv
 /load-tests/results/
 .codex/tmp_srm
+
+# Nenhum script Python deve ser versionado neste projeto
+*.py
 
 # Scripts locais de auditoria e manutencao SQL
 /database/sql/auditar_consolidacao_srm.py

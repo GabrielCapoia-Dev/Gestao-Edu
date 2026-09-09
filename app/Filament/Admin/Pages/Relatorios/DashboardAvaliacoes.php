@@ -3229,6 +3229,17 @@ class DashboardAvaliacoes extends Page implements HasForms
                 })
                 ->whereIn('ciclo.avaliacao_id', $avaliacaoIds)
                 ->where('ciclo.status', AvaliacaoTurmaCiclo::STATUS_CONCLUIDA)
+                // Ciclos concluídos também devem respeitar o escopo da escola
+                // da usuária; sem este filtro, snapshots de toda a rede eram
+                // adicionados ao acompanhamento.
+                ->when(
+                    $this->escolasPermitidasIds() !== null,
+                    function (QueryBuilder $query): QueryBuilder {
+                        $this->aplicarEscopoEscolarQuery($query, 't');
+
+                        return $query;
+                    },
+                )
                 ->when($statusFiltro !== null && $statusFiltro !== 'concluido', fn ($q) => $q->whereRaw('1 = 0'))
                 ->when(($filtros['series_ids'] ?? []) !== [], fn ($q) => $q->whereIn('t.id_serie', $filtros['series_ids']))
                 ->when(($filtros['turnos'] ?? []) !== [], fn ($q) => $q->whereIn('t.turno', $filtros['turnos']))
