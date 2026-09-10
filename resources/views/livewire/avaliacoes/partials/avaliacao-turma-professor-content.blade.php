@@ -16,14 +16,11 @@
             <p>Não há avaliações abertas para seus componentes neste momento.</p>
         </section>
     @else
-        <div class="av-professor-evaluation-grid">
+        <div class="av-professor-evaluation-list">
             @foreach ($this->avaliacoesDisponiveis as $avaliacaoItem)
                 @php($avaliacaoUrl = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacaoItem->id]))
+                @php($percentualAvaliacao = $this->progressoAvaliacoesProfessor[$avaliacaoItem->id] ?? 0)
                 <article class="av-professor-evaluation-card" wire:key="avaliacao-professor-{{ $avaliacaoItem->id }}">
-                    <div class="av-professor-evaluation-card__top">
-                        <span class="av-professor-status">Disponível</span>
-                        <span>{{ $avaliacaoItem->turmas->count() }} {{ $avaliacaoItem->turmas->count() === 1 ? 'turma' : 'turmas' }}</span>
-                    </div>
                     <div class="av-professor-evaluation-card__body">
                         <span>{{ $avaliacaoItem->tipo?->nome ?? 'Avaliação' }}</span>
                         <h3>{{ $avaliacaoItem->nome }}</h3>
@@ -31,6 +28,16 @@
                             De {{ optional($avaliacaoItem->data_inicio_preenchimento ?? $avaliacaoItem->data_inicio)->format('d/m/Y') }}
                             a {{ optional($avaliacaoItem->data_fim_preenchimento ?? $avaliacaoItem->data_fim)->format('d/m/Y') }}
                         </p>
+                    </div>
+                    <div class="av-professor-evaluation-progress">
+                        <div>
+                            <span>Progresso</span>
+                            <strong>{{ $percentualAvaliacao }}%</strong>
+                        </div>
+                        <div class="av-progress-track">
+                            <div class="av-progress-bar" style="width: {{ $percentualAvaliacao }}%"></div>
+                        </div>
+                        <small>{{ max(100 - $percentualAvaliacao, 0) }}% pendente</small>
                     </div>
                     <a class="gi-action gi-action--primary" href="{{ $avaliacaoUrl }}" wire:navigate>
                         Avaliar
@@ -41,17 +48,29 @@
         </div>
     @endif
 @else
+    @php($turmasNavegacao = $this->turmasDaAvaliacaoProfessor)
+    @php($exibirEscolas = $this->agrupaNavegacaoPorEscola() && ! $escolaNavegacaoId)
+    @php($exibirSeries = ! $exibirEscolas && ! $serieNavegacaoId)
+    @php($exibirTurmas = ! $exibirEscolas && ! $exibirSeries)
     <section class="av-professor-context">
-        <a class="av-professor-back" href="{{ \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl() }}" wire:navigate>
-            <span aria-hidden="true">←</span> Voltar às avaliações
-        </a>
+        @if ($escolaNavegacaoId || $serieNavegacaoId)
+            <button type="button" class="av-professor-back" wire:click="voltarNavegacao">
+                <span aria-hidden="true">←</span> Voltar
+            </button>
+        @else
+            <a class="av-professor-back" href="{{ \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl() }}" wire:navigate>
+                <span aria-hidden="true">←</span> Voltar às avaliações
+            </a>
+        @endif
         <div class="av-professor-context__row">
             <div>
                 <span class="av-professor-eyebrow">{{ $avaliacaoAtual->tipo?->nome ?? 'Avaliação' }}</span>
                 <h2>{{ $avaliacaoAtual->nome }}</h2>
-                <p>Abra uma turma para visualizar os componentes que você pode avaliar.</p>
+                <p>
+                    {{ $exibirEscolas ? 'Selecione uma escola para visualizar as séries.' : ($exibirSeries ? 'Selecione uma série para visualizar as turmas.' : 'Abra uma turma para visualizar seus componentes.') }}
+                </p>
             </div>
-            <span class="av-workspace-count">{{ $this->turmasDaAvaliacaoProfessor->count() }} {{ $this->turmasDaAvaliacaoProfessor->count() === 1 ? 'turma' : 'turmas' }}</span>
+            <span class="av-workspace-count">{{ $turmasNavegacao->count() }} {{ $turmasNavegacao->count() === 1 ? 'turma' : 'turmas' }}</span>
         </div>
     </section>
 
@@ -59,79 +78,111 @@
         <section class="av-note">Esta avaliação está disponível somente para leitura.</section>
     @endif
 
-    <div class="av-professor-class-list">
-        @forelse ($this->turmasDaAvaliacaoProfessor as $turmaItem)
-            @php($turmaIdAtual = (int) $turmaItem->id)
-            @php($turmaExpandida = $this->turmaEstaExpandida($turmaIdAtual))
-            @php($progressoTurma = $turmaExpandida ? ($this->progressoPorTurma[$turmaIdAtual] ?? null) : null)
-            <section class="av-professor-class-card {{ $turmaExpandida ? 'is-open' : '' }}" wire:key="turma-professor-{{ $turmaIdAtual }}">
-                <button type="button" class="av-professor-class-toggle" wire:click="abrirTurma({{ $turmaIdAtual }})">
-                    <div class="av-professor-class-toggle__title">
-                        <span class="av-professor-class-icon" aria-hidden="true">{{ mb_strtoupper(mb_substr($this->rotuloTurma($turmaItem), 0, 1)) }}</span>
-                        <div>
-                            <h3>{{ $this->rotuloTurma($turmaItem) }}</h3>
-                            <p>{{ $turmaItem->escola?->nome }} · {{ $turmaItem->serie?->nome }}</p>
-                        </div>
-                    </div>
+    @if ($exibirEscolas)
+        <section x-data="{ busca: '' }">
+            <div class="av-professor-filter-bar">
+                <label class="av-professor-search">
+                    <span class="sr-only">Buscar escola</span>
+                    <input type="search" x-model.debounce.150ms="busca" placeholder="Buscar escola...">
+                </label>
+            </div>
+            <div class="av-professor-navigation-grid">
+                @foreach ($turmasNavegacao->groupBy('id_escola') as $escolaId => $turmasEscola)
+                    @php($escolaNome = $turmasEscola->first()?->escola?->nome ?? 'Escola não informada')
+                    <button type="button" data-search="{{ mb_strtolower($escolaNome) }}" x-show="$el.dataset.search.includes(busca.toLowerCase())" wire:click="selecionarEscolaNavegacao({{ $escolaId }})">
+                        <span class="av-professor-class-icon">E</span>
+                        <span><strong>{{ $escolaNome }}</strong><small>{{ $turmasEscola->count() }} turmas</small></span>
+                        <span aria-hidden="true">→</span>
+                    </button>
+                @endforeach
+            </div>
+        </section>
+    @elseif ($exibirSeries)
+        @php($turmasDasSeries = $this->agrupaNavegacaoPorEscola() ? $turmasNavegacao->where('id_escola', (int) $escolaNavegacaoId) : $turmasNavegacao)
+        <section x-data="{ busca: '' }">
+            <div class="av-professor-filter-bar">
+                <label class="av-professor-search">
+                    <span class="sr-only">Buscar série</span>
+                    <input type="search" x-model.debounce.150ms="busca" placeholder="Buscar série...">
+                </label>
+            </div>
+            <div class="av-professor-navigation-grid">
+                @foreach ($turmasDasSeries->groupBy('id_serie') as $serieId => $turmasSerie)
+                    @php($serieNome = $turmasSerie->first()?->serie?->nome ?? 'Série não informada')
+                    <button type="button" data-search="{{ mb_strtolower($serieNome) }}" x-show="$el.dataset.search.includes(busca.toLowerCase())" wire:click="selecionarSerieNavegacao({{ $serieId }})">
+                        <span class="av-professor-class-icon">S</span>
+                        <span><strong>{{ $serieNome }}</strong><small>{{ $turmasSerie->count() }} {{ $turmasSerie->count() === 1 ? 'turma' : 'turmas' }}</small></span>
+                        <span aria-hidden="true">→</span>
+                    </button>
+                @endforeach
+            </div>
+        </section>
+    @else
+        @php($turmasFiltradas = $turmasNavegacao->where('id_serie', (int) $serieNavegacaoId)->when($this->agrupaNavegacaoPorEscola(), fn ($itens) => $itens->where('id_escola', (int) $escolaNavegacaoId)))
+        <section x-data="{ busca: '', turno: '' }">
+            <div class="av-professor-filter-bar">
+                <label class="av-professor-search">
+                    <span class="sr-only">Buscar turma</span>
+                    <input type="search" x-model.debounce.150ms="busca" placeholder="Buscar turma...">
+                </label>
+                <label>
+                    <span class="sr-only">Filtrar por turno</span>
+                    <select x-model="turno">
+                        <option value="">Todos os turnos</option>
+                        @foreach ($turmasFiltradas->pluck('turno')->filter()->unique()->sort() as $turnoOpcao)
+                            <option value="{{ mb_strtolower($turnoOpcao) }}">{{ ucfirst($turnoOpcao) }}</option>
+                        @endforeach
+                    </select>
+                </label>
+            </div>
 
-                    <div class="av-professor-class-toggle__side">
-                        @if ($progressoTurma)
-                            <div class="av-professor-compact-progress" data-av-progress-type="turma" data-av-progress-turma="{{ $turmaIdAtual }}" data-av-progress-filled="{{ $progressoTurma['preenchidas'] }}" data-av-progress-total="{{ $progressoTurma['total'] }}">
-                                <span>{{ $progressoTurma['preenchidas'] }}/{{ $progressoTurma['total'] }}</span>
-                                <span>{{ $progressoTurma['percentual'] }}%</span>
-                                <div class="av-progress-track av-progress-track--compact">
-                                    <div class="av-progress-bar" style="width: {{ $progressoTurma['percentual'] }}%"></div>
+            <div class="av-professor-class-list">
+                @forelse ($turmasFiltradas as $turmaItem)
+                    @php($turmaIdAtual = (int) $turmaItem->id)
+                    @php($turmaExpandida = $this->turmaEstaExpandida($turmaIdAtual))
+                    <section class="av-professor-class-card {{ $turmaExpandida ? 'is-open' : '' }}" data-search="{{ mb_strtolower($this->rotuloTurma($turmaItem).' '.($turmaItem->escola?->nome ?? '')) }}" data-turno="{{ mb_strtolower((string) $turmaItem->turno) }}" x-show="$el.dataset.search.includes(busca.toLowerCase()) && (!turno || $el.dataset.turno === turno)" wire:key="turma-professor-{{ $turmaIdAtual }}">
+                        <button type="button" class="av-professor-class-toggle" wire:click="abrirTurma({{ $turmaIdAtual }})">
+                            <div class="av-professor-class-toggle__title">
+                                <span class="av-professor-class-icon" aria-hidden="true">T</span>
+                                <div>
+                                    <h3>{{ $this->rotuloTurma($turmaItem) }}</h3>
+                                    <p>{{ $turmaItem->escola?->nome }} · {{ ucfirst((string) $turmaItem->turno) }}</p>
                                 </div>
                             </div>
-                        @else
-                            <span class="av-professor-load-hint">Abrir componentes</span>
-                        @endif
-                        <span class="av-pauta-arrow {{ $turmaExpandida ? 'is-open' : '' }}" aria-hidden="true">⌄</span>
-                    </div>
-                </button>
-
-                @if ($turmaExpandida)
-                    <div class="av-professor-components" wire:loading.class="is-loading" wire:target="abrirTurma({{ $turmaIdAtual }})">
-                        <div class="av-professor-components__heading">
-                            <div>
-                                <strong>Seus componentes</strong>
-                                <span>Selecione um componente para abrir a avaliação.</span>
+                            <div class="av-professor-class-toggle__side">
+                                <span class="av-professor-load-hint">{{ $turmaExpandida ? 'Ocultar componentes' : 'Ver componentes' }}</span>
+                                <span class="av-pauta-arrow {{ $turmaExpandida ? 'is-open' : '' }}" aria-hidden="true">⌄</span>
                             </div>
-                            <span>{{ $this->gruposPorComponenteDaTurma($turmaIdAtual)->count() }} {{ $this->gruposPorComponenteDaTurma($turmaIdAtual)->count() === 1 ? 'componente' : 'componentes' }}</span>
-                        </div>
+                        </button>
 
-                        <div class="av-professor-component-grid">
-                            @forelse ($this->gruposPorComponenteDaTurma($turmaIdAtual) as $grupo)
-                                @php($pautasIds = collect($grupo['pautas'])->pluck('id'))
-                                @php($preenchidas = $pautasIds->sum(fn ($pautaId) => (int) ($this->progressoPorPauta[$turmaIdAtual][$pautaId]['preenchidas'] ?? 0)))
-                                @php($total = $pautasIds->sum(fn ($pautaId) => (int) ($this->progressoPorPauta[$turmaIdAtual][$pautaId]['total'] ?? 0)))
-                                @php($percentual = $total > 0 ? min(100, (int) round(($preenchidas / $total) * 100)) : 0)
-                                <button type="button" class="av-professor-component-card" wire:click="abrirComponente({{ $turmaIdAtual }}, {{ $grupo['componente_id'] }})">
-                                    <span class="av-professor-component-card__name">{{ $grupo['componente_nome'] }}</span>
-                                    <span class="av-professor-component-card__teacher">{{ $grupo['professor_nome'] }}</span>
-                                    <span class="av-professor-component-card__meta">
-                                        <span>{{ count($grupo['pautas']) }} {{ count($grupo['pautas']) === 1 ? 'pauta' : 'pautas' }}</span>
-                                        <span>{{ $percentual }}% preenchido</span>
-                                    </span>
-                                    <span class="av-progress-track av-progress-track--compact">
-                                        <span class="av-progress-bar" style="width: {{ $percentual }}%"></span>
-                                    </span>
-                                    <span class="av-professor-component-card__action">Abrir avaliação <span aria-hidden="true">→</span></span>
-                                </button>
-                            @empty
-                                <section class="av-note av-note--warning">Nenhum componente disponível para esta turma.</section>
-                            @endforelse
-                        </div>
-                    </div>
-                @endif
-            </section>
-        @empty
-            <section class="av-professor-empty">
-                <strong>Nenhuma turma disponível</strong>
-                <p>Esta avaliação não possui turmas vinculadas aos seus componentes.</p>
-            </section>
-        @endforelse
-    </div>
+                        @if ($turmaExpandida)
+                            @php($componentesTurma = $this->componentesNavegacaoDaTurma)
+                            <div class="av-professor-components" wire:loading.class="is-loading" wire:target="abrirTurma({{ $turmaIdAtual }})">
+                                <div class="av-professor-components__heading">
+                                    <div><strong>Seus componentes</strong><span>Selecione um componente para abrir a avaliação.</span></div>
+                                    <span>{{ $componentesTurma->count() }} {{ $componentesTurma->count() === 1 ? 'componente' : 'componentes' }}</span>
+                                </div>
+                                <div class="av-professor-component-grid">
+                                    @forelse ($componentesTurma as $grupo)
+                                        <button type="button" class="av-professor-component-card" wire:click="abrirComponente({{ $turmaIdAtual }}, {{ $grupo['componente_id'] }})">
+                                            <span class="av-professor-component-card__name">{{ $grupo['componente_nome'] }}</span>
+                                            <span class="av-professor-component-card__teacher">{{ $grupo['professor_nome'] }}</span>
+                                            <span class="av-professor-component-card__meta"><span>{{ $grupo['pautas_total'] }} {{ $grupo['pautas_total'] === 1 ? 'pauta' : 'pautas' }}</span></span>
+                                            <span class="av-professor-component-card__action">Abrir avaliação <span aria-hidden="true">→</span></span>
+                                        </button>
+                                    @empty
+                                        <section class="av-note av-note--warning">Nenhum componente disponível para esta turma.</section>
+                                    @endforelse
+                                </div>
+                            </div>
+                        @endif
+                    </section>
+                @empty
+                    <section class="av-professor-empty"><strong>Nenhuma turma disponível</strong><p>Não há turmas neste recorte.</p></section>
+                @endforelse
+            </div>
+        </section>
+    @endif
 
     @if ($this->grupoComponenteModal && $this->turmaModal)
         @php($turmaIdAtual = (int) $turma)
@@ -180,23 +231,21 @@
                                     </div>
                                     <span>{{ $alunosModal->count() }} {{ $alunosModal->count() === 1 ? 'aluno' : 'alunos' }}</span>
                                 </div>
-                                <div class="av-professor-answer-list">
-                                    @foreach ($alunosModal as $aluno)
-                                        <div class="av-professor-answer-group">
-                                            @include('livewire.avaliacoes.partials.avaliacao-resposta-professor', [
-                                                'pauta' => $this->pautaModal,
-                                                'aluno' => $aluno,
-                                                'turmaIdAtual' => $turmaIdAtual,
-                                                'tituloResposta' => $aluno->nome,
-                                                'subtituloResposta' => $aluno->cgm ? 'CGM '.$aluno->cgm : null,
-                                            ])
-                                            @include('livewire.avaliacoes.partials.avaliacao-informacao-complementar-professor', [
-                                                'componenteId' => $componenteModalId,
-                                                'aluno' => $aluno,
-                                                'turmaIdAtual' => $turmaIdAtual,
-                                            ])
-                                        </div>
-                                    @endforeach
+                                <div class="gi-table-wrap av-professor-student-table">
+                                    <table class="gi-table">
+                                        <thead><tr><th>Aluno</th><th>Alternativa</th><th>Observação</th></tr></thead>
+                                        <tbody>
+                                            @forelse ($alunosModal as $aluno)
+                                                @include('livewire.avaliacoes.partials.avaliacao-resposta-professor-linha', [
+                                                    'pauta' => $this->pautaModal,
+                                                    'aluno' => $aluno,
+                                                    'turmaIdAtual' => $turmaIdAtual,
+                                                ])
+                                            @empty
+                                                <tr><td colspan="3">Nenhum aluno disponível nesta turma.</td></tr>
+                                            @endforelse
+                                        </tbody>
+                                    </table>
                                 </div>
                             @else
                                 <div class="av-professor-selection-empty">

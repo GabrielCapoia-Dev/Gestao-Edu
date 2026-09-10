@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 use Tests\Concerns\CreatesAvaliacaoDocumentos;
 use Tests\TestCase;
 
@@ -130,6 +131,8 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->assertOk()
             ->assertSee('Escolha uma avaliação para começar')
             ->assertSee('Avaliar')
+            ->assertSee('Progresso')
+            ->assertSee('100% pendente')
             ->assertSee('Avaliacao Matematica')
             ->assertDontSee('Avaliacao Historia')
             ->assertDontSee('Avaliacao Inativa');
@@ -139,11 +142,16 @@ class AvaliacaoProfessorPageTest extends TestCase
                 ...$this->workspaceProfessorParams(),
                 'avaliacaoId' => $avaliacaoVisivel->id,
             ])
-            ->assertSee('Abra uma turma para visualizar os componentes')
-            ->assertSee('Turma A')
+            ->assertSee('Selecione uma série para visualizar as turmas')
+            ->assertSee('1o Ano')
+            ->assertDontSee('Turma A')
             ->assertDontSee('Pauta de Matematica')
+            ->call('selecionarSerieNavegacao', $serie->id)
+            ->assertSee('Turma A')
             ->call('abrirTurma', $turma->id)
             ->assertSet('turma', $turma->id)
+            ->assertSet('respostas', [])
+            ->assertSet('alternativasPorPauta', [])
             ->assertSee('Matematica')
             ->call('abrirComponente', $turma->id, $componenteMatematica->id)
             ->assertSet('componenteModalId', $componenteMatematica->id)
@@ -155,6 +163,23 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->call('definirVisualizacao', 'alunos')
             ->call('selecionarAlunoModal', $aluno->id)
             ->assertSee('Pauta de Matematica');
+
+        $userAdmin = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $userAdmin->assignRole(Role::findOrCreate('Admin'));
+
+        Livewire::actingAs($userAdmin)
+            ->test(AvaliacaoTurmaProfessorWorkspace::class, [
+                ...$this->workspaceProfessorParams(false),
+                'avaliacaoId' => $avaliacaoVisivel->id,
+            ])
+            ->assertSee('Selecione uma escola para visualizar as séries')
+            ->assertSee('Escola Base')
+            ->assertDontSee('Turma A')
+            ->call('selecionarEscolaNavegacao', $escola->id)
+            ->assertSee('1o Ano');
     }
 
     public function test_professor_filtra_por_serie_e_visualiza_turmas_agrupadas(): void

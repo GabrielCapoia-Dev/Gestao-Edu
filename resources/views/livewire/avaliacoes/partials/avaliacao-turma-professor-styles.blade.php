@@ -54,10 +54,9 @@
         text-transform: uppercase;
     }
 
-    .av-professor-evaluation-grid {
+    .av-professor-evaluation-list {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr));
-        gap: 1rem;
+        gap: .75rem;
     }
 
     .av-professor-evaluation-card,
@@ -70,10 +69,12 @@
     }
 
     .av-professor-evaluation-card {
-        display: flex;
-        min-height: 15rem;
-        flex-direction: column;
-        padding: 1.2rem;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(12rem, 18rem) auto;
+        align-items: center;
+        gap: 1.5rem;
+        min-height: 0;
+        padding: 1rem 1.1rem;
     }
 
     .av-professor-evaluation-card__top {
@@ -99,8 +100,8 @@
     }
 
     .av-professor-evaluation-card__body {
-        flex: 1;
-        padding: 1.5rem 0;
+        min-width: 0;
+        padding: 0;
     }
 
     .av-professor-evaluation-card__body > span {
@@ -118,7 +119,29 @@
 
     .av-professor-evaluation-card .gi-action {
         justify-content: center;
-        width: 100%;
+        min-width: 7rem;
+    }
+
+    .av-professor-evaluation-progress > div:first-child {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: .35rem;
+        color: #64748b;
+        font-size: .72rem;
+    }
+
+    .av-professor-evaluation-progress strong {
+        color: #1d4ed8;
+        font-size: .8rem;
+    }
+
+    .av-professor-evaluation-progress small {
+        display: block;
+        margin-top: .3rem;
+        color: #64748b;
+        font-size: .68rem;
+        text-align: right;
     }
 
     .av-professor-empty {
@@ -146,6 +169,78 @@
         font-size: .82rem;
         font-weight: 700;
         text-decoration: none;
+        border: 0;
+        background: transparent;
+        padding: 0;
+        cursor: pointer;
+    }
+
+    .av-professor-filter-bar {
+        display: flex;
+        justify-content: flex-end;
+        gap: .65rem;
+        margin-bottom: .8rem;
+    }
+
+    .av-professor-filter-bar input,
+    .av-professor-filter-bar select {
+        min-height: 2.6rem;
+        border: 1px solid #cbd5e1;
+        border-radius: .7rem;
+        background: #fff;
+        padding: .55rem .75rem;
+        color: #0f172a;
+        font-size: .8rem;
+    }
+
+    .av-professor-search {
+        width: min(24rem, 100%);
+    }
+
+    .av-professor-search input {
+        width: 100%;
+    }
+
+    .av-professor-navigation-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+        gap: .7rem;
+    }
+
+    .av-professor-navigation-grid > button {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: .8rem;
+        border: 1px solid #dbe4f0;
+        border-radius: .85rem;
+        background: #fff;
+        padding: .9rem;
+        color: #2563eb;
+        cursor: pointer;
+        text-align: left;
+        transition: border-color .15s ease, transform .15s ease;
+    }
+
+    .av-professor-navigation-grid > button:hover {
+        transform: translateY(-1px);
+        border-color: #93c5fd;
+    }
+
+    .av-professor-navigation-grid strong,
+    .av-professor-navigation-grid small {
+        display: block;
+    }
+
+    .av-professor-navigation-grid strong {
+        color: #0f172a;
+        font-size: .86rem;
+    }
+
+    .av-professor-navigation-grid small {
+        margin-top: .2rem;
+        color: #64748b;
+        font-size: .72rem;
     }
 
     .av-professor-class-list {
@@ -463,12 +558,18 @@
     }
 
     .av-professor-modal__workspace {
-        padding: 1rem 1.15rem 1.5rem;
+        padding: 0 1.15rem 1.5rem;
     }
 
     .av-professor-workspace-heading {
+        position: sticky;
+        z-index: 5;
+        top: 0;
         align-items: flex-start;
         margin-bottom: 1rem;
+        padding: 1rem 0 .8rem;
+        border-bottom: 1px solid #e2e8f0;
+        background: #fff;
     }
 
     .av-professor-workspace-heading h3 {
@@ -491,6 +592,42 @@
     .av-professor-answer-group {
         display: grid;
         gap: .75rem;
+    }
+
+    .av-professor-student-table {
+        border: 1px solid #dbe4f0;
+        border-radius: .8rem;
+    }
+
+    .av-professor-student-table .gi-table td:first-child {
+        width: 28%;
+    }
+
+    .av-professor-student-table .gi-table td:nth-child(2) {
+        width: 31%;
+    }
+
+    .av-professor-student-table .gi-table td strong,
+    .av-professor-student-table .gi-table td small {
+        display: block;
+    }
+
+    .av-professor-student-table .gi-table td small {
+        margin-top: .2rem;
+        color: #64748b;
+        font-size: .68rem;
+    }
+
+    .av-professor-student-table .av-textarea-input {
+        min-height: 3.25rem;
+    }
+
+    .av-professor-row-blocked {
+        color: #b91c1c !important;
+    }
+
+    .av-professor-row-placeholder {
+        color: #94a3b8;
     }
 
     .av-professor-answer-group {
@@ -600,6 +737,7 @@
     }
 
     .av-professor-modal__footer {
+        justify-content: flex-end;
         min-height: 4.2rem;
         padding: .75rem 1.2rem;
         border-top: 1px solid #e2e8f0;
@@ -611,9 +749,18 @@
         color: #b91c1c;
     }
 
+    .av-professor-modal__footer > span {
+        margin-right: auto;
+    }
+
+    .av-professor-modal__footer > div {
+        margin-left: auto;
+    }
+
     @media (max-width: 800px) {
         .av-professor-list-heading,
         .av-professor-context__row,
+        .av-professor-evaluation-card,
         .av-professor-class-toggle,
         .av-professor-modal__header,
         .av-professor-workspace-heading,
@@ -627,8 +774,29 @@
         }
 
         .av-professor-class-toggle,
+        .av-professor-evaluation-card,
         .av-professor-modal__footer {
             flex-direction: column;
+        }
+
+        .av-professor-evaluation-card {
+            display: flex;
+            align-items: stretch;
+            gap: 1rem;
+        }
+
+        .av-professor-evaluation-card .gi-action {
+            width: 100%;
+        }
+
+        .av-professor-filter-bar {
+            flex-direction: column;
+        }
+
+        .av-professor-filter-bar label,
+        .av-professor-filter-bar input,
+        .av-professor-filter-bar select {
+            width: 100%;
         }
 
         .av-professor-modal-backdrop {
@@ -675,6 +843,10 @@
             width: 100%;
         }
 
+        .av-professor-modal__footer > div {
+            margin-left: 0;
+        }
+
         .av-professor-modal__footer .gi-action {
             justify-content: center;
         }
@@ -686,7 +858,8 @@
     :root.dark .av-professor-component-card,
     :root.dark .av-professor-answer-card,
     :root.dark .av-professor-navigation-list button:hover,
-    :root.dark .av-professor-navigation-list button.is-active {
+    :root.dark .av-professor-navigation-list button.is-active,
+    :root.dark .av-professor-navigation-grid > button {
         border-color: rgba(148, 163, 184, .25);
         background: #111827;
     }
@@ -699,11 +872,24 @@
         background: #0f172a;
     }
 
+    :root.dark .av-professor-workspace-heading {
+        border-color: rgba(148, 163, 184, .2);
+        background: #111827;
+    }
+
+    :root.dark .av-professor-filter-bar input,
+    :root.dark .av-professor-filter-bar select {
+        border-color: rgba(148, 163, 184, .25);
+        background: #111827;
+        color: #f8fafc;
+    }
+
     :root.dark .av-professor-list-heading h2,
     :root.dark .av-professor-context h2,
     :root.dark .av-professor-modal h2,
     :root.dark .av-professor-workspace-heading h3,
     :root.dark .av-professor-evaluation-card h3,
+    :root.dark .av-professor-navigation-grid strong,
     :root.dark .av-professor-class-toggle h3,
     :root.dark .av-professor-components__heading strong,
     :root.dark .av-professor-component-card__name,

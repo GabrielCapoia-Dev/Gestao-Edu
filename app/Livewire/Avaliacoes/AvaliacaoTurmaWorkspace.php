@@ -375,7 +375,15 @@ class AvaliacaoTurmaWorkspace extends Component
         $this->escola = $this->turma ? $this->escolaDaTurma((int) $this->turma) : null;
         $this->sincronizarSerieEscola();
         $this->limparDadosDoEscopo(true);
-        $this->carregarDadosDoEscopo();
+
+        if ($this->deveCarregarDadosAoSelecionarTurma()) {
+            $this->carregarDadosDoEscopo();
+        }
+    }
+
+    protected function deveCarregarDadosAoSelecionarTurma(): bool
+    {
+        return true;
     }
 
     public function updatedTurmaEmMassaGlobal(): void
@@ -1641,7 +1649,7 @@ class AvaliacaoTurmaWorkspace extends Component
         return $this->respostaEstaBloqueada(0, $alunoId);
     }
 
-    private function carregarDadosDoEscopo(): void
+    protected function carregarDadosDoEscopo(): void
     {
         if (! $this->avaliacao || ! $this->serie) {
             return;
@@ -1657,7 +1665,7 @@ class AvaliacaoTurmaWorkspace extends Component
         $this->limparCachesDeProgresso();
     }
 
-    private function limparDadosDoEscopo(bool $limparTurmasExpandidas = false): void
+    protected function limparDadosDoEscopo(bool $limparTurmasExpandidas = false): void
     {
         $this->respostas = [];
         $this->respostaVersoes = [];
@@ -1686,7 +1694,7 @@ class AvaliacaoTurmaWorkspace extends Component
         }
     }
 
-    private function deveFiltrarPorProfessor(): bool
+    protected function deveFiltrarPorProfessor(): bool
     {
         if ($this->modoAcompanhamento()) {
             return false;
@@ -1706,7 +1714,7 @@ class AvaliacaoTurmaWorkspace extends Component
         return true;
     }
 
-    private function deveRestringirAsTurmasDoProfessor(): bool
+    protected function deveRestringirAsTurmasDoProfessor(): bool
     {
         return ! $this->modoAcompanhamento() && $this->turmaIdsProfessor !== [];
     }
@@ -2681,7 +2689,7 @@ class AvaliacaoTurmaWorkspace extends Component
         $query->whereIn('id_escola', $escolasIds);
     }
 
-    private function escolasPermitidasIds(): ?array
+    protected function escolasPermitidasIds(): ?array
     {
         if ($this->escolasPermitidasIdsCacheCarregado) {
             return $this->escolasPermitidasIdsCache;
