@@ -266,9 +266,18 @@ start_web_runtime() {
         nginx_templates="/etc/nginx/templates"
     fi
 
+    render_nginx_template() {
+        local template="$1"
+        sed \
+            -e "s|__NGINX_SERVER_NAME__|${NGINX_SERVER_NAME:-gestaoedu.umuarama.pr.gov.br}|g" \
+            -e "s|__NGINX_SSL_CERTIFICATE__|${NGINX_SSL_CERTIFICATE:-/etc/nginx/certs/fullchain1.pem}|g" \
+            -e "s|__NGINX_SSL_CERTIFICATE_KEY__|${NGINX_SSL_CERTIFICATE_KEY:-/etc/nginx/certs/privkey1.pem}|g" \
+            "$template" > /etc/nginx/conf.d/default.conf
+    }
+
     case "$runtime" in
         octane)
-            cp "${nginx_templates}/octane.conf" /etc/nginx/conf.d/default.conf
+            render_nginx_template "${nginx_templates}/octane.conf"
             nginx -t
             nginx
 
@@ -278,7 +287,7 @@ start_web_runtime() {
                 "php artisan octane:start --server=${OCTANE_SERVER:-swoole} --host=127.0.0.1 --port=8000 --workers=${OCTANE_WORKERS:-1} --max-requests=${OCTANE_MAX_REQUESTS:-500}"
             ;;
         fpm)
-            cp "${nginx_templates}/default.conf" /etc/nginx/conf.d/default.conf
+            render_nginx_template "${nginx_templates}/default.conf"
             configure_php_fpm_pool
             php-fpm -D
             exec nginx -g "daemon off;"
