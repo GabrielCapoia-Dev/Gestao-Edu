@@ -1,0 +1,716 @@
+<style>
+    .av-professor-list-heading,
+    .av-professor-context__row,
+    .av-professor-evaluation-card__top,
+    .av-professor-class-toggle,
+    .av-professor-components__heading,
+    .av-professor-component-card__meta,
+    .av-professor-modal__header,
+    .av-professor-workspace-heading,
+    .av-professor-answer-card__header,
+    .av-professor-modal__footer,
+    .av-professor-modal__footer > div {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .av-professor-list-heading,
+    .av-professor-context {
+        margin-bottom: 1.25rem;
+    }
+
+    .av-professor-list-heading h2,
+    .av-professor-context h2,
+    .av-professor-modal h2,
+    .av-professor-workspace-heading h3 {
+        margin: .25rem 0 0;
+        color: #0f172a;
+        font-weight: 750;
+        letter-spacing: -.025em;
+    }
+
+    .av-professor-list-heading h2,
+    .av-professor-context h2 {
+        font-size: clamp(1.25rem, 2vw, 1.65rem);
+    }
+
+    .av-professor-list-heading p,
+    .av-professor-context p,
+    .av-professor-modal p,
+    .av-professor-evaluation-card p,
+    .av-professor-class-toggle p {
+        margin: .35rem 0 0;
+        color: #64748b;
+        font-size: .85rem;
+    }
+
+    .av-professor-eyebrow {
+        color: #2563eb;
+        font-size: .72rem;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+
+    .av-professor-evaluation-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr));
+        gap: 1rem;
+    }
+
+    .av-professor-evaluation-card,
+    .av-professor-class-card,
+    .av-professor-empty {
+        border: 1px solid #dbe4f0;
+        border-radius: 1rem;
+        background: #fff;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, .05);
+    }
+
+    .av-professor-evaluation-card {
+        display: flex;
+        min-height: 15rem;
+        flex-direction: column;
+        padding: 1.2rem;
+    }
+
+    .av-professor-evaluation-card__top {
+        color: #64748b;
+        font-size: .78rem;
+    }
+
+    .av-professor-status {
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        padding: .3rem .6rem;
+        border-radius: 999px;
+        background: #dcfce7;
+        color: #047857;
+        font-size: .72rem;
+        font-weight: 750;
+    }
+
+    .av-professor-status--blocked {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+
+    .av-professor-evaluation-card__body {
+        flex: 1;
+        padding: 1.5rem 0;
+    }
+
+    .av-professor-evaluation-card__body > span {
+        color: #2563eb;
+        font-size: .76rem;
+        font-weight: 700;
+    }
+
+    .av-professor-evaluation-card h3 {
+        margin: .45rem 0 0;
+        color: #0f172a;
+        font-size: 1.05rem;
+        line-height: 1.4;
+    }
+
+    .av-professor-evaluation-card .gi-action {
+        justify-content: center;
+        width: 100%;
+    }
+
+    .av-professor-empty {
+        padding: 3.5rem 1.5rem;
+        text-align: center;
+    }
+
+    .av-professor-empty strong {
+        display: block;
+        color: #0f172a;
+        font-size: 1rem;
+    }
+
+    .av-professor-empty p {
+        margin: .4rem 0 0;
+        color: #64748b;
+    }
+
+    .av-professor-back {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        margin-bottom: 1rem;
+        color: #2563eb;
+        font-size: .82rem;
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    .av-professor-class-list {
+        display: grid;
+        gap: .8rem;
+    }
+
+    .av-professor-class-card {
+        overflow: hidden;
+        transition: border-color .2s ease, box-shadow .2s ease;
+    }
+
+    .av-professor-class-card.is-open {
+        border-color: #93c5fd;
+        box-shadow: 0 14px 36px rgba(37, 99, 235, .09);
+    }
+
+    .av-professor-class-toggle {
+        width: 100%;
+        border: 0;
+        background: transparent;
+        padding: 1rem 1.15rem;
+        color: inherit;
+        cursor: pointer;
+        text-align: left;
+    }
+
+    .av-professor-class-toggle__title,
+    .av-professor-class-toggle__side {
+        display: flex;
+        align-items: center;
+        gap: .8rem;
+    }
+
+    .av-professor-class-icon,
+    .av-professor-navigation-avatar,
+    .av-professor-navigation-index {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        width: 2.25rem;
+        height: 2.25rem;
+        border-radius: .7rem;
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-size: .8rem;
+        font-weight: 800;
+    }
+
+    .av-professor-class-toggle h3 {
+        margin: 0;
+        color: #0f172a;
+        font-size: .98rem;
+        font-weight: 750;
+    }
+
+    .av-professor-load-hint {
+        color: #64748b;
+        font-size: .78rem;
+    }
+
+    .av-professor-compact-progress {
+        display: grid;
+        grid-template-columns: auto auto;
+        width: 12rem;
+        gap: .25rem .75rem;
+        color: #475569;
+        font-size: .72rem;
+    }
+
+    .av-professor-compact-progress > span:nth-child(2) {
+        text-align: right;
+    }
+
+    .av-professor-compact-progress .av-progress-track {
+        grid-column: 1 / -1;
+    }
+
+    .av-professor-components {
+        border-top: 1px solid #e2e8f0;
+        padding: 1rem 1.15rem 1.2rem;
+        background: #f8fafc;
+    }
+
+    .av-professor-components.is-loading {
+        opacity: .65;
+        pointer-events: none;
+    }
+
+    .av-professor-components__heading {
+        margin-bottom: .85rem;
+        color: #475569;
+        font-size: .78rem;
+    }
+
+    .av-professor-components__heading strong,
+    .av-professor-components__heading span {
+        display: block;
+    }
+
+    .av-professor-components__heading strong {
+        color: #0f172a;
+        font-size: .88rem;
+    }
+
+    .av-professor-component-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+        gap: .7rem;
+    }
+
+    .av-professor-component-card {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        align-items: stretch;
+        gap: .35rem;
+        border: 1px solid #dbe4f0;
+        border-radius: .8rem;
+        background: #fff;
+        padding: .9rem;
+        color: inherit;
+        cursor: pointer;
+        text-align: left;
+        transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+    }
+
+    .av-professor-component-card:hover {
+        transform: translateY(-1px);
+        border-color: #93c5fd;
+        box-shadow: 0 8px 20px rgba(37, 99, 235, .08);
+    }
+
+    .av-professor-component-card__name {
+        overflow: hidden;
+        color: #0f172a;
+        font-size: .9rem;
+        font-weight: 750;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .av-professor-component-card__teacher,
+    .av-professor-component-card__meta {
+        color: #64748b;
+        font-size: .72rem;
+    }
+
+    .av-professor-component-card__action {
+        margin-top: .35rem;
+        color: #2563eb;
+        font-size: .76rem;
+        font-weight: 750;
+    }
+
+    .av-professor-modal-backdrop {
+        position: fixed;
+        z-index: 70;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 1.25rem;
+        background: rgba(15, 23, 42, .62);
+        backdrop-filter: blur(3px);
+    }
+
+    .av-professor-modal {
+        display: flex;
+        width: min(96rem, 100%);
+        max-height: calc(100vh - 2.5rem);
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid #dbe4f0;
+        border-radius: 1rem;
+        background: #fff;
+        box-shadow: 0 28px 70px rgba(15, 23, 42, .3);
+    }
+
+    .av-professor-modal__header {
+        padding: 1rem 1.2rem;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .av-professor-modal__header h2 {
+        font-size: 1.2rem;
+    }
+
+    .av-professor-modal__close {
+        display: grid;
+        place-items: center;
+        width: 2.35rem;
+        height: 2.35rem;
+        border: 1px solid #dbe4f0;
+        border-radius: .7rem;
+        background: #fff;
+        color: #475569;
+        font-size: 1.4rem;
+        cursor: pointer;
+    }
+
+    .av-professor-modal__tabs {
+        display: flex;
+        gap: .35rem;
+        padding: .65rem 1.2rem;
+        border-bottom: 1px solid #e2e8f0;
+        background: #f8fafc;
+    }
+
+    .av-professor-modal__tabs button {
+        border: 1px solid transparent;
+        border-radius: .65rem;
+        background: transparent;
+        padding: .55rem .85rem;
+        color: #64748b;
+        font-size: .8rem;
+        font-weight: 750;
+        cursor: pointer;
+    }
+
+    .av-professor-modal__tabs button.is-active {
+        border-color: #bfdbfe;
+        background: #fff;
+        color: #1d4ed8;
+        box-shadow: 0 3px 10px rgba(37, 99, 235, .08);
+    }
+
+    .av-professor-modal__body {
+        display: grid;
+        grid-template-columns: minmax(17rem, 22rem) minmax(0, 1fr);
+        min-height: 0;
+        flex: 1;
+        overflow: hidden;
+    }
+
+    .av-professor-modal__navigation,
+    .av-professor-modal__workspace {
+        min-height: 0;
+        overflow-y: auto;
+    }
+
+    .av-professor-modal__navigation {
+        padding: 1rem;
+        border-right: 1px solid #e2e8f0;
+        background: #f8fafc;
+    }
+
+    .av-professor-modal__navigation > strong {
+        display: block;
+        margin-bottom: .7rem;
+        color: #475569;
+        font-size: .76rem;
+        text-transform: uppercase;
+        letter-spacing: .055em;
+    }
+
+    .av-professor-navigation-list {
+        display: grid;
+        gap: .4rem;
+    }
+
+    .av-professor-navigation-list button {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        gap: .65rem;
+        border: 1px solid transparent;
+        border-radius: .75rem;
+        background: transparent;
+        padding: .65rem;
+        color: inherit;
+        cursor: pointer;
+        text-align: left;
+    }
+
+    .av-professor-navigation-list button:hover,
+    .av-professor-navigation-list button.is-active {
+        border-color: #bfdbfe;
+        background: #fff;
+    }
+
+    .av-professor-navigation-list button.is-active {
+        box-shadow: inset 3px 0 #2563eb;
+    }
+
+    .av-professor-navigation-list button > span:last-child {
+        min-width: 0;
+    }
+
+    .av-professor-navigation-list strong,
+    .av-professor-navigation-list small {
+        display: block;
+    }
+
+    .av-professor-navigation-list strong {
+        display: -webkit-box;
+        overflow: hidden;
+        color: #0f172a;
+        font-size: .78rem;
+        line-height: 1.35;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+    }
+
+    .av-professor-navigation-list small {
+        margin-top: .2rem;
+        color: #64748b;
+        font-size: .68rem;
+    }
+
+    .av-professor-navigation-index {
+        width: 1.8rem;
+        height: 1.8rem;
+        border-radius: .55rem;
+    }
+
+    .av-professor-modal__workspace {
+        padding: 1rem 1.15rem 1.5rem;
+    }
+
+    .av-professor-workspace-heading {
+        align-items: flex-start;
+        margin-bottom: 1rem;
+    }
+
+    .av-professor-workspace-heading h3 {
+        max-width: 58rem;
+        font-size: 1rem;
+        line-height: 1.45;
+    }
+
+    .av-professor-workspace-heading > span {
+        flex: 0 0 auto;
+        border-radius: 999px;
+        background: #eff6ff;
+        padding: .35rem .65rem;
+        color: #1d4ed8;
+        font-size: .7rem;
+        font-weight: 750;
+    }
+
+    .av-professor-answer-list,
+    .av-professor-answer-group {
+        display: grid;
+        gap: .75rem;
+    }
+
+    .av-professor-answer-group {
+        gap: 0;
+        overflow: hidden;
+        border: 1px solid #dbe4f0;
+        border-radius: .85rem;
+    }
+
+    .av-professor-answer-group .av-professor-answer-card,
+    .av-professor-answer-group .av-professor-complementary {
+        border: 0;
+        border-radius: 0;
+    }
+
+    .av-professor-answer-group .av-professor-complementary {
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .av-professor-answer-card,
+    .av-professor-complementary {
+        border: 1px solid #dbe4f0;
+        border-radius: .85rem;
+        background: #fff;
+        padding: .9rem;
+    }
+
+    .av-professor-answer-card__header {
+        align-items: flex-start;
+        margin-bottom: .75rem;
+    }
+
+    .av-professor-answer-card__header strong,
+    .av-professor-answer-card__header span {
+        display: block;
+    }
+
+    .av-professor-answer-card__header strong {
+        color: #0f172a;
+        font-size: .85rem;
+        line-height: 1.4;
+    }
+
+    .av-professor-answer-card__header div > span,
+    .av-professor-origin {
+        margin-top: .2rem;
+        color: #64748b;
+        font-size: .7rem;
+    }
+
+    .av-professor-origin {
+        margin: -.3rem 0 .7rem;
+    }
+
+    .av-professor-answer-fields {
+        display: grid;
+        grid-template-columns: minmax(13rem, .8fr) minmax(16rem, 1.2fr);
+        gap: .75rem;
+    }
+
+    .av-professor-answer-fields .gi-field > span,
+    .av-professor-complementary > span {
+        display: block;
+        margin-bottom: .35rem;
+        color: #475569;
+        font-size: .72rem;
+        font-weight: 700;
+    }
+
+    .av-professor-field-placeholder {
+        display: flex;
+        min-height: 2.75rem;
+        align-items: center;
+        border: 1px dashed #cbd5e1;
+        border-radius: .65rem;
+        padding: .65rem .75rem;
+        color: #94a3b8;
+        font-size: .72rem;
+    }
+
+    .av-professor-complementary {
+        display: block;
+        background: #f8fafc;
+    }
+
+    .av-professor-selection-empty {
+        display: grid;
+        min-height: 20rem;
+        place-content: center;
+        justify-items: center;
+        color: #64748b;
+        text-align: center;
+    }
+
+    .av-professor-selection-empty > span {
+        margin-bottom: .75rem;
+        color: #93c5fd;
+        font-size: 2rem;
+    }
+
+    .av-professor-selection-empty strong {
+        color: #0f172a;
+    }
+
+    .av-professor-selection-empty p {
+        max-width: 22rem;
+    }
+
+    .av-professor-modal__footer {
+        min-height: 4.2rem;
+        padding: .75rem 1.2rem;
+        border-top: 1px solid #e2e8f0;
+        color: #047857;
+        font-size: .74rem;
+    }
+
+    .av-professor-modal__footer .is-error {
+        color: #b91c1c;
+    }
+
+    @media (max-width: 800px) {
+        .av-professor-list-heading,
+        .av-professor-context__row,
+        .av-professor-class-toggle,
+        .av-professor-modal__header,
+        .av-professor-workspace-heading,
+        .av-professor-modal__footer {
+            align-items: flex-start;
+        }
+
+        .av-professor-class-toggle__side {
+            align-self: stretch;
+            justify-content: space-between;
+        }
+
+        .av-professor-class-toggle,
+        .av-professor-modal__footer {
+            flex-direction: column;
+        }
+
+        .av-professor-modal-backdrop {
+            padding: 0;
+        }
+
+        .av-professor-modal {
+            width: 100%;
+            max-height: 100vh;
+            border-radius: 0;
+        }
+
+        .av-professor-modal__body {
+            display: block;
+            overflow-y: auto;
+        }
+
+        .av-professor-modal__navigation,
+        .av-professor-modal__workspace {
+            overflow: visible;
+        }
+
+        .av-professor-modal__navigation {
+            border-right: 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .av-professor-navigation-list {
+            display: flex;
+            overflow-x: auto;
+            padding-bottom: .25rem;
+        }
+
+        .av-professor-navigation-list button {
+            min-width: 15rem;
+        }
+
+        .av-professor-answer-fields {
+            grid-template-columns: 1fr;
+        }
+
+        .av-professor-modal__footer > div,
+        .av-professor-modal__footer .gi-action {
+            width: 100%;
+        }
+
+        .av-professor-modal__footer .gi-action {
+            justify-content: center;
+        }
+    }
+
+    :root.dark .av-professor-evaluation-card,
+    :root.dark .av-professor-class-card,
+    :root.dark .av-professor-modal,
+    :root.dark .av-professor-component-card,
+    :root.dark .av-professor-answer-card,
+    :root.dark .av-professor-navigation-list button:hover,
+    :root.dark .av-professor-navigation-list button.is-active {
+        border-color: rgba(148, 163, 184, .25);
+        background: #111827;
+    }
+
+    :root.dark .av-professor-components,
+    :root.dark .av-professor-modal__tabs,
+    :root.dark .av-professor-modal__navigation,
+    :root.dark .av-professor-complementary {
+        border-color: rgba(148, 163, 184, .2);
+        background: #0f172a;
+    }
+
+    :root.dark .av-professor-list-heading h2,
+    :root.dark .av-professor-context h2,
+    :root.dark .av-professor-modal h2,
+    :root.dark .av-professor-workspace-heading h3,
+    :root.dark .av-professor-evaluation-card h3,
+    :root.dark .av-professor-class-toggle h3,
+    :root.dark .av-professor-components__heading strong,
+    :root.dark .av-professor-component-card__name,
+    :root.dark .av-professor-navigation-list strong,
+    :root.dark .av-professor-answer-card__header strong,
+    :root.dark .av-professor-selection-empty strong,
+    :root.dark .av-professor-empty strong {
+        color: #f8fafc;
+    }
+</style>

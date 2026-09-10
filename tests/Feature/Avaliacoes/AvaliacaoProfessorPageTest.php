@@ -3,6 +3,7 @@
 namespace Tests\Feature\Avaliacoes;
 
 use App\Jobs\RebuildAvaliacaoDashboardFactsJob;
+use App\Livewire\Avaliacoes\AvaliacaoTurmaProfessorWorkspace;
 use App\Livewire\Avaliacoes\AvaliacaoTurmaWorkspace;
 use App\Models\Alternativa;
 use App\Models\Aluno;
@@ -117,12 +118,43 @@ class AvaliacaoProfessorPageTest extends TestCase
         $avaliacaoInativa->turmas()->attach($turma->id);
         $this->sincronizarEscopoAvaliacao($avaliacaoInativa, [$serie->id], [$componenteMatematica->id], [$escola->id]);
 
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno Fluxo Professor',
+            'cgm' => 'CGM-FLUXO-001',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turma->id,
+        ]);
+
         $this->actingAs($userProfessor)
             ->get(route('filament.admin.pages.avaliacoes-professor'))
             ->assertOk()
+            ->assertSee('Escolha uma avaliação para começar')
+            ->assertSee('Avaliar')
             ->assertSee('Avaliacao Matematica')
             ->assertDontSee('Avaliacao Historia')
             ->assertDontSee('Avaliacao Inativa');
+
+        Livewire::actingAs($userProfessor)
+            ->test(AvaliacaoTurmaProfessorWorkspace::class, [
+                ...$this->workspaceProfessorParams(),
+                'avaliacaoId' => $avaliacaoVisivel->id,
+            ])
+            ->assertSee('Abra uma turma para visualizar os componentes')
+            ->assertSee('Turma A')
+            ->assertDontSee('Pauta de Matematica')
+            ->call('abrirTurma', $turma->id)
+            ->assertSet('turma', $turma->id)
+            ->assertSee('Matematica')
+            ->call('abrirComponente', $turma->id, $componenteMatematica->id)
+            ->assertSet('componenteModalId', $componenteMatematica->id)
+            ->assertSee('Por pautas')
+            ->assertSee('Por alunos')
+            ->assertSee('Salvar alterações')
+            ->call('selecionarPautaModal', $pautaMatematica->id)
+            ->assertSee('Aluno Fluxo Professor')
+            ->call('definirVisualizacao', 'alunos')
+            ->call('selecionarAlunoModal', $aluno->id)
+            ->assertSee('Pauta de Matematica');
     }
 
     public function test_professor_filtra_por_serie_e_visualiza_turmas_agrupadas(): void
@@ -528,7 +560,7 @@ class AvaliacaoProfessorPageTest extends TestCase
         Livewire::actingAs($userProfessor)
             ->test(AvaliacaoTurmaWorkspace::class, $this->workspaceProfessorParams())
             ->set('avaliacao', $avaliacao->id)
-            ->set('serieEscola', $escola->id.':'.$serie->id)
+            ->set('serieEscola', $escola->id . ':' . $serie->id)
             ->set("respostas.{$pauta->id}.{$alunoPreenchido->id}.alternativa_id", $alternativaNao->id)
             ->set("respostas.{$pauta->id}.{$alunoPreenchido->id}.observacao", $observacaoManual)
             ->set("respostas.{$pauta->id}.{$alunoComRespostaSemObservacao->id}.alternativa_id", $alternativaParcial->id)
@@ -951,7 +983,7 @@ class AvaliacaoProfessorPageTest extends TestCase
         Livewire::actingAs($userProfessor)
             ->test(AvaliacaoTurmaWorkspace::class, $this->workspaceProfessorParams())
             ->set('avaliacao', $avaliacao->id)
-            ->set('serieEscola', $escola->id . ':' . $serie->id)
+            ->set('serieEscola', $escola->id.':'.$serie->id)
             ->assertSee('Salvar')
             ->assertDontSee('Exportar')
             ->assertDontSee('Concluir turma');

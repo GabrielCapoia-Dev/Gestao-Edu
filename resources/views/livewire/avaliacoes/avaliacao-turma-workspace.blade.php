@@ -51,6 +51,9 @@
         autosaveFalhou = true;
     ">
     <div class="gi-page av-page av-professor-page">
+        @if ($this->interfaceProfessorEmLista())
+            @include('livewire.avaliacoes.partials.avaliacao-turma-professor-content')
+        @else
         @if ($this->modoAcompanhamento())
             <section class="gi-panel av-professor-control-panel">
                 @php($progresso = $this->progresso)
@@ -922,9 +925,10 @@
             @endif
 
         @endif
+        @endif
     </div>
 
-    @if ($this->podeResponder())
+    @if ($this->podeResponder() && ! $this->interfaceProfessorEmLista())
         <button
             x-cloak
             x-show="alteracoesPendentes || autosaveConfirmado"
@@ -1052,7 +1056,9 @@
                 return wire ? { id, $wire: wire } : null;
             };
 
-            const rowFor = (element) => element.closest('tr') || element.closest('[data-av-autosave-root]');
+            const rowFor = (element) => element.closest('[data-av-response-row]')
+                || element.closest('tr')
+                || element.closest('[data-av-autosave-root]');
 
             const fieldInRow = (row, suffix) => Array.from(row?.querySelectorAll('[data-av-editavel]') || [])
                 .find((field) => String(wirePath(field) || '').endsWith(suffix));

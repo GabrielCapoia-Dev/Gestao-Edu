@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Avaliacoes;
 
+use App\Exceptions\AvaliacaoRespostaConcorrenteException;
 use App\Models\Alternativa;
 use App\Models\Aluno;
 use App\Models\Avaliacao;
@@ -12,14 +13,12 @@ use App\Models\Professor;
 use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
-use App\Exceptions\AvaliacaoRespostaConcorrenteException;
 use App\Services\Avaliacoes\AvaliacaoAlunoDocumentoService;
 use App\Services\Avaliacoes\AvaliacaoPersistencia;
 use App\Services\Avaliacoes\AvaliacaoRespostaStore;
 use App\Services\Avaliacoes\AvaliacaoSnapshotService;
-use App\Services\Avaliacoes\AvaliacaoTurmaCicloService;
-use App\Services\Exports\ExportRequestService;
 use App\Services\Avaliacoes\TurmaAvaliacaoAlunoScopeService;
+use App\Services\Exports\ExportRequestService;
 use App\Services\PessoaScopeService;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Collection;
@@ -67,7 +66,6 @@ class AvaliacaoTurmaWorkspace extends Component
     public array $informacoesComplementaresPersistidas = [];
 
     public array $informacaoVersoes = [];
-
 
     public array $alternativasPorPauta = [];
 
@@ -252,6 +250,11 @@ class AvaliacaoTurmaWorkspace extends Component
     public function modoAcompanhamento(): bool
     {
         return $this->modo === 'acompanhamento';
+    }
+
+    public function interfaceProfessorEmLista(): bool
+    {
+        return false;
     }
 
     public function podeResponder(): bool
@@ -1129,27 +1132,38 @@ class AvaliacaoTurmaWorkspace extends Component
         // valores com vários megabytes e pode estourar a memória ao desserializar.
         $avaliacoes = $query
             ->with([
-                'tipo' => fn ($tipo) => $tipo->with([
-                    'alternativas' => fn ($alternativas) => $alternativas->where('status', true),
-                ]),
+                'tipo' => fn ($tipo) => $tipo->when(
+                    $this->modoAcompanhamento() || $this->avaliacao,
+                    fn ($tipo) => $tipo->with([
+                        'alternativas' => fn ($alternativas) => $alternativas->where('status', true),
+                    ]),
+                ),
                 'pautas' => fn ($pautas) => $pautas
                     ->where('status', true)
-                    ->when($this->serie, fn ($query) => $query
+                    ->when($this->serie && ! $this->interfaceProfessorEmLista(), fn ($query) => $query
                         ->where(fn ($serieQuery) => $serieQuery
                             ->whereNull('serie_id')
                             ->orWhere('serie_id', (int) $this->serie)))
-                    ->with([
-                        'componente:id,nome',
-                        'tipo' => fn ($tipo) => $tipo->with([
+                    ->when(
+                        $this->modoAcompanhamento() || $this->avaliacao,
+                        fn ($pautas) => $pautas->with([
+                            'componente:id,nome',
+                            'tipo' => fn ($tipo) => $tipo->with([
+                                'alternativas' => fn ($alternativas) => $alternativas->where('status', true),
+                            ]),
                             'alternativas' => fn ($alternativas) => $alternativas->where('status', true),
                         ]),
-                        'alternativas' => fn ($alternativas) => $alternativas->where('status', true),
-                    ]),
+                    ),
                 'turmas' => function ($turmas): void {
-                    if ($this->turma) {
+                    if ($this->modoAcompanhamento() && $this->turma) {
                         $turmas->whereKey((int) $this->turma);
-                        $this->aplicarEscopoEscolasPermitidas($turmas);
                     }
+
+                    if ($this->deveRestringirAsTurmasDoProfessor()) {
+                        $turmas->whereIn('turmas.id', $this->turmaIdsProfessor);
+                    }
+
+                    $this->aplicarEscopoEscolasPermitidas($turmas);
 
                     $turmas->with(['escola:id,nome', 'serie:id,nome']);
                 },
@@ -1751,7 +1765,7 @@ class AvaliacaoTurmaWorkspace extends Component
             ->toArray();
     }
 
-    private function filtrarTurmasDaAvaliacao(Avaliacao $avaliacao): Collection
+    protected function filtrarTurmasDaAvaliacao(Avaliacao $avaliacao): Collection
     {
         return $avaliacao->turmas
             ->filter(function (Turma $turma) use ($avaliacao): bool {
@@ -2291,9 +2305,9 @@ class AvaliacaoTurmaWorkspace extends Component
                 (int) $this->avaliacao,
                 $turmaId,
                 $aluno,
-            $componenteId,
-            $informacoes !== '' ? $informacoes : null,
-            $this->professorIdParaRegistro($turmaId, $componenteId > 0 ? $componenteId : null),
+                $componenteId,
+                $informacoes !== '' ? $informacoes : null,
+                $this->professorIdParaRegistro($turmaId, $componenteId > 0 ? $componenteId : null),
                 ($this->informacaoVersoes[$componenteId][$alunoId] ?? 0) > 0
                     ? (int) $this->informacaoVersoes[$componenteId][$alunoId]
                     : null,
