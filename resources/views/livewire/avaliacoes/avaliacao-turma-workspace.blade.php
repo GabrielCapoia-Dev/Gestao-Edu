@@ -1072,6 +1072,10 @@
                 const requiresObservation = element.selectedOptions[0]?.dataset.requiresObservation === '1';
                 const hasObservationField = Boolean(fieldInRow(row, '.observacao'));
 
+                if (row?.querySelector('[data-av-observation-field]')) {
+                    return true;
+                }
+
                 // A normal alternative can be saved without rebuilding the matrix.
                 // Transitions that show/hide the required textarea still use the
                 // existing Livewire render once to preserve the current UX.
@@ -1086,8 +1090,8 @@
                     const alternativeField = fieldInRow(row, '.alternativa_id');
                     const observationField = fieldInRow(row, '.observacao');
                     const alternativaId = alternativeField?.value ? Number(alternativeField.value) : null;
-                    const observacao = observationField?.value?.trim() || null;
                     const requerObservacao = alternativeField?.selectedOptions[0]?.dataset.requiresObservation === '1';
+                    const observacao = requerObservacao ? (observationField?.value?.trim() || null) : null;
                     const alternativaPersistida = alternativeField?.dataset.avAutosaveExpectedAlternativa || null;
                     const observacaoPersistida = alternativeField?.dataset.avAutosaveExpectedObservacao || null;
 
@@ -1101,6 +1105,7 @@
                             : element.value,
                         alternativa_id: alternativaId,
                         observacao,
+                        requer_observacao: requerObservacao,
                         completaAntes: respostaEstaCompleta(
                             alternativaPersistida,
                             observacaoPersistida,
@@ -1254,6 +1259,28 @@
                 }
 
                 const path = wirePath(element);
+
+                if (element.tagName === 'SELECT' && path?.startsWith('respostas.')) {
+                    const row = rowFor(element);
+                    const observationField = row?.querySelector('[data-av-observation-field]');
+
+                    if (observationField) {
+                        const selected = element.selectedOptions[0];
+                        const requiresObservation = selected?.dataset.requiresObservation === '1';
+                        const locked = observationField.dataset.avObservationLocked === '1';
+                        observationField.disabled = !requiresObservation || locked;
+                        observationField.placeholder = requiresObservation
+                            ? (selected?.dataset.observationPlaceholder || 'Observação obrigatória')
+                            : 'Selecione uma alternativa que exija observação.';
+
+                        if (!requiresObservation) {
+                            observationField.value = '';
+                            const count = observationField.closest('.av-input-wrap')?.querySelector('.av-char-count');
+                            if (count) count.textContent = '0/1500';
+                        }
+                    }
+                }
+
                 if (!path || !directAutosaveAllowed(element, path)) {
                     return;
                 }
@@ -1277,6 +1304,14 @@
                     component.$wire.set(path, element.tagName === 'SELECT'
                         ? (element.value ? Number(element.value) : null)
                         : element.value, false);
+                }
+
+                const state = stateFor(element, path);
+                if (state?.tipo === 'resposta'
+                    && state.campo === 'alternativa_id'
+                    && state.requer_observacao
+                    && !state.observacao) {
+                    return;
                 }
 
                 schedule(element, path, element.tagName === 'TEXTAREA' ? 700 : 0);

@@ -22,11 +22,55 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
 
     public ?int $serieNavegacaoId = null;
 
+    public array $progressoAvaliacoesProfessor = [];
+
+    public bool $progressoAvaliacoesProfessorPronto = false;
+
     protected ?Collection $turmasDaAvaliacaoProfessorCache = null;
+
+    protected ?Collection $escolasNavegacaoCache = null;
+
+    protected ?Collection $seriesNavegacaoCache = null;
 
     protected ?Collection $componentesNavegacaoCache = null;
 
-    protected ?array $progressoAvaliacoesProfessorCache = null;
+    protected ?int $totalTurmasNavegacaoCache = null;
+
+    public function mount(
+        ?int $avaliacaoId = null,
+        ?int $turmaId = null,
+        ?int $escolaId = null,
+        ?int $serieId = null,
+        ?int $initialComponenteId = null,
+        string $modo = 'professor',
+        bool $canEdit = false,
+    ): void {
+        parent::mount($avaliacaoId, $turmaId, $escolaId, $serieId, $initialComponenteId, $modo, $canEdit);
+
+        if ($this->modoAcompanhamento() || ! $this->avaliacao) {
+            return;
+        }
+
+        if ($this->turma && ! $this->serie) {
+            $turmaSelecionada = $this->novaConsultaTurmasNavegacao()
+                ->where('turmas.id', (int) $this->turma)
+                ->select(['turmas.id_serie', 'turmas.id_escola'])
+                ->first();
+            $this->serie = $turmaSelecionada?->id_serie ? (int) $turmaSelecionada->id_serie : null;
+            $this->escola = $turmaSelecionada?->id_escola ? (int) $turmaSelecionada->id_escola : null;
+        }
+
+        $this->serieNavegacaoId = $this->serie;
+        $this->escolaNavegacaoId = $this->agrupaNavegacaoPorEscola() ? $this->escola : null;
+
+        if ($this->turma) {
+            $this->turmasExpandidas = [(int) $this->turma];
+        }
+
+        if ($this->turma && $initialComponenteId !== null) {
+            $this->abrirComponente((int) $this->turma, $initialComponenteId);
+        }
+    }
 
     public function interfaceProfessorEmLista(): bool
     {
@@ -115,37 +159,71 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
             return $this->turmasDaAvaliacaoProfessorCache;
         }
 
-        if (! $this->avaliacao || ! $this->avaliacoesDisponiveis->contains('id', (int) $this->avaliacao)) {
+        $serieId = (int) ($this->serieNavegacaoId ?? $this->serie ?? 0);
+        if ($serieId <= 0 || ! $this->avaliacao || ! $this->avaliacoesDisponiveis->contains('id', (int) $this->avaliacao)) {
             return $this->turmasDaAvaliacaoProfessorCache = collect();
         }
 
-        $query = Turma::query()
-            ->join('avaliacao_turma as at_nav', 'at_nav.turma_id', '=', 'turmas.id')
-            ->where('at_nav.avaliacao_id', (int) $this->avaliacao)
-            ->whereExists(function ($pautas): void {
-                $pautas
-                    ->selectRaw('1')
-                    ->from('avaliacao_pauta as ap_nav')
-                    ->join('pautas as p_nav', 'p_nav.id', '=', 'ap_nav.pauta_id')
-                    ->where('ap_nav.avaliacao_id', (int) $this->avaliacao)
-                    ->where('p_nav.status', true)
-                    ->where(fn ($series) => $series
-                        ->whereNull('p_nav.serie_id')
-                        ->orWhereColumn('p_nav.serie_id', 'turmas.id_serie'));
-
-                $this->aplicarEscopoProfessorNasPautas($pautas, 'turmas', 'p_nav');
-            })
+        $query = $this->novaConsultaTurmasNavegacao()
+            ->where('turmas.id_serie', $serieId)
+            ->when(
+                $this->agrupaNavegacaoPorEscola(),
+                fn (Builder $turmas) => $turmas->where('turmas.id_escola', (int) $this->escolaNavegacaoId),
+            )
             ->select('turmas.*')
             ->distinct()
             ->with(['escola:id,nome', 'serie:id,nome']);
 
-        $this->aplicarEscopoTurmasNavegacao($query, 'turmas');
-
         return $this->turmasDaAvaliacaoProfessorCache = $query
-            ->orderBy('turmas.id_escola')
-            ->orderBy('turmas.id_serie')
             ->orderBy('turmas.nome')
             ->get();
+    }
+
+    public function getEscolasNavegacaoProperty(): Collection
+    {
+        if ($this->escolasNavegacaoCache instanceof Collection) {
+            return $this->escolasNavegacaoCache;
+        }
+
+        if (! $this->agrupaNavegacaoPorEscola() || ! $this->avaliacao) {
+            return $this->escolasNavegacaoCache = collect();
+        }
+
+        return $this->escolasNavegacaoCache = $this->novaConsultaTurmasNavegacao()
+            ->join('escolas as e_nav', 'e_nav.id', '=', 'turmas.id_escola')
+            ->selectRaw('turmas.id_escola as escola_id, e_nav.nome as escola_nome, COUNT(DISTINCT turmas.id) as turmas_total')
+            ->groupBy('turmas.id_escola', 'e_nav.nome')
+            ->orderBy('e_nav.nome')
+            ->get();
+    }
+
+    public function getSeriesNavegacaoProperty(): Collection
+    {
+        if ($this->seriesNavegacaoCache instanceof Collection) {
+            return $this->seriesNavegacaoCache;
+        }
+
+        if (! $this->avaliacao || ($this->agrupaNavegacaoPorEscola() && ! $this->escolaNavegacaoId)) {
+            return $this->seriesNavegacaoCache = collect();
+        }
+
+        return $this->seriesNavegacaoCache = $this->novaConsultaTurmasNavegacao()
+            ->join('series as s_nav', 's_nav.id', '=', 'turmas.id_serie')
+            ->when(
+                $this->agrupaNavegacaoPorEscola(),
+                fn (Builder $turmas) => $turmas->where('turmas.id_escola', (int) $this->escolaNavegacaoId),
+            )
+            ->selectRaw('turmas.id_serie as serie_id, s_nav.nome as serie_nome, COUNT(DISTINCT turmas.id) as turmas_total')
+            ->groupBy('turmas.id_serie', 's_nav.nome')
+            ->orderBy('s_nav.nome')
+            ->get();
+    }
+
+    public function getTotalTurmasNavegacaoProperty(): int
+    {
+        return $this->totalTurmasNavegacaoCache ??= $this->avaliacao
+            ? $this->novaConsultaTurmasNavegacao()->distinct()->count('turmas.id')
+            : 0;
     }
 
     public function getComponentesNavegacaoDaTurmaProperty(): Collection
@@ -212,10 +290,10 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
             ->values();
     }
 
-    public function getProgressoAvaliacoesProfessorProperty(): array
+    public function carregarProgressoAvaliacoesProfessor(): void
     {
-        if (is_array($this->progressoAvaliacoesProfessorCache)) {
-            return $this->progressoAvaliacoesProfessorCache;
+        if ($this->progressoAvaliacoesProfessorPronto || $this->avaliacao) {
+            return;
         }
 
         $ids = $this->avaliacoesDisponiveis
@@ -228,11 +306,12 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
             $this->deveFiltrarPorProfessor() ? $this->professorIds : null,
         );
 
-        return $this->progressoAvaliacoesProfessorCache = collect($dados)
+        $this->progressoAvaliacoesProfessor = collect($dados)
             ->mapWithKeys(fn ($item, $avaliacaoId): array => [
                 (int) $avaliacaoId => (int) round((float) ($item->percentual ?? 0)),
             ])
             ->all();
+        $this->progressoAvaliacoesProfessorPronto = true;
     }
 
     public function agrupaNavegacaoPorEscola(): bool
@@ -244,7 +323,7 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
     {
         abort_unless(
             $this->agrupaNavegacaoPorEscola()
-                && $this->turmasDaAvaliacaoProfessor->contains('id_escola', $escolaId),
+                && $this->escolasNavegacao->contains('escola_id', $escolaId),
             403,
         );
 
@@ -256,11 +335,7 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
 
     public function selecionarSerieNavegacao(int $serieId): void
     {
-        $turmas = $this->turmasDaAvaliacaoProfessor
-            ->when($this->agrupaNavegacaoPorEscola(), fn (Collection $itens) => $itens
-                ->where('id_escola', (int) $this->escolaNavegacaoId));
-
-        abort_unless($turmas->contains('id_serie', $serieId), 403);
+        abort_unless($this->seriesNavegacao->contains('serie_id', $serieId), 403);
 
         $this->serieNavegacaoId = $serieId;
         $this->turmasExpandidas = [];
@@ -288,6 +363,12 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
             return $this->turmasDisponiveisCache;
         }
 
+        if ($this->componenteModalId === null) {
+            return $this->turmasDisponiveisCache = $this->turma
+                ? $this->turmasDaAvaliacaoProfessor->where('id', (int) $this->turma)->values()
+                : collect();
+        }
+
         $turmas = parent::getTurmasDisponiveisProperty();
 
         if (! $this->turma) {
@@ -299,6 +380,18 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
             ->values();
     }
 
+    public function updatedTurma(): void
+    {
+        $turma = $this->turma
+            ? $this->turmasDaAvaliacaoProfessor->firstWhere('id', (int) $this->turma)
+            : null;
+
+        $this->serie = $turma?->id_serie ? (int) $turma->id_serie : null;
+        $this->escola = $turma?->id_escola ? (int) $turma->id_escola : null;
+        $this->serieEscola = $this->serie && $this->escola ? $this->escola.':'.$this->serie : null;
+        $this->limparDadosDoEscopo(true);
+    }
+
     public function definirVisualizacao(string $visualizacao): void
     {
         if (! in_array($visualizacao, ['pautas', 'alunos'], true) || $this->visualizacao === $visualizacao) {
@@ -308,6 +401,9 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
         $this->visualizacao = $visualizacao;
         $this->pautaModalId = null;
         $this->alunoEmFoco = null;
+        $this->pautaEmMassaGlobal = null;
+        $this->alunoEmMassaGlobal = null;
+        $this->avaliacaoEmMassaGlobal = null;
     }
 
     public function abrirTurma(int $turmaId): void
@@ -342,6 +438,8 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
         $this->alunoEmFoco = null;
         $this->limparDadosDoEscopo();
         $this->carregarDadosDoEscopo();
+        $this->turmaEmMassaGlobal = $turmaId;
+        $this->componenteEmMassaGlobal = $componenteId;
     }
 
     public function fecharComponente(): void
@@ -364,6 +462,9 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
         );
 
         $this->pautaModalId = $pautaId;
+        $this->pautaEmMassaGlobal = $pautaId;
+        $this->alunoEmMassaGlobal = null;
+        $this->avaliacaoEmMassaGlobal = null;
     }
 
     public function selecionarAlunoModal(int $alunoId): void
@@ -374,6 +475,41 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
         );
 
         $this->alunoEmFoco = $alunoId;
+        $this->alunoEmMassaGlobal = $alunoId;
+        $this->pautaEmMassaGlobal = null;
+        $this->avaliacaoEmMassaGlobal = null;
+    }
+
+    public function getAlternativasEmMassaModalProperty(): Collection
+    {
+        $alternativas = $this->visualizacao === 'pautas' && $this->pautaModal
+            ? collect($this->alternativasDaPauta((int) $this->pautaModal->id))
+            : $this->alternativasEmMassaDisponiveis;
+
+        return $alternativas
+            ->reject(fn (array $alternativa): bool => (bool) ($alternativa['tem_observacao'] ?? false))
+            ->unique(fn (array $alternativa): int => (int) $alternativa['id'])
+            ->sortBy(fn (array $alternativa): string => (string) $alternativa['nome'])
+            ->values();
+    }
+
+    public function aplicarEmMassaNoModal(): void
+    {
+        abort_unless(
+            $this->turma
+                && $this->componenteModalId !== null
+                && (($this->visualizacao === 'pautas' && $this->pautaModalId)
+                    || ($this->visualizacao === 'alunos' && $this->alunoEmFoco)),
+            403,
+        );
+
+        $this->turmaEmMassaGlobal = (int) $this->turma;
+        $this->componenteEmMassaGlobal = $this->componenteModalId;
+        $this->pautaEmMassaGlobal = $this->visualizacao === 'pautas' ? $this->pautaModalId : null;
+        $this->alunoEmMassaGlobal = $this->visualizacao === 'alunos' ? $this->alunoEmFoco : null;
+        $this->aplicarEmMassaNaSerie();
+        $this->carregarRespostas();
+        $this->avaliacaoEmMassaGlobal = null;
     }
 
     public function getGrupoComponenteModalProperty(): ?array
@@ -427,6 +563,30 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
             $this->aplicarEscopoTurmasNavegacao($escopo, 't_nav');
             $this->aplicarEscopoProfessorNasPautas($escopo, 't_nav', 'p_nav');
         });
+    }
+
+    private function novaConsultaTurmasNavegacao(): Builder
+    {
+        $query = Turma::query()
+            ->join('avaliacao_turma as at_nav', 'at_nav.turma_id', '=', 'turmas.id')
+            ->where('at_nav.avaliacao_id', (int) $this->avaliacao)
+            ->whereExists(function ($pautas): void {
+                $pautas
+                    ->selectRaw('1')
+                    ->from('avaliacao_pauta as ap_nav')
+                    ->join('pautas as p_nav', 'p_nav.id', '=', 'ap_nav.pauta_id')
+                    ->where('ap_nav.avaliacao_id', (int) $this->avaliacao)
+                    ->where('p_nav.status', true)
+                    ->where(fn ($series) => $series
+                        ->whereNull('p_nav.serie_id')
+                        ->orWhereColumn('p_nav.serie_id', 'turmas.id_serie'));
+
+                $this->aplicarEscopoProfessorNasPautas($pautas, 'turmas', 'p_nav');
+            });
+
+        $this->aplicarEscopoTurmasNavegacao($query, 'turmas');
+
+        return $query;
     }
 
     private function aplicarEscopoTurmasNavegacao($query, string $alias): void

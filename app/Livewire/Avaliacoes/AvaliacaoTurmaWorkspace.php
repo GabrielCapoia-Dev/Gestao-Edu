@@ -77,6 +77,8 @@ class AvaliacaoTurmaWorkspace extends Component
 
     public ?int $componenteEmMassaGlobal = null;
 
+    public ?int $pautaEmMassaGlobal = null;
+
     public array $pautasExpandidas = [];
 
     public array $alunosExpandidos = [];
@@ -216,7 +218,7 @@ class AvaliacaoTurmaWorkspace extends Component
             }
         }
 
-        if ($this->avaliacao && $this->serie) {
+        if ($this->avaliacao && $this->serie && ($this->modoAcompanhamento() || $this->deveCarregarDadosAoSelecionarTurma())) {
             $this->carregarDadosDoEscopo();
 
             if (! $this->modoAcompanhamento() && $this->turma) {
@@ -1678,6 +1680,7 @@ class AvaliacaoTurmaWorkspace extends Component
         $this->avaliacaoEmMassaGlobal = null;
         $this->alunoEmMassaGlobal = null;
         $this->componenteEmMassaGlobal = null;
+        $this->pautaEmMassaGlobal = null;
         $this->pautasExpandidas = [];
         $this->alunosExpandidos = [];
         $this->componentesExpandidos = [];
@@ -1986,7 +1989,7 @@ class AvaliacaoTurmaWorkspace extends Component
             : Professor::query()->whereIn('id', $professorIds->all())->pluck('nome', 'id')->all();
     }
 
-    private function carregarRespostas(): void
+    protected function carregarRespostas(): void
     {
         $pautas = $this->pautasDisponiveis;
         $alunos = $this->alunosDaSerie;
@@ -2496,15 +2499,18 @@ class AvaliacaoTurmaWorkspace extends Component
     {
         $pautas = $this->pautasDaTurma($turmaId);
 
-        if ($this->componenteEmMassaGlobal === null) {
-            return $pautas;
+        if ($this->componenteEmMassaGlobal !== null) {
+            $componenteId = (int) $this->componenteEmMassaGlobal;
+            $pautas = $pautas
+                ->filter(fn (Pauta $pauta): bool => (int) ($pauta->componente_curricular_id ?? 0) === $componenteId);
         }
 
-        $componenteId = (int) $this->componenteEmMassaGlobal;
+        if ($this->pautaEmMassaGlobal !== null) {
+            $pautaId = (int) $this->pautaEmMassaGlobal;
+            $pautas = $pautas->filter(fn (Pauta $pauta): bool => (int) $pauta->id === $pautaId);
+        }
 
-        return $pautas
-            ->filter(fn (Pauta $pauta): bool => (int) ($pauta->componente_curricular_id ?? 0) === $componenteId)
-            ->values();
+        return $pautas->values();
     }
 
     private function alternativaDaPauta(int $pautaId, ?int $alternativaId): ?array

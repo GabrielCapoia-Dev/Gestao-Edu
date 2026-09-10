@@ -16,10 +16,10 @@
             <p>Não há avaliações abertas para seus componentes neste momento.</p>
         </section>
     @else
-        <div class="av-professor-evaluation-list">
+        <div class="av-professor-evaluation-list" wire:init="carregarProgressoAvaliacoesProfessor">
             @foreach ($this->avaliacoesDisponiveis as $avaliacaoItem)
                 @php($avaliacaoUrl = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacaoItem->id]))
-                @php($percentualAvaliacao = $this->progressoAvaliacoesProfessor[$avaliacaoItem->id] ?? 0)
+                @php($percentualAvaliacao = $progressoAvaliacoesProfessor[$avaliacaoItem->id] ?? null)
                 <article class="av-professor-evaluation-card" wire:key="avaliacao-professor-{{ $avaliacaoItem->id }}">
                     <div class="av-professor-evaluation-card__body">
                         <span>{{ $avaliacaoItem->tipo?->nome ?? 'Avaliação' }}</span>
@@ -32,12 +32,12 @@
                     <div class="av-professor-evaluation-progress">
                         <div>
                             <span>Progresso</span>
-                            <strong>{{ $percentualAvaliacao }}%</strong>
+                            <strong>{{ $percentualAvaliacao === null ? '—' : $percentualAvaliacao.'%' }}</strong>
                         </div>
                         <div class="av-progress-track">
-                            <div class="av-progress-bar" style="width: {{ $percentualAvaliacao }}%"></div>
+                            <div class="av-progress-bar" style="width: {{ $percentualAvaliacao ?? 0 }}%"></div>
                         </div>
-                        <small>{{ max(100 - $percentualAvaliacao, 0) }}% pendente</small>
+                        <small>{{ $percentualAvaliacao === null ? 'Calculando progresso...' : max(100 - $percentualAvaliacao, 0).'% pendente' }}</small>
                     </div>
                     <a class="gi-action gi-action--primary" href="{{ $avaliacaoUrl }}" wire:navigate>
                         Avaliar
@@ -48,7 +48,6 @@
         </div>
     @endif
 @else
-    @php($turmasNavegacao = $this->turmasDaAvaliacaoProfessor)
     @php($exibirEscolas = $this->agrupaNavegacaoPorEscola() && ! $escolaNavegacaoId)
     @php($exibirSeries = ! $exibirEscolas && ! $serieNavegacaoId)
     @php($exibirTurmas = ! $exibirEscolas && ! $exibirSeries)
@@ -70,7 +69,7 @@
                     {{ $exibirEscolas ? 'Selecione uma escola para visualizar as séries.' : ($exibirSeries ? 'Selecione uma série para visualizar as turmas.' : 'Abra uma turma para visualizar seus componentes.') }}
                 </p>
             </div>
-            <span class="av-workspace-count">{{ $turmasNavegacao->count() }} {{ $turmasNavegacao->count() === 1 ? 'turma' : 'turmas' }}</span>
+            <span class="av-workspace-count">{{ $this->totalTurmasNavegacao }} {{ $this->totalTurmasNavegacao === 1 ? 'turma' : 'turmas' }}</span>
         </div>
     </section>
 
@@ -79,60 +78,85 @@
     @endif
 
     @if ($exibirEscolas)
-        <section x-data="{ busca: '' }">
+        <section x-data="{ busca: '', faixa: '' }">
             <div class="av-professor-filter-bar">
                 <label class="av-professor-search">
                     <span class="sr-only">Buscar escola</span>
-                    <input type="search" x-model.debounce.150ms="busca" placeholder="Buscar escola...">
+                    <x-filament::input.wrapper inline-prefix :prefix-icon="\Filament\Support\Icons\Heroicon::MagnifyingGlass">
+                        <x-filament::input type="search" x-model.debounce.150ms="busca" placeholder="Buscar escola..." />
+                    </x-filament::input.wrapper>
+                </label>
+                <label class="av-professor-filter-select">
+                    <span class="sr-only">Filtrar escolas</span>
+                    <x-filament::input.wrapper>
+                        <x-filament::input.select x-model="faixa">
+                            <option value="">Todas as escolas</option>
+                            <option value="uma">Com uma turma</option>
+                            <option value="varias">Com várias turmas</option>
+                        </x-filament::input.select>
+                    </x-filament::input.wrapper>
                 </label>
             </div>
-            <div class="av-professor-navigation-grid">
-                @foreach ($turmasNavegacao->groupBy('id_escola') as $escolaId => $turmasEscola)
-                    @php($escolaNome = $turmasEscola->first()?->escola?->nome ?? 'Escola não informada')
-                    <button type="button" data-search="{{ mb_strtolower($escolaNome) }}" x-show="$el.dataset.search.includes(busca.toLowerCase())" wire:click="selecionarEscolaNavegacao({{ $escolaId }})">
+            <div class="av-professor-index-list">
+                @foreach ($this->escolasNavegacao as $escolaItem)
+                    <button type="button" data-search="{{ mb_strtolower($escolaItem->escola_nome) }}" data-count="{{ $escolaItem->turmas_total }}" x-show="$el.dataset.search.includes(busca.toLowerCase()) && (!faixa || (faixa === 'uma' ? Number($el.dataset.count) === 1 : Number($el.dataset.count) > 1))" wire:click="selecionarEscolaNavegacao({{ $escolaItem->escola_id }})">
                         <span class="av-professor-class-icon">E</span>
-                        <span><strong>{{ $escolaNome }}</strong><small>{{ $turmasEscola->count() }} turmas</small></span>
+                        <span><strong>{{ $escolaItem->escola_nome }}</strong><small>{{ $escolaItem->turmas_total }} {{ (int) $escolaItem->turmas_total === 1 ? 'turma' : 'turmas' }}</small></span>
                         <span aria-hidden="true">→</span>
                     </button>
                 @endforeach
             </div>
         </section>
     @elseif ($exibirSeries)
-        @php($turmasDasSeries = $this->agrupaNavegacaoPorEscola() ? $turmasNavegacao->where('id_escola', (int) $escolaNavegacaoId) : $turmasNavegacao)
-        <section x-data="{ busca: '' }">
+        <section x-data="{ busca: '', faixa: '' }">
             <div class="av-professor-filter-bar">
                 <label class="av-professor-search">
                     <span class="sr-only">Buscar série</span>
-                    <input type="search" x-model.debounce.150ms="busca" placeholder="Buscar série...">
+                    <x-filament::input.wrapper inline-prefix :prefix-icon="\Filament\Support\Icons\Heroicon::MagnifyingGlass">
+                        <x-filament::input type="search" x-model.debounce.150ms="busca" placeholder="Buscar série..." />
+                    </x-filament::input.wrapper>
+                </label>
+                <label class="av-professor-filter-select">
+                    <span class="sr-only">Filtrar séries</span>
+                    <x-filament::input.wrapper>
+                        <x-filament::input.select x-model="faixa">
+                            <option value="">Todas as séries</option>
+                            <option value="uma">Com uma turma</option>
+                            <option value="varias">Com várias turmas</option>
+                        </x-filament::input.select>
+                    </x-filament::input.wrapper>
                 </label>
             </div>
-            <div class="av-professor-navigation-grid">
-                @foreach ($turmasDasSeries->groupBy('id_serie') as $serieId => $turmasSerie)
-                    @php($serieNome = $turmasSerie->first()?->serie?->nome ?? 'Série não informada')
-                    <button type="button" data-search="{{ mb_strtolower($serieNome) }}" x-show="$el.dataset.search.includes(busca.toLowerCase())" wire:click="selecionarSerieNavegacao({{ $serieId }})">
+            <div class="av-professor-index-list">
+                @foreach ($this->seriesNavegacao as $serieItem)
+                    <button type="button" data-search="{{ mb_strtolower($serieItem->serie_nome) }}" data-count="{{ $serieItem->turmas_total }}" x-show="$el.dataset.search.includes(busca.toLowerCase()) && (!faixa || (faixa === 'uma' ? Number($el.dataset.count) === 1 : Number($el.dataset.count) > 1))" wire:click="selecionarSerieNavegacao({{ $serieItem->serie_id }})">
                         <span class="av-professor-class-icon">S</span>
-                        <span><strong>{{ $serieNome }}</strong><small>{{ $turmasSerie->count() }} {{ $turmasSerie->count() === 1 ? 'turma' : 'turmas' }}</small></span>
+                        <span><strong>{{ $serieItem->serie_nome }}</strong><small>{{ $serieItem->turmas_total }} {{ (int) $serieItem->turmas_total === 1 ? 'turma' : 'turmas' }}</small></span>
                         <span aria-hidden="true">→</span>
                     </button>
                 @endforeach
             </div>
         </section>
     @else
-        @php($turmasFiltradas = $turmasNavegacao->where('id_serie', (int) $serieNavegacaoId)->when($this->agrupaNavegacaoPorEscola(), fn ($itens) => $itens->where('id_escola', (int) $escolaNavegacaoId)))
+        @php($turmasFiltradas = $this->turmasDaAvaliacaoProfessor)
         <section x-data="{ busca: '', turno: '' }">
             <div class="av-professor-filter-bar">
                 <label class="av-professor-search">
                     <span class="sr-only">Buscar turma</span>
-                    <input type="search" x-model.debounce.150ms="busca" placeholder="Buscar turma...">
+                    <x-filament::input.wrapper inline-prefix :prefix-icon="\Filament\Support\Icons\Heroicon::MagnifyingGlass">
+                        <x-filament::input type="search" x-model.debounce.150ms="busca" placeholder="Buscar turma..." />
+                    </x-filament::input.wrapper>
                 </label>
-                <label>
+                <label class="av-professor-filter-select">
                     <span class="sr-only">Filtrar por turno</span>
-                    <select x-model="turno">
-                        <option value="">Todos os turnos</option>
-                        @foreach ($turmasFiltradas->pluck('turno')->filter()->unique()->sort() as $turnoOpcao)
-                            <option value="{{ mb_strtolower($turnoOpcao) }}">{{ ucfirst($turnoOpcao) }}</option>
-                        @endforeach
-                    </select>
+                    <x-filament::input.wrapper>
+                        <x-filament::input.select x-model="turno">
+                            <option value="">Todos os turnos</option>
+                            @foreach ($turmasFiltradas->pluck('turno')->filter()->unique()->sort() as $turnoOpcao)
+                                <option value="{{ mb_strtolower($turnoOpcao) }}">{{ ucfirst($turnoOpcao) }}</option>
+                            @endforeach
+                        </x-filament::input.select>
+                    </x-filament::input.wrapper>
                 </label>
             </div>
 
@@ -231,6 +255,7 @@
                                     </div>
                                     <span>{{ $alunosModal->count() }} {{ $alunosModal->count() === 1 ? 'aluno' : 'alunos' }}</span>
                                 </div>
+                                @include('livewire.avaliacoes.partials.avaliacao-em-massa-professor')
                                 <div class="gi-table-wrap av-professor-student-table">
                                     <table class="gi-table">
                                         <thead><tr><th>Aluno</th><th>Alternativa</th><th>Observação</th></tr></thead>
@@ -282,6 +307,7 @@
                                     </div>
                                     <span>{{ $alunoSelecionado->cgm ? 'CGM '.$alunoSelecionado->cgm : 'Sem CGM' }}</span>
                                 </div>
+                                @include('livewire.avaliacoes.partials.avaliacao-em-massa-professor')
                                 <div class="av-professor-answer-list">
                                     @foreach ($this->pautasDoComponenteModal as $pautaItem)
                                         @include('livewire.avaliacoes.partials.avaliacao-resposta-professor', [

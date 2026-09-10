@@ -177,37 +177,27 @@
 
     .av-professor-filter-bar {
         display: flex;
+        align-items: center;
         justify-content: flex-end;
         gap: .65rem;
         margin-bottom: .8rem;
-    }
-
-    .av-professor-filter-bar input,
-    .av-professor-filter-bar select {
-        min-height: 2.6rem;
-        border: 1px solid #cbd5e1;
-        border-radius: .7rem;
-        background: #fff;
-        padding: .55rem .75rem;
-        color: #0f172a;
-        font-size: .8rem;
     }
 
     .av-professor-search {
         width: min(24rem, 100%);
     }
 
-    .av-professor-search input {
-        width: 100%;
+    .av-professor-filter-select {
+        width: min(14rem, 100%);
     }
 
-    .av-professor-navigation-grid {
+    .av-professor-index-list {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
-        gap: .7rem;
+        grid-template-columns: minmax(0, 1fr);
+        gap: .5rem;
     }
 
-    .av-professor-navigation-grid > button {
+    .av-professor-index-list > button {
         display: grid;
         grid-template-columns: auto minmax(0, 1fr) auto;
         align-items: center;
@@ -215,29 +205,29 @@
         border: 1px solid #dbe4f0;
         border-radius: .85rem;
         background: #fff;
-        padding: .9rem;
+        padding: .8rem 1rem;
         color: #2563eb;
         cursor: pointer;
         text-align: left;
-        transition: border-color .15s ease, transform .15s ease;
+        transition: border-color .15s ease, background .15s ease;
     }
 
-    .av-professor-navigation-grid > button:hover {
-        transform: translateY(-1px);
+    .av-professor-index-list > button:hover {
         border-color: #93c5fd;
+        background: #f8fbff;
     }
 
-    .av-professor-navigation-grid strong,
-    .av-professor-navigation-grid small {
+    .av-professor-index-list strong,
+    .av-professor-index-list small {
         display: block;
     }
 
-    .av-professor-navigation-grid strong {
+    .av-professor-index-list strong {
         color: #0f172a;
         font-size: .86rem;
     }
 
-    .av-professor-navigation-grid small {
+    .av-professor-index-list small {
         margin-top: .2rem;
         color: #64748b;
         font-size: .72rem;
@@ -622,6 +612,42 @@
         min-height: 3.25rem;
     }
 
+    .av-professor-student-table .av-textarea-input:disabled,
+    .av-professor-answer-fields .av-textarea-input:disabled {
+        border-style: dashed;
+        background: #f8fafc;
+        color: #94a3b8;
+        cursor: not-allowed;
+    }
+
+    .av-professor-bulk {
+        display: grid;
+        grid-template-columns: minmax(14rem, 1fr) minmax(14rem, 20rem) auto;
+        align-items: center;
+        gap: .75rem;
+        margin: 0 0 1rem;
+        border: 1px solid #bfdbfe;
+        border-radius: .8rem;
+        background: #eff6ff;
+        padding: .75rem;
+    }
+
+    .av-professor-bulk strong,
+    .av-professor-bulk span {
+        display: block;
+    }
+
+    .av-professor-bulk strong {
+        color: #1e3a8a;
+        font-size: .78rem;
+    }
+
+    .av-professor-bulk div > span {
+        margin-top: .2rem;
+        color: #64748b;
+        font-size: .68rem;
+    }
+
     .av-professor-row-blocked {
         color: #b91c1c !important;
     }
@@ -794,9 +820,14 @@
         }
 
         .av-professor-filter-bar label,
-        .av-professor-filter-bar input,
-        .av-professor-filter-bar select {
+        .av-professor-bulk,
+        .av-professor-bulk label,
+        .av-professor-bulk .gi-action {
             width: 100%;
+        }
+
+        .av-professor-bulk {
+            grid-template-columns: 1fr;
         }
 
         .av-professor-modal-backdrop {
@@ -859,7 +890,8 @@
     :root.dark .av-professor-answer-card,
     :root.dark .av-professor-navigation-list button:hover,
     :root.dark .av-professor-navigation-list button.is-active,
-    :root.dark .av-professor-navigation-grid > button {
+    :root.dark .av-professor-index-list > button,
+    :root.dark .av-professor-bulk {
         border-color: rgba(148, 163, 184, .25);
         background: #111827;
     }
@@ -877,19 +909,13 @@
         background: #111827;
     }
 
-    :root.dark .av-professor-filter-bar input,
-    :root.dark .av-professor-filter-bar select {
-        border-color: rgba(148, 163, 184, .25);
-        background: #111827;
-        color: #f8fafc;
-    }
-
     :root.dark .av-professor-list-heading h2,
     :root.dark .av-professor-context h2,
     :root.dark .av-professor-modal h2,
     :root.dark .av-professor-workspace-heading h3,
     :root.dark .av-professor-evaluation-card h3,
-    :root.dark .av-professor-navigation-grid strong,
+    :root.dark .av-professor-index-list strong,
+    :root.dark .av-professor-bulk strong,
     :root.dark .av-professor-class-toggle h3,
     :root.dark .av-professor-components__heading strong,
     :root.dark .av-professor-component-card__name,

@@ -41,7 +41,7 @@
                 @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)>
                 <option value="">Selecione uma alternativa</option>
                 @foreach ($alternativasPauta as $alternativa)
-                    <option value="{{ $alternativa['id'] }}" data-requires-observation="{{ ($alternativa['tem_observacao'] ?? false) ? 1 : 0 }}">
+                    <option value="{{ $alternativa['id'] }}" data-requires-observation="{{ ($alternativa['tem_observacao'] ?? false) ? 1 : 0 }}" data-observation-placeholder="{{ $alternativa['observacao'] ?? 'Observação obrigatória' }}">
                         {{ $alternativa['nome'] }}{{ ($alternativa['tem_observacao'] ?? false) ? ' (exige observação)' : '' }}
                     </option>
                 @endforeach
@@ -50,30 +50,29 @@
 
         <label class="gi-field">
             <span>Observação da pauta</span>
-            @if ($requerObservacao)
-                @php($observacaoAtual = (string) ($respostas[$pautaId][$alunoId]['observacao'] ?? ''))
-                <div class="av-input-wrap" x-data="{ count: @js(mb_strlen($observacaoAtual)) }" x-init="$nextTick(() => count = $refs.field.value.length)">
-                    <textarea
-                        x-ref="field"
-                        x-on:input="count = $event.target.value.length"
-                        maxlength="1500"
-                        placeholder="{{ $this->placeholderObservacaoAlternativa($pautaId, $alternativaSelecionadaId) }}"
-                        class="av-table-input av-textarea-input"
-                        data-av-editavel
-                        data-av-autosave-turma-id="{{ $turmaIdAtual }}"
-                        data-av-autosave-version="{{ $respostaVersoes[$pautaId][$alunoId] ?? 0 }}"
-                        data-av-autosave-expected-alternativa="{{ $respostas[$pautaId][$alunoId]['alternativa_id'] ?? '' }}"
-                        data-av-autosave-expected-observacao="{{ $respostas[$pautaId][$alunoId]['observacao'] ?? '' }}"
-                        wire:model.live.debounce.700ms="respostas.{{ $pautaId }}.{{ $alunoId }}.observacao"
-                        @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)></textarea>
-                    <div class="av-field-meta">
-                        <small class="av-field-hint av-field-hint--danger">Obrigatória para esta alternativa.</small>
-                        <small class="av-char-count" x-text="`${count}/1500`"></small>
-                    </div>
+            @php($observacaoAtual = (string) ($respostas[$pautaId][$alunoId]['observacao'] ?? ''))
+            @php($observacaoBloqueada = ! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)
+            <div class="av-input-wrap" x-data="{ count: @js(mb_strlen($observacaoAtual)) }" x-init="$nextTick(() => count = $refs.field.value.length)">
+                <textarea
+                    x-ref="field"
+                    x-on:input="count = $event.target.value.length"
+                    maxlength="1500"
+                    placeholder="{{ $requerObservacao ? $this->placeholderObservacaoAlternativa($pautaId, $alternativaSelecionadaId) : 'Selecione uma alternativa que exija observação.' }}"
+                    class="av-table-input av-textarea-input"
+                    data-av-editavel
+                    data-av-observation-field
+                    data-av-observation-locked="{{ $observacaoBloqueada ? 1 : 0 }}"
+                    data-av-autosave-turma-id="{{ $turmaIdAtual }}"
+                    data-av-autosave-version="{{ $respostaVersoes[$pautaId][$alunoId] ?? 0 }}"
+                    data-av-autosave-expected-alternativa="{{ $respostas[$pautaId][$alunoId]['alternativa_id'] ?? '' }}"
+                    data-av-autosave-expected-observacao="{{ $respostas[$pautaId][$alunoId]['observacao'] ?? '' }}"
+                    wire:model.live.debounce.700ms="respostas.{{ $pautaId }}.{{ $alunoId }}.observacao"
+                    @disabled(! $requerObservacao || $observacaoBloqueada)></textarea>
+                <div class="av-field-meta">
+                    <small class="av-field-hint {{ $requerObservacao ? 'av-field-hint--danger' : '' }}">{{ $requerObservacao ? 'Obrigatória para esta alternativa.' : 'Será habilitada quando necessária.' }}</small>
+                    <small class="av-char-count" x-text="`${count}/1500`"></small>
                 </div>
-            @else
-                <div class="av-professor-field-placeholder">Disponível somente quando a alternativa exigir observação.</div>
-            @endif
+            </div>
         </label>
     </div>
 </article>

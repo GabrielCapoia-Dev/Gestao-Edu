@@ -35,6 +35,7 @@ class AvaliacaoProfessorPageTest extends TestCase
     public function test_professor_visualiza_apenas_avaliacoes_pendentes_dos_componentes_que_leciona(): void
     {
         Permission::findOrCreate('Responder Avaliações');
+        Permission::findOrCreate('Preencher Avaliações em Massa');
 
         $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer', 'status' => true]);
         $periodo = PeriodoAvaliacao::query()->create(['nome' => '1o Semestre', 'status' => true]);
@@ -58,6 +59,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             'email_verified_at' => now(),
         ]);
         $userProfessor->givePermissionTo('Responder Avaliações');
+        $userProfessor->givePermissionTo('Preencher Avaliações em Massa');
 
         $professor = Professor::query()->create([
             'user_id' => $userProfessor->id,
@@ -132,10 +134,17 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->assertSee('Escolha uma avaliação para começar')
             ->assertSee('Avaliar')
             ->assertSee('Progresso')
-            ->assertSee('100% pendente')
+            ->assertSee('Calculando progresso')
             ->assertSee('Avaliacao Matematica')
             ->assertDontSee('Avaliacao Historia')
             ->assertDontSee('Avaliacao Inativa');
+
+        Livewire::actingAs($userProfessor)
+            ->test(AvaliacaoTurmaProfessorWorkspace::class, $this->workspaceProfessorParams())
+            ->assertSee('Calculando progresso')
+            ->call('carregarProgressoAvaliacoesProfessor')
+            ->assertSet('progressoAvaliacoesProfessorPronto', true)
+            ->assertSee('100% pendente');
 
         Livewire::actingAs($userProfessor)
             ->test(AvaliacaoTurmaProfessorWorkspace::class, [
@@ -160,6 +169,12 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->assertSee('Salvar alterações')
             ->call('selecionarPautaModal', $pautaMatematica->id)
             ->assertSee('Aluno Fluxo Professor')
+            ->assertSee('Avaliar em massa')
+            ->assertSee('Selecione uma alternativa que exija observação.')
+            ->assertSeeHtml('data-av-observation-field')
+            ->set('avaliacaoEmMassaGlobal', $alternativa->id)
+            ->call('aplicarEmMassaNoModal')
+            ->assertSet("respostas.{$pautaMatematica->id}.{$aluno->id}.alternativa_id", $alternativa->id)
             ->call('definirVisualizacao', 'alunos')
             ->call('selecionarAlunoModal', $aluno->id)
             ->assertSee('Pauta de Matematica');
