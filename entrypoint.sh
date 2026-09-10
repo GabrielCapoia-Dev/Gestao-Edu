@@ -283,6 +283,7 @@ start_web_runtime() {
 
         sed \
             -e "s|__NGINX_SERVER_NAME__|${NGINX_SERVER_NAME:-gestaoedu.umuarama.pr.gov.br}|g" \
+            -e "s|__NGINX_ROBOTS_POLICY__|${NGINX_ROBOTS_POLICY:-index, follow}|g" \
             -e "s|__NGINX_SSL_CERTIFICATE__|${certificate}|g" \
             -e "s|__NGINX_SSL_CERTIFICATE_KEY__|${certificate_key}|g" \
             "$template" > /etc/nginx/conf.d/default.conf
