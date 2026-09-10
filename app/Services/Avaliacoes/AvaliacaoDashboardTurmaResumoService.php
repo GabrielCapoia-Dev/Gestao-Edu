@@ -18,6 +18,8 @@ use Illuminate\Support\Facades\Schema;
  */
 class AvaliacaoDashboardTurmaResumoService
 {
+    public const TOTAL_COMPONENT_KEY = 4294967295;
+
     public function disponivel(): bool
     {
         return Schema::hasTable('avaliacao_dashboard_turma_resumos');
@@ -100,7 +102,7 @@ class AvaliacaoDashboardTurmaResumoService
             'avaliacao_id' => $avaliacaoId,
             'turma_id' => $turmaId,
             'componente_curricular_id' => null,
-            'componente_chave' => 0,
+            'componente_chave' => self::TOTAL_COMPONENT_KEY,
             'preenchimentos_esperados' => $esperados->count(),
             'preenchimentos_respondidos' => min($respondidos->count(), $esperados->count()),
             'alunos_total' => $alunosTotal,
@@ -116,7 +118,7 @@ class AvaliacaoDashboardTurmaResumoService
             DB::table('avaliacao_dashboard_turma_resumos')
                 ->where('avaliacao_id', $avaliacaoId)
                 ->where('turma_id', $turmaId)
-                ->whereNotIn('componente_chave', $chaves->merge([0])->all())
+                ->whereNotIn('componente_chave', $chaves->merge([self::TOTAL_COMPONENT_KEY])->all())
                 ->delete();
 
             DB::table('avaliacao_dashboard_turma_resumos')->upsert(
@@ -128,6 +130,8 @@ class AvaliacaoDashboardTurmaResumoService
                     'preenchimentos_respondidos',
                     'alunos_total',
                     'alunos_pendentes',
+                    'pautas_total',
+                    'ultima_resposta_em',
                     'calculado_em',
                     'updated_at',
                 ],
@@ -188,6 +192,7 @@ class AvaliacaoDashboardTurmaResumoService
     {
         return DB::table('avaliacao_respostas_operacionais as ar')
             ->join('pautas as p', 'p.id', '=', 'ar.pauta_id')
+            ->join('alternativas as alt', 'alt.id', '=', 'ar.alternativa_id')
             ->join('alunos as aln', 'aln.id', '=', 'ar.aluno_id')
             ->where('ar.ciclo_id', (int) $ciclo->id)
             ->where('p.status', true)
@@ -197,6 +202,11 @@ class AvaliacaoDashboardTurmaResumoService
                     ->where('aln.status', '!=', Aluno::STATUS_PENDENTE)
                     ->orWhereNull('aln.pendencia_origem_aluno_id')
                     ->orWhere('aln.pendencia_origem_aluno_id', '<=', 0);
+            })
+            ->where(function (Builder $completas): void {
+                $completas
+                    ->where('alt.tem_observacao', false)
+                    ->orWhereRaw("TRIM(COALESCE(ar.observacao, '')) <> ''");
             })
             ->select('ar.aluno_id', 'ar.pauta_id', 'ar.respondido_em')
             ->selectRaw('COALESCE(p.componente_curricular_id, 0) as componente_chave')

@@ -3,6 +3,7 @@
 namespace App\Services\Avaliacoes;
 
 use App\Exceptions\AvaliacaoRespostaConcorrenteException;
+use App\Jobs\AtualizarAvaliacaoDashboardTurmaResumoJob;
 use App\Jobs\ProjetarAvaliacaoDocumentoCompatibilidadeJob;
 use App\Models\Aluno;
 use App\Models\AvaliacaoInformacaoOperacional;
@@ -713,7 +714,6 @@ class AvaliacaoRespostaStore
 
     protected function agendarResumoDashboard(int $avaliacaoId, int $turmaId): void
     {
-        // O caminho de escrita não consolida indicadores. O dashboard consulta
-        // as tabelas operacionais atuais apenas quando a tela é acessada.
+        AtualizarAvaliacaoDashboardTurmaResumoJob::dispatch($avaliacaoId, $turmaId)->afterCommit();
     }
 }

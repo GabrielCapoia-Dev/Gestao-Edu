@@ -126,6 +126,10 @@ class AvaliacaoDashboardProgressService
             return $resultado;
         }
 
+        if (app(AvaliacaoDashboardTurmaResumoService::class)->disponivel()) {
+            return $this->detalhadoPorResumos($resultado, $avaliacaoIds, $escolaIds, $professorIds);
+        }
+
         $alunosElegiveis = DB::table('alunos as aluno_progresso')
             ->whereIn('aluno_progresso.status', [Aluno::STATUS_MATRICULADO, Aluno::STATUS_PENDENTE])
             ->where(function (Builder $alunos): void {
@@ -257,6 +261,105 @@ class AvaliacaoDashboardProgressService
             $resultado[$avaliacaoId]['total'] += $total;
         }
 
+        return $this->finalizarResumos($resultado);
+    }
+
+    private function detalhadoPorResumos(array $resultado, array $avaliacaoIds, ?array $escolaIds, ?array $professorIds): array
+    {
+        $resumos = DB::table('avaliacao_dashboard_turma_resumos as resumo_rapido')
+            ->join('turmas as turma_rapida', 'turma_rapida.id', '=', 'resumo_rapido.turma_id')
+            ->whereIn('resumo_rapido.avaliacao_id', $avaliacaoIds);
+
+        if (is_array($escolaIds)) {
+            $resumos->whereIn('turma_rapida.id_escola', $this->ids($escolaIds));
+        }
+
+        if ($professorIds === null) {
+            $resumos->where('resumo_rapido.componente_chave', AvaliacaoDashboardTurmaResumoService::TOTAL_COMPONENT_KEY);
+        } else {
+            $professorIds = $this->ids($professorIds);
+            $resumos->where('resumo_rapido.componente_chave', '!=', AvaliacaoDashboardTurmaResumoService::TOTAL_COMPONENT_KEY);
+            $professorIds === []
+                ? $resumos->whereRaw('1 = 0')
+                : $resumos->where(function (Builder $componentes) use ($professorIds): void {
+                    $componentes
+                        ->whereNull('resumo_rapido.componente_curricular_id')
+                        ->orWhereExists(function ($vinculos) use ($professorIds): void {
+                            $vinculos
+                                ->selectRaw('1')
+                                ->from('turma_componente_professor as tcp_resumo')
+                                ->whereColumn('tcp_resumo.turma_id', 'turma_rapida.id')
+                                ->whereColumn('tcp_resumo.componente_curricular_id', 'resumo_rapido.componente_curricular_id')
+                                ->where('tcp_resumo.tem_professor', true)
+                                ->whereIn('tcp_resumo.professor_id', $professorIds);
+                        });
+                });
+        }
+
+        foreach ($resumos
+            ->groupBy('resumo_rapido.avaliacao_id', 'turma_rapida.id', 'turma_rapida.id_escola', 'turma_rapida.id_serie')
+            ->selectRaw('resumo_rapido.avaliacao_id, turma_rapida.id as turma_id, turma_rapida.id_escola as escola_id, turma_rapida.id_serie as serie_id')
+            ->selectRaw('SUM(resumo_rapido.preenchimentos_esperados) as total, SUM(resumo_rapido.preenchimentos_respondidos) as preenchidas')
+            ->get() as $linha) {
+            $avaliacaoId = (int) $linha->avaliacao_id;
+            $total = (int) $linha->total;
+            $preenchidas = min((int) $linha->preenchidas, $total);
+            $this->acumularLinha($resultado[$avaliacaoId], $linha, $preenchidas, $total);
+        }
+
+        $historicos = DB::table('avaliacao_snapshot_resumos_componentes as resumo_historico')
+            ->join('avaliacao_turma_ciclos as ciclo_historico', 'ciclo_historico.id', '=', 'resumo_historico.ciclo_id')
+            ->join('turmas as turma_historica', 'turma_historica.id', '=', 'ciclo_historico.turma_avaliativa_id')
+            ->whereIn('ciclo_historico.avaliacao_id', $avaliacaoIds)
+            ->where('ciclo_historico.status', 'concluida')
+            ->whereColumn('ciclo_historico.snapshot_evento_atual_id', 'resumo_historico.evento_id');
+
+        if (is_array($escolaIds)) {
+            $historicos->whereIn('turma_historica.id_escola', $this->ids($escolaIds));
+        }
+        if (is_array($professorIds)) {
+            $professorIds === []
+                ? $historicos->whereRaw('1 = 0')
+                : $historicos->where(function (Builder $componentes) use ($professorIds): void {
+                    $componentes
+                        ->whereNull('resumo_historico.componente_curricular_id')
+                        ->orWhereExists(function ($vinculos) use ($professorIds): void {
+                            $vinculos
+                                ->selectRaw('1')
+                                ->from('turma_componente_professor as tcp_historico_rapido')
+                                ->whereColumn('tcp_historico_rapido.turma_id', 'turma_historica.id')
+                                ->whereColumn('tcp_historico_rapido.componente_curricular_id', 'resumo_historico.componente_curricular_id')
+                                ->where('tcp_historico_rapido.tem_professor', true)
+                                ->whereIn('tcp_historico_rapido.professor_id', $professorIds);
+                        });
+                });
+        }
+
+        foreach ($historicos
+            ->groupBy('ciclo_historico.avaliacao_id', 'turma_historica.id', 'turma_historica.id_escola', 'turma_historica.id_serie')
+            ->selectRaw('ciclo_historico.avaliacao_id, turma_historica.id as turma_id, turma_historica.id_escola as escola_id, turma_historica.id_serie as serie_id')
+            ->selectRaw('SUM(resumo_historico.respostas_esperadas) as total, SUM(resumo_historico.respostas_concluidas) as preenchidas')
+            ->get() as $linha) {
+            $avaliacaoId = (int) $linha->avaliacao_id;
+            $total = (int) $linha->total;
+            $preenchidas = min((int) $linha->preenchidas, $total);
+            $this->acumularLinha($resultado[$avaliacaoId], $linha, $preenchidas, $total);
+        }
+
+        return $this->finalizarResumos($resultado);
+    }
+
+    private function acumularLinha(array &$resumo, object $linha, int $preenchidas, int $total): void
+    {
+        $this->acumularResumo($resumo, 'turmas', (int) $linha->turma_id, $preenchidas, $total);
+        $this->acumularResumo($resumo, 'series', (int) $linha->serie_id, $preenchidas, $total);
+        $this->acumularResumo($resumo, 'escolas', (int) $linha->escola_id, $preenchidas, $total);
+        $resumo['preenchidas'] += $preenchidas;
+        $resumo['total'] += $total;
+    }
+
+    private function finalizarResumos(array $resultado): array
+    {
         foreach ($resultado as &$resumo) {
             $resumo['percentual'] = $this->percentual($resumo['preenchidas'], $resumo['total']);
             foreach (['escolas', 'series', 'turmas'] as $nivel) {

@@ -25,10 +25,8 @@ class AtualizarAvaliacaoDashboardTurmaResumoJob implements ShouldBeUniqueUntilPr
         public readonly int $avaliacaoId,
         public readonly int $turmaId,
     ) {
-        $this->onConnection(config('queue.default') === 'sync'
-            ? 'sync'
-            : config('avaliacoes_dashboard.connection', 'dashboard_redis'));
-        $this->onQueue((string) config('avaliacoes_dashboard.queue', 'dashboard'));
+        $this->onConnection((string) config('queue.default'));
+        $this->onQueue('default');
     }
 
     public function uniqueId(): string

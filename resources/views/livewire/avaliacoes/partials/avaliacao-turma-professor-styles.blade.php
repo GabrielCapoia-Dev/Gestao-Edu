@@ -291,7 +291,14 @@
     }
 
     .av-professor-compact-progress .av-progress-track {
+        display: block;
         grid-column: 1 / -1;
+    }
+
+    .av-professor-compact-progress .av-progress-bar {
+        display: block;
+        min-height: 100%;
+        background: linear-gradient(90deg, #2563eb 0%, #1e40af 100%);
     }
 
     .av-professor-components {
