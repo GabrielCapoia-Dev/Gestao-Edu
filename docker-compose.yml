@@ -61,10 +61,10 @@ services:
       - "${DOCKER_HTTPS_PORT}:443"
     volumes:
       - .:/var/www
+      ##################################################################
+      #################### DIFERENTE DO SEU ############################
+      ##################################################################
       - ${NGINX_CONFIG_VOLUME}
-    ##################################################################
-    #################### DIFERENTE DO SEU ############################
-    ##################################################################
       - ${NGINX_CERTS_PATH:-./docker/certs}:/etc/nginx/certs:ro
     depends_on:
       db:
@@ -113,7 +113,7 @@ services:
       <<: *production-env
     entrypoint: []
     init: true
-    command: ["bash", "/var/www/entrypoint.sh", "queue-worker", "notifications"]
+    command: [ "bash", "/var/www/entrypoint.sh", "queue-worker", "notifications" ]
     volumes:
       - .:/var/www
     depends_on:
@@ -140,7 +140,7 @@ services:
       <<: *production-env
     entrypoint: []
     init: true
-    command: ["bash", "/var/www/entrypoint.sh", "queue-worker", "exports"]
+    command: [ "bash", "/var/www/entrypoint.sh", "queue-worker", "exports" ]
     volumes:
       - .:/var/www
     depends_on:
@@ -170,7 +170,7 @@ services:
       <<: *production-env
     entrypoint: []
     init: true
-    command: ["bash", "/var/www/entrypoint.sh", "queue-worker", "imports"]
+    command: [ "bash", "/var/www/entrypoint.sh", "queue-worker", "imports" ]
     volumes:
       - .:/var/www
     depends_on:
@@ -197,7 +197,7 @@ services:
       <<: *production-env
     entrypoint: []
     init: true
-    command: ["bash", "/var/www/entrypoint.sh", "queue-worker", "default"]
+    command: [ "bash", "/var/www/entrypoint.sh", "queue-worker", "default" ]
     volumes:
       - .:/var/www
     depends_on:
@@ -234,13 +234,10 @@ services:
       interval: 30s
       timeout: 5s
       retries: 20
-    ##################################################################
-    #################### DIFERENTE DO SEU ############################
-    ##################################################################
     deploy:
       resources:
         limits:
-          cpus: '0.5'  # Limita o banco a no máximo metade de 1 núcleo
+          cpus: '0.5' # Limita o banco a no máximo metade de 1 núcleo
     networks:
       - laravel_gestao-edu
 
