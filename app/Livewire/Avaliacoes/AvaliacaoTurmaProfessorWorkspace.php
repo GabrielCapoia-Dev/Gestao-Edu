@@ -7,6 +7,7 @@ use App\Models\Pauta;
 use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
 use App\Services\Avaliacoes\AvaliacaoDashboardProgressService;
+use App\Services\Avaliacoes\AvaliacaoPersistencia;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -25,6 +26,8 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
     public array $progressoAvaliacoesProfessor = [];
 
     public bool $progressoAvaliacoesProfessorPronto = false;
+
+    public array $progressoNavegacao = [];
 
     protected ?Collection $turmasDaAvaliacaoProfessorCache = null;
 
@@ -47,9 +50,17 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
     ): void {
         parent::mount($avaliacaoId, $turmaId, $escolaId, $serieId, $initialComponenteId, $modo, $canEdit);
 
-        if ($this->modoAcompanhamento() || ! $this->avaliacao) {
+        if ($this->modoAcompanhamento()) {
             return;
         }
+
+        if (! $this->avaliacao) {
+            $this->carregarProgressoAvaliacoesProfessor();
+
+            return;
+        }
+
+        $this->carregarProgressoNavegacao();
 
         if ($this->turma && ! $this->serie) {
             $turmaSelecionada = $this->novaConsultaTurmasNavegacao()
@@ -300,18 +311,39 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
             ->pluck('id')
             ->map(fn ($id): int => (int) $id)
             ->all();
-        $dados = app(AvaliacaoDashboardProgressService::class)->batch(
-            $ids,
-            $this->escolasPermitidasIds(),
-            $this->deveFiltrarPorProfessor() ? $this->professorIds : null,
-        );
+        $service = app(AvaliacaoDashboardProgressService::class);
+        $dados = app(AvaliacaoPersistencia::class)->leRelacional()
+            ? $service->detalhadoRapido(
+                $ids,
+                $this->escolasPermitidasIds(),
+                $this->deveFiltrarPorProfessor() ? $this->professorIds : null,
+            )
+            : $service->batch(
+                $ids,
+                $this->escolasPermitidasIds(),
+                $this->deveFiltrarPorProfessor() ? $this->professorIds : null,
+            );
 
-        $this->progressoAvaliacoesProfessor = collect($dados)
-            ->mapWithKeys(fn ($item, $avaliacaoId): array => [
-                (int) $avaliacaoId => (int) round((float) ($item->percentual ?? 0)),
-            ])
-            ->all();
+        $this->progressoAvaliacoesProfessor = collect($dados)->mapWithKeys(
+            fn ($item, $avaliacaoId): array => [
+                (int) $avaliacaoId => (int) round((float) (is_array($item) ? $item['percentual'] : $item->percentual ?? 0)),
+            ],
+        )->all();
         $this->progressoAvaliacoesProfessorPronto = true;
+    }
+
+    private function carregarProgressoNavegacao(): void
+    {
+        if (! $this->avaliacao || ! app(AvaliacaoPersistencia::class)->leRelacional()) {
+            return;
+        }
+
+        $this->progressoNavegacao = app(AvaliacaoDashboardProgressService::class)
+            ->detalhadoRapido(
+                [(int) $this->avaliacao],
+                $this->escolasPermitidasIds(),
+                $this->deveFiltrarPorProfessor() ? $this->professorIds : null,
+            )[(int) $this->avaliacao] ?? [];
     }
 
     public function agrupaNavegacaoPorEscola(): bool

@@ -16,10 +16,10 @@
             <p>Não há avaliações abertas para seus componentes neste momento.</p>
         </section>
     @else
-        <div class="av-professor-evaluation-list" wire:init="carregarProgressoAvaliacoesProfessor">
+        <div class="av-professor-evaluation-list">
             @foreach ($this->avaliacoesDisponiveis as $avaliacaoItem)
                 @php($avaliacaoUrl = \App\Filament\Admin\Pages\AvaliacoesProfessor::getUrl(['avaliacao' => $avaliacaoItem->id]))
-                @php($percentualAvaliacao = $progressoAvaliacoesProfessor[$avaliacaoItem->id] ?? null)
+                @php($percentualAvaliacao = $progressoAvaliacoesProfessor[$avaliacaoItem->id] ?? 0)
                 <article class="av-professor-evaluation-card" wire:key="avaliacao-professor-{{ $avaliacaoItem->id }}">
                     <div class="av-professor-evaluation-card__body">
                         <span>{{ $avaliacaoItem->tipo?->nome ?? 'Avaliação' }}</span>
@@ -32,12 +32,12 @@
                     <div class="av-professor-evaluation-progress">
                         <div>
                             <span>Progresso</span>
-                            <strong>{{ $percentualAvaliacao === null ? '—' : $percentualAvaliacao.'%' }}</strong>
+                            <strong>{{ $percentualAvaliacao }}%</strong>
                         </div>
                         <div class="av-progress-track">
                             <div class="av-progress-bar" style="width: {{ $percentualAvaliacao ?? 0 }}%"></div>
                         </div>
-                        <small>{{ $percentualAvaliacao === null ? 'Calculando progresso...' : max(100 - $percentualAvaliacao, 0).'% pendente' }}</small>
+                        <small>{{ max(100 - $percentualAvaliacao, 0) }}% pendente</small>
                     </div>
                     <a class="gi-action gi-action--primary" href="{{ $avaliacaoUrl }}" wire:navigate>
                         Avaliar
@@ -81,9 +81,14 @@
         <section>
             <div class="av-professor-index-list">
                 @foreach ($this->escolasNavegacao as $escolaItem)
+                    @php($progressoItem = $progressoNavegacao['escolas'][(int) $escolaItem->escola_id] ?? ['preenchidas' => 0, 'total' => 0, 'percentual' => 0])
                     <button type="button" wire:click="selecionarEscolaNavegacao({{ $escolaItem->escola_id }})">
                         <span class="av-professor-class-icon">E</span>
                         <span><strong>{{ $escolaItem->escola_nome }}</strong><small>{{ $escolaItem->turmas_total }} {{ (int) $escolaItem->turmas_total === 1 ? 'turma' : 'turmas' }}</small></span>
+                        <span class="av-professor-compact-progress">
+                            <span>{{ $progressoItem['preenchidas'] }}/{{ $progressoItem['total'] }}</span><span>{{ $progressoItem['percentual'] }}%</span>
+                            <span class="av-progress-track"><span class="av-progress-bar" style="width: {{ $progressoItem['percentual'] }}%"></span></span>
+                        </span>
                         <span aria-hidden="true">→</span>
                     </button>
                 @endforeach
@@ -93,9 +98,14 @@
         <section>
             <div class="av-professor-index-list">
                 @foreach ($this->seriesNavegacao as $serieItem)
+                    @php($progressoItem = $progressoNavegacao['series'][(int) $serieItem->serie_id] ?? ['preenchidas' => 0, 'total' => 0, 'percentual' => 0])
                     <button type="button" wire:click="selecionarSerieNavegacao({{ $serieItem->serie_id }})">
                         <span class="av-professor-class-icon">S</span>
                         <span><strong>{{ $serieItem->serie_nome }}</strong><small>{{ $serieItem->turmas_total }} {{ (int) $serieItem->turmas_total === 1 ? 'turma' : 'turmas' }}</small></span>
+                        <span class="av-professor-compact-progress">
+                            <span>{{ $progressoItem['preenchidas'] }}/{{ $progressoItem['total'] }}</span><span>{{ $progressoItem['percentual'] }}%</span>
+                            <span class="av-progress-track"><span class="av-progress-bar" style="width: {{ $progressoItem['percentual'] }}%"></span></span>
+                        </span>
                         <span aria-hidden="true">→</span>
                     </button>
                 @endforeach
@@ -108,6 +118,7 @@
                 @forelse ($turmasFiltradas as $turmaItem)
                     @php($turmaIdAtual = (int) $turmaItem->id)
                     @php($turmaExpandida = $this->turmaEstaExpandida($turmaIdAtual))
+                    @php($progressoItem = $progressoNavegacao['turmas'][$turmaIdAtual] ?? ['preenchidas' => 0, 'total' => 0, 'percentual' => 0])
                     <section class="av-professor-class-card {{ $turmaExpandida ? 'is-open' : '' }}" wire:key="turma-professor-{{ $turmaIdAtual }}">
                         <button type="button" class="av-professor-class-toggle" wire:click="abrirTurma({{ $turmaIdAtual }})">
                             <div class="av-professor-class-toggle__title">
@@ -118,7 +129,10 @@
                                 </div>
                             </div>
                             <div class="av-professor-class-toggle__side">
-                                <span class="av-professor-load-hint">{{ $turmaExpandida ? 'Ocultar componentes' : 'Ver componentes' }}</span>
+                                <span class="av-professor-compact-progress" data-av-progress-type="turma" data-av-progress-turma="{{ $turmaIdAtual }}" data-av-progress-filled="{{ $progressoItem['preenchidas'] }}" data-av-progress-total="{{ $progressoItem['total'] }}">
+                                    <span>{{ $progressoItem['preenchidas'] }}/{{ $progressoItem['total'] }}</span><span>{{ $progressoItem['percentual'] }}%</span>
+                                    <span class="av-progress-track"><span class="av-progress-bar" style="width: {{ $progressoItem['percentual'] }}%"></span></span>
+                                </span>
                                 <span class="av-pauta-arrow {{ $turmaExpandida ? 'is-open' : '' }}" aria-hidden="true">⌄</span>
                             </div>
                         </button>
@@ -174,12 +188,16 @@
 
                 <div class="av-professor-modal__body">
                     @if ($visualizacao === 'pautas')
-                        <aside class="av-professor-modal__navigation" aria-label="Pautas do componente">
+                        <aside class="av-professor-modal__navigation" aria-label="Pautas do componente" x-data="{ menuAberto: false }">
                             <strong>Selecione uma pauta</strong>
-                            <div class="av-professor-navigation-list">
+                            <button type="button" class="av-professor-mobile-selector" x-on:click="menuAberto = ! menuAberto" :aria-expanded="menuAberto">
+                                <span><small>Pauta</small><strong>{{ $this->pautaModal?->texto ?? 'Selecionar pauta' }}</strong></span>
+                                <span aria-hidden="true" x-text="menuAberto ? '⌃' : '⌄'"></span>
+                            </button>
+                            <div class="av-professor-navigation-list" :class="{ 'is-mobile-open': menuAberto }">
                                 @foreach ($this->pautasDoComponenteModal as $indice => $pautaItem)
                                     @php($progressoPauta = $this->progressoPorPauta[$turmaIdAtual][$pautaItem->id] ?? ['preenchidas' => 0, 'total' => 0, 'percentual' => 0])
-                                    <button type="button" class="{{ (int) $pautaModalId === (int) $pautaItem->id ? 'is-active' : '' }}" wire:click="selecionarPautaModal({{ $pautaItem->id }})">
+                                    <button type="button" class="{{ (int) $pautaModalId === (int) $pautaItem->id ? 'is-active' : '' }}" x-on:click="menuAberto = false" wire:click="selecionarPautaModal({{ $pautaItem->id }})">
                                         <span class="av-professor-navigation-index">{{ $indice + 1 }}</span>
                                         <span>
                                             <strong>{{ $pautaItem->texto }}</strong>
@@ -225,12 +243,17 @@
                             @endif
                         </main>
                     @else
-                        <aside class="av-professor-modal__navigation" aria-label="Alunos da turma">
+                        <aside class="av-professor-modal__navigation" aria-label="Alunos da turma" x-data="{ menuAberto: false }">
                             <strong>Selecione um aluno</strong>
-                            <div class="av-professor-navigation-list">
+                            @php($alunoSelecionadoMenu = $alunosModal->firstWhere('id', (int) $alunoEmFoco))
+                            <button type="button" class="av-professor-mobile-selector" x-on:click="menuAberto = ! menuAberto" :aria-expanded="menuAberto">
+                                <span><small>Aluno</small><strong>{{ $alunoSelecionadoMenu?->nome ?? 'Selecionar aluno' }}</strong></span>
+                                <span aria-hidden="true" x-text="menuAberto ? '⌃' : '⌄'"></span>
+                            </button>
+                            <div class="av-professor-navigation-list" :class="{ 'is-mobile-open': menuAberto }">
                                 @foreach ($alunosModal as $alunoItem)
                                     @php($progressoAluno = $this->progressoPorAluno[$alunoItem->id] ?? ['preenchidas' => 0, 'total' => 0])
-                                    <button type="button" class="{{ (int) $alunoEmFoco === (int) $alunoItem->id ? 'is-active' : '' }}" wire:click="selecionarAlunoModal({{ $alunoItem->id }})">
+                                    <button type="button" class="{{ (int) $alunoEmFoco === (int) $alunoItem->id ? 'is-active' : '' }}" x-on:click="menuAberto = false" wire:click="selecionarAlunoModal({{ $alunoItem->id }})">
                                         <span class="av-professor-navigation-avatar">{{ mb_strtoupper(mb_substr($alunoItem->nome, 0, 1)) }}</span>
                                         <span>
                                             <strong>{{ $alunoItem->nome }}</strong>

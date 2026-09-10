@@ -134,16 +134,15 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->assertSee('Escolha uma avaliação para começar')
             ->assertSee('Avaliar')
             ->assertSee('Progresso')
-            ->assertSee('Calculando progresso')
+            ->assertDontSee('Calculando progresso')
             ->assertSee('Avaliacao Matematica')
             ->assertDontSee('Avaliacao Historia')
             ->assertDontSee('Avaliacao Inativa');
 
         Livewire::actingAs($userProfessor)
             ->test(AvaliacaoTurmaProfessorWorkspace::class, $this->workspaceProfessorParams())
-            ->assertSee('Calculando progresso')
-            ->call('carregarProgressoAvaliacoesProfessor')
             ->assertSet('progressoAvaliacoesProfessorPronto', true)
+            ->assertDontSee('Calculando progresso')
             ->assertSee('100% pendente');
 
         Livewire::actingAs($userProfessor)
@@ -153,6 +152,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             ])
             ->assertSee('Selecione uma série para visualizar as turmas')
             ->assertSee('1o Ano')
+            ->assertSeeHtml('av-professor-compact-progress')
             ->assertDontSee('Turma A')
             ->assertDontSee('Pauta de Matematica')
             ->call('selecionarSerieNavegacao', $serie->id)
