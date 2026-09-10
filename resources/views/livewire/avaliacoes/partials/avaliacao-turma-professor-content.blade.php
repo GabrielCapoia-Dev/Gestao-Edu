@@ -80,22 +80,30 @@
     @if ($exibirEscolas)
         <section x-data="{ busca: '', faixa: '' }">
             <div class="av-professor-filter-bar">
-                <label class="av-professor-search">
-                    <span class="sr-only">Buscar escola</span>
+                <div class="av-professor-search">
                     <x-filament::input.wrapper inline-prefix :prefix-icon="\Filament\Support\Icons\Heroicon::MagnifyingGlass">
-                        <x-filament::input type="search" x-model.debounce.150ms="busca" placeholder="Buscar escola..." />
+                        <x-filament::input type="search" x-model.debounce.150ms="busca" placeholder="Buscar escolas" aria-label="Buscar escolas" />
                     </x-filament::input.wrapper>
-                </label>
-                <label class="av-professor-filter-select">
-                    <span class="sr-only">Filtrar escolas</span>
-                    <x-filament::input.wrapper>
-                        <x-filament::input.select x-model="faixa">
-                            <option value="">Todas as escolas</option>
-                            <option value="uma">Com uma turma</option>
-                            <option value="varias">Com várias turmas</option>
-                        </x-filament::input.select>
-                    </x-filament::input.wrapper>
-                </label>
+                <x-filament::dropdown placement="bottom-end" shift width="xs">
+                    <x-slot name="trigger">
+                        <x-filament::button color="gray" icon="heroicon-m-funnel" size="sm">
+                            Filtros
+                        </x-filament::button>
+                    </x-slot>
+                    <div class="av-professor-filter-panel">
+                        <label>
+                            <span>Quantidade de turmas</span>
+                            <x-filament::input.wrapper>
+                                <x-filament::input.select x-model="faixa">
+                                    <option value="">Todas as escolas</option>
+                                    <option value="uma">Com uma turma</option>
+                                    <option value="varias">Com várias turmas</option>
+                                </x-filament::input.select>
+                            </x-filament::input.wrapper>
+                        </label>
+                        <button type="button" class="av-professor-filter-clear" x-show="faixa" x-on:click="faixa = ''">Limpar filtro</button>
+                    </div>
+                </x-filament::dropdown>
             </div>
             <div class="av-professor-index-list">
                 @foreach ($this->escolasNavegacao as $escolaItem)
@@ -110,22 +118,30 @@
     @elseif ($exibirSeries)
         <section x-data="{ busca: '', faixa: '' }">
             <div class="av-professor-filter-bar">
-                <label class="av-professor-search">
-                    <span class="sr-only">Buscar série</span>
+                <div class="av-professor-search">
                     <x-filament::input.wrapper inline-prefix :prefix-icon="\Filament\Support\Icons\Heroicon::MagnifyingGlass">
-                        <x-filament::input type="search" x-model.debounce.150ms="busca" placeholder="Buscar série..." />
+                        <x-filament::input type="search" x-model.debounce.150ms="busca" placeholder="Buscar séries" aria-label="Buscar séries" />
                     </x-filament::input.wrapper>
-                </label>
-                <label class="av-professor-filter-select">
-                    <span class="sr-only">Filtrar séries</span>
-                    <x-filament::input.wrapper>
-                        <x-filament::input.select x-model="faixa">
-                            <option value="">Todas as séries</option>
-                            <option value="uma">Com uma turma</option>
-                            <option value="varias">Com várias turmas</option>
-                        </x-filament::input.select>
-                    </x-filament::input.wrapper>
-                </label>
+                <x-filament::dropdown placement="bottom-end" shift width="xs">
+                    <x-slot name="trigger">
+                        <x-filament::button color="gray" icon="heroicon-m-funnel" size="sm">
+                            Filtros
+                        </x-filament::button>
+                    </x-slot>
+                    <div class="av-professor-filter-panel">
+                        <label>
+                            <span>Quantidade de turmas</span>
+                            <x-filament::input.wrapper>
+                                <x-filament::input.select x-model="faixa">
+                                    <option value="">Todas as séries</option>
+                                    <option value="uma">Com uma turma</option>
+                                    <option value="varias">Com várias turmas</option>
+                                </x-filament::input.select>
+                            </x-filament::input.wrapper>
+                        </label>
+                        <button type="button" class="av-professor-filter-clear" x-show="faixa" x-on:click="faixa = ''">Limpar filtro</button>
+                    </div>
+                </x-filament::dropdown>
             </div>
             <div class="av-professor-index-list">
                 @foreach ($this->seriesNavegacao as $serieItem)
@@ -141,23 +157,31 @@
         @php($turmasFiltradas = $this->turmasDaAvaliacaoProfessor)
         <section x-data="{ busca: '', turno: '' }">
             <div class="av-professor-filter-bar">
-                <label class="av-professor-search">
-                    <span class="sr-only">Buscar turma</span>
+                <div class="av-professor-search">
                     <x-filament::input.wrapper inline-prefix :prefix-icon="\Filament\Support\Icons\Heroicon::MagnifyingGlass">
-                        <x-filament::input type="search" x-model.debounce.150ms="busca" placeholder="Buscar turma..." />
+                        <x-filament::input type="search" x-model.debounce.150ms="busca" placeholder="Buscar turmas" aria-label="Buscar turmas" />
                     </x-filament::input.wrapper>
-                </label>
-                <label class="av-professor-filter-select">
-                    <span class="sr-only">Filtrar por turno</span>
-                    <x-filament::input.wrapper>
-                        <x-filament::input.select x-model="turno">
-                            <option value="">Todos os turnos</option>
-                            @foreach ($turmasFiltradas->pluck('turno')->filter()->unique()->sort() as $turnoOpcao)
-                                <option value="{{ mb_strtolower($turnoOpcao) }}">{{ ucfirst($turnoOpcao) }}</option>
-                            @endforeach
-                        </x-filament::input.select>
-                    </x-filament::input.wrapper>
-                </label>
+                <x-filament::dropdown placement="bottom-end" shift width="xs">
+                    <x-slot name="trigger">
+                        <x-filament::button color="gray" icon="heroicon-m-funnel" size="sm">
+                            Filtros
+                        </x-filament::button>
+                    </x-slot>
+                    <div class="av-professor-filter-panel">
+                        <label>
+                            <span>Turno</span>
+                            <x-filament::input.wrapper>
+                                <x-filament::input.select x-model="turno">
+                                    <option value="">Todos os turnos</option>
+                                    @foreach ($turmasFiltradas->pluck('turno')->filter()->unique()->sort() as $turnoOpcao)
+                                        <option value="{{ mb_strtolower($turnoOpcao) }}">{{ ucfirst($turnoOpcao) }}</option>
+                                    @endforeach
+                                </x-filament::input.select>
+                            </x-filament::input.wrapper>
+                        </label>
+                        <button type="button" class="av-professor-filter-clear" x-show="turno" x-on:click="turno = ''">Limpar filtro</button>
+                    </div>
+                </x-filament::dropdown>
             </div>
 
             <div class="av-professor-class-list">
@@ -308,22 +332,26 @@
                                     <span>{{ $alunoSelecionado->cgm ? 'CGM '.$alunoSelecionado->cgm : 'Sem CGM' }}</span>
                                 </div>
                                 @include('livewire.avaliacoes.partials.avaliacao-em-massa-professor')
-                                <div class="av-professor-answer-list">
-                                    @foreach ($this->pautasDoComponenteModal as $pautaItem)
-                                        @include('livewire.avaliacoes.partials.avaliacao-resposta-professor', [
-                                            'pauta' => $pautaItem,
-                                            'aluno' => $alunoSelecionado,
-                                            'turmaIdAtual' => $turmaIdAtual,
-                                            'tituloResposta' => $pautaItem->texto,
-                                            'subtituloResposta' => null,
-                                        ])
-                                    @endforeach
-                                    @include('livewire.avaliacoes.partials.avaliacao-informacao-complementar-professor', [
-                                        'componenteId' => $componenteModalId,
-                                        'aluno' => $alunoSelecionado,
-                                        'turmaIdAtual' => $turmaIdAtual,
-                                    ])
+                                <div class="gi-table-wrap av-professor-student-table av-professor-pauta-table">
+                                    <table class="gi-table">
+                                        <thead><tr><th>Pauta</th><th>Alternativa</th><th>Observação</th></tr></thead>
+                                        <tbody>
+                                            @foreach ($this->pautasDoComponenteModal as $indice => $pautaItem)
+                                                @include('livewire.avaliacoes.partials.avaliacao-resposta-professor-pauta-linha', [
+                                                    'pauta' => $pautaItem,
+                                                    'aluno' => $alunoSelecionado,
+                                                    'turmaIdAtual' => $turmaIdAtual,
+                                                    'indicePauta' => $indice + 1,
+                                                ])
+                                            @endforeach
+                                        </tbody>
+                                    </table>
                                 </div>
+                                @include('livewire.avaliacoes.partials.avaliacao-informacao-complementar-professor', [
+                                    'componenteId' => $componenteModalId,
+                                    'aluno' => $alunoSelecionado,
+                                    'turmaIdAtual' => $turmaIdAtual,
+                                ])
                             @else
                                 <div class="av-professor-selection-empty">
                                     <span aria-hidden="true">◎</span>
