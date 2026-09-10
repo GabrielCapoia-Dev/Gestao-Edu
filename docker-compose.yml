@@ -38,6 +38,7 @@ x-production-env: &production-env
   NOTIFICATIONS_TOPBAR_POLL_INTERVAL_MS: 180000
   NOTIFICATIONS_CENTER_POLL_INTERVAL_MS: 120000
   NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-gestaoedu.umuarama.pr.gov.br}
+  NGINX_CONFIG_VOLUME: ${NGINX_CONFIG_VOLUME:-./docker/nginx/conf.d:/etc/nginx/templates:ro}
   NGINX_CERTS_PATH: ${NGINX_CERTS_PATH:-./docker/certs}
 
 services:
@@ -60,7 +61,7 @@ services:
       - "${DOCKER_HTTPS_PORT}:443"
     volumes:
       - .:/var/www
-      - ./docker/nginx/conf.d:/etc/nginx/templates:ro
+      - ${NGINX_CONFIG_VOLUME}
     ##################################################################
     #################### DIFERENTE DO SEU ############################
     ##################################################################
