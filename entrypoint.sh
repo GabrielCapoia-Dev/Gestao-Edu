@@ -274,6 +274,13 @@ start_web_runtime() {
         [ -f /etc/nginx/certs/fullchain1.pem ] && certificate="/etc/nginx/certs/fullchain1.pem"
         [ -f /etc/nginx/certs/privkey1.pem ] && certificate_key="/etc/nginx/certs/privkey1.pem"
 
+        if [ -f /etc/nginx/certs/live/*/fullchain.pem ]; then
+            certificate=$(printf '%s\n' /etc/nginx/certs/live/*/fullchain.pem | head -n 1)
+        fi
+        if [ -f /etc/nginx/certs/live/*/privkey.pem ]; then
+            certificate_key=$(printf '%s\n' /etc/nginx/certs/live/*/privkey.pem | head -n 1)
+        fi
+
         sed \
             -e "s|__NGINX_SERVER_NAME__|${NGINX_SERVER_NAME:-gestaoedu.umuarama.pr.gov.br}|g" \
             -e "s|__NGINX_SSL_CERTIFICATE__|${certificate}|g" \
