@@ -78,36 +78,10 @@
     @endif
 
     @if ($exibirEscolas)
-        <section x-data="{ busca: '', faixa: '' }">
-            <div class="av-professor-filter-bar">
-                <div class="av-professor-search">
-                    <x-filament::input.wrapper inline-prefix :prefix-icon="\Filament\Support\Icons\Heroicon::MagnifyingGlass">
-                        <x-filament::input type="search" x-model.debounce.150ms="busca" placeholder="Buscar escolas" aria-label="Buscar escolas" />
-                    </x-filament::input.wrapper>
-                <x-filament::dropdown placement="bottom-end" shift width="xs">
-                    <x-slot name="trigger">
-                        <x-filament::button color="gray" icon="heroicon-m-funnel" size="sm">
-                            Filtros
-                        </x-filament::button>
-                    </x-slot>
-                    <div class="av-professor-filter-panel">
-                        <label>
-                            <span>Quantidade de turmas</span>
-                            <x-filament::input.wrapper>
-                                <x-filament::input.select x-model="faixa">
-                                    <option value="">Todas as escolas</option>
-                                    <option value="uma">Com uma turma</option>
-                                    <option value="varias">Com várias turmas</option>
-                                </x-filament::input.select>
-                            </x-filament::input.wrapper>
-                        </label>
-                        <button type="button" class="av-professor-filter-clear" x-show="faixa" x-on:click="faixa = ''">Limpar filtro</button>
-                    </div>
-                </x-filament::dropdown>
-            </div>
+        <section>
             <div class="av-professor-index-list">
                 @foreach ($this->escolasNavegacao as $escolaItem)
-                    <button type="button" data-search="{{ mb_strtolower($escolaItem->escola_nome) }}" data-count="{{ $escolaItem->turmas_total }}" x-show="$el.dataset.search.includes(busca.toLowerCase()) && (!faixa || (faixa === 'uma' ? Number($el.dataset.count) === 1 : Number($el.dataset.count) > 1))" wire:click="selecionarEscolaNavegacao({{ $escolaItem->escola_id }})">
+                    <button type="button" wire:click="selecionarEscolaNavegacao({{ $escolaItem->escola_id }})">
                         <span class="av-professor-class-icon">E</span>
                         <span><strong>{{ $escolaItem->escola_nome }}</strong><small>{{ $escolaItem->turmas_total }} {{ (int) $escolaItem->turmas_total === 1 ? 'turma' : 'turmas' }}</small></span>
                         <span aria-hidden="true">→</span>
@@ -116,36 +90,10 @@
             </div>
         </section>
     @elseif ($exibirSeries)
-        <section x-data="{ busca: '', faixa: '' }">
-            <div class="av-professor-filter-bar">
-                <div class="av-professor-search">
-                    <x-filament::input.wrapper inline-prefix :prefix-icon="\Filament\Support\Icons\Heroicon::MagnifyingGlass">
-                        <x-filament::input type="search" x-model.debounce.150ms="busca" placeholder="Buscar séries" aria-label="Buscar séries" />
-                    </x-filament::input.wrapper>
-                <x-filament::dropdown placement="bottom-end" shift width="xs">
-                    <x-slot name="trigger">
-                        <x-filament::button color="gray" icon="heroicon-m-funnel" size="sm">
-                            Filtros
-                        </x-filament::button>
-                    </x-slot>
-                    <div class="av-professor-filter-panel">
-                        <label>
-                            <span>Quantidade de turmas</span>
-                            <x-filament::input.wrapper>
-                                <x-filament::input.select x-model="faixa">
-                                    <option value="">Todas as séries</option>
-                                    <option value="uma">Com uma turma</option>
-                                    <option value="varias">Com várias turmas</option>
-                                </x-filament::input.select>
-                            </x-filament::input.wrapper>
-                        </label>
-                        <button type="button" class="av-professor-filter-clear" x-show="faixa" x-on:click="faixa = ''">Limpar filtro</button>
-                    </div>
-                </x-filament::dropdown>
-            </div>
+        <section>
             <div class="av-professor-index-list">
                 @foreach ($this->seriesNavegacao as $serieItem)
-                    <button type="button" data-search="{{ mb_strtolower($serieItem->serie_nome) }}" data-count="{{ $serieItem->turmas_total }}" x-show="$el.dataset.search.includes(busca.toLowerCase()) && (!faixa || (faixa === 'uma' ? Number($el.dataset.count) === 1 : Number($el.dataset.count) > 1))" wire:click="selecionarSerieNavegacao({{ $serieItem->serie_id }})">
+                    <button type="button" wire:click="selecionarSerieNavegacao({{ $serieItem->serie_id }})">
                         <span class="av-professor-class-icon">S</span>
                         <span><strong>{{ $serieItem->serie_nome }}</strong><small>{{ $serieItem->turmas_total }} {{ (int) $serieItem->turmas_total === 1 ? 'turma' : 'turmas' }}</small></span>
                         <span aria-hidden="true">→</span>
@@ -155,40 +103,12 @@
         </section>
     @else
         @php($turmasFiltradas = $this->turmasDaAvaliacaoProfessor)
-        <section x-data="{ busca: '', turno: '' }">
-            <div class="av-professor-filter-bar">
-                <div class="av-professor-search">
-                    <x-filament::input.wrapper inline-prefix :prefix-icon="\Filament\Support\Icons\Heroicon::MagnifyingGlass">
-                        <x-filament::input type="search" x-model.debounce.150ms="busca" placeholder="Buscar turmas" aria-label="Buscar turmas" />
-                    </x-filament::input.wrapper>
-                <x-filament::dropdown placement="bottom-end" shift width="xs">
-                    <x-slot name="trigger">
-                        <x-filament::button color="gray" icon="heroicon-m-funnel" size="sm">
-                            Filtros
-                        </x-filament::button>
-                    </x-slot>
-                    <div class="av-professor-filter-panel">
-                        <label>
-                            <span>Turno</span>
-                            <x-filament::input.wrapper>
-                                <x-filament::input.select x-model="turno">
-                                    <option value="">Todos os turnos</option>
-                                    @foreach ($turmasFiltradas->pluck('turno')->filter()->unique()->sort() as $turnoOpcao)
-                                        <option value="{{ mb_strtolower($turnoOpcao) }}">{{ ucfirst($turnoOpcao) }}</option>
-                                    @endforeach
-                                </x-filament::input.select>
-                            </x-filament::input.wrapper>
-                        </label>
-                        <button type="button" class="av-professor-filter-clear" x-show="turno" x-on:click="turno = ''">Limpar filtro</button>
-                    </div>
-                </x-filament::dropdown>
-            </div>
-
+        <section>
             <div class="av-professor-class-list">
                 @forelse ($turmasFiltradas as $turmaItem)
                     @php($turmaIdAtual = (int) $turmaItem->id)
                     @php($turmaExpandida = $this->turmaEstaExpandida($turmaIdAtual))
-                    <section class="av-professor-class-card {{ $turmaExpandida ? 'is-open' : '' }}" data-search="{{ mb_strtolower($this->rotuloTurma($turmaItem).' '.($turmaItem->escola?->nome ?? '')) }}" data-turno="{{ mb_strtolower((string) $turmaItem->turno) }}" x-show="$el.dataset.search.includes(busca.toLowerCase()) && (!turno || $el.dataset.turno === turno)" wire:key="turma-professor-{{ $turmaIdAtual }}">
+                    <section class="av-professor-class-card {{ $turmaExpandida ? 'is-open' : '' }}" wire:key="turma-professor-{{ $turmaIdAtual }}">
                         <button type="button" class="av-professor-class-toggle" wire:click="abrirTurma({{ $turmaIdAtual }})">
                             <div class="av-professor-class-toggle__title">
                                 <span class="av-professor-class-icon" aria-hidden="true">T</span>

@@ -175,47 +175,6 @@
         cursor: pointer;
     }
 
-    .av-professor-filter-bar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: .65rem;
-        margin-bottom: .8rem;
-        border: 1px solid #e2e8f0;
-        border-radius: .85rem;
-        background: #fff;
-        padding: .65rem;
-    }
-
-    .av-professor-search {
-        width: min(24rem, 100%);
-    }
-
-    .av-professor-filter-panel {
-        display: grid;
-        gap: .75rem;
-        padding: .85rem;
-    }
-
-    .av-professor-filter-panel label > span {
-        display: block;
-        margin-bottom: .4rem;
-        color: #475569;
-        font-size: .75rem;
-        font-weight: 700;
-    }
-
-    .av-professor-filter-clear {
-        justify-self: end;
-        border: 0;
-        background: transparent;
-        padding: 0;
-        color: #2563eb;
-        font-size: .75rem;
-        font-weight: 700;
-        cursor: pointer;
-    }
-
     .av-professor-index-list {
         display: grid;
         grid-template-columns: minmax(0, 1fr);
@@ -879,21 +838,10 @@
             width: 100%;
         }
 
-        .av-professor-filter-bar {
-            align-items: center;
-            padding: .5rem;
-        }
-
         .av-professor-bulk,
         .av-professor-bulk label,
         .av-professor-bulk .gi-action {
             width: 100%;
-        }
-
-        .av-professor-search {
-            flex: 1 1 auto;
-            min-width: 0;
-            width: auto;
         }
 
         .av-professor-bulk {
@@ -1102,8 +1050,7 @@
     :root.dark .av-professor-navigation-list button:hover,
     :root.dark .av-professor-navigation-list button.is-active,
     :root.dark .av-professor-index-list > button,
-    :root.dark .av-professor-bulk,
-    :root.dark .av-professor-filter-bar {
+    :root.dark .av-professor-bulk {
         border-color: rgba(148, 163, 184, .25);
         background: #111827;
     }
