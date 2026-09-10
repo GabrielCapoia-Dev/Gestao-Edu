@@ -197,7 +197,9 @@
                     @enderror
                 </section>
 
-                @php($pautasCarregadas = $this->pautasCarregadas)
+                @php
+                    $pautasCarregadas = $this->pautasCarregadas;
+                @endphp
 
                 <section class="av-form-section av-alternatives-section">
                     <div class="av-section-heading av-section-heading--between">
@@ -219,7 +221,9 @@
                     @if ($pautasCarregadas->isEmpty())
                         <p class="gi-empty">Nenhuma pauta encontrada para o escopo atual.</p>
                     @else
-                        @php($alternativasAtivasAgrupadas = $this->alternativasAtivasAgrupadas)
+                        @php
+                            $alternativasAtivasAgrupadas = $this->alternativasAtivasAgrupadas;
+                        @endphp
 
                         <div class="av-alternatives-bulk">
                             <div class="av-alternatives-bulk-copy">
@@ -260,7 +264,9 @@
                             @enderror
                         </div>
 
-                        @php($tiposAlternativasOptions = $this->tiposAlternativasOptions)
+                        @php
+                            $tiposAlternativasOptions = $this->tiposAlternativasOptions;
+                        @endphp
 
                         <div class="av-stack av-alternatives-list">
                             @foreach ($pautasCarregadas as $pauta)
