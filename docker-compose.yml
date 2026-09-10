@@ -8,7 +8,7 @@ x-production-env: &production-env
   SESSION_CONNECTION: default
   SESSION_STORE: redis
   QUEUE_CONNECTION: redis
-  REDIS_CLIENT: phpredis
+  REDIS_CLIENT: predis
   REDIS_HOST: redis
   REDIS_PORT: 6379
   REDIS_DB: 0
@@ -16,36 +16,6 @@ x-production-env: &production-env
   REDIS_QUEUE_CONNECTION: default
   REDIS_QUEUE_RETRY_AFTER: 2100
   PERMISSION_CACHE_STORE: redis
-  PULSE_ENABLED: "true"
-  PULSE_SERVER_NAME: gestao-edu-producao
-  PULSE_STORAGE_KEEP: "7 days"
-  # Coleta completa para que o painel seja útil em diagnósticos.
-  # O Pulse registra metadados/chaves, não os valores armazenados no cache.
-  PULSE_CACHE_INTERACTIONS_ENABLED: "true"
-  PULSE_USER_REQUESTS_SAMPLE_RATE: "1"
-  PULSE_USER_JOBS_SAMPLE_RATE: "1"
-  PULSE_QUEUES_SAMPLE_RATE: "1"
-  PULSE_SLOW_REQUESTS_SAMPLE_RATE: "1"
-  PULSE_SLOW_JOBS_SAMPLE_RATE: "1"
-  PULSE_SLOW_OUTGOING_REQUESTS_SAMPLE_RATE: "1"
-  PULSE_SLOW_REQUESTS_THRESHOLD: "2000"
-  PULSE_SLOW_JOBS_THRESHOLD: "1000"
-  PULSE_SLOW_OUTGOING_REQUESTS_THRESHOLD: "1000"
-  PULSE_SLOW_QUERIES_LOCATION: "true"
-  PULSE_EXCEPTIONS_LOCATION: "true"
-  PERF_INSTRUMENTATION_ENABLED: "true"
-  PERF_INSTRUMENTATION_SAMPLE_RATE: "0.05"
-  PERF_INSTRUMENTATION_LOG_ALL: "false"
-  APP_RUNTIME: octane
-  OCTANE_SERVER: swoole
-  OCTANE_HTTPS: "true"
-  OCTANE_WORKERS: 2
-  OCTANE_TASK_WORKERS: 0
-  OCTANE_MAX_REQUESTS: 2000
-  PERMISSION_REGISTER_OCTANE_RESET_LISTENER: "true"
-  PHP_FPM_PM: static
-  PHP_FPM_MAX_CHILDREN: 2
-  PHP_FPM_MAX_REQUESTS: 500
   PERF_HEARTBEAT_INTERVAL: 120
   PERF_PRESENCE_TOUCH_MIN_INTERVAL: 90
   PERF_PRESENCE_ONLINE_WINDOW: 180
@@ -88,15 +58,18 @@ services:
       - "${DOCKER_HTTPS_PORT}:443"
     volumes:
       - .:/var/www
-      - ./docker/nginx/conf.d:/etc/nginx/templates:ro
-      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ./docker/nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf:ro
+    ##################################################################
+    #################### DIFERENTE DO SEU ############################
+    ##################################################################
+      - ./docker/certs:/etc/nginx/certs:ro
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD-SHELL", "test -s /var/www/bootstrap/cache/runtime-ready && test -s /var/www/bootstrap/cache/routes-v7.php && test -s /var/www/bootstrap/cache/config.php && curl -kfsS --max-time 5 -H 'Host: edu.hubdetestes.online' https://127.0.0.1/up >/dev/null" ]
+      test: [ "CMD-SHELL", "test -s /var/www/bootstrap/cache/runtime-ready && test -s /var/www/bootstrap/cache/routes-v7.php && test -s /var/www/bootstrap/cache/config.php" ]
       interval: 30s
       timeout: 10s
       retries: 36
@@ -127,32 +100,6 @@ services:
     networks:
       - laravel_gestao-edu
 
-  pulse:
-    image: laravel-app-gestao-edu
-    container_name: laravel-pulse-gestao-edu
-    working_dir: /var/www
-    env_file:
-      - .env
-    environment:
-      <<: *production-env
-    entrypoint: []
-    command: ["php", "artisan", "pulse:check"]
-    volumes:
-      - .:/var/www
-    depends_on:
-      app:
-        condition: service_healthy
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    cpus: "0.05"
-    mem_limit: "192m"
-    restart: unless-stopped
-    stop_grace_period: 20s
-    networks:
-      - laravel_gestao-edu
-
   queue-notifications:
     image: laravel-app-gestao-edu
     container_name: laravel-queue-notifications-gestao-edu
@@ -173,7 +120,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    cpus: "${NOTIFICATIONS_QUEUE_CPUS:-0.10}"
+    cpus: "${NOTIFICATIONS_QUEUE_CPUS:-0.25}"
     mem_limit: "512m"
     restart: unless-stopped
     stop_grace_period: 90s
@@ -203,7 +150,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    cpus: "${EXPORTS_QUEUE_CPUS:-0.15}"
+    cpus: "${EXPORTS_QUEUE_CPUS:-0.50}"
     mem_limit: "${EXPORTS_QUEUE_MEM_LIMIT:-768m}"
     restart: unless-stopped
     stop_grace_period: 930s
@@ -230,7 +177,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    cpus: "${IMPORTS_QUEUE_CPUS:-0.15}"
+    cpus: "${IMPORTS_QUEUE_CPUS:-0.50}"
     mem_limit: "${IMPORTS_QUEUE_MEM_LIMIT:-768m}"
     restart: unless-stopped
     stop_grace_period: 1830s
@@ -257,7 +204,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    cpus: "${DEFAULT_QUEUE_CPUS:-0.10}"
+    cpus: "${DEFAULT_QUEUE_CPUS:-0.25}"
     mem_limit: "${DEFAULT_QUEUE_MEM_LIMIT:-512m}"
     restart: unless-stopped
     stop_grace_period: 330s
@@ -284,6 +231,13 @@ services:
       interval: 30s
       timeout: 5s
       retries: 20
+    ##################################################################
+    #################### DIFERENTE DO SEU ############################
+    ##################################################################
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'  # Limita o banco a no máximo metade de 1 núcleo
     networks:
       - laravel_gestao-edu
 
@@ -323,3 +277,4 @@ volumes:
 networks:
   laravel_gestao-edu:
     driver: bridge
+
