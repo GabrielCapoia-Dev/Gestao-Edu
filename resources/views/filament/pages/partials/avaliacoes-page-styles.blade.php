@@ -629,6 +629,17 @@
         line-height: 1.45;
     }
 
+    .av-alternative-card-controls {
+        display: grid;
+        align-content: start;
+        gap: 0.55rem;
+    }
+
+    .av-adjust-alternatives {
+        width: 100%;
+        min-height: 2.5rem;
+    }
+
     .av-configuration-status {
         margin-top: 0.2rem;
     }
@@ -811,6 +822,16 @@
         background: #fff;
     }
 
+    .av-filament-scope-form .fi-select-input-btn {
+        max-height: 6.75rem;
+        overflow-y: auto;
+        scrollbar-gutter: stable;
+    }
+
+    .av-filament-scope-form .fi-dropdown-panel {
+        z-index: 80;
+    }
+
     .av-filament-scope-form .fi-fo-field-wrp-helper-text {
         font-size: var(--text-xs);
         line-height: 1.5;
@@ -818,23 +839,6 @@
 
     :root.dark .av-filament-scope-form .fi-input-wrp {
         background: var(--gray-950);
-    }
-
-    .av-selection-grid {
-        display: grid;
-        gap: 0.85rem;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .av-selection-title {
-        display: inline-block;
-        margin-bottom: 0.5rem;
-        color: var(--gray-500);
-        font-size: var(--text-xs);
-        line-height: var(--text-xs--line-height);
-        font-weight: var(--font-weight-semibold);
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
     }
 
     .av-subitem {
@@ -1080,7 +1084,11 @@
     }
 
     .av-modal--wide {
+        inset: 0;
         width: min(74rem, calc(100vw - 1.5rem));
+        height: fit-content;
+        margin: auto;
+        transform: none;
     }
 
     .av-chip-grid {
@@ -1221,6 +1229,13 @@
     }
 
     @media (max-width: 48rem) {
+        .av-modal--wide {
+            inset: auto 0 0;
+            width: 100vw;
+            height: auto;
+            margin: 0;
+        }
+
         .av-turma-grid {
             grid-template-columns: 1fr;
         }
@@ -1256,15 +1271,20 @@
             grid-template-columns: 1fr;
         }
 
-        .av-selection-grid {
-            grid-template-columns: 1fr;
-        }
-
         .av-section-heading--between,
         .av-alternatives-bulk-actions,
         .av-alternative-card,
         .av-add-type-row {
             grid-template-columns: 1fr;
+        }
+
+        .av-alternative-card-controls {
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: end;
+        }
+
+        .av-adjust-alternatives {
+            width: auto;
         }
 
         .av-type-checkbox-grid,
@@ -1530,10 +1550,6 @@
     }
 
     :root.dark .av-char-count {
-        color: var(--gray-400);
-    }
-
-    :root.dark .av-selection-title {
         color: var(--gray-400);
     }
 

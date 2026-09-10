@@ -95,6 +95,8 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
     public array $tipoAlternativaAdicionar = [];
 
+    public ?int $pautaAlternativasAberta = null;
+
     private ?array $alternativasAtivasAgrupadasCache = null;
 
     public static function canAccess(): bool
@@ -289,7 +291,9 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
                     ->native(false)
                     ->searchable()
                     ->preload()
-                    ->live()
+                    ->optionsLimit(100)
+                    ->searchDebounce(250)
+                    ->live(debounce: 250)
                     ->afterStateUpdated(fn () => $this->updatedFormSeriesIds()),
                 Select::make('componentes_ids')
                     ->label('Componentes')
@@ -300,7 +304,9 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
                     ->native(false)
                     ->searchable()
                     ->preload()
-                    ->live()
+                    ->optionsLimit(100)
+                    ->searchDebounce(250)
+                    ->live(debounce: 250)
                     ->afterStateUpdated(fn () => $this->updatedFormComponentesIds()),
                 Select::make('escolas_ids')
                     ->label('Escolas')
@@ -311,7 +317,9 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
                     ->native(false)
                     ->searchable()
                     ->preload()
-                    ->live()
+                    ->optionsLimit(100)
+                    ->searchDebounce(250)
+                    ->live(debounce: 250)
                     ->afterStateUpdated(fn () => $this->updatedFormEscolasIds()),
             ])
             ->columns(3)
@@ -395,6 +403,47 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
         $this->mesclarAlternativasNaPauta($pautaId, $alternativasIds);
         $this->tipoAlternativaAdicionar[$pautaId] = null;
         $this->resetErrorBag('tipoAlternativaAdicionar.'.$pautaId);
+    }
+
+    public function atualizarModoAlternativasPauta(int $pautaId, string $modo): void
+    {
+        $pautaCarregada = $this->getPautasCarregadasProperty()->contains(
+            fn (Pauta $pauta): bool => (int) $pauta->id === $pautaId
+        );
+
+        if (! $pautaCarregada) {
+            return;
+        }
+
+        $overrideHabilitado = $modo === '1';
+        $this->pautasOverrideHabilitado[$pautaId] = $overrideHabilitado;
+
+        if ($overrideHabilitado) {
+            $this->pautaAlternativasAberta = $pautaId;
+        } elseif ($this->pautaAlternativasAberta === $pautaId) {
+            $this->pautaAlternativasAberta = null;
+        }
+
+        $this->resetErrorBag('pautasOverrideHabilitado.'.$pautaId);
+    }
+
+    public function alternarEditorAlternativasPauta(int $pautaId): void
+    {
+        if (! (bool) ($this->pautasOverrideHabilitado[$pautaId] ?? false)) {
+            return;
+        }
+
+        $pautaCarregada = $this->getPautasCarregadasProperty()->contains(
+            fn (Pauta $pauta): bool => (int) $pauta->id === $pautaId
+        );
+
+        if (! $pautaCarregada) {
+            return;
+        }
+
+        $this->pautaAlternativasAberta = $this->pautaAlternativasAberta === $pautaId
+            ? null
+            : $pautaId;
     }
 
     public function updatedFormTipoAvaliacaoId(): void
@@ -1023,6 +1072,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
         $this->alternativasOverride = [];
         $this->tiposAlternativasEmMassa = [];
         $this->tipoAlternativaAdicionar = [];
+        $this->pautaAlternativasAberta = null;
     }
 
     /**
@@ -1228,6 +1278,11 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
         $this->pautasOverrideHabilitado = $overridesAtivos;
         $this->alternativasOverride = $alternativasOverrides;
         $this->tipoAlternativaAdicionar = $tiposAlternativasAdicionar;
+
+        if ($this->pautaAlternativasAberta !== null
+            && ! in_array($this->pautaAlternativasAberta, $pautasIds, true)) {
+            $this->pautaAlternativasAberta = null;
+        }
     }
 
     public function getTitle(): string

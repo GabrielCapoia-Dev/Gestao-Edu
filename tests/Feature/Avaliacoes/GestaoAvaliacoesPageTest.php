@@ -302,6 +302,20 @@ class GestaoAvaliacoesPageTest extends TestCase
             collect($pagina->alternativasOverride[$pauta->id] ?? [])->sort()->values()->all(),
         );
 
+        $this->assertNull($pagina->pautaAlternativasAberta);
+        $pagina->alternarEditorAlternativasPauta($pauta->id);
+        $this->assertSame($pauta->id, $pagina->pautaAlternativasAberta);
+        $pagina->alternarEditorAlternativasPauta($pauta->id);
+        $this->assertNull($pagina->pautaAlternativasAberta);
+
+        $pagina->atualizarModoAlternativasPauta($pauta->id, '0');
+        $this->assertFalse((bool) $pagina->pautasOverrideHabilitado[$pauta->id]);
+        $this->assertNull($pagina->pautaAlternativasAberta);
+
+        $pagina->atualizarModoAlternativasPauta($pauta->id, '1');
+        $this->assertTrue((bool) $pagina->pautasOverrideHabilitado[$pauta->id]);
+        $this->assertSame($pauta->id, $pagina->pautaAlternativasAberta);
+
         $pagina->tipoAlternativaAdicionar[$pauta->id] = $tipoEtapa->id;
         $pagina->adicionarTipoAlternativasNaPauta($pauta->id);
 

@@ -5,7 +5,7 @@
     @if ($modalAberto)
         <div class="gi-overlay" wire:click="fecharModal"></div>
 
-        <div class="gi-modal av-modal--wide" role="dialog" aria-modal="true">
+        <div class="gi-modal av-modal--wide fi-fixed-positioning-context" role="dialog" aria-modal="true">
             <header>
                 <div>
                     <p class="gi-eyebrow">Avaliações</p>
@@ -133,59 +133,6 @@
                         {{ $this->escopoForm }}
                     </div>
 
-                    @php
-                        $seriesSelecionadas = collect($form['series_ids'] ?? [])
-                            ->map(fn ($id) => $this->seriesOptions[(int) $id] ?? null)
-                            ->filter()
-                            ->values();
-                        $componentesSelecionados = collect($form['componentes_ids'] ?? [])
-                            ->map(fn ($id) => $this->componentesOptions[(int) $id] ?? null)
-                            ->filter()
-                            ->values();
-                        $escolasSelecionadas = collect($form['escolas_ids'] ?? [])
-                            ->map(function ($id) {
-                                $key = (string) $id;
-                                return $this->escolasOptions[$key] ?? null;
-                            })
-                            ->filter()
-                            ->values();
-                    @endphp
-
-                    <div class="av-selection-grid">
-                        <div>
-                            <small class="av-selection-title">Séries selecionadas</small>
-                            <div class="av-chip-grid">
-                                @forelse ($seriesSelecionadas as $serieSelecionada)
-                                    <span class="av-chip">{{ $serieSelecionada }}</span>
-                                @empty
-                                    <span class="av-chip av-chip--muted">Nenhuma série selecionada</span>
-                                @endforelse
-                            </div>
-                        </div>
-
-                        <div>
-                            <small class="av-selection-title">Componentes selecionados</small>
-                            <div class="av-chip-grid">
-                                @forelse ($componentesSelecionados as $componenteSelecionado)
-                                    <span class="av-chip">{{ $componenteSelecionado }}</span>
-                                @empty
-                                    <span class="av-chip av-chip--muted">Nenhum componente selecionado</span>
-                                @endforelse
-                            </div>
-                        </div>
-
-                        <div>
-                            <small class="av-selection-title">Escolas selecionadas</small>
-                            <div class="av-chip-grid">
-                                @forelse ($escolasSelecionadas as $escolaSelecionada)
-                                    <span class="av-chip">{{ $escolaSelecionada }}</span>
-                                @empty
-                                    <span class="av-chip av-chip--muted">Nenhuma escola selecionada</span>
-                                @endforelse
-                            </div>
-                        </div>
-                    </div>
-
                     @error('form.series_ids')
                         <p class="error">{{ $message }}</p>
                     @enderror
@@ -273,6 +220,7 @@
                                 @php
                                     $overrideHabilitado = (bool) ($pautasOverrideHabilitado[$pauta->id] ?? false);
                                     $totalAlternativas = count($alternativasOverride[$pauta->id] ?? []);
+                                    $editorAberto = $pautaAlternativasAberta === (int) $pauta->id;
                                 @endphp
                                 <article
                                     class="av-alternative-card {{ $overrideHabilitado ? 'is-customized' : '' }}"
@@ -290,18 +238,30 @@
                                         </span>
                                     </div>
 
-                                    <label class="gi-field gi-field--small">
-                                        <span>Configuração</span>
-                                        <select wire:model.live="pautasOverrideHabilitado.{{ $pauta->id }}">
-                                            <option value="0">Usar o tipo da avaliação</option>
-                                            <option value="1">Personalizar alternativas</option>
-                                        </select>
-                                        @error('pautasOverrideHabilitado.' . $pauta->id)
-                                            <p class="error">{{ $message }}</p>
-                                        @enderror
-                                    </label>
+                                    <div class="av-alternative-card-controls">
+                                        <label class="gi-field gi-field--small">
+                                            <span>Configuração</span>
+                                            <select wire:change="atualizarModoAlternativasPauta({{ $pauta->id }}, $event.target.value)">
+                                                <option value="0" @selected(! $overrideHabilitado)>Usar o tipo da avaliação</option>
+                                                <option value="1" @selected($overrideHabilitado)>Personalizar alternativas</option>
+                                            </select>
+                                            @error('pautasOverrideHabilitado.' . $pauta->id)
+                                                <p class="error">{{ $message }}</p>
+                                            @enderror
+                                        </label>
 
-                                    @if ($overrideHabilitado)
+                                        @if ($overrideHabilitado)
+                                            <button
+                                                type="button"
+                                                class="gi-action av-adjust-alternatives"
+                                                wire:click="alternarEditorAlternativasPauta({{ $pauta->id }})"
+                                            >
+                                                {{ $editorAberto ? 'Fechar ajuste' : 'Ajustar alternativas' }}
+                                            </button>
+                                        @endif
+                                    </div>
+
+                                    @if ($overrideHabilitado && $editorAberto)
                                         <div class="av-alternative-card-editor">
                                             <div class="av-add-type-row">
                                                 <label class="gi-field gi-field--small">
