@@ -653,7 +653,7 @@
     .av-alternative-card-editor {
         display: grid;
         grid-column: 1 / -1;
-        gap: 0.85rem;
+        gap: 1rem;
         padding-top: 0.85rem;
         border-top: 1px solid var(--gray-200);
     }
@@ -673,7 +673,7 @@
 
     .av-options-heading {
         display: grid;
-        gap: 0.2rem;
+        gap: 0.3rem;
     }
 
     .av-options-heading strong {
@@ -805,7 +805,9 @@
     }
 
     .av-override-select {
+        display: grid;
         grid-column: span 2;
+        gap: 0.75rem;
         min-width: min(22rem, 100%);
     }
 
