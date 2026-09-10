@@ -443,6 +443,276 @@
         background: #fff;
     }
 
+    .av-section-heading,
+    .av-section-heading-main {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .av-section-heading--between {
+        justify-content: space-between;
+    }
+
+    .av-section-index {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.75rem;
+        height: 1.75rem;
+        flex: 0 0 auto;
+        border-radius: 999px;
+        background: var(--primary-100);
+        color: var(--primary-700);
+        font-size: var(--text-xs);
+        line-height: 1;
+        font-weight: var(--font-weight-bold);
+    }
+
+    .av-count-badge,
+    .av-configuration-status {
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        min-height: 1.75rem;
+        padding: 0.2rem 0.55rem;
+        border: 1px solid var(--gray-200);
+        border-radius: 999px;
+        background: var(--gray-100);
+        color: var(--gray-600);
+        font-size: var(--text-xs);
+        line-height: 1.35;
+        font-weight: var(--font-weight-medium);
+    }
+
+    .av-alternatives-section {
+        gap: 1rem;
+    }
+
+    .av-alternatives-bulk {
+        display: grid;
+        gap: 1rem;
+        padding: 1rem;
+        border: 1px solid var(--primary-200);
+        border-radius: var(--radius-xl);
+        background: color-mix(in oklab, var(--primary-50) 65%, #fff);
+    }
+
+    .av-alternatives-bulk-copy {
+        display: grid;
+        gap: 0.25rem;
+    }
+
+    .av-alternatives-bulk-copy strong {
+        color: var(--gray-950);
+        font-size: var(--text-sm);
+        line-height: var(--text-sm--line-height);
+        font-weight: var(--font-weight-semibold);
+    }
+
+    .av-alternatives-bulk-copy small {
+        color: var(--gray-600);
+        font-size: var(--text-xs);
+        line-height: 1.5;
+    }
+
+    .av-alternatives-bulk-actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: end;
+        gap: 0.75rem;
+    }
+
+    .av-alternatives-bulk-actions .gi-action {
+        min-height: 2.65rem;
+        white-space: nowrap;
+    }
+
+    .av-type-checkbox-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.5rem;
+    }
+
+    .av-type-checkbox,
+    .av-option-checkbox {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.55rem;
+        min-width: 0;
+        padding: 0.65rem;
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg);
+        background: #fff;
+        color: var(--gray-700);
+        cursor: pointer;
+        transition:
+            border-color 0.15s ease,
+            background-color 0.15s ease;
+    }
+
+    .av-type-checkbox:has(input:checked),
+    .av-option-checkbox:has(input:checked) {
+        border-color: var(--primary-300);
+        background: var(--primary-50);
+        color: var(--primary-800);
+    }
+
+    .av-type-checkbox input,
+    .av-option-checkbox input {
+        width: 1rem;
+        height: 1rem;
+        flex: 0 0 auto;
+        margin-top: 0.1rem;
+        accent-color: var(--primary-600);
+    }
+
+    .av-type-checkbox > span,
+    .av-option-checkbox > span {
+        display: grid;
+        gap: 0.15rem;
+        min-width: 0;
+        font-size: var(--text-sm);
+        line-height: 1.35;
+    }
+
+    .av-type-checkbox strong {
+        font-weight: var(--font-weight-semibold);
+    }
+
+    .av-type-checkbox small,
+    .av-option-checkbox small {
+        color: var(--gray-500);
+        font-size: var(--text-xs);
+        line-height: 1.35;
+    }
+
+    .av-alternatives-list {
+        gap: 0.75rem;
+    }
+
+    .av-alternative-card {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(13rem, 16rem);
+        gap: 1rem;
+        padding: 1rem;
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-xl);
+        background: #fff;
+        transition:
+            border-color 0.15s ease,
+            box-shadow 0.15s ease;
+    }
+
+    .av-alternative-card.is-customized {
+        border-color: var(--primary-200);
+        box-shadow: inset 3px 0 0 var(--primary-500);
+    }
+
+    .av-alternative-card-summary {
+        display: grid;
+        align-content: start;
+        gap: 0.35rem;
+        min-width: 0;
+    }
+
+    .av-alternative-card-summary > strong {
+        color: var(--gray-950);
+        font-size: var(--text-sm);
+        line-height: 1.45;
+        font-weight: var(--font-weight-semibold);
+    }
+
+    .av-alternative-card-summary > small {
+        color: var(--gray-500);
+        font-size: var(--text-xs);
+        line-height: 1.45;
+    }
+
+    .av-configuration-status {
+        margin-top: 0.2rem;
+    }
+
+    .av-configuration-status.is-customized {
+        border-color: var(--primary-200);
+        background: var(--primary-50);
+        color: var(--primary-700);
+    }
+
+    .av-alternative-card-editor {
+        display: grid;
+        grid-column: 1 / -1;
+        gap: 0.85rem;
+        padding-top: 0.85rem;
+        border-top: 1px solid var(--gray-200);
+    }
+
+    .av-add-type-row {
+        display: grid;
+        grid-template-columns: minmax(14rem, 22rem) auto;
+        align-items: end;
+        justify-content: start;
+        gap: 0.65rem;
+    }
+
+    .av-add-type-row .gi-action {
+        min-height: 2.65rem;
+        white-space: nowrap;
+    }
+
+    .av-options-heading {
+        display: grid;
+        gap: 0.2rem;
+    }
+
+    .av-options-heading strong {
+        color: var(--gray-950);
+        font-size: var(--text-sm);
+        line-height: var(--text-sm--line-height);
+        font-weight: var(--font-weight-semibold);
+    }
+
+    .av-options-heading small {
+        color: var(--gray-500);
+        font-size: var(--text-xs);
+        line-height: 1.45;
+    }
+
+    .av-options-groups {
+        display: grid;
+        gap: 0.65rem;
+        max-height: 24rem;
+        padding-right: 0.25rem;
+        overflow-y: auto;
+    }
+
+    .av-options-group {
+        display: grid;
+        gap: 0.5rem;
+        min-width: 0;
+        padding: 0.75rem;
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg);
+    }
+
+    .av-options-group legend {
+        padding: 0 0.35rem;
+        color: var(--gray-700);
+        font-size: var(--text-xs);
+        line-height: var(--text-xs--line-height);
+        font-weight: var(--font-weight-bold);
+    }
+
+    .av-options-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.45rem;
+    }
+
+    .av-option-checkbox {
+        padding: 0.55rem;
+    }
+
     .av-repeater-item {
         display: grid;
         gap: 0.65rem;
@@ -990,6 +1260,27 @@
             grid-template-columns: 1fr;
         }
 
+        .av-section-heading--between,
+        .av-alternatives-bulk-actions,
+        .av-alternative-card,
+        .av-add-type-row {
+            grid-template-columns: 1fr;
+        }
+
+        .av-type-checkbox-grid,
+        .av-options-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .av-section-heading--between {
+            display: grid;
+        }
+
+        .av-alternatives-bulk-actions .gi-action,
+        .av-add-type-row .gi-action {
+            width: 100%;
+        }
+
         .av-segmented-control {
             width: 100%;
         }
@@ -1067,6 +1358,78 @@
 
     :root.dark .av-form-section--plain {
         background: var(--gray-950);
+    }
+
+    :root.dark .av-section-index {
+        background: color-mix(in oklab, var(--primary-700) 28%, var(--gray-950));
+        color: var(--primary-200);
+    }
+
+    :root.dark .av-count-badge,
+    :root.dark .av-configuration-status {
+        border-color: var(--gray-700);
+        background: var(--gray-800);
+        color: var(--gray-300);
+    }
+
+    :root.dark .av-alternatives-bulk {
+        border-color: color-mix(in oklab, var(--primary-500) 35%, var(--gray-800));
+        background: color-mix(in oklab, var(--primary-950) 38%, var(--gray-900));
+    }
+
+    :root.dark .av-alternatives-bulk-copy strong,
+    :root.dark .av-alternative-card-summary > strong {
+        color: #fff;
+    }
+
+    :root.dark .av-alternatives-bulk-copy small,
+    :root.dark .av-alternative-card-summary > small {
+        color: var(--gray-400);
+    }
+
+    :root.dark .av-alternative-card {
+        border-color: var(--gray-800);
+        background: var(--gray-900);
+    }
+
+    :root.dark .av-alternative-card.is-customized {
+        border-color: color-mix(in oklab, var(--primary-500) 35%, var(--gray-700));
+    }
+
+    :root.dark .av-configuration-status.is-customized {
+        border-color: color-mix(in oklab, var(--primary-400) 35%, var(--gray-700));
+        background: color-mix(in oklab, var(--primary-700) 22%, var(--gray-950));
+        color: var(--primary-200);
+    }
+
+    :root.dark .av-alternative-card-editor {
+        border-color: var(--gray-800);
+    }
+
+    :root.dark .av-type-checkbox,
+    :root.dark .av-option-checkbox,
+    :root.dark .av-options-group {
+        border-color: var(--gray-700);
+        background: var(--gray-900);
+        color: var(--gray-200);
+    }
+
+    :root.dark .av-type-checkbox:has(input:checked),
+    :root.dark .av-option-checkbox:has(input:checked) {
+        border-color: color-mix(in oklab, var(--primary-400) 45%, var(--gray-700));
+        background: color-mix(in oklab, var(--primary-700) 22%, var(--gray-950));
+        color: var(--primary-100);
+    }
+
+    :root.dark .av-type-checkbox small,
+    :root.dark .av-option-checkbox small,
+    :root.dark .av-options-heading small {
+        color: var(--gray-400);
+    }
+
+    :root.dark .av-options-heading strong,
+    :root.dark .av-options-group legend {
+        color: var(--gray-100);
     }
 
     :root.dark .av-segmented-control {
@@ -1304,6 +1667,11 @@
             font-size: var(--text-xs);
             line-height: 1.35;
             white-space: normal;
+        }
+
+        .av-type-checkbox-grid,
+        .av-options-grid {
+            grid-template-columns: 1fr;
         }
 
         .av-professor-page .av-bulk-control .gi-action,

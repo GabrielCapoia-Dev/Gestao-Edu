@@ -12,9 +12,9 @@ use App\Models\PeriodoAvaliacao;
 use App\Models\Serie;
 use App\Models\TipoAvaliacao;
 use App\Models\Turma;
-use App\Services\Avaliacoes\AvaliacaoTurmaCicloService;
-use App\Services\Avaliacoes\AvaliacaoSnapshotService;
 use App\Services\Avaliacoes\AvaliacaoEstruturaService;
+use App\Services\Avaliacoes\AvaliacaoSnapshotService;
+use App\Services\Avaliacoes\AvaliacaoTurmaCicloService;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -32,9 +32,9 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use UnitEnum;
 
@@ -85,9 +85,17 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
         'series_ids' => [],
         'componentes_ids' => [],
         'escolas_ids' => [],
-        'pautas_override_habilitado' => [],
-        'alternativas_override' => [],
     ];
+
+    public array $pautasOverrideHabilitado = [];
+
+    public array $alternativasOverride = [];
+
+    public array $tiposAlternativasEmMassa = [];
+
+    public array $tipoAlternativaAdicionar = [];
+
+    private ?array $alternativasAtivasAgrupadasCache = null;
 
     public static function canAccess(): bool
     {
@@ -265,7 +273,6 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
     {
         return [
             'escopoForm',
-            'alternativasOverrideForm',
         ];
     }
 
@@ -311,36 +318,88 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
             ->statePath('form');
     }
 
-    public function alternativasOverrideForm(Schema $schema): Schema
+    public function adicionarTiposAlternativasEmMassa(): void
     {
-        $components = $this->pautasCarregadas
-            ->map(fn (Pauta $pauta): Select => Select::make("alternativas_override.{$pauta->id}")
-                ->key($this->alternativasOverrideComponentKey((int) $pauta->id))
-                ->label('Alternativas de override')
-                ->helperText('Selecione uma ou mais alternativas para esta pauta apenas nesta avaliação.')
-                ->options(fn (): array => $this->alternativasAtivasOptions)
-                ->multiple()
-                ->native(false)
-                ->searchable()
-                ->preload()
-                ->live())
+        $pautasIds = $this->getPautasCarregadasProperty()
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
             ->values()
             ->all();
 
-        return $schema
-            ->components($components)
-            ->statePath('form');
+        if ($pautasIds === []) {
+            $this->addError('tiposAlternativasEmMassa', 'Selecione o escopo pedagógico antes de adicionar alternativas.');
+
+            return;
+        }
+
+        $tiposIds = collect($this->tiposAlternativasEmMassa)
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($tiposIds === []) {
+            $this->addError('tiposAlternativasEmMassa', 'Selecione ao menos um tipo de alternativa.');
+
+            return;
+        }
+
+        $alternativasIds = $this->buscarAlternativasAtivasPorTipos($tiposIds);
+
+        if ($alternativasIds === []) {
+            $this->addError('tiposAlternativasEmMassa', 'Os tipos selecionados não possuem alternativas ativas.');
+
+            return;
+        }
+
+        foreach ($pautasIds as $pautaId) {
+            $this->mesclarAlternativasNaPauta($pautaId, $alternativasIds);
+        }
+
+        $this->resetErrorBag('tiposAlternativasEmMassa');
     }
 
-    public function alternativasOverrideComponentKey(int $pautaId): string
+    public function adicionarTipoAlternativasNaPauta(int $pautaId): void
     {
-        return "override_{$pautaId}";
+        $pautaCarregada = $this->getPautasCarregadasProperty()->contains(
+            fn (Pauta $pauta): bool => (int) $pauta->id === $pautaId
+        );
+
+        if (! $pautaCarregada) {
+            return;
+        }
+
+        $tipoId = (int) ($this->tipoAlternativaAdicionar[$pautaId] ?? 0);
+
+        if ($tipoId <= 0) {
+            $this->addError(
+                'tipoAlternativaAdicionar.'.$pautaId,
+                'Selecione um tipo de alternativa.'
+            );
+
+            return;
+        }
+
+        $alternativasIds = $this->buscarAlternativasAtivasPorTipos([$tipoId]);
+
+        if ($alternativasIds === []) {
+            $this->addError(
+                'tipoAlternativaAdicionar.'.$pautaId,
+                'O tipo selecionado não possui alternativas ativas.'
+            );
+
+            return;
+        }
+
+        $this->mesclarAlternativasNaPauta($pautaId, $alternativasIds);
+        $this->tipoAlternativaAdicionar[$pautaId] = null;
+        $this->resetErrorBag('tipoAlternativaAdicionar.'.$pautaId);
     }
 
     public function updatedFormTipoAvaliacaoId(): void
     {
         $this->sincronizarOverridesPautasComFiltros();
-        $this->limparCacheAlternativasOverrideForm();
     }
 
     public function updatedFormSeriesIds(): void
@@ -355,7 +414,6 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
         $this->sincronizarComponentesSelecionadosComFiltros();
         $this->sincronizarEscolasSelecionadasComFiltros();
         $this->sincronizarOverridesPautasComFiltros();
-        $this->limparCacheAlternativasOverrideForm();
     }
 
     public function updatedFormComponentesIds(): void
@@ -369,7 +427,6 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
         $this->sincronizarEscolasSelecionadasComFiltros();
         $this->sincronizarOverridesPautasComFiltros();
-        $this->limparCacheAlternativasOverrideForm();
     }
 
     public function updatedFormEscolasIds(): void
@@ -462,26 +519,40 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
         return $this->buscarPautasParaEscopo($tipoAvaliacaoId, $seriesIds, $componentesIds);
     }
 
-    public function getAlternativasAtivasOptionsProperty(): array
+    public function getAlternativasAtivasAgrupadasProperty(): array
     {
-        return Alternativa::query()
-            ->with('tipo:id,nome')
-            ->where('status', true)
-            ->orderBy('nome')
+        return $this->alternativasAtivasAgrupadasCache ??= Alternativa::query()
+            ->select([
+                'alternativas.id',
+                'alternativas.nome',
+                'alternativas.tem_observacao',
+                'tipos_avaliacao.id as tipo_id',
+                'tipos_avaliacao.nome as tipo_nome',
+            ])
+            ->join('tipos_avaliacao', 'tipos_avaliacao.id', '=', 'alternativas.tipo_avaliacao_id')
+            ->where('alternativas.status', true)
+            ->where('tipos_avaliacao.status', true)
+            ->orderBy('tipos_avaliacao.nome')
+            ->orderBy('alternativas.nome')
             ->get()
-            ->mapWithKeys(function (Alternativa $alternativa): array {
-                $label = $alternativa->nome;
+            ->groupBy('tipo_id')
+            ->map(fn (Collection $alternativas): array => [
+                'id' => (int) $alternativas->first()->tipo_id,
+                'nome' => (string) $alternativas->first()->tipo_nome,
+                'alternativas' => $alternativas->map(fn (Alternativa $alternativa): array => [
+                    'id' => (int) $alternativa->id,
+                    'nome' => (string) $alternativa->nome,
+                    'tem_observacao' => (bool) $alternativa->tem_observacao,
+                ])->values()->all(),
+            ])
+            ->values()
+            ->all();
+    }
 
-                if ($alternativa->tipo?->nome) {
-                    $label .= ' | '.$alternativa->tipo->nome;
-                }
-
-                if ($alternativa->tem_observacao) {
-                    $label .= ' | exige observação';
-                }
-
-                return [$alternativa->id => $label];
-            })
+    public function getTiposAlternativasOptionsProperty(): array
+    {
+        return collect($this->alternativasAtivasAgrupadas)
+            ->mapWithKeys(fn (array $tipo): array => [$tipo['id'] => $tipo['nome']])
             ->all();
     }
 
@@ -491,7 +562,6 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
         $this->resetForm();
         $this->avaliacaoIdEditando = null;
-        $this->limparCacheAlternativasOverrideForm();
         $this->modalAberto = true;
         $this->resetValidation();
     }
@@ -532,16 +602,13 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
             'series_ids' => $avaliacao->series->pluck('id')->map(fn ($id) => (string) $id)->values()->all(),
             'componentes_ids' => $avaliacao->componentes->pluck('id')->map(fn ($id) => (string) $id)->values()->all(),
             'escolas_ids' => $avaliacao->escolas->pluck('id')->map(fn ($id) => (string) $id)->values()->all(),
-            'pautas_override_habilitado' => [],
-            'alternativas_override' => [],
         ];
+        $this->resetAlternativasForm();
 
         $this->sincronizarComponentesSelecionadosComFiltros();
         $this->sincronizarEscolasSelecionadasComFiltros();
         $this->sincronizarOverridesPautasComFiltros();
         $this->preencherOverridesExistentes($avaliacao->id);
-        $this->limparCacheAlternativasOverrideForm();
-
         $this->modalAberto = true;
         $this->resetValidation();
     }
@@ -581,10 +648,9 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
             'form.escolas_ids.*' => ['required'],
         ]);
 
-        // Respostas/snapshots tornam a estrutura imutável, mas não devem
-        // impedir a correção do prazo da avaliação. Neste caso preservamos
-        // todos os vínculos e alternativas e atualizamos somente os campos
-        // escalares permitidos.
+        // Respostas/snapshots bloqueiam mudanças destrutivas de estrutura, mas
+        // não devem impedir a correção do prazo da avaliação. Quando nada além
+        // dos prazos mudou, evitamos sincronizações e atualizamos só as datas.
         if ($isEdicao && $this->podeAtualizarSomentePrazos($validated['form'])) {
             $avaliacao = Avaliacao::query()->findOrFail($this->avaliacaoIdEditando);
             $avaliacao->update([
@@ -680,12 +746,12 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
         foreach ($pautasCarregadas as $pauta) {
             $pautaId = (int) $pauta->id;
-            $overrideHabilitado = (bool) (($this->form['pautas_override_habilitado'][$pautaId] ?? false));
+            $overrideHabilitado = (bool) ($this->pautasOverrideHabilitado[$pautaId] ?? false);
 
             if (! $overrideHabilitado) {
                 if ($alternativasTipoIds === []) {
                     $this->addError(
-                        'form.pautas_override_habilitado.'.$pautaId,
+                        'pautasOverrideHabilitado.'.$pautaId,
                         'O tipo selecionado não possui alternativas ativas. Defina um override nesta pauta.'
                     );
 
@@ -695,7 +761,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
                 continue;
             }
 
-            $alternativasOverrideIds = collect($this->form['alternativas_override'][$pautaId] ?? [])
+            $alternativasOverrideIds = collect($this->alternativasOverride[$pautaId] ?? [])
                 ->filter()
                 ->map(fn ($id) => (int) $id)
                 ->unique()
@@ -704,7 +770,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
             if ($alternativasOverrideIds === []) {
                 $this->addError(
-                    'form.alternativas_override.'.$pautaId,
+                    'alternativasOverride.'.$pautaId,
                     'Selecione pelo menos uma alternativa para o override desta pauta.'
                 );
 
@@ -718,7 +784,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
             if (count($alternativasValidas) !== count($alternativasOverrideIds)) {
                 $this->addError(
-                    'form.alternativas_override.'.$pautaId,
+                    'alternativasOverride.'.$pautaId,
                     'O override contém alternativas inválidas ou inativas.'
                 );
 
@@ -758,8 +824,11 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
                 $avaliacao = new Avaliacao;
             }
 
+            $estruturaService = app(AvaliacaoEstruturaService::class);
+            $possuiDados = $avaliacao->exists && $estruturaService->possuiDados($avaliacao);
+
             if ($avaliacao->exists) {
-                app(AvaliacaoEstruturaService::class)->validarAlteracao(
+                $estruturaService->validarAlteracao(
                     $avaliacao,
                     $pautasCarregadas->pluck('id')->map(fn ($id): int => (int) $id)->all(),
                     $turmasIds,
@@ -769,6 +838,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
                         'pauta_id' => (int) $item['pauta_id'],
                         'alternativa_id' => (int) $item['alternativa_id'],
                     ])->all(),
+                    $possuiDados,
                 );
             }
 
@@ -784,16 +854,18 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
             ]);
             $avaliacao->save();
 
-            $avaliacao->pautas()->sync($pautasCarregadas->pluck('id')->map(fn ($id) => (int) $id)->all());
-            $avaliacao->turmas()->sync($turmasIds);
-            $avaliacao->series()->sync($seriesIds);
-            $avaliacao->componentes()->sync($componentesIds);
-            $avaliacao->escolas()->sync($escolasIds);
-            app(AvaliacaoTurmaCicloService::class)->sincronizarAvaliacao($avaliacao);
+            if (! $possuiDados) {
+                $avaliacao->pautas()->sync($pautasCarregadas->pluck('id')->map(fn ($id) => (int) $id)->all());
+                $avaliacao->turmas()->sync($turmasIds);
+                $avaliacao->series()->sync($seriesIds);
+                $avaliacao->componentes()->sync($componentesIds);
+                $avaliacao->escolas()->sync($escolasIds);
+                app(AvaliacaoTurmaCicloService::class)->sincronizarAvaliacao($avaliacao);
 
-            DB::table('avaliacao_pauta_alternativa')
-                ->where('avaliacao_id', (int) $avaliacao->id)
-                ->delete();
+                DB::table('avaliacao_pauta_alternativa')
+                    ->where('avaliacao_id', (int) $avaliacao->id)
+                    ->delete();
+            }
 
             if ($overridesPayload !== []) {
                 $payload = collect($overridesPayload)->map(function (array $row) use ($avaliacao): array {
@@ -802,7 +874,11 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
                     return $row;
                 })->all();
 
-                DB::table('avaliacao_pauta_alternativa')->insert($payload);
+                if ($possuiDados) {
+                    DB::table('avaliacao_pauta_alternativa')->insertOrIgnore($payload);
+                } else {
+                    DB::table('avaliacao_pauta_alternativa')->insert($payload);
+                }
             }
 
         });
@@ -859,8 +935,8 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
         foreach ($overrides as $pautaId => $rows) {
             $id = (int) $pautaId;
-            $this->form['pautas_override_habilitado'][$id] = true;
-            $this->form['alternativas_override'][$id] = collect($rows)
+            $this->pautasOverrideHabilitado[$id] = true;
+            $this->alternativasOverride[$id] = collect($rows)
                 ->pluck('alternativa_id')
                 ->map(fn ($alternativaId) => (int) $alternativaId)
                 ->unique()
@@ -893,12 +969,33 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
             && $normalizar($form['series_ids']) === $normalizar($avaliacao->series->pluck('id')->all())
             && $normalizar($form['componentes_ids']) === $normalizar($avaliacao->componentes->pluck('id')->all())
             && $normalizar(collect($form['escolas_ids'])->reject(fn ($id): bool => $id === 'todas')->all())
-                === $normalizar($avaliacao->escolas->pluck('id')->all());
+                === $normalizar($avaliacao->escolas->pluck('id')->all())
+            && $this->overridesPermanecemIguais($avaliacao);
     }
 
-    private function limparCacheAlternativasOverrideForm(): void
+    private function overridesPermanecemIguais(Avaliacao $avaliacao): bool
     {
-        unset($this->cachedSchemas['alternativasOverrideForm']);
+        $atuais = DB::table('avaliacao_pauta_alternativa')
+            ->where('avaliacao_id', (int) $avaliacao->id)
+            ->get(['pauta_id', 'alternativa_id'])
+            ->map(fn ($item): string => ((int) $item->pauta_id).':'.((int) $item->alternativa_id))
+            ->sort()
+            ->values()
+            ->all();
+
+        $novos = collect($this->pautasOverrideHabilitado)
+            ->filter(fn ($habilitado): bool => (bool) $habilitado)
+            ->flatMap(function ($_habilitado, $pautaId): array {
+                return collect($this->alternativasOverride[(int) $pautaId] ?? [])
+                    ->map(fn ($alternativaId): string => ((int) $pautaId).':'.((int) $alternativaId))
+                    ->all();
+            })
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        return $atuais === $novos;
     }
 
     private function resetForm(): void
@@ -916,9 +1013,53 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
             'series_ids' => [],
             'componentes_ids' => [],
             'escolas_ids' => [],
-            'pautas_override_habilitado' => [],
-            'alternativas_override' => [],
         ];
+        $this->resetAlternativasForm();
+    }
+
+    private function resetAlternativasForm(): void
+    {
+        $this->pautasOverrideHabilitado = [];
+        $this->alternativasOverride = [];
+        $this->tiposAlternativasEmMassa = [];
+        $this->tipoAlternativaAdicionar = [];
+    }
+
+    /**
+     * @param  array<int, int>  $tiposIds
+     * @return array<int, int>
+     */
+    private function buscarAlternativasAtivasPorTipos(array $tiposIds): array
+    {
+        return Alternativa::query()
+            ->select('alternativas.id')
+            ->join('tipos_avaliacao', 'tipos_avaliacao.id', '=', 'alternativas.tipo_avaliacao_id')
+            ->where('alternativas.status', true)
+            ->where('tipos_avaliacao.status', true)
+            ->whereIn('alternativas.tipo_avaliacao_id', $tiposIds)
+            ->orderBy('alternativas.id')
+            ->pluck('alternativas.id')
+            ->map(fn ($id): int => (int) $id)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<int, int>  $alternativasIds
+     */
+    private function mesclarAlternativasNaPauta(int $pautaId, array $alternativasIds): void
+    {
+        $atuais = collect($this->alternativasOverride[$pautaId] ?? [])
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0);
+
+        $this->pautasOverrideHabilitado[$pautaId] = true;
+        $this->alternativasOverride[$pautaId] = $atuais
+            ->merge($alternativasIds)
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
     }
 
     private function buscarPautasParaEscopo(int $tipoAvaliacaoId, array $seriesIds, array $componentesIds): Collection
@@ -1053,12 +1194,12 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
             ->values()
             ->all();
 
-        $overridesAtivos = collect($this->form['pautas_override_habilitado'] ?? [])
+        $overridesAtivos = collect($this->pautasOverrideHabilitado)
             ->filter(fn ($_value, $key) => in_array((int) $key, $pautasIds, true))
             ->map(fn ($value) => (bool) $value)
             ->all();
 
-        $alternativasOverrides = collect($this->form['alternativas_override'] ?? [])
+        $alternativasOverrides = collect($this->alternativasOverride)
             ->filter(fn ($_value, $key) => in_array((int) $key, $pautasIds, true))
             ->map(function ($ids): array {
                 return collect($ids ?? [])
@@ -1068,6 +1209,10 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
                     ->values()
                     ->all();
             })
+            ->all();
+
+        $tiposAlternativasAdicionar = collect($this->tipoAlternativaAdicionar)
+            ->filter(fn ($_value, $key) => in_array((int) $key, $pautasIds, true))
             ->all();
 
         foreach ($pautasIds as $pautaId) {
@@ -1080,8 +1225,9 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
             }
         }
 
-        $this->form['pautas_override_habilitado'] = $overridesAtivos;
-        $this->form['alternativas_override'] = $alternativasOverrides;
+        $this->pautasOverrideHabilitado = $overridesAtivos;
+        $this->alternativasOverride = $alternativasOverrides;
+        $this->tipoAlternativaAdicionar = $tiposAlternativasAdicionar;
     }
 
     public function getTitle(): string

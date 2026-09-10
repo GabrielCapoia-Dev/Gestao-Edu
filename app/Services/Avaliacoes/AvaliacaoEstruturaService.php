@@ -12,11 +12,11 @@ use RuntimeException;
 class AvaliacaoEstruturaService
 {
     /**
-     * @param array<int, int> $pautaIds
-     * @param array<int, int> $turmaIds
-     * @param array<int, int> $serieIds
-     * @param array<int, int> $componenteIds
-     * @param array<int, array{pauta_id:int,alternativa_id:int}> $alternativasOverride
+     * @param  array<int, int>  $pautaIds
+     * @param  array<int, int>  $turmaIds
+     * @param  array<int, int>  $serieIds
+     * @param  array<int, int>  $componenteIds
+     * @param  array<int, array{pauta_id:int,alternativa_id:int}>  $alternativasOverride
      */
     public function validarAlteracao(
         Avaliacao $avaliacao,
@@ -25,8 +25,9 @@ class AvaliacaoEstruturaService
         array $serieIds,
         array $componenteIds,
         array $alternativasOverride = [],
+        ?bool $possuiDados = null,
     ): void {
-        if (! $this->possuiDados($avaliacao)) {
+        if (! ($possuiDados ?? $this->possuiDados($avaliacao))) {
             return;
         }
 
@@ -58,8 +59,10 @@ class AvaliacaoEstruturaService
             ->values()
             ->all();
 
-        if ($atuais !== $novas) {
-            throw new RuntimeException('Não é possível alterar as alternativas da avaliação depois da primeira resposta ou snapshot. Crie uma nova avaliação para mudar a estrutura.');
+        $removidas = array_values(array_diff($atuais, $novas));
+
+        if ($removidas !== []) {
+            throw new RuntimeException('Não é possível remover alternativas da avaliação depois da primeira resposta ou snapshot. Você ainda pode adicionar novas alternativas.');
         }
     }
 

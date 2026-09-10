@@ -3,9 +3,10 @@
 namespace Tests\Feature\Avaliacoes;
 
 use App\Filament\Admin\Pages\GestaoAvaliacoes;
-use App\Models\Aluno;
 use App\Models\Alternativa;
+use App\Models\Aluno;
 use App\Models\Avaliacao;
+use App\Models\AvaliacaoSnapshotEvento;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\Pauta;
@@ -14,6 +15,7 @@ use App\Models\Serie;
 use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
+use App\Services\Avaliacoes\AvaliacaoEstruturaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
@@ -209,9 +211,10 @@ class GestaoAvaliacoesPageTest extends TestCase
             ->set('form.series_ids', [$serie->id])
             ->set('form.componentes_ids', [$componente->id])
             ->set('form.escolas_ids', [(string) $escola->id])
-            ->set("form.pautas_override_habilitado.{$pauta->id}", true)
-            ->set("form.alternativas_override.{$pauta->id}", [$alternativaOverride->id])
-            ->call('salvarAvaliacao');
+            ->set("pautasOverrideHabilitado.{$pauta->id}", true)
+            ->set("alternativasOverride.{$pauta->id}", [$alternativaOverride->id])
+            ->call('salvarAvaliacao')
+            ->assertHasNoErrors();
 
         $avaliacao = Avaliacao::query()->where('nome', 'Avaliacao Override')->firstOrFail();
 
@@ -226,6 +229,156 @@ class GestaoAvaliacoesPageTest extends TestCase
             'pauta_id' => $pauta->id,
             'alternativa_id' => $alternativaPadrao->id,
         ]);
+    }
+
+    public function test_adiciona_alternativas_por_multiplos_tipos_sem_remover_ajustes_individuais(): void
+    {
+        $tipoAvaliacao = TipoAvaliacao::query()->create(['nome' => 'SRM', 'status' => true]);
+        $tipoParecer = TipoAvaliacao::query()->create(['nome' => 'Parecer', 'status' => true]);
+        $tipoEtapa = TipoAvaliacao::query()->create(['nome' => 'SRM - 2a Etapa', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => '2o Trimestre', 'status' => true]);
+        $serie = Serie::query()->create(['codigo' => 'SER-SRM', 'nome' => 'Sala de Recursos']);
+        $componente = ComponenteCurricular::query()->create(['codigo' => 'COMP-SRM', 'nome' => 'SRM']);
+        $serie->componentesCurriculares()->sync([$componente->id]);
+
+        $escola = Escola::query()->create([
+            'codigo' => 'ESC-SRM',
+            'nome' => 'Escola SRM',
+            'email' => 'escola.srm@teste.local',
+            'telefone' => '(44) 99999-4444',
+        ]);
+        $turma = Turma::query()->create([
+            'codigo' => 'TUR-SRM',
+            'nome' => 'SRM',
+            'turno' => 'tarde',
+            'id_serie' => $serie->id,
+            'id_escola' => $escola->id,
+        ]);
+        $turma->componentes()->attach($componente->id, ['professor_id' => null, 'tem_professor' => false]);
+
+        $parecerSim = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipoParecer->id,
+            'nome' => 'Sim',
+            'tem_observacao' => false,
+            'status' => true,
+        ]);
+        $parecerNao = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipoParecer->id,
+            'nome' => 'Não',
+            'tem_observacao' => false,
+            'status' => true,
+        ]);
+        $parecerInativo = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipoParecer->id,
+            'nome' => 'Inativo',
+            'tem_observacao' => false,
+            'status' => false,
+        ]);
+        $naoSeAplica = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipoEtapa->id,
+            'nome' => 'Não se Aplica',
+            'tem_observacao' => false,
+            'status' => true,
+        ]);
+
+        $pauta = Pauta::query()->create([
+            'tipo_avaliacao_id' => $tipoAvaliacao->id,
+            'texto' => 'Realiza atividade proposta',
+            'serie_id' => $serie->id,
+            'componente_curricular_id' => $componente->id,
+            'status' => true,
+        ]);
+
+        $pagina = app(GestaoAvaliacoes::class);
+        $pagina->form['tipo_avaliacao_id'] = $tipoAvaliacao->id;
+        $pagina->form['series_ids'] = [$serie->id];
+        $pagina->form['componentes_ids'] = [$componente->id];
+        $pagina->tiposAlternativasEmMassa = [$tipoParecer->id];
+        $pagina->adicionarTiposAlternativasEmMassa();
+
+        $this->assertTrue((bool) ($pagina->pautasOverrideHabilitado[$pauta->id] ?? false));
+        $this->assertSame(
+            collect([$parecerSim->id, $parecerNao->id])->sort()->values()->all(),
+            collect($pagina->alternativasOverride[$pauta->id] ?? [])->sort()->values()->all(),
+        );
+
+        $pagina->tipoAlternativaAdicionar[$pauta->id] = $tipoEtapa->id;
+        $pagina->adicionarTipoAlternativasNaPauta($pauta->id);
+
+        $this->assertSame(
+            collect([$parecerSim->id, $parecerNao->id, $naoSeAplica->id])->sort()->values()->all(),
+            collect($pagina->alternativasOverride[$pauta->id] ?? [])->sort()->values()->all(),
+        );
+
+        $avaliacao = Avaliacao::query()->create([
+            'nome' => 'Avaliacao SRM por tipos',
+            'tipo_avaliacao_id' => $tipoAvaliacao->id,
+            'periodo_avaliacao_id' => $periodo->id,
+            'data_inicio' => now()->toDateString(),
+            'data_fim' => now()->addDays(7)->toDateString(),
+            'data_inicio_preenchimento' => now()->toDateString(),
+            'data_fim_preenchimento' => now()->addDays(10)->toDateString(),
+            'status' => Avaliacao::STATUS_ATIVA,
+        ]);
+        $avaliacao->pautas()->sync([$pauta->id]);
+        $avaliacao->turmas()->sync([$turma->id]);
+        $avaliacao->series()->sync([$serie->id]);
+        $avaliacao->componentes()->sync([$componente->id]);
+        $avaliacao->escolas()->sync([$escola->id]);
+        $avaliacao->alternativasOverride()->attach([
+            $parecerSim->id => ['pauta_id' => $pauta->id],
+            $parecerNao->id => ['pauta_id' => $pauta->id],
+        ]);
+
+        AvaliacaoSnapshotEvento::query()->create([
+            'idempotency_key' => 'gestao-avaliacoes-tipos-'.$avaliacao->id,
+            'tipo' => AvaliacaoSnapshotEvento::TIPO_CONCLUSAO,
+            'avaliacao_id' => $avaliacao->id,
+            'payload_hash_agregado' => str_repeat('a', 64),
+        ]);
+
+        app(AvaliacaoEstruturaService::class)->validarAlteracao(
+            $avaliacao,
+            [$pauta->id],
+            [$turma->id],
+            [$serie->id],
+            [$componente->id],
+            [
+                ['pauta_id' => $pauta->id, 'alternativa_id' => $parecerSim->id],
+                ['pauta_id' => $pauta->id, 'alternativa_id' => $parecerNao->id],
+                ['pauta_id' => $pauta->id, 'alternativa_id' => $naoSeAplica->id],
+            ],
+        );
+
+        $avaliacao->alternativasOverride()->attach($naoSeAplica->id, ['pauta_id' => $pauta->id]);
+
+        foreach ([$parecerSim, $parecerNao, $naoSeAplica] as $alternativa) {
+            $this->assertDatabaseHas('avaliacao_pauta_alternativa', [
+                'avaliacao_id' => $avaliacao->id,
+                'pauta_id' => $pauta->id,
+                'alternativa_id' => $alternativa->id,
+            ]);
+        }
+
+        $this->assertDatabaseMissing('avaliacao_pauta_alternativa', [
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'alternativa_id' => $parecerInativo->id,
+        ]);
+
+        $this->expectExceptionMessage('Não é possível remover alternativas da avaliação');
+
+        app(AvaliacaoEstruturaService::class)->validarAlteracao(
+            $avaliacao->fresh(),
+            [$pauta->id],
+            [$turma->id],
+            [$serie->id],
+            [$componente->id],
+            [
+                ['pauta_id' => $pauta->id, 'alternativa_id' => $parecerSim->id],
+                ['pauta_id' => $pauta->id, 'alternativa_id' => $naoSeAplica->id],
+            ],
+        );
     }
 
     public function test_botao_acompanhar_aparece_na_listagem_com_permissao_especifica(): void

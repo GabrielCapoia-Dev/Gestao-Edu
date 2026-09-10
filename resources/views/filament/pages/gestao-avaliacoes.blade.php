@@ -18,6 +18,15 @@
             </header>
 
             <div class="gi-modal-body">
+                <section class="av-form-section av-form-section--plain">
+                    <div class="av-section-heading">
+                        <span class="av-section-index">1</span>
+                        <div>
+                            <h4>Dados da avaliação</h4>
+                            <p>Defina a identificação, o período e as datas de aplicação e preenchimento.</p>
+                        </div>
+                    </div>
+
                 <div class="av-form-grid av-form-grid--three">
                     <label class="gi-field av-span-2">
                         <span>Nome da avaliação</span>
@@ -109,10 +118,16 @@
                         @enderror
                     </label>
                 </div>
+                </section>
 
                 <section class="av-form-section">
-                    <h4>Escopo pedagogico</h4>
-                    <p>Selecione séries, componentes e escolas. As pautas e turmas serão carregadas automaticamente por esse escopo.</p>
+                    <div class="av-section-heading">
+                        <span class="av-section-index">2</span>
+                        <div>
+                            <h4>Escopo pedagógico</h4>
+                            <p>Selecione séries, componentes e escolas. As pautas e turmas serão carregadas automaticamente por esse escopo.</p>
+                        </div>
+                    </div>
 
                     <div class="av-filament-scope-form">
                         {{ $this->escopoForm }}
@@ -182,42 +197,169 @@
                     @enderror
                 </section>
 
-                <section class="av-form-section">
-                    <h4>Pautas carregadas automaticamente</h4>
-                    <p>As pautas abaixo foram carregadas por tipo + série + componente. Você pode substituir as alternativas por pauta apenas nesta avaliação.</p>
+                @php($pautasCarregadas = $this->pautasCarregadas)
 
-                    @if ($this->pautasCarregadas->isEmpty())
+                <section class="av-form-section av-alternatives-section">
+                    <div class="av-section-heading av-section-heading--between">
+                        <div class="av-section-heading-main">
+                            <span class="av-section-index">3</span>
+                            <div>
+                                <h4>Alternativas das pautas</h4>
+                                <p>Use o tipo padrão da avaliação ou personalize as alternativas de cada pauta.</p>
+                            </div>
+                        </div>
+
+                        @if ($pautasCarregadas->isNotEmpty())
+                            <span class="av-count-badge">
+                                {{ $pautasCarregadas->count() }} {{ $pautasCarregadas->count() === 1 ? 'pauta' : 'pautas' }}
+                            </span>
+                        @endif
+                    </div>
+
+                    @if ($pautasCarregadas->isEmpty())
                         <p class="gi-empty">Nenhuma pauta encontrada para o escopo atual.</p>
                     @else
-                        <div class="av-stack">
-                            @foreach ($this->pautasCarregadas as $pauta)
-                                @php($overrideHabilitado = (bool) ($form['pautas_override_habilitado'][$pauta->id] ?? false))
-                                <div class="av-subitem">
-                                    <div>
+                        @php($alternativasAtivasAgrupadas = $this->alternativasAtivasAgrupadas)
+
+                        <div class="av-alternatives-bulk">
+                            <div class="av-alternatives-bulk-copy">
+                                <strong>Adicionar por tipo em todas as pautas</strong>
+                                <small>As alternativas ativas dos tipos selecionados serão adicionadas às pautas carregadas. Você ainda poderá ajustar cada pauta individualmente.</small>
+                            </div>
+
+                            <div class="av-alternatives-bulk-actions">
+                                <div class="av-type-checkbox-grid" aria-label="Tipos de alternativas">
+                                    @foreach ($alternativasAtivasAgrupadas as $tipoAlternativas)
+                                        <label class="av-type-checkbox">
+                                            <input
+                                                type="checkbox"
+                                                value="{{ $tipoAlternativas['id'] }}"
+                                                wire:model.defer="tiposAlternativasEmMassa"
+                                            />
+                                            <span>
+                                                <strong>{{ $tipoAlternativas['nome'] }}</strong>
+                                                <small>{{ count($tipoAlternativas['alternativas']) }} alternativas ativas</small>
+                                            </span>
+                                        </label>
+                                    @endforeach
+                                </div>
+
+                                <button
+                                    type="button"
+                                    class="gi-action gi-action--primary"
+                                    wire:click="adicionarTiposAlternativasEmMassa"
+                                    wire:loading.attr="disabled"
+                                    wire:target="adicionarTiposAlternativasEmMassa"
+                                >
+                                    Aplicar às pautas
+                                </button>
+                            </div>
+
+                            @error('tiposAlternativasEmMassa')
+                                <p class="error">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        @php($tiposAlternativasOptions = $this->tiposAlternativasOptions)
+
+                        <div class="av-stack av-alternatives-list">
+                            @foreach ($pautasCarregadas as $pauta)
+                                @php
+                                    $overrideHabilitado = (bool) ($pautasOverrideHabilitado[$pauta->id] ?? false);
+                                    $totalAlternativas = count($alternativasOverride[$pauta->id] ?? []);
+                                @endphp
+                                <article
+                                    class="av-alternative-card {{ $overrideHabilitado ? 'is-customized' : '' }}"
+                                    wire:key="avaliacao-pauta-{{ $pauta->id }}"
+                                >
+                                    <div class="av-alternative-card-summary">
                                         <strong>{{ $pauta->texto }}</strong>
                                         <small>
                                             Série: {{ $pauta->serie?->nome ?? 'Sem série' }} |
                                             Componente: {{ $pauta->componente?->nome ?? 'Sem componente' }}
                                         </small>
+
+                                        <span class="av-configuration-status {{ $overrideHabilitado ? 'is-customized' : '' }}">
+                                            {{ $overrideHabilitado ? $totalAlternativas . ' alternativas personalizadas' : 'Alternativas do tipo da avaliação' }}
+                                        </span>
                                     </div>
 
                                     <label class="gi-field gi-field--small">
-                                        <span>Alternativas nesta pauta</span>
-                                        <select wire:model.live="form.pautas_override_habilitado.{{ $pauta->id }}">
-                                            <option value="0">Usar alternativas do tipo</option>
-                                            <option value="1">Substituir nessa avaliação</option>
+                                        <span>Configuração</span>
+                                        <select wire:model.live="pautasOverrideHabilitado.{{ $pauta->id }}">
+                                            <option value="0">Usar o tipo da avaliação</option>
+                                            <option value="1">Personalizar alternativas</option>
                                         </select>
-                                        @error('form.pautas_override_habilitado.' . $pauta->id)
+                                        @error('pautasOverrideHabilitado.' . $pauta->id)
                                             <p class="error">{{ $message }}</p>
                                         @enderror
                                     </label>
 
                                     @if ($overrideHabilitado)
-                                        <div class="av-filament-scope-form av-override-select">
-                                            {{ $this->getSchemaComponent('alternativasOverrideForm.' . $this->alternativasOverrideComponentKey((int) $pauta->id)) }}
+                                        <div class="av-alternative-card-editor">
+                                            <div class="av-add-type-row">
+                                                <label class="gi-field gi-field--small">
+                                                    <span>Adicionar todas de um tipo</span>
+                                                    <select wire:model.defer="tipoAlternativaAdicionar.{{ $pauta->id }}">
+                                                        <option value="">Selecione um tipo</option>
+                                                        @foreach ($tiposAlternativasOptions as $tipoId => $tipoNome)
+                                                            <option value="{{ $tipoId }}">{{ $tipoNome }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                    @error('tipoAlternativaAdicionar.' . $pauta->id)
+                                                        <p class="error">{{ $message }}</p>
+                                                    @enderror
+                                                </label>
+
+                                                <button
+                                                    type="button"
+                                                    class="gi-action"
+                                                    wire:click="adicionarTipoAlternativasNaPauta({{ $pauta->id }})"
+                                                    wire:loading.attr="disabled"
+                                                    wire:target="adicionarTipoAlternativasNaPauta({{ $pauta->id }})"
+                                                >
+                                                    Adicionar tipo
+                                                </button>
+                                            </div>
+
+                                            <div class="av-override-select">
+                                                <div class="av-options-heading">
+                                                    <strong>Alternativas selecionadas</strong>
+                                                    <small>Marque ou desmarque alternativas para ajustar somente esta pauta.</small>
+                                                </div>
+
+                                                <div class="av-options-groups">
+                                                    @foreach ($alternativasAtivasAgrupadas as $tipoAlternativas)
+                                                        <fieldset class="av-options-group">
+                                                            <legend>{{ $tipoAlternativas['nome'] }}</legend>
+                                                            <div class="av-options-grid">
+                                                                @foreach ($tipoAlternativas['alternativas'] as $alternativa)
+                                                                    <label class="av-option-checkbox">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            value="{{ $alternativa['id'] }}"
+                                                                            wire:model.defer="alternativasOverride.{{ $pauta->id }}"
+                                                                        />
+                                                                        <span>
+                                                                            {{ $alternativa['nome'] }}
+                                                                            @if ($alternativa['tem_observacao'])
+                                                                                <small>Exige observação</small>
+                                                                            @endif
+                                                                        </span>
+                                                                    </label>
+                                                                @endforeach
+                                                            </div>
+                                                        </fieldset>
+                                                    @endforeach
+                                                </div>
+
+                                                @error('alternativasOverride.' . $pauta->id)
+                                                    <p class="error">{{ $message }}</p>
+                                                @enderror
+                                            </div>
                                         </div>
                                     @endif
-                                </div>
+                                </article>
                             @endforeach
                         </div>
                     @endif
