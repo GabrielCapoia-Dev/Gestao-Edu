@@ -4,13 +4,13 @@ namespace App\Jobs;
 
 use App\Services\Avaliacoes\AvaliacaoDashboardTurmaResumoService;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class AtualizarAvaliacaoDashboardTurmaResumoJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
+class AtualizarAvaliacaoDashboardTurmaResumoJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable;
     use InteractsWithQueue;
@@ -27,6 +27,7 @@ class AtualizarAvaliacaoDashboardTurmaResumoJob implements ShouldBeUniqueUntilPr
     ) {
         $this->onConnection((string) config('queue.default'));
         $this->onQueue('default');
+        $this->delay(now()->addMinutes(10));
     }
 
     public function uniqueId(): string
@@ -36,7 +37,7 @@ class AtualizarAvaliacaoDashboardTurmaResumoJob implements ShouldBeUniqueUntilPr
 
     public function uniqueFor(): int
     {
-        return 900;
+        return 600;
     }
 
     public function handle(AvaliacaoDashboardTurmaResumoService $resumos): void

@@ -23,7 +23,7 @@ use App\Services\Avaliacoes\AvaliacaoTurmaCicloService;
 use App\Services\Avaliacoes\AvaliacaoDashboardFactsService;
 use App\Services\Avaliacoes\AvaliacaoDashboardOnDemandQueryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -106,9 +106,10 @@ class AvaliacaoDashboardOnDemandTest extends TestCase
             (int) $cenario['avaliacao']->id,
             (int) $cenario['turma']->id,
         );
-        $this->assertInstanceOf(ShouldBeUniqueUntilProcessing::class, $job);
+        $this->assertInstanceOf(ShouldBeUnique::class, $job);
         $this->assertSame($cenario['avaliacao']->id.':'.$cenario['turma']->id, $job->uniqueId());
-        $this->assertSame(900, $job->uniqueFor());
+        $this->assertSame(600, $job->uniqueFor());
+        $this->assertTrue($job->delay->between(now()->addMinutes(9), now()->addMinutes(11)));
 
         $service = app(AvaliacaoDashboardTurmaResumoService::class);
         $service->recalcular((int) $cenario['avaliacao']->id, (int) $cenario['turma']->id);

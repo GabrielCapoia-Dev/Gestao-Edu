@@ -191,92 +191,76 @@
                 </article>
             </section>
 
-            <section class="dav-chart-board">
-                <div class="dav-chart-board__intro">
+            <section class="dav-analytics">
+                <header class="dav-analytics__header">
                     <div>
-                        <span class="dav-kicker">VISÃO GERAL</span>
-                        <h2>Onde está o preenchimento?</h2>
-                        <p>Compare rapidamente o andamento por escola, componente e série.</p>
+                        <span class="dav-kicker">ANÁLISE DO PREENCHIMENTO</span>
+                        <h2>Visão rápida do andamento</h2>
+                        <p>Os indicadores abaixo mostram onde estão as respostas pendentes.</p>
                     </div>
-                    <div class="dav-chart-board__legend">
-                        <span><i class="dav-legend-dot dav-legend-dot--blue"></i>Preenchido</span>
-                        <span><i class="dav-legend-dot dav-legend-dot--muted"></i>Pendente</span>
+                    <div class="dav-analytics__headline">
+                        <strong>{{ number_format($percentualPreenchimentoGeral, 1, ',', '.') }}%</strong>
+                        <span>preenchimento geral</span>
                     </div>
-                </div>
+                </header>
 
-                <div class="dav-chart-grid{{ $this->podeVerPendenciaPorEscola ? ' dav-chart-grid--three' : '' }}">
-                @if ($this->podeVerPendenciaPorEscola)
-                <article class="dav-card dav-card--chart dav-chart-card dav-chart-card--risk">
-                    <header>
-                        <h3>Pendência por escola</h3>
-                        <p>Escolas com mais turmas de preenchimento incompleto.</p>
-                    </header>
+                <div class="dav-analytics__grid">
+                    <article class="dav-analytics-card dav-analytics-card--wide">
+                        <header class="dav-analytics-card__header">
+                            <div><h3>Por componente</h3><p>Ranking dos componentes curriculares.</p></div>
+                            <span class="dav-analytics-card__unit">respostas</span>
+                        </header>
+                        <div class="dav-ranking">
+                            @forelse ($preenchimentoPorComponentes as $item)
+                                @php $percentual = min(max((float) $item['percentual_preenchimento'], 0), 100); @endphp
+                                <div class="dav-ranking__item">
+                                    <div class="dav-ranking__label"><span>{{ $item['nome'] }}</span><strong>{{ number_format($percentual, 1, ',', '.') }}%</strong></div>
+                                    <div class="dav-ranking__track"><i style="width: {{ $percentual }}%"></i></div>
+                                    <small>{{ $item['preenchimentos_respondidos'] }} de {{ $item['preenchimentos_esperados'] }}</small>
+                                </div>
+                            @empty
+                                <p class="dav-empty">Nenhum componente encontrado.</p>
+                            @endforelse
+                        </div>
+                    </article>
 
-                    <div class="dav-bars dav-bars--risk">
-                        @forelse ($turmasIncompletasPorEscola as $item)
-                            <div class="dav-bar-row">
-                                <div class="dav-bar-top">
-                                    <span>{{ $item['nome'] }}</span>
-                                    <strong>{{ $item['total'] }} turmas incompletas · {{ number_format((float) $item['percentual'], 1, ',', '.') }}%</strong>
+                    <article class="dav-analytics-card dav-analytics-card--wide">
+                        <header class="dav-analytics-card__header">
+                            <div><h3>Por série</h3><p>Acompanhamento por etapa de ensino.</p></div>
+                            <span class="dav-analytics-card__unit">pendências</span>
+                        </header>
+                        <div class="dav-ranking">
+                            @forelse ($preenchimentoPorSeries as $item)
+                                @php $percentual = min(max((float) $item['percentual_preenchimento'], 0), 100); @endphp
+                                <div class="dav-ranking__item">
+                                    <div class="dav-ranking__label"><span>{{ $item['nome'] }}</span><strong>{{ number_format($percentual, 1, ',', '.') }}%</strong></div>
+                                    <div class="dav-ranking__track"><i style="width: {{ $percentual }}%"></i></div>
+                                    <small>{{ $item['preenchimentos_pendentes'] }} preenchimentos pendentes</small>
                                 </div>
-                                <div class="dav-bar-track">
-                                    <div class="dav-bar-fill dav-bar-fill--amber" style="width: {{ min((float) $item['percentual_barra'], 100) }}%;"></div>
-                                </div>
+                            @empty
+                                <p class="dav-empty">Nenhuma série encontrada.</p>
+                            @endforelse
+                        </div>
+                    </article>
+
+                    @if ($this->podeVerPendenciaPorEscola)
+                        <article class="dav-analytics-card dav-analytics-card--risk">
+                            <header class="dav-analytics-card__header">
+                                <div><h3>Pontos de atenção</h3><p>Escolas com maior volume de turmas incompletas.</p></div>
+                                <span class="dav-risk-icon">!</span>
+                            </header>
+                            <div class="dav-risk-list">
+                                @forelse ($turmasIncompletasPorEscola as $item)
+                                    <div class="dav-risk-list__item">
+                                        <div><strong>{{ $item['nome'] }}</strong><small>{{ $item['total'] }} turmas incompletas</small></div>
+                                        <b>{{ number_format((float) $item['percentual'], 1, ',', '.') }}%</b>
+                                    </div>
+                                @empty
+                                    <p class="dav-empty">Nenhuma turma incompleta no recorte atual.</p>
+                                @endforelse
                             </div>
-                        @empty
-                            <p class="dav-empty">Nenhuma turma incompleta no recorte atual.</p>
-                        @endforelse
-                    </div>
-                </article>
-                @endif
-
-                <article class="dav-card dav-card--chart dav-chart-card">
-                    <header>
-                        <h3>Preenchimento por componente</h3>
-                        <p>Percentual de preenchimento por componente curricular.</p>
-                    </header>
-
-                    <div class="dav-bars">
-                        @forelse ($preenchimentoPorComponentes as $item)
-                            <div class="dav-bar-row">
-                                <div class="dav-bar-top">
-                                    <span>{{ $item['nome'] }}</span>
-                                    <strong>{{ number_format((float) $item['percentual_preenchimento'], 1, ',', '.') }}%</strong>
-                                </div>
-                                <div class="dav-bar-track">
-                                    <div class="dav-bar-fill" style="width: {{ min((float) $item['percentual_preenchimento'], 100) }}%;"></div>
-                                </div>
-                                <span class="dav-bar-note">{{ $item['preenchimentos_respondidos'] }} de {{ $item['preenchimentos_esperados'] }} preenchimentos</span>
-                            </div>
-                        @empty
-                            <p class="dav-empty">Nenhum componente encontrado para o recorte atual.</p>
-                        @endforelse
-                    </div>
-                </article>
-
-                <article class="dav-card dav-card--chart dav-chart-card">
-                    <header>
-                        <h3>Preenchimento por série</h3>
-                        <p>Percentual de preenchimento por série no escopo atual.</p>
-                    </header>
-
-                    <div class="dav-bars">
-                        @forelse ($preenchimentoPorSeries as $item)
-                            <div class="dav-bar-row">
-                                <div class="dav-bar-top">
-                                    <span>{{ $item['nome'] }}</span>
-                                    <strong>{{ number_format((float) $item['percentual_preenchimento'], 1, ',', '.') }}%</strong>
-                                </div>
-                                <div class="dav-bar-track">
-                                    <div class="dav-bar-fill" style="width: {{ min((float) $item['percentual_preenchimento'], 100) }}%;"></div>
-                                </div>
-                                <span class="dav-bar-note">{{ $item['preenchimentos_pendentes'] }} preenchimentos pendentes</span>
-                            </div>
-                        @empty
-                            <p class="dav-empty">Nenhuma série encontrada para o recorte atual.</p>
-                        @endforelse
-                    </div>
-                </article>
+                        </article>
+                    @endif
                 </div>
             </section>
 
@@ -1101,6 +1085,54 @@
             border-top: 3px solid #e0a11a;
         }
 
+        .dav-analytics {
+            border: 1px solid #d9e5f3;
+            border-radius: 1.25rem;
+            padding: 1.25rem;
+            background: #f8fbff;
+        }
+
+        .dav-analytics__header,
+        .dav-analytics-card__header,
+        .dav-ranking__label,
+        .dav-risk-list__item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .dav-analytics__header { padding: 0.1rem 0.15rem 1.1rem; }
+        .dav-analytics__header h2 { margin: 0.2rem 0 0; color: #10203b; font-size: 1.2rem; font-weight: 800; letter-spacing: -0.025em; }
+        .dav-analytics__header p,
+        .dav-analytics-card__header p { margin: 0.25rem 0 0; color: var(--gray-600); font-size: 0.78rem; }
+        .dav-analytics__headline { min-width: 9rem; padding: 0.75rem 1rem; border: 1px solid #cfe0f5; border-radius: 0.9rem; background: #fff; text-align: right; }
+        .dav-analytics__headline strong { display: block; color: #1d4ed8; font-size: 1.35rem; line-height: 1; }
+        .dav-analytics__headline span { display: block; margin-top: 0.35rem; color: var(--gray-600); font-size: 0.7rem; }
+        .dav-analytics__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; }
+        .dav-analytics-card { min-width: 0; padding: 1rem; border: 1px solid #d8e4f1; border-radius: 1rem; background: #fff; }
+        .dav-analytics-card--risk { grid-column: 1 / -1; border-left: 3px solid #e0a11a; }
+        .dav-analytics-card__header { align-items: flex-start; margin-bottom: 0.85rem; }
+        .dav-analytics-card__header h3 { margin: 0; color: #12213b; font-size: 0.95rem; font-weight: 800; }
+        .dav-analytics-card__unit { color: #7b8ba4; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+        .dav-ranking { display: grid; gap: 0.8rem; }
+        .dav-ranking__item { display: grid; gap: 0.35rem; }
+        .dav-ranking__label { color: #1c2b43; font-size: 0.78rem; font-weight: 700; }
+        .dav-ranking__label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .dav-ranking__label strong { color: #2457d6; font-size: 0.76rem; }
+        .dav-ranking__track { height: 0.55rem; overflow: hidden; border-radius: 999px; background: #e2e8f2; }
+        .dav-ranking__track i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #2875df, #2746ad); }
+        .dav-ranking__item small { color: #7b8ba4; font-size: 0.68rem; }
+        .dav-risk-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem; }
+        .dav-risk-list__item { padding: 0.7rem 0.8rem; border-radius: 0.7rem; background: #fffaf0; }
+        .dav-risk-list__item div { min-width: 0; }
+        .dav-risk-list__item strong,
+        .dav-risk-list__item small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .dav-risk-list__item strong { color: #3a2b0b; font-size: 0.76rem; }
+        .dav-risk-list__item small { margin-top: 0.2rem; color: #9a7a32; font-size: 0.68rem; }
+        .dav-risk-list__item b { color: #b7791f; font-size: 0.76rem; }
+        .dav-risk-icon { display: grid; width: 1.5rem; height: 1.5rem; place-items: center; border-radius: 50%; background: #fff1c7; color: #b7791f; font-weight: 800; }
+
         .dav-card {
             border: 1px solid var(--gray-200);
             border-radius: 0.95rem;
@@ -1770,6 +1802,13 @@
             .dav-chart-board__legend {
                 justify-content: start;
             }
+
+            .dav-analytics { padding: 0.85rem; }
+            .dav-analytics__header { align-items: stretch; flex-direction: column; }
+            .dav-analytics__headline { width: 100%; text-align: left; }
+            .dav-analytics__grid { grid-template-columns: 1fr; }
+            .dav-analytics-card--risk { grid-column: auto; }
+            .dav-risk-list { grid-template-columns: 1fr; }
 
             .dav-status-grid {
                 grid-template-columns: 1fr;
