@@ -22,20 +22,37 @@
                 </label>
 
                 <div class="profile-hero__copy">
-                    <span class="profile-eyebrow">Meu perfil</span>
+                    <span class="profile-eyebrow">Perfil do usuário</span>
                     <h1>{{ $user->name }}</h1>
-                    <p>{{ $this->getCargoLabel() }}</p>
                     <div class="profile-hero__badges">
+                        <span class="profile-badge">{{ $this->getCargoLabel() }}</span>
                         <span class="profile-badge profile-badge--{{ $isApproved ? 'success' : 'warning' }}"><span></span>{{ $isApproved ? 'Conta ativa' : 'Conta inativa' }}</span>
-                        <span class="profile-badge">{{ $user->email }}</span>
+                        <span class="profile-badge">{{ $this->getMatriculaLabel() }}</span>
                     </div>
                 </div>
             </div>
 
-            <div class="profile-hero__account"><span>Identificador da conta</span><strong>{{ $user->codigo ?: 'Não informado' }}</strong></div>
+            <div class="profile-hero__contacts">
+                <div><x-filament::icon icon="heroicon-o-envelope" /><span><small>E-mail</small><strong>{{ $user->email }}</strong></span></div>
+                <div><x-filament::icon icon="heroicon-o-identification" /><span><small>Identificador da conta</small><strong>{{ $user->codigo ?: 'Não informado' }}</strong></span></div>
+            </div>
         </header>
 
         @error('profilePhoto')<p class="profile-field-error">{{ $message }}</p>@enderror
+
+        <section class="profile-summary" aria-label="Resumo funcional">
+            @foreach ([
+                ['icon' => 'heroicon-o-briefcase', 'label' => 'Cargo', 'value' => $this->getCargoLabel()],
+                ['icon' => 'heroicon-o-building-library', 'label' => 'Escola', 'value' => $this->getEscolaLabel()],
+                ['icon' => 'heroicon-o-identification', 'label' => 'Matrícula', 'value' => $this->getMatriculaLabel()],
+                ['icon' => 'heroicon-o-clock', 'label' => 'Turno', 'value' => $this->getTurnoLabel()],
+            ] as $summary)
+                <article>
+                    <span><x-filament::icon :icon="$summary['icon']" /></span>
+                    <div><small>{{ $summary['label'] }}</small><strong>{{ $summary['value'] }}</strong></div>
+                </article>
+            @endforeach
+        </section>
 
         @if ($cpfPendente)
             <aside class="profile-completion" role="status">
