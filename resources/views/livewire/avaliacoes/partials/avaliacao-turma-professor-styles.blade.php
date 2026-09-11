@@ -330,7 +330,7 @@
 
     .av-professor-component-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(17rem, 22rem));
         gap: .7rem;
     }
 
@@ -383,6 +383,22 @@
 
     .av-professor-component-card__action strong {
         font-size: .78rem;
+    }
+
+    .av-professor-component-card__progress {
+        display: block;
+        padding-top: .35rem;
+    }
+
+    .av-professor-component-card__progress .av-progress-track {
+        display: block;
+        width: 100%;
+    }
+
+    .av-professor-component-card__progress .av-progress-bar {
+        display: block;
+        min-height: 100%;
+        background: linear-gradient(90deg, #2563eb 0%, #1e40af 100%);
     }
 
     .av-professor-modal-backdrop {
@@ -827,6 +843,10 @@
     }
 
     @media (max-width: 800px) {
+        .av-professor-component-grid {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
         .av-professor-list-heading,
         .av-professor-context__row,
         .av-professor-evaluation-card,

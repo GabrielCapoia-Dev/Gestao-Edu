@@ -151,6 +151,9 @@
                                             <span class="av-professor-component-card__name">{{ $grupo['componente_nome'] }}</span>
                                             <span class="av-professor-component-card__teacher">{{ $grupo['professor_nome'] }}</span>
                                             <span class="av-professor-component-card__meta"><span>{{ $grupo['pautas_total'] }} {{ $grupo['pautas_total'] === 1 ? 'pauta' : 'pautas' }}</span></span>
+                                            <span class="av-professor-component-card__progress" aria-label="{{ $progressoComponente['percentual'] }}% preenchido">
+                                                <span class="av-progress-track"><span class="av-progress-bar" style="width: {{ $progressoComponente['percentual'] }}%"></span></span>
+                                            </span>
                                             <span class="av-professor-component-card__action">Abrir avaliação <span aria-hidden="true">→</span><strong>{{ $progressoComponente['percentual'] }}%</strong></span>
                                         </button>
                                     @empty
