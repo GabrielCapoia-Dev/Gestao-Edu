@@ -202,24 +202,28 @@
                         </div>
                     </article>
 
-                    <article class="dav-analytics-card dav-analytics-card--wide">
-                        <header class="dav-analytics-card__header">
-                            <div><h3>Por alternativa</h3><p>Distribuição das respostas registradas.</p></div>
-                            <span class="dav-analytics-card__unit">participação</span>
-                        </header>
-                        <div class="dav-ranking">
-                            @forelse ($preenchimentoPorAlternativas as $item)
-                                @php $percentual = min(max((float) $item['percentual'], 0), 100); @endphp
-                                <div class="dav-ranking__item">
-                                    <div class="dav-ranking__label"><span>{{ $item['nome'] }}</span><strong>{{ number_format($percentual, 1, ',', '.') }}%</strong></div>
-                                    <div class="dav-ranking__track dav-ranking__track--alternative"><i style="width: {{ $percentual }}%"></i></div>
-                                    <small>{{ $item['preenchimentos_respondidos'] }} respostas</small>
-                                </div>
-                            @empty
-                                <p class="dav-empty">Nenhuma alternativa respondida.</p>
-                            @endforelse
-                        </div>
-                    </article>
+                    @forelse ($preenchimentoPorAlternativas as $grupo)
+                        <article class="dav-analytics-card dav-analytics-card--wide dav-analytics-card--alternative">
+                            <header class="dav-analytics-card__header">
+                                <div><span class="dav-analytics-card__eyebrow">TIPO DE AVALIAÇÃO</span><h3>{{ $grupo['tipo_nome'] }}</h3><p>Distribuição das respostas por alternativa.</p></div>
+                                <span class="dav-analytics-card__total">{{ $grupo['total_respostas'] }}<small>respostas</small></span>
+                            </header>
+                            <div class="dav-ranking">
+                                @foreach ($grupo['alternativas'] as $item)
+                                    @php $percentual = min(max((float) $item['percentual'], 0), 100); @endphp
+                                    <div class="dav-ranking__item">
+                                        <div class="dav-ranking__label"><span>{{ $item['nome'] }}</span><strong>{{ number_format($percentual, 1, ',', '.') }}%</strong></div>
+                                        <div class="dav-ranking__track dav-ranking__track--alternative"><i style="width: {{ $percentual }}%"></i></div>
+                                        <small>{{ $item['preenchimentos_respondidos'] }} respostas</small>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </article>
+                    @empty
+                        <article class="dav-analytics-card dav-analytics-card--wide">
+                            <p class="dav-empty">Nenhuma alternativa respondida.</p>
+                        </article>
+                    @endforelse
 
                     <article class="dav-analytics-card dav-analytics-card--wide">
                         <header class="dav-analytics-card__header">
@@ -1042,6 +1046,10 @@
         .dav-analytics-card__header { align-items: flex-start; margin-bottom: 0.85rem; }
         .dav-analytics-card__header h3 { margin: 0; color: #12213b; font-size: 0.95rem; font-weight: 800; }
         .dav-analytics-card__unit { color: #7b8ba4; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+        .dav-analytics-card__eyebrow { display: block; margin-bottom: 0.25rem; color: #2563eb; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.08em; }
+        .dav-analytics-card__total { display: grid; justify-items: end; color: #1d4ed8; font-size: 1.05rem; font-weight: 800; white-space: nowrap; }
+        .dav-analytics-card__total small { color: #7b8ba4; font-size: 0.65rem; font-weight: 600; }
+        .dav-analytics-card--alternative { border-top: 3px solid #5b7cdb; }
         .dav-ranking { display: grid; gap: 0.8rem; }
         .dav-ranking--limited { max-height: 18rem; overflow-y: auto; padding-right: 0.45rem; }
         .dav-ranking--limited::-webkit-scrollbar { width: 0.35rem; }
