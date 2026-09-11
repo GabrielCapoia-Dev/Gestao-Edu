@@ -127,7 +127,7 @@ class EditProfile extends BaseEditProfile
             ->helperText('Depois de preenchido, o CPF só poderá ser corrigido pela equipe autorizada.')
             ->length(11)
             ->rule('digits:11')
-            ->rule(fn (): Rule => Rule::unique('servidores', 'cpf')->ignore($this->getPessoa()?->getKey()))
+            ->rule(fn () => Rule::unique('servidores', 'cpf')->ignore($this->getPessoa()?->getKey()))
             ->visible(fn (): bool => $this->hasCpfPending())
             ->dehydrated(fn (): bool => $this->hasCpfPending());
     }

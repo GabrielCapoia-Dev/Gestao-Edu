@@ -6,6 +6,8 @@ use App\Filament\Admin\Pages\Auth\EditProfile;
 use App\Models\Servidor;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -80,5 +82,33 @@ class EditProfileTest extends TestCase
         Livewire::actingAs($user)
             ->test(EditProfile::class)
             ->assertFormFieldHidden('cpf');
+    }
+
+    public function test_user_can_update_profile_photo(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create([
+            'email_approved' => true,
+        ]);
+
+        Servidor::query()->create([
+            'user_id' => $user->id,
+            'nome' => $user->name,
+            'email' => $user->email,
+            'cpf' => '12345678909',
+            'status' => 'ativo',
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(EditProfile::class)
+            ->set('profilePhoto', UploadedFile::fake()->image('perfil.jpg', 300, 300))
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $avatarPath = $user->refresh()->avatar_url;
+
+        $this->assertNotNull($avatarPath);
+        Storage::disk('public')->assertExists($avatarPath);
     }
 }
