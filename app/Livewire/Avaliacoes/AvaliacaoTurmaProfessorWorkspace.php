@@ -368,7 +368,10 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
 
     public function selecionarSerieNavegacao(int $serieId): void
     {
-        abort_unless($this->seriesNavegacao->contains('serie_id', $serieId), 403);
+        abort_unless(
+            $this->seriesNavegacao->contains(fn (object $serie): bool => (int) $serie->serie_id === $serieId),
+            403,
+        );
 
         $this->serieNavegacaoId = $serieId;
         $this->turmasExpandidas = [];
