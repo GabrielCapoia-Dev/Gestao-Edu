@@ -204,7 +204,7 @@ class DashboardAvaliacoes extends Page implements HasForms
         }
 
         $resumo = Cache::remember(
-            $this->dashboardCacheKey('resumo'),
+            $this->dashboardCacheKey('resumo-v2'),
             now()->addSeconds($this->dashboardCacheTtl()),
             function (): array {
                 $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas();
@@ -214,6 +214,8 @@ class DashboardAvaliacoes extends Page implements HasForms
                     'tabela_escolas' => $tabelaEscolas,
                     'totais' => $this->calcularTotaisPreenchimento($avaliacaoIds, $tabelaEscolas),
                     'turnos' => $this->calcularPreenchimentoPorTurno($avaliacaoIds),
+                    'componentes' => $this->montarPreenchimentoPorComponentes($avaliacaoIds),
+                    'series' => $this->montarPreenchimentoPorSeries($avaliacaoIds),
                 ];
             }
         );
@@ -236,12 +238,12 @@ class DashboardAvaliacoes extends Page implements HasForms
         ];
         $this->tabelaEscolas = $tabelaEscolas;
         $this->turmasIncompletasPorEscola = $this->montarTurmasIncompletasPorEscola($tabelaEscolas);
-        $this->preenchimentoPorComponentes = [];
-        $this->preenchimentoPorSeries = [];
+        $this->preenchimentoPorComponentes = $resumo['componentes'];
+        $this->preenchimentoPorSeries = $resumo['series'];
         $this->acompanhamentoTurmas = [];
         $this->acompanhamentoTurmasTotal = 0;
         $this->resumoCarregado = true;
-        $this->graficosCarregados = false;
+        $this->graficosCarregados = true;
         $this->acompanhamentoCarregado = false;
         $this->filtrosAplicados = $this->filtrosAplicadosFormatados();
         $this->dashboardCarregado = true;
@@ -249,6 +251,8 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public function carregarGraficosDashboard(): void
     {
+        // Mantido para compatibilidade com chamadas antigas; os gráficos agora
+        // são carregados junto do resumo, em uma única requisição.
         if (! $this->avaliacaoSelecionada()) {
             return;
         }
@@ -4069,7 +4073,7 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     private function limparDashboardCache(): void
     {
-        foreach (['resumo', 'graficos', 'acompanhamento'] as $secao) {
+        foreach (['resumo', 'resumo-v2', 'graficos', 'acompanhamento'] as $secao) {
             Cache::forget($this->dashboardCacheKey($secao));
         }
     }

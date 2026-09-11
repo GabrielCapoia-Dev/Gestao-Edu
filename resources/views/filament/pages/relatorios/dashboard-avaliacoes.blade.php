@@ -4,10 +4,9 @@
         x-data="{
             async carregarDashboardInicialCompleto() {
                 await $wire.carregarDashboardInicial()
-                await this.recarregarDetalhesDashboard()
+                await $wire.carregarAcompanhamentoDashboard()
             },
             async recarregarDetalhesDashboard() {
-                await $wire.carregarGraficosDashboard()
                 await $wire.carregarAcompanhamentoDashboard()
             },
         }"
@@ -16,7 +15,7 @@
         x-on:dashboard-detalhes-recarregar.window="recarregarDetalhesDashboard()"
     >
     <div class="dav-page">
-        <div class="dav-processing-overlay" wire:loading.flex wire:target="carregarDashboardInicial,carregarResumoDashboard,carregarGraficosDashboard,carregarAcompanhamentoDashboard,atualizarAcompanhamentoTurmas,atualizarDadosRecentes">
+        <div class="dav-processing-overlay" wire:loading.flex wire:target="carregarDashboardInicial,carregarResumoDashboard,carregarAcompanhamentoDashboard,atualizarAcompanhamentoTurmas,atualizarDadosRecentes">
             <div class="dav-processing-card">
                 <div class="dav-processing-spinner"></div>
                 <strong>Processando...</strong>
@@ -192,9 +191,22 @@
                 </article>
             </section>
 
-            <section class="dav-chart-grid{{ $this->podeVerPendenciaPorEscola ? ' dav-chart-grid--three' : '' }}">
+            <section class="dav-chart-board">
+                <div class="dav-chart-board__intro">
+                    <div>
+                        <span class="dav-kicker">VISÃO GERAL</span>
+                        <h2>Onde está o preenchimento?</h2>
+                        <p>Compare rapidamente o andamento por escola, componente e série.</p>
+                    </div>
+                    <div class="dav-chart-board__legend">
+                        <span><i class="dav-legend-dot dav-legend-dot--blue"></i>Preenchido</span>
+                        <span><i class="dav-legend-dot dav-legend-dot--muted"></i>Pendente</span>
+                    </div>
+                </div>
+
+                <div class="dav-chart-grid{{ $this->podeVerPendenciaPorEscola ? ' dav-chart-grid--three' : '' }}">
                 @if ($this->podeVerPendenciaPorEscola)
-                <article class="dav-card dav-card--chart">
+                <article class="dav-card dav-card--chart dav-chart-card dav-chart-card--risk">
                     <header>
                         <h3>Pendência por escola</h3>
                         <p>Escolas com mais turmas de preenchimento incompleto.</p>
@@ -218,7 +230,7 @@
                 </article>
                 @endif
 
-                <article class="dav-card dav-card--chart">
+                <article class="dav-card dav-card--chart dav-chart-card">
                     <header>
                         <h3>Preenchimento por componente</h3>
                         <p>Percentual de preenchimento por componente curricular.</p>
@@ -242,7 +254,7 @@
                     </div>
                 </article>
 
-                <article class="dav-card dav-card--chart">
+                <article class="dav-card dav-card--chart dav-chart-card">
                     <header>
                         <h3>Preenchimento por série</h3>
                         <p>Percentual de preenchimento por série no escopo atual.</p>
@@ -265,6 +277,7 @@
                         @endforelse
                     </div>
                 </article>
+                </div>
             </section>
 
             @if ($this->podeVerProgressoPorEscola)
@@ -1014,6 +1027,80 @@
             grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.9fr) minmax(0, 0.95fr);
         }
 
+        .dav-chart-board {
+            border: 1px solid #dbe7f4;
+            border-radius: 1.15rem;
+            background: linear-gradient(135deg, #f8fbff 0%, #ffffff 52%, #f7fbff 100%);
+            padding: 1rem;
+            display: grid;
+            gap: 1rem;
+        }
+
+        .dav-chart-board__intro {
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.15rem 0.2rem 0;
+        }
+
+        .dav-chart-board__intro h2 {
+            margin: 0.2rem 0 0;
+            color: #0f1d35;
+            font-size: 1.15rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .dav-chart-board__intro p {
+            margin: 0.25rem 0 0;
+            color: var(--gray-600);
+            font-size: 0.8rem;
+        }
+
+        .dav-kicker {
+            color: #2563eb;
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+        }
+
+        .dav-chart-board__legend {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: end;
+            gap: 0.75rem;
+            color: var(--gray-600);
+            font-size: 0.72rem;
+            font-weight: 600;
+        }
+
+        .dav-chart-board__legend span {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .dav-legend-dot {
+            width: 0.52rem;
+            height: 0.52rem;
+            border-radius: 999px;
+            display: inline-block;
+        }
+
+        .dav-legend-dot--blue { background: #2563eb; }
+        .dav-legend-dot--muted { background: #d5dce9; }
+
+        .dav-chart-card {
+            min-width: 0;
+            border-color: #d8e4f1;
+            box-shadow: 0 0.5rem 1.5rem rgba(30, 64, 175, 0.05);
+        }
+
+        .dav-chart-card--risk {
+            border-top: 3px solid #e0a11a;
+        }
+
         .dav-card {
             border: 1px solid var(--gray-200);
             border-radius: 0.95rem;
@@ -1141,16 +1228,16 @@
         }
 
         .dav-bar-track {
-            height: 0.48rem;
+            height: 0.62rem;
             border-radius: 999px;
-            background: #e5edf7;
+            background: #d9e0ec;
             overflow: hidden;
         }
 
         .dav-bar-fill {
             height: 100%;
             border-radius: inherit;
-            background: linear-gradient(90deg, #175ea7 0%, #0f4e9b 100%);
+            background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%);
         }
 
         .dav-bar-fill--alt {
@@ -1669,6 +1756,19 @@
 
             .dav-chart-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .dav-chart-board {
+                padding: 0.75rem;
+            }
+
+            .dav-chart-board__intro {
+                align-items: start;
+                flex-direction: column;
+            }
+
+            .dav-chart-board__legend {
+                justify-content: start;
             }
 
             .dav-status-grid {
