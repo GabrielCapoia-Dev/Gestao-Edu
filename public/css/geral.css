@@ -3829,6 +3829,331 @@
     .profile-button { width: 100%; }
 }
 
+/* Solicitações de vínculo do professor */
+.profile-card--assignments,
+.profile-card--requests {
+    grid-column: 1 / -1;
+}
+
+.profile-card__counter {
+    margin-left: auto;
+    padding: .35rem .65rem;
+    border-radius: 999px;
+    background: #fff7e6;
+    color: #a15c00;
+    font-size: .72rem;
+    font-weight: 800;
+}
+
+.profile-assignment-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.profile-assignment-panel {
+    min-width: 0;
+    padding: 1rem;
+    border: 1px solid #dbe5f1;
+    border-radius: 1rem;
+    background: #f8fbff;
+}
+
+.profile-assignment-panel__title {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: .8rem;
+}
+
+.profile-assignment-panel__title > div {
+    display: grid;
+    gap: .2rem;
+}
+
+.profile-assignment-panel__title strong {
+    color: #10213d;
+    font-size: .9rem;
+}
+
+.profile-assignment-panel__title span {
+    color: #70809b;
+    font-size: .75rem;
+}
+
+.profile-assignment-panel__title > em {
+    display: grid;
+    min-width: 1.8rem;
+    height: 1.8rem;
+    place-items: center;
+    border-radius: 999px;
+    background: #e8f2ff;
+    color: #075fc4;
+    font-size: .75rem;
+    font-style: normal;
+    font-weight: 850;
+}
+
+.profile-assignment-list,
+.profile-review-list {
+    display: grid;
+    max-height: 22rem;
+    gap: .55rem;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.profile-assignment-item,
+.profile-review-list > article {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: .75rem;
+    padding: .75rem;
+    border: 1px solid #e1e9f3;
+    border-radius: .8rem;
+    background: #fff;
+}
+
+.profile-assignment-item__icon {
+    display: grid;
+    width: 2rem;
+    height: 2rem;
+    place-items: center;
+    border-radius: .65rem;
+    background: #edf5ff;
+    color: #0867d5;
+}
+
+.profile-assignment-item__icon svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.profile-assignment-item > div,
+.profile-review-list article > div:not(.profile-review-actions) {
+    display: grid;
+    min-width: 0;
+    gap: .16rem;
+}
+
+.profile-assignment-item strong,
+.profile-review-list article strong {
+    overflow: hidden;
+    color: #152844;
+    font-size: .8rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.profile-assignment-item div > span,
+.profile-review-list article div > span,
+.profile-review-list article small {
+    overflow: hidden;
+    color: #70809b;
+    font-size: .7rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.profile-assignment-empty {
+    display: flex;
+    min-height: 7rem;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: .5rem;
+    padding: 1rem;
+    color: #7888a1;
+    text-align: center;
+    font-size: .76rem;
+}
+
+.profile-assignment-empty svg {
+    width: 1.5rem;
+    height: 1.5rem;
+    color: #8fb2db;
+}
+
+.profile-inline-button {
+    padding: .45rem .7rem;
+    border: 1px solid #1267ca;
+    border-radius: .55rem;
+    background: #1267ca;
+    color: #fff;
+    font-size: .7rem;
+    font-weight: 800;
+    transition: transform .15s ease, background .15s ease;
+}
+
+.profile-inline-button:hover {
+    background: #0b50a1;
+    transform: translateY(-1px);
+}
+
+.profile-inline-button:disabled {
+    cursor: wait;
+    opacity: .55;
+}
+
+.profile-inline-button--muted {
+    border-color: #d5dfeb;
+    background: #fff;
+    color: #52637d;
+}
+
+.profile-inline-button--muted:hover {
+    background: #f2f6fa;
+}
+
+.profile-request-status {
+    padding: .3rem .55rem;
+    border-radius: 999px;
+    font-size: .65rem;
+    font-style: normal;
+    font-weight: 850;
+    white-space: nowrap;
+}
+
+.profile-request-status--approved {
+    background: #dcfce7;
+    color: #15743c;
+}
+
+.profile-request-status--pending {
+    background: #fff3d6;
+    color: #9b5c00;
+}
+
+.profile-request-status--rejected {
+    background: #ffe7ea;
+    color: #b42335;
+}
+
+.profile-request-history {
+    display: grid;
+    gap: .65rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e0e8f2;
+}
+
+.profile-request-history > strong {
+    color: #233550;
+    font-size: .78rem;
+}
+
+.profile-request-history > div {
+    display: flex;
+    gap: .55rem;
+    overflow-x: auto;
+    padding-bottom: .2rem;
+}
+
+.profile-request-history > div > span {
+    display: grid;
+    min-width: 14rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: .15rem .5rem;
+    padding: .65rem .75rem;
+    border: 1px solid #e0e8f2;
+    border-radius: .75rem;
+}
+
+.profile-request-history b {
+    overflow: hidden;
+    color: #20324e;
+    font-size: .74rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.profile-request-history small {
+    grid-column: 1;
+    color: #74839a;
+    font-size: .67rem;
+}
+
+.profile-request-history .profile-request-status {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+}
+
+.profile-review-list {
+    max-height: 24rem;
+}
+
+.profile-review-actions {
+    display: flex;
+    gap: .4rem;
+}
+
+@keyframes profile-cpf-attention-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, .48); transform: scale(1); }
+    50% { box-shadow: 0 0 0 .42rem rgba(245, 158, 11, 0); transform: scale(1.08); }
+}
+
+.profile-photo__notice {
+    top: -.65rem;
+    right: -.65rem;
+    z-index: 3;
+    animation: profile-cpf-attention-pulse 1.65s ease-in-out infinite;
+}
+
+.fi-user-menu:has(.profile-menu-cpf-alert) .fi-user-menu-trigger {
+    overflow: visible;
+}
+
+.fi-user-menu:has(.profile-menu-cpf-alert) .fi-user-menu-trigger::after {
+    top: -.35rem;
+    right: -.35rem;
+    bottom: auto;
+    z-index: 5;
+    animation: profile-cpf-attention-pulse 1.65s ease-in-out infinite;
+}
+
+.fi-dropdown-header:has(+ .profile-menu-cpf-alert)::after {
+    animation: profile-cpf-attention-pulse 1.65s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .profile-photo__notice,
+    .fi-user-menu:has(.profile-menu-cpf-alert) .fi-user-menu-trigger::after,
+    .fi-dropdown-header:has(+ .profile-menu-cpf-alert)::after {
+        animation: none;
+    }
+}
+
+@media (max-width: 900px) {
+    .profile-assignment-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .profile-assignment-item,
+    .profile-review-list > article {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .profile-assignment-item > .profile-request-status,
+    .profile-assignment-item > .profile-inline-button,
+    .profile-review-actions {
+        grid-column: 2;
+        justify-self: start;
+    }
+
+    .profile-review-actions {
+        display: flex;
+    }
+
+    .profile-card__counter {
+        margin-left: 0;
+    }
+}
+
 .fi-ta-footer {
     background: var(--edu-white);
     border-top: 1px solid var(--edu-neutral-100);
@@ -7257,5 +7582,19 @@ html.dark {
     .profile-hero__contacts,
     .profile-summary {
         grid-template-columns: 1fr;
+    }
+}
+
+/* O aviso de CPF fica externamente ao avatar, como um badge de notificação. */
+.profile-photo__notice {
+    top: -.65rem;
+    right: -.65rem;
+    z-index: 3;
+    animation: profile-cpf-attention-pulse 1.65s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .profile-photo__notice {
+        animation: none;
     }
 }

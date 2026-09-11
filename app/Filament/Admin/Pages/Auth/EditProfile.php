@@ -2,22 +2,29 @@
 
 namespace App\Filament\Admin\Pages\Auth;
 
+use App\Models\Pessoa;
+use App\Models\Professor;
+use App\Models\ProfessorComponenteSolicitacao;
+use App\Models\TurmaComponenteProfessor;
+use App\Services\ProfessorComponenteSolicitacaoService;
 use Caresome\FilamentAuthDesigner\Pages\Auth\EditProfile as BaseEditProfile;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
-use App\Models\Pessoa;
-use App\Models\Professor;
 
 class EditProfile extends BaseEditProfile
 {
@@ -155,24 +162,28 @@ class EditProfile extends BaseEditProfile
         if ($pessoa?->professores->contains(fn ($professor): bool => (bool) $professor->ativo)) {
             $cargos->prepend('Professor');
         }
+
         return $cargos->unique()->implode(', ') ?: 'Não informado';
     }
 
     public function getEscolaLabel(): string
     {
         $pessoa = $this->getPessoa();
+
         return collect([$pessoa?->escola?->nome])->merge($pessoa?->professores->map(fn ($professor) => $professor->escola?->nome) ?? [])->filter()->unique()->implode(', ') ?: 'Não informada';
     }
 
     public function getMatriculaLabel(): string
     {
         $pessoa = $this->getPessoa();
+
         return collect([$pessoa?->matricula])->merge($pessoa?->professores->map(fn ($professor) => $professor->matricula) ?? [])->filter()->unique()->implode(', ') ?: 'Não informada';
     }
 
     public function getTurnoLabel(): string
     {
         $turnos = $this->getPessoa()?->professores->map(fn ($professor) => $professor->turnoEfetivo())->filter()->map(fn (string $turno) => Professor::TURNOS[$turno] ?? $turno)->unique() ?? collect();
+
         return $turnos->implode(', ') ?: 'Não informado';
     }
 
@@ -184,6 +195,97 @@ class EditProfile extends BaseEditProfile
     public function getSetorLabel(): string
     {
         return $this->getPessoa()?->setor?->nome ?: 'Não informado';
+    }
+
+    public function hasProfessorProfile(): bool
+    {
+        return $this->getUser()->professores()->where('ativo', true)->exists();
+    }
+
+    /** @return Collection<int, TurmaComponenteProfessor> */
+    public function getProfessorCurrentLinks(): Collection
+    {
+        return app(ProfessorComponenteSolicitacaoService::class)->vinculosAtuais($this->getUser());
+    }
+
+    /** @return Collection<int, TurmaComponenteProfessor> */
+    public function getProfessorAvailableLinks(): Collection
+    {
+        return app(ProfessorComponenteSolicitacaoService::class)->opcoesDisponiveis($this->getUser());
+    }
+
+    /** @return Collection<int, ProfessorComponenteSolicitacao> */
+    public function getProfessorRequests(): Collection
+    {
+        return app(ProfessorComponenteSolicitacaoService::class)->solicitacoesDoProfessor($this->getUser());
+    }
+
+    public function canReviewProfessorRequests(): bool
+    {
+        return app(ProfessorComponenteSolicitacaoService::class)->podeAnalisar($this->getUser());
+    }
+
+    /** @return Collection<int, ProfessorComponenteSolicitacao> */
+    public function getProfessorRequestsForReview(): Collection
+    {
+        return app(ProfessorComponenteSolicitacaoService::class)->solicitacoesParaAnalise($this->getUser());
+    }
+
+    public function requestProfessorLink(int $vinculoId): void
+    {
+        try {
+            app(ProfessorComponenteSolicitacaoService::class)->solicitar($this->getUser(), $vinculoId);
+
+            Notification::make()
+                ->title('Solicitação enviada')
+                ->body('O vínculo ficará pendente até a aprovação da administração ou da equipe gestora.')
+                ->success()
+                ->send();
+        } catch (AuthorizationException|ValidationException $exception) {
+            $this->notifyProfessorLinkError($exception);
+        }
+    }
+
+    public function approveProfessorLink(int $solicitacaoId): void
+    {
+        try {
+            app(ProfessorComponenteSolicitacaoService::class)->aprovar($this->getUser(), $solicitacaoId);
+
+            Notification::make()
+                ->title('Vínculo aprovado')
+                ->body('O professor já possui acesso válido à turma e ao componente.')
+                ->success()
+                ->send();
+        } catch (AuthorizationException|ValidationException $exception) {
+            $this->notifyProfessorLinkError($exception);
+        }
+    }
+
+    public function rejectProfessorLink(int $solicitacaoId): void
+    {
+        try {
+            app(ProfessorComponenteSolicitacaoService::class)->rejeitar($this->getUser(), $solicitacaoId);
+
+            Notification::make()
+                ->title('Solicitação recusada')
+                ->warning()
+                ->send();
+        } catch (AuthorizationException|ValidationException $exception) {
+            $this->notifyProfessorLinkError($exception);
+        }
+    }
+
+    private function notifyProfessorLinkError(AuthorizationException|ValidationException $exception): void
+    {
+        $message = $exception instanceof ValidationException
+            ? collect($exception->errors())->flatten()->first()
+            : $exception->getMessage();
+
+        Notification::make()
+            ->title('Não foi possível concluir a ação')
+            ->body($message ?: 'Verifique os dados e tente novamente.')
+            ->danger()
+            ->send();
     }
 
     protected function deletePreviousLocalAvatar(string $newAvatarPath): void
@@ -272,5 +374,4 @@ class EditProfile extends BaseEditProfile
     {
         return Alignment::End;
     }
-
 }

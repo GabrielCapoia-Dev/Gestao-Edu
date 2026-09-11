@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TurmaComponenteProfessor extends Model
 {
@@ -39,5 +40,10 @@ class TurmaComponenteProfessor extends Model
     public function professor(): BelongsTo
     {
         return $this->belongsTo(Professor::class, 'professor_id');
+    }
+
+    public function solicitacoes(): HasMany
+    {
+        return $this->hasMany(ProfessorComponenteSolicitacao::class, 'turma_componente_professor_id');
     }
 }
