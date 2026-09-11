@@ -83,8 +83,6 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public array $preenchimentoPorSeries = [];
 
-    public array $preenchimentoPorAlternativas = [];
-
     public array $turmasIncompletasPorEscola = [];
 
     public array $acompanhamentoTurmas = [];
@@ -218,7 +216,6 @@ class DashboardAvaliacoes extends Page implements HasForms
                     'turnos' => $this->calcularPreenchimentoPorTurno($avaliacaoIds),
                     'componentes' => $this->montarPreenchimentoPorComponentes($avaliacaoIds),
                     'series' => $this->montarPreenchimentoPorSeries($avaliacaoIds),
-                    'alternativas' => $this->montarPreenchimentoPorAlternativas($avaliacaoIds),
                 ];
             }
         );
@@ -243,7 +240,6 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->turmasIncompletasPorEscola = $this->montarTurmasIncompletasPorEscola($tabelaEscolas);
         $this->preenchimentoPorComponentes = $resumo['componentes'];
         $this->preenchimentoPorSeries = $resumo['series'];
-        $this->preenchimentoPorAlternativas = $resumo['alternativas'];
         $this->acompanhamentoTurmas = [];
         $this->acompanhamentoTurmasTotal = 0;
         $this->resumoCarregado = true;
@@ -271,13 +267,11 @@ class DashboardAvaliacoes extends Page implements HasForms
                 return [
                     'componentes' => $this->montarPreenchimentoPorComponentes($avaliacaoIds),
                     'series' => $this->montarPreenchimentoPorSeries($avaliacaoIds),
-                    'alternativas' => $this->montarPreenchimentoPorAlternativas($avaliacaoIds),
                 ];
             }
         );
         $this->preenchimentoPorComponentes = $graficos['componentes'];
         $this->preenchimentoPorSeries = $graficos['series'];
-        $this->preenchimentoPorAlternativas = $graficos['alternativas'];
         $this->graficosCarregados = true;
     }
 
@@ -2021,7 +2015,6 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->tabelaEscolas = $dados['tabela_escolas'];
         $this->preenchimentoPorComponentes = $dados['preenchimento_por_componentes'];
         $this->preenchimentoPorSeries = $dados['preenchimento_por_series'];
-        $this->preenchimentoPorAlternativas = $dados['preenchimento_por_alternativas'];
         $this->turmasIncompletasPorEscola = $dados['turmas_incompletas_por_escola'];
         $this->acompanhamentoTurmas = $dados['acompanhamento_turmas'];
         $this->acompanhamentoTurmasTotal = $dados['acompanhamento_turmas_total'];
@@ -2089,7 +2082,6 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->tabelaEscolas = $tabelaEscolas;
         $this->preenchimentoPorComponentes = $this->montarPreenchimentoPorComponentes($avaliacaoIds);
         $this->preenchimentoPorSeries = $this->montarPreenchimentoPorSeries($avaliacaoIds);
-        $this->preenchimentoPorAlternativas = $this->montarPreenchimentoPorAlternativas($avaliacaoIds);
         $this->turmasIncompletasPorEscola = $this->montarTurmasIncompletasPorEscola($tabelaEscolas);
         $this->acompanhamentoTurmas = $acompanhamentoTurmas['itens'];
         $this->acompanhamentoTurmasTotal = $acompanhamentoTurmas['total'];
@@ -2104,7 +2096,6 @@ class DashboardAvaliacoes extends Page implements HasForms
      *     tabela_escolas: array<int, array<string, int|float|string|bool>>,
      *     preenchimento_por_componentes: array<int, array<string, int|float|string>>,
      *     preenchimento_por_series: array<int, array<string, int|float|string>>,
-     *     preenchimento_por_alternativas: array<int, array<string, int|float|string>>,
      *     turmas_incompletas_por_escola: array<int, array<string, int|float|string>>,
      *     acompanhamento_turmas: array<int, array<string, int|float|string>>,
      *     acompanhamento_turmas_total: int
@@ -2145,7 +2136,6 @@ class DashboardAvaliacoes extends Page implements HasForms
             'tabela_escolas' => $tabelaEscolas,
             'preenchimento_por_componentes' => $this->montarPreenchimentoPorComponentes($avaliacaoIds),
             'preenchimento_por_series' => $this->montarPreenchimentoPorSeries($avaliacaoIds),
-            'preenchimento_por_alternativas' => $this->montarPreenchimentoPorAlternativas($avaliacaoIds),
             'turmas_incompletas_por_escola' => $this->montarTurmasIncompletasPorEscola($tabelaEscolas),
             'acompanhamento_turmas' => $acompanhamentoTurmas['itens'],
             'acompanhamento_turmas_total' => $acompanhamentoTurmas['total'],
@@ -2183,7 +2173,6 @@ class DashboardAvaliacoes extends Page implements HasForms
             'tabela_escolas' => [],
             'preenchimento_por_componentes' => [],
             'preenchimento_por_series' => [],
-            'preenchimento_por_alternativas' => [],
             'turmas_incompletas_por_escola' => [],
             'acompanhamento_turmas' => [],
             'acompanhamento_turmas_total' => 0,
@@ -2490,9 +2479,9 @@ class DashboardAvaliacoes extends Page implements HasForms
             ->leftJoin('componentes_curriculares as cc', 'cc.id', '=', 'p.componente_curricular_id')
             ->groupBy('p.componente_curricular_id', 'cc.nome')
             ->groupByRaw('COALESCE(p.componente_curricular_id, 0)')
-            ->groupByRaw("COALESCE(cc.nome, 'Componente geral')")
+            ->groupBy('cc.nome')
             ->selectRaw('COALESCE(p.componente_curricular_id, 0) as agrupamento_id')
-            ->selectRaw("COALESCE(cc.nome, 'Componente geral') as nome")
+            ->selectRaw('cc.nome as nome')
             ->selectRaw("COUNT(DISTINCT {$distinctEsperado}) as preenchimentos_esperados")
             ->get()
             ->keyBy(fn ($item): int => (int) $item->agrupamento_id);
@@ -2502,56 +2491,14 @@ class DashboardAvaliacoes extends Page implements HasForms
             ->leftJoin('componentes_curriculares as cc', 'cc.id', '=', 'p.componente_curricular_id')
             ->groupBy('p.componente_curricular_id', 'cc.nome')
             ->groupByRaw('COALESCE(p.componente_curricular_id, 0)')
-            ->groupByRaw("COALESCE(cc.nome, 'Componente geral')")
+            ->groupBy('cc.nome')
             ->selectRaw('COALESCE(p.componente_curricular_id, 0) as agrupamento_id')
-            ->selectRaw("COALESCE(cc.nome, 'Componente geral') as nome")
+            ->selectRaw('cc.nome as nome')
             ->selectRaw("COUNT(DISTINCT {$distinctRespondido}) as preenchimentos_respondidos")
             ->get()
             ->keyBy(fn ($item): int => (int) $item->agrupamento_id);
 
         return $this->montarLinhasPreenchimentoAgrupado($esperados, $respondidos);
-    }
-
-    /**
-     * Distribuição das alternativas agrupada pelo tipo da avaliação.
-     * Uma única consulta retorna todos os grupos e suas alternativas.
-     *
-     * @return array<int, array{tipo_id: int, tipo_nome: string, total_respostas: int, alternativas: array<int, array<string, int|float|string>>}>
-     */
-    private function montarPreenchimentoPorAlternativas(array $avaliacaoIds): array
-    {
-        if ($avaliacaoIds === []) {
-            return [];
-        }
-
-        $distinctRespondido = $this->distinctCombinacaoExpr('ar.avaliacao_id', 'ar.turma_id', 'ar.pauta_id', 'ar.aluno_id');
-        $linhas = (clone $this->baseRespostasQuery($avaliacaoIds, ignorarAlternativas: true))
-            ->join('avaliacoes as av', 'av.id', '=', 'ar.avaliacao_id')
-            ->join('tipos_avaliacao as ta', 'ta.id', '=', 'av.tipo_avaliacao_id')
-            ->groupBy('av.tipo_avaliacao_id', 'ta.nome', 'ar.alternativa_id', 'alt.nome')
-            ->select('av.tipo_avaliacao_id as tipo_id', 'ta.nome as tipo_nome', 'ar.alternativa_id as agrupamento_id', 'alt.nome')
-            ->selectRaw("COUNT(DISTINCT {$distinctRespondido}) as preenchimentos_respondidos")
-            ->orderBy('ta.nome')
-            ->orderByDesc('preenchimentos_respondidos')
-            ->get();
-
-        return $linhas->groupBy('tipo_id')->map(function (Collection $grupo): array {
-            $total = (int) $grupo->sum(fn ($item): int => (int) $item->preenchimentos_respondidos);
-
-            return [
-                'tipo_id' => (int) $grupo->first()->tipo_id,
-                'tipo_nome' => (string) $grupo->first()->tipo_nome,
-                'total_respostas' => $total,
-                'alternativas' => $grupo->map(fn ($item): array => [
-                    'agrupamento_id' => (int) $item->agrupamento_id,
-                    'nome' => (string) $item->nome,
-                    'preenchimentos_respondidos' => (int) $item->preenchimentos_respondidos,
-                    'percentual' => $total > 0
-                        ? round(((int) $item->preenchimentos_respondidos / $total) * 100, 1)
-                        : 0.0,
-                ])->values()->all(),
-            ];
-        })->values()->all();
     }
 
     /**
@@ -3466,7 +3413,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             ->join('turmas as t', 't.id', '=', 'resumo.turma_id')
             ->whereIn('resumo.avaliacao_id', $avaliacaoIds)
             ->selectRaw('resumo.componente_chave as agrupamento_id')
-            ->selectRaw("COALESCE(cc.nome, 'Componente geral') as nome")
+            ->selectRaw('cc.nome as nome')
             ->selectRaw('SUM(resumo.preenchimentos_esperados) as preenchimentos_esperados')
             ->selectRaw('SUM(resumo.preenchimentos_respondidos) as preenchimentos_respondidos')
             ->groupBy('resumo.componente_chave', 'cc.nome');
