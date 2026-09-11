@@ -3372,6 +3372,36 @@
     background: #f6f9fd;
 }
 
+.edu-profile-functional-section .fi-in-entry,
+.edu-profile-account-section .fi-in-entry {
+    min-height: 4.25rem;
+    padding: 0.8rem 0.9rem;
+    border: 1px solid #e3ebf5;
+    border-radius: 0.75rem;
+    background: #f8fbff;
+}
+
+.edu-profile-functional-section .fi-in-entry-label,
+.edu-profile-account-section .fi-in-entry-label {
+    color: #5b7190;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+}
+
+.edu-profile-functional-section .fi-in-entry-content,
+.edu-profile-account-section .fi-in-entry-content {
+    color: #152b4d;
+    font-size: 0.88rem;
+    font-weight: 750;
+    line-height: 1.35;
+}
+
+.edu-profile-functional-section .fi-in-icon,
+.edu-profile-account-section .fi-in-icon {
+    color: #2461c5;
+}
+
 @media (max-width: 760px) {
     .fi-auth-layout.media-cover:has(.edu-profile-shell) {
         padding: 1rem 0.65rem;

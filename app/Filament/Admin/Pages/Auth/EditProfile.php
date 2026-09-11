@@ -13,6 +13,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\Rule;
 use App\Models\Pessoa;
@@ -90,6 +91,8 @@ class EditProfile extends BaseEditProfile
                         ])->schema([
                             Placeholder::make('account_identity')
                                 ->label('Identificação')
+                                ->icon(Heroicon::UserCircle)
+                                ->iconColor('primary')
                                 ->content('A foto, o e-mail e o código da conta são administrados pelo sistema.')
                                 ->columnSpan([
                                     'default' => 1,
@@ -119,12 +122,12 @@ class EditProfile extends BaseEditProfile
                             'xl' => 4,
                         ])->schema([
                             $this->getCpfFormComponent(),
-                            $this->getReadOnlyPlaceholder('cargo', 'Cargo', fn (): string => $this->getCargoLabel()),
-                            $this->getReadOnlyPlaceholder('escola', 'Escola', fn (): string => $this->getEscolaLabel()),
-                            $this->getReadOnlyPlaceholder('matricula', 'Matrícula', fn (): string => $this->getMatriculaLabel()),
-                            $this->getReadOnlyPlaceholder('turno', 'Turno', fn (): string => $this->getTurnoLabel()),
-                            $this->getReadOnlyPlaceholder('status_funcional', 'Status', fn (): string => $this->getStatusLabel()),
-                            $this->getReadOnlyPlaceholder('setor', 'Setor', fn (): string => $this->getSetorLabel()),
+                            $this->getReadOnlyPlaceholder('cargo', 'Cargo', Heroicon::Briefcase, fn (): string => $this->getCargoLabel()),
+                            $this->getReadOnlyPlaceholder('escola', 'Escola', Heroicon::BuildingOffice, fn (): string => $this->getEscolaLabel()),
+                            $this->getReadOnlyPlaceholder('matricula', 'Matrícula', Heroicon::Identification, fn (): string => $this->getMatriculaLabel()),
+                            $this->getReadOnlyPlaceholder('turno', 'Turno', Heroicon::Clock, fn (): string => $this->getTurnoLabel()),
+                            $this->getReadOnlyPlaceholder('status_funcional', 'Status', Heroicon::CheckCircle, fn (): string => $this->getStatusLabel()),
+                            $this->getReadOnlyPlaceholder('setor', 'Setor', Heroicon::BuildingOffice2, fn (): string => $this->getSetorLabel()),
                         ]),
                     ])
                     ->extraAttributes(['class' => 'edu-profile-functional-section']),
@@ -149,6 +152,7 @@ class EditProfile extends BaseEditProfile
     {
         return TextInput::make('cpf')
             ->label('CPF')
+            ->prefixIcon('heroicon-o-identification')
             ->placeholder('Informe seu CPF')
             ->helperText('Depois de preenchido, o CPF só poderá ser corrigido pela equipe autorizada.')
             ->length(11)
@@ -158,9 +162,13 @@ class EditProfile extends BaseEditProfile
             ->dehydrated(fn (): bool => $this->hasCpfPending());
     }
 
-    protected function getReadOnlyPlaceholder(string $name, string $label, \Closure $content): Component
+    protected function getReadOnlyPlaceholder(string $name, string $label, Heroicon $icon, \Closure $content): Component
     {
-        return Placeholder::make($name)->label($label)->content($content);
+        return Placeholder::make($name)
+            ->label($label)
+            ->icon($icon)
+            ->iconColor('primary')
+            ->content($content);
     }
 
     public function getPessoa(): ?Pessoa
