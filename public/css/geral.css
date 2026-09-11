@@ -3226,6 +3226,187 @@
     }
 }
 
+/* Perfil: composição refinada sobre as primitives do painel. */
+.fi-auth-layout.media-cover:has(.edu-profile-shell) {
+    padding: 2.5rem 1.25rem;
+    background: #f4f7fb;
+}
+
+.fi-auth-layout.media-cover:has(.edu-profile-shell) .fi-auth-content-section {
+    max-width: min(1120px, calc(100vw - 2.5rem));
+}
+
+.edu-profile-shell {
+    display: grid;
+    gap: 1rem;
+}
+
+.edu-profile-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 1.5rem 1.65rem;
+    border: 1px solid #dbe5f2;
+    border-radius: 1.25rem;
+    background: linear-gradient(120deg, #ffffff 0%, #f7fbff 68%, #eef5ff 100%);
+    box-shadow: 0 16px 38px rgba(32, 65, 112, 0.09);
+}
+
+.edu-profile-hero-main {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-width: 0;
+}
+
+.edu-profile-hero-copy {
+    min-width: 0;
+}
+
+.edu-profile-hero-copy h1 {
+    margin: 0.1rem 0 0;
+    color: #102a56;
+    font-size: clamp(1.45rem, 2.5vw, 2rem);
+    font-weight: 850;
+    letter-spacing: -0.035em;
+    line-height: 1.1;
+}
+
+.edu-profile-hero-copy p {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0.45rem 0 0;
+    color: #5d718e;
+    font-size: 0.82rem;
+}
+
+.edu-profile-hero-meta {
+    display: grid;
+    justify-items: end;
+    gap: 0.5rem;
+    color: #667994;
+    font-size: 0.75rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.edu-profile-code {
+    padding: 0.35rem 0.65rem;
+    border-radius: 0.5rem;
+    background: #edf3fa;
+}
+
+.edu-profile-avatar-wrap {
+    width: 76px;
+    height: 76px;
+    border: 4px solid #fff;
+    background: #eaf2ff;
+    box-shadow: 0 8px 20px rgba(31, 78, 146, 0.16);
+}
+
+.edu-profile-avatar-initials {
+    color: #1d55b8;
+    font-size: 1.45rem;
+}
+
+.edu-profile-alert {
+    margin: 0;
+    border-radius: 0.85rem;
+    box-shadow: 0 7px 18px rgba(180, 83, 9, 0.06);
+}
+
+.edu-profile-form-panel {
+    padding: 1.35rem;
+    border: 1px solid #dbe5f2;
+    border-radius: 1.25rem;
+    background: rgba(255, 255, 255, 0.7);
+    box-shadow: 0 12px 30px rgba(32, 65, 112, 0.06);
+}
+
+.edu-profile-form-heading {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin: 0 0 1.1rem;
+    padding: 0 0.2rem;
+}
+
+.edu-profile-form-heading p {
+    max-width: 28rem;
+    margin: 0;
+    color: #667994;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    text-align: right;
+}
+
+.edu-profile-form-panel .fi-section {
+    border-color: #dce6f2;
+    border-radius: 0.95rem;
+    box-shadow: 0 5px 16px rgba(32, 65, 112, 0.035);
+}
+
+.edu-profile-form-panel .fi-section-header {
+    padding: 1.1rem 1.2rem 0.9rem;
+    background: #fbfdff;
+}
+
+.edu-profile-form-panel .fi-section-content {
+    padding: 1.15rem 1.2rem 1.25rem;
+}
+
+.edu-profile-form-panel .fi-input-wrp {
+    min-height: 2.7rem;
+    border-radius: 0.65rem;
+    background: #fff;
+}
+
+.edu-profile-functional-section .fi-placeholder {
+    min-height: 3rem;
+    display: flex;
+    align-items: center;
+    border-radius: 0.65rem;
+    background: #f6f9fd;
+}
+
+@media (max-width: 760px) {
+    .fi-auth-layout.media-cover:has(.edu-profile-shell) {
+        padding: 1rem 0.65rem;
+    }
+
+    .fi-auth-layout.media-cover:has(.edu-profile-shell) .fi-auth-content-section {
+        max-width: calc(100vw - 1.3rem);
+    }
+
+    .edu-profile-hero {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 1.15rem;
+    }
+
+    .edu-profile-hero-meta {
+        width: 100%;
+        align-items: start;
+        justify-items: start;
+    }
+
+    .edu-profile-form-panel {
+        padding: 0.9rem;
+    }
+
+    .edu-profile-form-heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .edu-profile-form-heading p {
+        text-align: left;
+    }
+}
+
 .fi-ta-footer {
     background: var(--edu-white);
     border-top: 1px solid var(--edu-neutral-100);
