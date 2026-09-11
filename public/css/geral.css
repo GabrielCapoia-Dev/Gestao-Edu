@@ -3084,6 +3084,32 @@
     max-width: 170px;
 }
 
+.edu-profile-account-section .fi-file-upload {
+    padding: 0.7rem;
+    border: 1px dashed #b8cbe4;
+    border-radius: 0.85rem;
+    background: #f7fbff;
+}
+
+.edu-profile-account-section .fi-file-upload .fi-fo-file-upload-avatar {
+    width: 5rem;
+    height: 5rem;
+    border: 3px solid #fff;
+    box-shadow: 0 5px 14px rgba(35, 80, 145, 0.14);
+}
+
+.edu-profile-account-section .fi-file-upload .fi-fo-file-upload-dropzone {
+    min-height: 0;
+    border: 0;
+    background: transparent;
+}
+
+.edu-profile-account-section .fi-file-upload .fi-fo-file-upload-dropzone-label {
+    color: #245bb3;
+    font-size: 0.75rem;
+    font-weight: 800;
+}
+
 .edu-profile-functional-section .fi-placeholder {
     min-height: 2.9rem;
     padding: 0.65rem 0.75rem;

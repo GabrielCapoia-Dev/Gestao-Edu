@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Pages\Auth;
 use Caresome\FilamentAuthDesigner\Pages\Auth\EditProfile as BaseEditProfile;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Component;
@@ -14,7 +15,10 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Arr;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use App\Models\Pessoa;
 use App\Models\Professor;
@@ -50,6 +54,7 @@ class EditProfile extends BaseEditProfile
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
+        $data['profile_photo'] = $this->publicDiskPathFromAvatar($data['avatar_url'] ?? null);
         $data['cpf'] = $this->getPessoa()?->cpf;
 
         return $data;
@@ -57,8 +62,15 @@ class EditProfile extends BaseEditProfile
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        $profilePhoto = Arr::first(Arr::wrap($data['profile_photo'] ?? null));
+
         unset($data['profile_photo']);
         unset($data['email']);
+
+        if (filled($profilePhoto)) {
+            $this->deletePreviousLocalAvatar((string) $profilePhoto);
+            $data['avatar_url'] = $profilePhoto;
+        }
 
         $this->cpfInformado = Pessoa::normalizarCpf($data['cpf'] ?? null);
         unset($data['cpf']);
@@ -82,18 +94,14 @@ class EditProfile extends BaseEditProfile
     {
         return $schema
             ->components([
-                Section::make('Dados da Conta')
-                    ->description('Atualize somente o nome exibido. Os demais dados da conta são protegidos.')
+                Section::make('Dados da conta')
+                    ->description('Atualize sua foto e o nome exibido. O e-mail e o código são protegidos.')
                     ->schema([
                         Grid::make([
                             'default' => 1,
                             'lg' => 12,
                         ])->schema([
-                            Placeholder::make('account_identity')
-                                ->label('Identificação')
-                                ->icon(Heroicon::UserCircle)
-                                ->iconColor('primary')
-                                ->content('A foto, o e-mail e o código da conta são administrados pelo sistema.')
+                            $this->getProfilePhotoFormComponent()
                                 ->columnSpan([
                                     'default' => 1,
                                     'lg' => 3,
@@ -162,6 +170,21 @@ class EditProfile extends BaseEditProfile
             ->dehydrated(fn (): bool => $this->hasCpfPending());
     }
 
+    protected function getProfilePhotoFormComponent(): Component
+    {
+        return FileUpload::make('profile_photo')
+            ->label('Foto de perfil')
+            ->avatar()
+            ->imageEditor()
+            ->circleCropper()
+            ->disk('public')
+            ->directory('profile-photos')
+            ->visibility('public')
+            ->maxSize(2048)
+            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+            ->helperText('JPG, PNG ou WebP, até 2 MB.');
+    }
+
     protected function getReadOnlyPlaceholder(string $name, string $label, Heroicon $icon, \Closure $content): Component
     {
         return Placeholder::make($name)
@@ -223,6 +246,34 @@ class EditProfile extends BaseEditProfile
     public function getSetorLabel(): string
     {
         return $this->getPessoa()?->setor?->nome ?: 'Não informado';
+    }
+
+    protected function deletePreviousLocalAvatar(string $newAvatarPath): void
+    {
+        $previousAvatarPath = $this->publicDiskPathFromAvatar($this->getUser()->avatar_url);
+
+        if (filled($previousAvatarPath) && $previousAvatarPath !== $newAvatarPath) {
+            Storage::disk('public')->delete($previousAvatarPath);
+        }
+    }
+
+    protected function publicDiskPathFromAvatar(?string $avatarUrl): ?string
+    {
+        if (blank($avatarUrl)) {
+            return null;
+        }
+
+        $avatarUrl = trim($avatarUrl);
+
+        if (Str::startsWith($avatarUrl, ['http://', 'https://', 'data:image/'])) {
+            return null;
+        }
+
+        if (Str::startsWith($avatarUrl, ['/storage/', 'storage/'])) {
+            return Str::after($avatarUrl, 'storage/');
+        }
+
+        return Str::startsWith($avatarUrl, '/') ? null : $avatarUrl;
     }
 
     protected function getNameFormComponent(): Component
