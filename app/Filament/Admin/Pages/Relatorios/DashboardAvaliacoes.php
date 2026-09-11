@@ -926,11 +926,7 @@ class DashboardAvaliacoes extends Page implements HasForms
     {
         $user = $this->usuarioAtual();
 
-        if (! $user || $this->usuarioTemEscopoGlobal($user)) {
-            return true;
-        }
-
-        return count($user->idsEscolasVinculadas()) !== 1;
+        return $user !== null && $this->usuarioTemEscopoGlobal($user);
     }
 
     private function usuarioAtual(): ?User
@@ -1447,7 +1443,15 @@ class DashboardAvaliacoes extends Page implements HasForms
         $query = DB::table('avaliacao_pauta as ap')
             ->join('pautas as p', 'p.id', '=', 'ap.pauta_id')
             ->whereIn('ap.avaliacao_id', $avaliacaoIds)
-            ->where('p.status', true);
+            ->where('p.status', true)
+            ->whereExists(function (QueryBuilder $subQuery): void {
+                $subQuery
+                    ->from('avaliacao_turma as at_scope')
+                    ->join('turmas as t_scope', 't_scope.id', '=', 'at_scope.turma_id')
+                    ->whereColumn('at_scope.avaliacao_id', 'ap.avaliacao_id');
+
+                $this->aplicarEscopoEscolarQuery($subQuery, 't_scope');
+            });
 
         if ($filtros['componentes_ids'] !== []) {
             $query->whereIn('p.componente_curricular_id', $filtros['componentes_ids']);
