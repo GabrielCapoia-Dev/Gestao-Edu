@@ -3355,9 +3355,18 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     private function dashboardResumosEstaoProntos(array $avaliacaoIds, ?array $filtros = null): bool
     {
-        // A tela calcula os indicadores a partir das tabelas operacionais no
-        // momento do acesso; projeções assíncronas não entram na leitura.
-        return false;
+        if (! app(\App\Services\Avaliacoes\AvaliacaoDashboardTurmaResumoService::class)->disponivel()) {
+            return false;
+        }
+
+        $filtros ??= $this->filtros;
+
+        // A projeção cobre os filtros estruturais da tela. Filtros por pauta,
+        // professor, alternativa ou componente exigem a leitura detalhada.
+        return ($filtros['professores_ids'] ?? []) === []
+            && ($filtros['pautas_ids'] ?? []) === []
+            && ($filtros['alternativas_ids'] ?? []) === []
+            && ($filtros['componentes_ids'] ?? []) === [];
     }
 
     private function queryResumosDeTurmas(array $avaliacaoIds, array $filtros): QueryBuilder
@@ -3368,7 +3377,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             ->leftJoin('escolas as e', 'e.id', '=', 't.id_escola')
             ->leftJoin('series as s', 's.id', '=', 't.id_serie')
             ->whereIn('resumo.avaliacao_id', $avaliacaoIds)
-            ->where('resumo.componente_chave', 0)
+            ->where('resumo.componente_chave', \App\Services\Avaliacoes\AvaliacaoDashboardTurmaResumoService::TOTAL_COMPONENT_KEY)
             ->select([
                 'resumo.avaliacao_id',
                 'resumo.turma_id',
