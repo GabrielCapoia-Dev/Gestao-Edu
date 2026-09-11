@@ -5,27 +5,27 @@ namespace App\Filament\Admin\Pages\Auth;
 use Caresome\FilamentAuthDesigner\Pages\Auth\EditProfile as BaseEditProfile;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
-use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Component;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Arr;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 use App\Models\Pessoa;
 use App\Models\Professor;
 
 class EditProfile extends BaseEditProfile
 {
+    use WithFileUploads;
+
     protected string $view = 'filament.admin.pages.auth.edit-profile';
+
+    public mixed $profilePhoto = null;
 
     private ?string $cpfInformado = null;
 
@@ -41,6 +41,15 @@ class EditProfile extends BaseEditProfile
         return Filament::getUserAvatarUrl($this->getUser());
     }
 
+    public function getPhotoPreviewUrl(): string
+    {
+        if ($this->profilePhoto instanceof TemporaryUploadedFile) {
+            return $this->profilePhoto->temporaryUrl();
+        }
+
+        return $this->getAvatarPreviewUrl();
+    }
+
     public function getProfileInitials(): string
     {
         return str($this->getUser()->name)
@@ -54,7 +63,6 @@ class EditProfile extends BaseEditProfile
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        $data['profile_photo'] = $this->publicDiskPathFromAvatar($data['avatar_url'] ?? null);
         $data['cpf'] = $this->getPessoa()?->cpf;
 
         return $data;
@@ -62,14 +70,21 @@ class EditProfile extends BaseEditProfile
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        $profilePhoto = Arr::first(Arr::wrap($data['profile_photo'] ?? null));
-
-        unset($data['profile_photo']);
         unset($data['email']);
 
-        if (filled($profilePhoto)) {
-            $this->deletePreviousLocalAvatar((string) $profilePhoto);
-            $data['avatar_url'] = $profilePhoto;
+        if ($this->profilePhoto instanceof TemporaryUploadedFile) {
+            $this->validate([
+                'profilePhoto' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            ], [
+                'profilePhoto.image' => 'Selecione uma imagem válida.',
+                'profilePhoto.mimes' => 'A foto deve ser JPG, PNG ou WebP.',
+                'profilePhoto.max' => 'A foto deve ter no máximo 2 MB.',
+            ]);
+
+            $profilePhotoPath = $this->profilePhoto->storePublicly('profile-photos', 'public');
+            $this->deletePreviousLocalAvatar($profilePhotoPath);
+            $data['avatar_url'] = $profilePhotoPath;
+            $this->profilePhoto = null;
         }
 
         $this->cpfInformado = Pessoa::normalizarCpf($data['cpf'] ?? null);
@@ -94,65 +109,12 @@ class EditProfile extends BaseEditProfile
     {
         return $schema
             ->components([
-                Section::make('Dados da conta')
-                    ->description('Atualize sua foto e o nome exibido. O e-mail e o código são protegidos.')
-                    ->schema([
-                        Grid::make([
-                            'default' => 1,
-                            'lg' => 12,
-                        ])->schema([
-                            $this->getProfilePhotoFormComponent()
-                                ->columnSpan([
-                                    'default' => 1,
-                                    'lg' => 3,
-                                ]),
-
-                            Grid::make([
-                                'default' => 1,
-                                'md' => 2,
-                            ])->schema([
-                                $this->getNameFormComponent(),
-                                $this->getEmailFormComponent(),
-                            ])->columnSpan([
-                                'default' => 1,
-                                'lg' => 9,
-                            ]),
-                        ]),
-                    ])
-                    ->extraAttributes(['class' => 'edu-profile-account-section']),
-
-                Section::make('Dados funcionais')
-                    ->description('Informações vinculadas ao cadastro da pessoa. Esses dados não podem ser alterados nesta tela.')
-                    ->schema([
-                        Grid::make([
-                            'default' => 1,
-                            'md' => 2,
-                            'xl' => 4,
-                        ])->schema([
-                            $this->getCpfFormComponent(),
-                            $this->getReadOnlyPlaceholder('cargo', 'Cargo', Heroicon::Briefcase, fn (): string => $this->getCargoLabel()),
-                            $this->getReadOnlyPlaceholder('escola', 'Escola', Heroicon::BuildingOffice, fn (): string => $this->getEscolaLabel()),
-                            $this->getReadOnlyPlaceholder('matricula', 'Matrícula', Heroicon::Identification, fn (): string => $this->getMatriculaLabel()),
-                            $this->getReadOnlyPlaceholder('turno', 'Turno', Heroicon::Clock, fn (): string => $this->getTurnoLabel()),
-                            $this->getReadOnlyPlaceholder('status_funcional', 'Status', Heroicon::CheckCircle, fn (): string => $this->getStatusLabel()),
-                            $this->getReadOnlyPlaceholder('setor', 'Setor', Heroicon::BuildingOffice2, fn (): string => $this->getSetorLabel()),
-                        ]),
-                    ])
-                    ->extraAttributes(['class' => 'edu-profile-functional-section']),
-
-                Section::make('Segurança da conta')
-                    ->description('Preencha somente se quiser alterar sua senha.')
-                    ->schema([
-                        Grid::make([
-                            'default' => 1,
-                            'md' => 2,
-                        ])->schema([
-                            $this->getPasswordFormComponent(),
-                            $this->getPasswordConfirmationFormComponent(),
-                            $this->getCurrentPasswordFormComponent()->columnSpanFull(),
-                        ]),
-                    ])
-                    ->extraAttributes(['class' => 'edu-profile-password-section']),
+                $this->getNameFormComponent(),
+                $this->getEmailFormComponent(),
+                $this->getCpfFormComponent(),
+                $this->getPasswordFormComponent(),
+                $this->getPasswordConfirmationFormComponent(),
+                $this->getCurrentPasswordFormComponent(),
             ]);
     }
 
@@ -168,30 +130,6 @@ class EditProfile extends BaseEditProfile
             ->rule(fn (): Rule => Rule::unique('servidores', 'cpf')->ignore($this->getPessoa()?->getKey()))
             ->visible(fn (): bool => $this->hasCpfPending())
             ->dehydrated(fn (): bool => $this->hasCpfPending());
-    }
-
-    protected function getProfilePhotoFormComponent(): Component
-    {
-        return FileUpload::make('profile_photo')
-            ->label('Foto de perfil')
-            ->avatar()
-            ->imageEditor()
-            ->circleCropper()
-            ->disk('public')
-            ->directory('profile-photos')
-            ->visibility('public')
-            ->maxSize(2048)
-            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
-            ->helperText('JPG, PNG ou WebP, até 2 MB.');
-    }
-
-    protected function getReadOnlyPlaceholder(string $name, string $label, Heroicon $icon, \Closure $content): Component
-    {
-        return Placeholder::make($name)
-            ->label($label)
-            ->icon($icon)
-            ->iconColor('primary')
-            ->content($content);
     }
 
     public function getPessoa(): ?Pessoa
