@@ -2,11 +2,14 @@
 
 namespace App\Filament\Admin\Actions;
 
+use App\Models\Aluno;
+use App\Models\Turma;
 use App\Models\User;
 use App\Services\Exports\ExportRequestService;
 use Filament\Actions\BulkAction;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Gate;
 
 class ExportSelectedRecordsBulkAction
 {
@@ -28,6 +31,7 @@ class ExportSelectedRecordsBulkAction
             ->modalDescription($modalDescription)
             ->modalSubmitActionLabel('Enviar para a fila')
             ->fetchSelectedRecords(false)
+            ->visible(fn (): bool => self::podeExportar($type))
             ->action(function (Builder $recordsQuery) use ($type, $label, $source): void {
                 /** @var User|null $user */
                 $user = auth()->user();
@@ -40,9 +44,11 @@ class ExportSelectedRecordsBulkAction
                     ->values()
                     ->all();
 
-                if (! $user || $ids === []) {
+                if (! $user || ! self::podeExportar($type) || $ids === []) {
                     Notification::make()
-                        ->title('Nenhum registro selecionado para exportação')
+                        ->title($ids === []
+                            ? 'Nenhum registro selecionado para exportação'
+                            : 'Você não possui permissão para exportar estes dados')
                         ->danger()
                         ->send();
 
@@ -77,5 +83,14 @@ class ExportSelectedRecordsBulkAction
                 }
             })
             ->deselectRecordsAfterCompletion();
+    }
+
+    private static function podeExportar(string $type): bool
+    {
+        return match ($type) {
+            'turmas_selecionadas', 'turmas_selecionadas_detalhado' => Gate::allows('export', Turma::class),
+            'alunos_selecionados' => Gate::allows('export', Aluno::class),
+            default => false,
+        };
     }
 }

@@ -17,6 +17,11 @@ class TurmaPolicy
         return $user->hasPermissionTo('Listar Turmas');
     }
 
+    public function export(User $user): bool
+    {
+        return ! $user->ehProfessor() && $this->viewAny($user);
+    }
+
     public function applyViewAnyScope(User $user, Builder $query): Builder
     {
         return app(UserService::class)->aplicarFiltroPorEscolaDoUsuarioEmTurma($query, $user);

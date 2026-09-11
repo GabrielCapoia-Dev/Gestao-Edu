@@ -13,6 +13,11 @@ class AlunoPolicy
         return $user->hasPermissionTo('Listar Alunos');
     }
 
+    public function export(User $user): bool
+    {
+        return ! $user->ehProfessor() && $this->viewAny($user);
+    }
+
     public function view(User $user, Aluno $aluno): bool
     {
         return $user->hasPermissionTo('Listar Alunos')

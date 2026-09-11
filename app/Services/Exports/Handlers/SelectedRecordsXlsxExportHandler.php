@@ -80,7 +80,7 @@ class SelectedRecordsXlsxExportHandler implements ExportHandler
     {
         $policy = app(TurmaPolicy::class);
 
-        if (! $policy->viewAny($user)) {
+        if (! $policy->export($user)) {
             throw new RuntimeException('Você não possui permissão para exportar turmas.');
         }
 
@@ -108,7 +108,7 @@ class SelectedRecordsXlsxExportHandler implements ExportHandler
     {
         $policy = app(TurmaPolicy::class);
 
-        if (! $policy->viewAny($user)) {
+        if (! $policy->export($user)) {
             throw new RuntimeException('Você não possui permissão para exportar turmas.');
         }
 
@@ -214,6 +214,10 @@ class SelectedRecordsXlsxExportHandler implements ExportHandler
     /** @return array{0:list<string>,1:list<list<mixed>>,2:string,3:string,4:int} */
     private function alunos($user, array $ids): array
     {
+        if (! app(\App\Policies\AlunoPolicy::class)->export($user)) {
+            throw new RuntimeException('Você não possui permissão para exportar alunos.');
+        }
+
         /** @var Collection<int, Aluno> $records */
         $records = app(AlunoService::class)->queryVisivel($user)
             ->whereKey($ids)
