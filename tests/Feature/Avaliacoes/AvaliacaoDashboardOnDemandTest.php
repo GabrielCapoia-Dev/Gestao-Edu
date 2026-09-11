@@ -99,7 +99,7 @@ class AvaliacaoDashboardOnDemandTest extends TestCase
                 'componente_curricular_id' => (int) $cenario['componente']->id,
             ],
         );
-        Queue::assertNotPushed(AtualizarAvaliacaoDashboardTurmaResumoJob::class);
+        Queue::assertPushed(AtualizarAvaliacaoDashboardTurmaResumoJob::class);
 
         $service = app(AvaliacaoDashboardTurmaResumoService::class);
         $service->recalcular((int) $cenario['avaliacao']->id, (int) $cenario['turma']->id);
@@ -107,7 +107,7 @@ class AvaliacaoDashboardOnDemandTest extends TestCase
         $this->assertDatabaseHas('avaliacao_dashboard_turma_resumos', [
             'avaliacao_id' => $cenario['avaliacao']->id,
             'turma_id' => $cenario['turma']->id,
-            'componente_chave' => 0,
+            'componente_chave' => AvaliacaoDashboardTurmaResumoService::TOTAL_COMPONENT_KEY,
             'preenchimentos_esperados' => 1,
             'preenchimentos_respondidos' => 1,
             'alunos_total' => 1,
