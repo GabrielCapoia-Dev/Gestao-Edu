@@ -2486,6 +2486,7 @@ class DashboardAvaliacoes extends Page implements HasForms
         $distinctRespondido = $this->distinctCombinacaoExpr('ar.avaliacao_id', 'ar.turma_id', 'ar.pauta_id', 'ar.aluno_id');
 
         $esperados = (clone $this->basePreenchimentosEsperadosQuery($avaliacaoIds))
+            ->whereNotNull('p.componente_curricular_id')
             ->leftJoin('componentes_curriculares as cc', 'cc.id', '=', 'p.componente_curricular_id')
             ->groupBy('p.componente_curricular_id', 'cc.nome')
             ->groupByRaw('COALESCE(p.componente_curricular_id, 0)')
@@ -2497,6 +2498,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             ->keyBy(fn ($item): int => (int) $item->agrupamento_id);
 
         $respondidos = (clone $this->baseRespostasQuery($avaliacaoIds, ignorarAlternativas: true))
+            ->whereNotNull('p.componente_curricular_id')
             ->leftJoin('componentes_curriculares as cc', 'cc.id', '=', 'p.componente_curricular_id')
             ->groupBy('p.componente_curricular_id', 'cc.nome')
             ->groupByRaw('COALESCE(p.componente_curricular_id, 0)')
@@ -3472,6 +3474,7 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->aplicarEscopoEscolarQuery($query, 't');
 
         return $query
+            ->whereNotNull('resumo.componente_curricular_id')
             ->when(($filtros['series_ids'] ?? []) !== [], fn ($q) => $q->whereIn('t.id_serie', $filtros['series_ids']))
             ->when(($filtros['turnos'] ?? []) !== [], fn ($q) => $q->whereIn('t.turno', $filtros['turnos']))
             ->when(($filtros['escolas_ids'] ?? []) !== [], fn ($q) => $q->whereIn('t.id_escola', $filtros['escolas_ids']));
