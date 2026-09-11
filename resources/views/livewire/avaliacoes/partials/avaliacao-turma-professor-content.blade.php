@@ -101,7 +101,7 @@
                     @php($progressoItem = $progressoNavegacao['series'][(int) $serieItem->serie_id] ?? ['preenchidas' => 0, 'total' => 0, 'percentual' => 0])
                     <button type="button" wire:click="selecionarSerieNavegacao({{ $serieItem->serie_id }})">
                         <span class="av-professor-class-icon">S</span>
-                        <span><strong>{{ $serieItem->serie_nome }}</strong><small>{{ $serieItem->turmas_total }} {{ (int) $serieItem->turmas_total === 1 ? 'turma' : 'turmas' }}</small></span>
+                        <span><strong>{{ $serieItem->serie_nome }}</strong><small>{{ $serieItem->escolas_nome }} · {{ $serieItem->turmas_total }} {{ (int) $serieItem->turmas_total === 1 ? 'turma' : 'turmas' }}</small></span>
                         <span class="av-professor-compact-progress">
                             <span>{{ $progressoItem['preenchidas'] }}/{{ $progressoItem['total'] }}</span><span>{{ $progressoItem['percentual'] }}%</span>
                             <span class="av-progress-track"><span class="av-progress-bar" style="width: {{ $progressoItem['percentual'] }}%"></span></span>

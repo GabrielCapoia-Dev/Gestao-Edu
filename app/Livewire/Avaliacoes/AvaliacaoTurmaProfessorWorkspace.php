@@ -220,11 +220,12 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
 
         return $this->seriesNavegacaoCache = $this->novaConsultaTurmasNavegacao()
             ->join('series as s_nav', 's_nav.id', '=', 'turmas.id_serie')
+            ->join('escolas as e_nav', 'e_nav.id', '=', 'turmas.id_escola')
             ->when(
                 $this->agrupaNavegacaoPorEscola(),
                 fn (Builder $turmas) => $turmas->where('turmas.id_escola', (int) $this->escolaNavegacaoId),
             )
-            ->selectRaw('turmas.id_serie as serie_id, s_nav.nome as serie_nome, COUNT(DISTINCT turmas.id) as turmas_total')
+            ->selectRaw('turmas.id_serie as serie_id, s_nav.nome as serie_nome, GROUP_CONCAT(DISTINCT e_nav.nome) as escolas_nome, COUNT(DISTINCT turmas.id) as turmas_total')
             ->groupBy('turmas.id_serie', 's_nav.nome')
             ->orderBy('s_nav.nome')
             ->get();
