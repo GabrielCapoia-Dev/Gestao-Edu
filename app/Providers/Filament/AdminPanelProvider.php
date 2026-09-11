@@ -222,9 +222,11 @@ class AdminPanelProvider extends PanelProvider
                 PanelsRenderHook::USER_MENU_BEFORE,
                 function () {
                     $user = User::authUser();
-                    $showNotifications = false;
+                        $showNotifications = false;
+                        $missingCpf = false;
 
                     if ($user) {
+                        $missingCpf = $user->servidores()->whereNull('cpf')->exists();
                         try {
                             $showNotifications = Gate::forUser($user)->allows('viewAny', NotificacaoEnvio::class);
                         } catch (PermissionDoesNotExist) {
@@ -236,6 +238,7 @@ class AdminPanelProvider extends PanelProvider
                         'userName' => $user?->name,
                         'showOnlineUsers' => $user ? Gate::forUser($user)->allows('viewOnlineUsers', User::class) : false,
                         'showNotifications' => $showNotifications,
+                        'missingCpf' => $missingCpf,
                     ]);
                 }
             )

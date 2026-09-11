@@ -3,6 +3,7 @@
 namespace Tests\Feature\Auth;
 
 use App\Filament\Admin\Pages\Auth\EditProfile;
+use App\Models\Servidor;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -37,5 +38,47 @@ class EditProfileTest extends TestCase
 
         $this->assertSame('Nome Atualizado', $user->name);
         $this->assertSame('original@example.com', $user->email);
+    }
+
+    public function test_user_can_fill_cpf_only_when_person_has_no_cpf(): void
+    {
+        $user = User::factory()->create([
+            'email_approved' => true,
+        ]);
+
+        $pessoa = Servidor::query()->create([
+            'user_id' => $user->id,
+            'nome' => $user->name,
+            'email' => $user->email,
+            'status' => 'inativo',
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(EditProfile::class)
+            ->assertFormFieldVisible('cpf')
+            ->fillForm(['cpf' => '12345678909'])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame('12345678909', $pessoa->refresh()->cpf);
+    }
+
+    public function test_user_cannot_replace_existing_cpf_from_profile(): void
+    {
+        $user = User::factory()->create([
+            'email_approved' => true,
+        ]);
+
+        Servidor::query()->create([
+            'user_id' => $user->id,
+            'nome' => $user->name,
+            'email' => $user->email,
+            'cpf' => '12345678909',
+            'status' => 'inativo',
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(EditProfile::class)
+            ->assertFormFieldHidden('cpf');
     }
 }

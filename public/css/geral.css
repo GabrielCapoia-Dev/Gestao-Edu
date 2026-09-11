@@ -2836,6 +2836,13 @@
     min-width: 0;
 }
 
+.edu-profile-kicker-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
 .edu-profile-heading-kicker,
 .edu-profile-form-heading span {
     display: inline-flex;
@@ -2943,6 +2950,61 @@
     background: #f59e0b;
 }
 
+.edu-profile-avatar-status.is-warning {
+    width: 18px;
+    height: 18px;
+    background: #f59e0b;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18);
+}
+
+.edu-profile-cpf-alert {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.45rem;
+    padding: 0.22rem 0.58rem;
+    border-radius: 999px;
+    background: #fff7ed;
+    color: #b45309;
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.edu-profile-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid #fed7aa;
+    border-radius: 8px;
+    background: #fffaf2;
+    color: #7c2d12;
+}
+
+.edu-profile-alert-icon {
+    display: grid;
+    width: 1.5rem;
+    height: 1.5rem;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 50%;
+    background: #f59e0b;
+    color: #fff;
+    font-weight: 900;
+}
+
+.edu-profile-alert strong {
+    display: block;
+    font-size: 0.86rem;
+}
+
+.edu-profile-alert p {
+    margin: 0.18rem 0 0;
+    color: #9a3412;
+    font-size: 0.78rem;
+}
+
 .edu-profile-status-pill {
     display: inline-flex;
     align-items: center;
@@ -3020,6 +3082,35 @@
 
 .edu-profile-account-section .fi-file-upload {
     max-width: 170px;
+}
+
+.edu-profile-functional-section .fi-placeholder {
+    min-height: 2.9rem;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: var(--edu-neutral-800);
+    font-size: 0.86rem;
+    font-weight: 700;
+}
+
+.edu-profile-functional-section .fi-fo-field-wrp-label {
+    margin-bottom: 0.35rem;
+}
+
+.topbar-profile-cpf-alert {
+    display: inline-grid;
+    width: 1.15rem;
+    height: 1.15rem;
+    margin-left: 0.35rem;
+    place-items: center;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: #f59e0b;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 900;
 }
 
 .edu-profile-account-section .fi-fo-field-wrp-content {
