@@ -11,9 +11,10 @@
             <div class="profile-hero__identity">
                 <label class="profile-photo" title="Alterar foto de perfil">
                     @if ($this->profilePhoto || filled($user->avatar_url))
-                        <img src="{{ $this->getPhotoPreviewUrl() }}" alt="Foto de {{ $user->name }}">
+                        <span class="profile-photo__initials">{{ $this->getProfileInitials() }}</span>
+                        <img src="{{ $this->getPhotoPreviewUrl() }}" alt="Foto de {{ $user->name }}" x-on:error="$el.remove()">
                     @else
-                        <span>{{ $this->getProfileInitials() }}</span>
+                        <span class="profile-photo__initials">{{ $this->getProfileInitials() }}</span>
                     @endif
                     <input wire:model="profilePhoto" type="file" accept="image/jpeg,image/png,image/webp">
                     <span class="profile-photo__edit" aria-hidden="true"><x-filament::icon icon="heroicon-o-camera" /></span>

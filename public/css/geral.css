@@ -6903,3 +6903,196 @@ html.dark {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
+
+/* Perfil em superfície aberta: sem janela, moldura ou cartões empilhados. */
+.fi-auth-layout.media-cover:has(.profile-page) {
+    min-height: 100vh;
+    padding: 0;
+    background: #fff;
+}
+
+.fi-auth-layout.media-cover:has(.profile-page) .fi-auth-media-overlay {
+    display: none;
+}
+
+.fi-auth-layout.media-cover:has(.profile-page) .fi-auth-media-section {
+    display: none;
+}
+
+.fi-auth-layout.media-cover:has(.profile-page) .fi-auth-content-section {
+    width: 100%;
+    max-width: none;
+    padding: 0;
+    background: #fff;
+}
+
+.fi-auth-card:has(.profile-page) {
+    backdrop-filter: none;
+}
+
+.profile-page {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: clamp(1.25rem, 3vw, 3rem) clamp(1rem, 4vw, 4rem);
+}
+
+.profile-page__form {
+    gap: 0;
+}
+
+.profile-hero {
+    min-height: 132px;
+    padding: 0 0 2rem;
+    overflow: visible;
+    border: 0;
+    border-bottom: 1px solid #dce4ee;
+    border-radius: 0;
+    background: transparent;
+    color: #10213b;
+    box-shadow: none;
+}
+
+.profile-photo {
+    width: 92px;
+    height: 92px;
+    overflow: visible;
+    border: 2px solid #d8e2ef;
+    border-radius: 50%;
+    background: #eaf2fb;
+    color: #164d93;
+    box-shadow: none;
+}
+
+.profile-photo > img {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+}
+
+.profile-photo__initials {
+    font-size: 1.65rem !important;
+    font-weight: 850;
+}
+
+.profile-photo__edit {
+    right: 1px;
+    bottom: 1px;
+    border-width: 2px;
+    box-shadow: none;
+}
+
+.profile-photo__notice {
+    top: 0;
+    right: 0;
+}
+
+.profile-eyebrow {
+    color: #2764ad;
+}
+
+.profile-hero__copy > p {
+    color: #60738e;
+}
+
+.profile-badge {
+    border: 0;
+    background: #eef3f8;
+    color: #405571;
+}
+
+.profile-hero__account {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    text-align: right;
+}
+
+.profile-hero__account span {
+    color: #71839c;
+}
+
+.profile-completion {
+    margin-top: 1.25rem;
+    padding: .85rem 1rem;
+    border: 0;
+    border-left: 3px solid #f59e0b;
+    border-radius: 0;
+    background: #fff9ed;
+}
+
+.profile-layout {
+    gap: 0;
+    border-bottom: 1px solid #dce4ee;
+}
+
+.profile-card {
+    padding: 2rem 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.profile-layout > .profile-card:first-child {
+    padding-right: 2rem;
+    border-right: 1px solid #dce4ee;
+}
+
+.profile-layout > .profile-card:last-child {
+    padding-left: 2rem;
+}
+
+.profile-card__heading {
+    border-bottom: 0;
+}
+
+.profile-fact {
+    padding: .7rem 0;
+    border: 0;
+    border-bottom: 1px solid #e7edf4;
+    border-radius: 0;
+    background: transparent;
+}
+
+.profile-readonly {
+    padding: .7rem 0;
+    border: 0;
+    border-bottom: 1px solid #e7edf4;
+    border-radius: 0;
+    background: transparent;
+}
+
+.profile-actions {
+    padding: 1.25rem 0 0;
+}
+
+@media (max-width: 850px) {
+    .profile-layout > .profile-card:first-child {
+        padding-right: 0;
+        border-right: 0;
+        border-bottom: 1px solid #dce4ee;
+    }
+
+    .profile-layout > .profile-card:last-child {
+        padding-left: 0;
+    }
+}
+
+@media (max-width: 560px) {
+    .fi-auth-layout.media-cover:has(.profile-page) {
+        padding: 0;
+    }
+
+    .fi-auth-layout.media-cover:has(.profile-page) .fi-auth-content-section {
+        max-width: none;
+    }
+
+    .profile-page {
+        padding: 1rem;
+    }
+
+    .profile-hero {
+        padding: 0 0 1.25rem;
+    }
+}
