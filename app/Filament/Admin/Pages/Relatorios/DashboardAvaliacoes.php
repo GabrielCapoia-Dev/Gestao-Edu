@@ -2480,6 +2480,13 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         $esperados = (clone $this->basePreenchimentosEsperadosQuery($avaliacaoIds))
             ->whereNotNull('p.componente_curricular_id')
+            ->whereExists(function (QueryBuilder $query): void {
+                $query
+                    ->from('turma_componente_professor as tcp_componente')
+                    ->whereColumn('tcp_componente.turma_id', 't.id')
+                    ->whereColumn('tcp_componente.componente_curricular_id', 'p.componente_curricular_id')
+                    ->where('tcp_componente.tem_professor', true);
+            })
             ->leftJoin('componentes_curriculares as cc', 'cc.id', '=', 'p.componente_curricular_id')
             ->groupBy('p.componente_curricular_id', 'cc.nome')
             ->groupByRaw('COALESCE(p.componente_curricular_id, 0)')
@@ -2492,6 +2499,13 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         $respondidos = (clone $this->baseRespostasQuery($avaliacaoIds, ignorarAlternativas: true))
             ->whereNotNull('p.componente_curricular_id')
+            ->whereExists(function (QueryBuilder $query): void {
+                $query
+                    ->from('turma_componente_professor as tcp_componente')
+                    ->whereColumn('tcp_componente.turma_id', 't.id')
+                    ->whereColumn('tcp_componente.componente_curricular_id', 'p.componente_curricular_id')
+                    ->where('tcp_componente.tem_professor', true);
+            })
             ->leftJoin('componentes_curriculares as cc', 'cc.id', '=', 'p.componente_curricular_id')
             ->groupBy('p.componente_curricular_id', 'cc.nome')
             ->groupByRaw('COALESCE(p.componente_curricular_id, 0)')
@@ -3426,6 +3440,13 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         return $query
             ->whereNotNull('resumo.componente_curricular_id')
+            ->whereExists(function (QueryBuilder $subQuery): void {
+                $subQuery
+                    ->from('turma_componente_professor as tcp_componente')
+                    ->whereColumn('tcp_componente.turma_id', 'resumo.turma_id')
+                    ->whereColumn('tcp_componente.componente_curricular_id', 'resumo.componente_curricular_id')
+                    ->where('tcp_componente.tem_professor', true);
+            })
             ->when(($filtros['series_ids'] ?? []) !== [], fn ($q) => $q->whereIn('t.id_serie', $filtros['series_ids']))
             ->when(($filtros['turnos'] ?? []) !== [], fn ($q) => $q->whereIn('t.turno', $filtros['turnos']))
             ->when(($filtros['escolas_ids'] ?? []) !== [], fn ($q) => $q->whereIn('t.id_escola', $filtros['escolas_ids']));
