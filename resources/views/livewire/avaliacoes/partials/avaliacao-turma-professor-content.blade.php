@@ -146,11 +146,12 @@
                                 </div>
                                 <div class="av-professor-component-grid">
                                     @forelse ($componentesTurma as $grupo)
+                                        @php($progressoComponente = $progressoNavegacao['componentes'][(int) $grupo['componente_id']] ?? ['preenchidas' => 0, 'total' => 0, 'percentual' => 0])
                                         <button type="button" class="av-professor-component-card" wire:click="abrirComponente({{ $turmaIdAtual }}, {{ $grupo['componente_id'] }})">
                                             <span class="av-professor-component-card__name">{{ $grupo['componente_nome'] }}</span>
                                             <span class="av-professor-component-card__teacher">{{ $grupo['professor_nome'] }}</span>
                                             <span class="av-professor-component-card__meta"><span>{{ $grupo['pautas_total'] }} {{ $grupo['pautas_total'] === 1 ? 'pauta' : 'pautas' }}</span></span>
-                                            <span class="av-professor-component-card__action">Abrir avaliação <span aria-hidden="true">→</span></span>
+                                            <span class="av-professor-component-card__action">Abrir avaliação <span aria-hidden="true">→</span><strong>{{ $progressoComponente['percentual'] }}%</strong></span>
                                         </button>
                                     @empty
                                         <section class="av-note av-note--warning">Nenhum componente disponível para esta turma.</section>

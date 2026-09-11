@@ -246,8 +246,8 @@ class AvaliacaoDashboardProgressService
         }
 
         foreach ($historicos
-            ->groupBy('ciclo_historico.avaliacao_id', 'turma_historica.id', 'turma_historica.id_escola', 'turma_historica.id_serie')
-            ->selectRaw('ciclo_historico.avaliacao_id, turma_historica.id as turma_id, turma_historica.id_escola as escola_id, turma_historica.id_serie as serie_id')
+            ->groupBy('ciclo_historico.avaliacao_id', 'turma_historica.id', 'turma_historica.id_escola', 'turma_historica.id_serie', 'resumo_historico.componente_curricular_id')
+            ->selectRaw('ciclo_historico.avaliacao_id, turma_historica.id as turma_id, turma_historica.id_escola as escola_id, turma_historica.id_serie as serie_id, COALESCE(resumo_historico.componente_curricular_id, 0) as componente_chave')
             ->selectRaw('SUM(resumo_historico.respostas_esperadas) as total, SUM(resumo_historico.respostas_concluidas) as preenchidas')
             ->get() as $historico) {
             $avaliacaoId = (int) $historico->avaliacao_id;
@@ -297,14 +297,14 @@ class AvaliacaoDashboardProgressService
         }
 
         foreach ($resumos
-            ->groupBy('resumo_rapido.avaliacao_id', 'turma_rapida.id', 'turma_rapida.id_escola', 'turma_rapida.id_serie')
-            ->selectRaw('resumo_rapido.avaliacao_id, turma_rapida.id as turma_id, turma_rapida.id_escola as escola_id, turma_rapida.id_serie as serie_id')
+            ->groupBy('resumo_rapido.avaliacao_id', 'turma_rapida.id', 'turma_rapida.id_escola', 'turma_rapida.id_serie', 'resumo_rapido.componente_chave')
+            ->selectRaw('resumo_rapido.avaliacao_id, turma_rapida.id as turma_id, turma_rapida.id_escola as escola_id, turma_rapida.id_serie as serie_id, resumo_rapido.componente_chave')
             ->selectRaw('SUM(resumo_rapido.preenchimentos_esperados) as total, SUM(resumo_rapido.preenchimentos_respondidos) as preenchidas')
             ->get() as $linha) {
             $avaliacaoId = (int) $linha->avaliacao_id;
             $total = (int) $linha->total;
             $preenchidas = min((int) $linha->preenchidas, $total);
-            $this->acumularLinha($resultado[$avaliacaoId], $linha, $preenchidas, $total);
+            $this->acumularLinha($resultado[$avaliacaoId], $linha, $preenchidas, $total, (int) $linha->componente_chave);
         }
 
         $historicos = DB::table('avaliacao_snapshot_resumos_componentes as resumo_historico')
@@ -343,17 +343,20 @@ class AvaliacaoDashboardProgressService
             $avaliacaoId = (int) $linha->avaliacao_id;
             $total = (int) $linha->total;
             $preenchidas = min((int) $linha->preenchidas, $total);
-            $this->acumularLinha($resultado[$avaliacaoId], $linha, $preenchidas, $total);
+            $this->acumularLinha($resultado[$avaliacaoId], $linha, $preenchidas, $total, (int) $linha->componente_chave);
         }
 
         return $this->finalizarResumos($resultado);
     }
 
-    private function acumularLinha(array &$resumo, object $linha, int $preenchidas, int $total): void
+    private function acumularLinha(array &$resumo, object $linha, int $preenchidas, int $total, ?int $componenteId = null): void
     {
         $this->acumularResumo($resumo, 'turmas', (int) $linha->turma_id, $preenchidas, $total);
         $this->acumularResumo($resumo, 'series', (int) $linha->serie_id, $preenchidas, $total);
         $this->acumularResumo($resumo, 'escolas', (int) $linha->escola_id, $preenchidas, $total);
+        if ($componenteId !== null && $componenteId !== AvaliacaoDashboardTurmaResumoService::TOTAL_COMPONENT_KEY) {
+            $this->acumularResumo($resumo, 'componentes', $componenteId, $preenchidas, $total);
+        }
         $resumo['preenchidas'] += $preenchidas;
         $resumo['total'] += $total;
     }
@@ -362,7 +365,7 @@ class AvaliacaoDashboardProgressService
     {
         foreach ($resultado as &$resumo) {
             $resumo['percentual'] = $this->percentual($resumo['preenchidas'], $resumo['total']);
-            foreach (['escolas', 'series', 'turmas'] as $nivel) {
+            foreach (['escolas', 'series', 'turmas', 'componentes'] as $nivel) {
                 foreach ($resumo[$nivel] as &$item) {
                     $item['percentual'] = $this->percentual($item['preenchidas'], $item['total']);
                 }
@@ -376,7 +379,7 @@ class AvaliacaoDashboardProgressService
 
     private function resumoVazio(): array
     {
-        return ['preenchidas' => 0, 'total' => 0, 'percentual' => 0, 'escolas' => [], 'series' => [], 'turmas' => []];
+        return ['preenchidas' => 0, 'total' => 0, 'percentual' => 0, 'escolas' => [], 'series' => [], 'turmas' => [], 'componentes' => []];
     }
 
     private function acumularResumo(array &$resumo, string $nivel, int $id, int $preenchidas, int $total): void

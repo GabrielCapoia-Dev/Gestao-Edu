@@ -372,10 +372,17 @@
     }
 
     .av-professor-component-card__action {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
         margin-top: .35rem;
         color: #2563eb;
         font-size: .76rem;
         font-weight: 750;
+    }
+
+    .av-professor-component-card__action strong {
+        font-size: .78rem;
     }
 
     .av-professor-modal-backdrop {
