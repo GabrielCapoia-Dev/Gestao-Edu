@@ -3099,17 +3099,38 @@
     margin-bottom: 0.35rem;
 }
 
-.topbar-profile-cpf-alert {
+.profile-menu-cpf-alert {
     display: inline-grid;
     width: 1.15rem;
     height: 1.15rem;
-    margin-left: 0.35rem;
+    margin: 0 0.7rem 0 0.25rem;
     place-items: center;
     border: 2px solid #fff;
     border-radius: 50%;
     background: #f59e0b;
     color: #fff;
     font-size: 0.7rem;
+    font-weight: 900;
+}
+
+.fi-user-menu:has(.profile-menu-cpf-alert) .fi-user-menu-trigger {
+    position: relative;
+}
+
+.fi-user-menu:has(.profile-menu-cpf-alert) .fi-user-menu-trigger::after {
+    position: absolute;
+    right: -0.08rem;
+    bottom: -0.08rem;
+    display: grid;
+    width: 1rem;
+    height: 1rem;
+    place-items: center;
+    border: 2px solid var(--edu-white, #fff);
+    border-radius: 50%;
+    background: #f59e0b;
+    color: #fff;
+    content: '!';
+    font-size: 0.62rem;
     font-weight: 900;
 }
 

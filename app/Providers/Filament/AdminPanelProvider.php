@@ -221,12 +221,10 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::USER_MENU_BEFORE,
                 function () {
-                    $user = User::authUser();
+                        $user = User::authUser();
                         $showNotifications = false;
-                        $missingCpf = false;
 
                     if ($user) {
-                        $missingCpf = $user->servidores()->whereNull('cpf')->exists();
                         try {
                             $showNotifications = Gate::forUser($user)->allows('viewAny', NotificacaoEnvio::class);
                         } catch (PermissionDoesNotExist) {
@@ -238,7 +236,16 @@ class AdminPanelProvider extends PanelProvider
                         'userName' => $user?->name,
                         'showOnlineUsers' => $user ? Gate::forUser($user)->allows('viewOnlineUsers', User::class) : false,
                         'showNotifications' => $showNotifications,
-                        'missingCpf' => $missingCpf,
+                    ]);
+                }
+            )
+            ->renderHook(
+                PanelsRenderHook::USER_MENU_PROFILE_AFTER,
+                function () {
+                    $user = User::authUser();
+
+                    return view('filament.partials.profile-cpf-menu-badge', [
+                        'missingCpf' => $user?->servidores()->whereNull('cpf')->exists() ?? false,
                     ]);
                 }
             )
