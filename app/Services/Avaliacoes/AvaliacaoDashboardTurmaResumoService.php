@@ -20,9 +20,11 @@ class AvaliacaoDashboardTurmaResumoService
 {
     public const TOTAL_COMPONENT_KEY = 4294967295;
 
+    private static ?bool $tabelaDisponivel = null;
+
     public function disponivel(): bool
     {
-        return Schema::hasTable('avaliacao_dashboard_turma_resumos');
+        return self::$tabelaDisponivel ??= Schema::hasTable('avaliacao_dashboard_turma_resumos');
     }
 
     public function recalcular(int $avaliacaoId, int $turmaId): void
