@@ -8,6 +8,13 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Em alguns ambientes a tabela já pode existir por uma execução anterior
+        // interrompida antes de o Laravel registrar a migration como concluída.
+        // Nesse caso, não tentamos recriá-la para evitar SQLSTATE[42S01].
+        if (Schema::hasTable('professor_componente_solicitacoes')) {
+            return;
+        }
+
         Schema::create('professor_componente_solicitacoes', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('turma_componente_professor_id')
