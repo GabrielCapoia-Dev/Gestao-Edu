@@ -1017,7 +1017,7 @@
         .dav-analytics__headline { min-width: 9rem; padding: 0.75rem 1rem; border: 1px solid #cfe0f5; border-radius: 0.9rem; background: #fff; text-align: right; }
         .dav-analytics__headline strong { display: block; color: #1d4ed8; font-size: 1.35rem; line-height: 1; }
         .dav-analytics__headline span { display: block; margin-top: 0.35rem; color: var(--gray-600); font-size: 0.7rem; }
-        .dav-analytics__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 0.8rem; }
+        .dav-analytics__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; }
         .dav-analytics-card { min-width: 0; padding: 1rem; border: 1px solid #d8e4f1; border-radius: 1rem; background: #fff; }
         .dav-analytics-card--risk { grid-column: 1 / -1; border-left: 3px solid #e0a11a; }
         .dav-analytics-card__header { align-items: flex-start; margin-bottom: 0.85rem; }
