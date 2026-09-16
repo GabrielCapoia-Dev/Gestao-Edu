@@ -4,9 +4,13 @@
     $cpfPendente = $this->hasCpfPending();
     $pessoa = $this->getPessoa();
     $isProfessor = $this->hasProfessorProfile();
+    $gestaoVinculos = $this->getGestaoVinculos();
+    $isCoordinator = $this->hasCoordinatorProfile();
     $contextosProfessor = $isProfessor ? $this->getProfessorContexts() : collect();
     $podeAnalisarSolicitacoes = $this->canReviewProfessorRequests();
-    $solicitacoesParaAnalise = $podeAnalisarSolicitacoes ? $this->getProfessorRequestsForReview() : collect();
+    $solicitacoesParaAnalise = $podeAnalisarSolicitacoes && ! app(\App\Services\PessoaScopeService::class)->ehEquipeGestora($user)
+        ? $this->getProfessorRequestsForReview()
+        : collect();
 @endphp
 
 <div class="profile-page">
@@ -115,6 +119,16 @@
                         <div class="profile-fact"><span><x-filament::icon :icon="$fact['icon']" /></span><div><small>{{ $fact['label'] }}</small><strong>{{ $fact['value'] }}</strong></div></div>
                     @endforeach
                 </div>
+                @if ($gestaoVinculos->isNotEmpty())
+                    <div class="profile-manager-portarias">
+                        <label class="profile-field">
+                            <span>Portaria</span>
+                            <span class="profile-input"><x-filament::icon icon="heroicon-o-document-text" /><input wire:model="data.portaria" type="text" maxlength="255" placeholder="Informe a portaria"></span>
+                            <small>Aplicada aos vínculos ativos de Diretor e Coordenador.</small>
+                            @error('data.portaria')<small class="profile-field-error">{{ $message }}</small>@enderror
+                        </label>
+                    </div>
+                @endif
             </section>
         </div>
 
@@ -195,6 +209,29 @@
                         <div class="profile-assignment-empty">Nenhum vínculo ativo de professor foi encontrado.</div>
                     @endforelse
                 </div>
+            </section>
+        @endif
+
+        @if ($isCoordinator)
+            <section class="profile-card profile-card--coordination">
+                <div class="profile-card__heading">
+                    <span class="profile-card__icon"><x-filament::icon icon="heroicon-o-academic-cap" /></span>
+                    <div><h2>Minhas turmas de coordenação</h2><p>Adicione ou remova sua coordenação nas turmas das suas escolas.</p></div>
+                </div>
+                @foreach ($gestaoVinculos->filter(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->coordenacao_pedagogica) as $vinculo)
+                    <div class="profile-coordination-school">
+                        <h3><x-filament::icon icon="heroicon-o-building-office" /> {{ $vinculo->escola?->nome ?: 'Escola não informada' }}</h3>
+                        <div class="profile-coordination-grid">
+                            @foreach ($this->getCoordinatorTurmas($vinculo->id)->sortBy(fn ($turma) => ($turma->serie?->nome ?? '').' '.$turma->nome) as $turma)
+                                @php $coordenando = $vinculo->vinculosTurmaAtivos->contains('turma_id', $turma->id); @endphp
+                                <article class="profile-coordination-item">
+                                    <div><strong>{{ $turma->serie?->nome ?: 'Série não informada' }} · Turma {{ $turma->nome }}</strong><small>{{ \App\Models\Professor::TURNOS[$turma->turno] ?? $turma->turno }}</small></div>
+                                    <button type="button" class="profile-inline-button {{ $coordenando ? 'profile-inline-button--muted' : '' }}" wire:click="toggleCoordinatorTurma({{ $turma->id }}, {{ $coordenando ? 'false' : 'true' }})" @if (! $coordenando) wire:confirm="Ao vincular, você substituirá o coordenador atual desta turma, se houver. Deseja continuar?" @endif wire:loading.attr="disabled">{{ $coordenando ? 'Remover' : 'Vincular' }}</button>
+                                </article>
+                            @endforeach
+                        </div>
+                    </div>
+                @endforeach
             </section>
         @endif
 

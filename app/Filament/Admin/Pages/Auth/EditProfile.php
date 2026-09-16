@@ -6,7 +6,9 @@ use App\Models\Pessoa;
 use App\Models\Professor;
 use App\Models\ProfessorComponenteSolicitacao;
 use App\Models\TurmaComponenteProfessor;
+use App\Models\Turma;
 use App\Services\ProfessorComponenteSolicitacaoService;
+use App\Services\PerfilEquipeGestoraService;
 use Caresome\FilamentAuthDesigner\Pages\Auth\EditProfile as BaseEditProfile;
 use Closure;
 use Filament\Actions\Action;
@@ -72,6 +74,11 @@ class EditProfile extends BaseEditProfile
     protected function mutateFormDataBeforeFill(array $data): array
     {
         $data['cpf'] = $this->getPessoa()?->cpf;
+        $data['portaria'] = app(PerfilEquipeGestoraService::class)
+            ->vinculosDoPerfil($this->getUser())
+            ->pluck('portaria')
+            ->filter()
+            ->first();
 
         return $data;
     }
@@ -106,6 +113,10 @@ class EditProfile extends BaseEditProfile
         $record = parent::handleRecordUpdate($record, $data);
         $pessoa = $this->getPessoa();
 
+        if (array_key_exists('portaria', $data) && filled($data['portaria'])) {
+            app(PerfilEquipeGestoraService::class)->atualizarPortaria($this->getUser(), (string) $data['portaria']);
+        }
+
         if ($pessoa && blank($pessoa->cpf) && filled($this->cpfInformado)) {
             $pessoa->update(['cpf' => $this->cpfInformado]);
         }
@@ -123,6 +134,7 @@ class EditProfile extends BaseEditProfile
                 $this->getPasswordFormComponent(),
                 $this->getPasswordConfirmationFormComponent(),
                 $this->getCurrentPasswordFormComponent(),
+                TextInput::make('portaria')->hidden(),
             ]);
     }
 
@@ -214,6 +226,43 @@ class EditProfile extends BaseEditProfile
     public function hasProfessorProfile(): bool
     {
         return $this->getUser()->professores()->where('ativo', true)->exists();
+    }
+
+    public function getGestaoVinculos(): Collection
+    {
+        return app(PerfilEquipeGestoraService::class)->vinculosDoPerfil($this->getUser());
+    }
+
+    public function hasCoordinatorProfile(): bool
+    {
+        return $this->getGestaoVinculos()->contains(
+            fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->coordenacao_pedagogica,
+        );
+    }
+
+    public function getCoordinatorTurmas(int $vinculoId): Collection
+    {
+        $vinculo = $this->getGestaoVinculos()->firstWhere('id', $vinculoId);
+
+        return $vinculo?->escola
+            ? Turma::query()->with('serie')->where('id_escola', $vinculo->id_escola)->orderBy('nome')->get()
+            : new Collection();
+    }
+
+    public function toggleCoordinatorTurma(int $turmaId, bool $vincular): void
+    {
+        try {
+            app(PerfilEquipeGestoraService::class)->alternarTurma($this->getUser(), $turmaId, $vincular);
+            $this->pessoaCache = null;
+
+            Notification::make()
+                ->title($vincular ? 'Turma vinculada' : 'Turma desvinculada')
+                ->body($vincular ? 'Você assumiu a coordenação desta turma.' : 'Você foi removido desta turma.')
+                ->success()
+                ->send();
+        } catch (AuthorizationException|ValidationException $exception) {
+            $this->notifyProfessorLinkError($exception);
+        }
     }
 
     /** @return Collection<int, TurmaComponenteProfessor> */
