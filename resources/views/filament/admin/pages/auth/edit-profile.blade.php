@@ -85,7 +85,7 @@
                     @if ($cpfPendente)
                         <label class="profile-field profile-field--full">
                             <span>CPF</span>
-                            <span class="profile-input"><x-filament::icon icon="heroicon-o-identification" /><input wire:model="data.cpf" type="text" inputmode="numeric" maxlength="11" placeholder="Somente números"></span>
+                            <span class="profile-input"><x-filament::icon icon="heroicon-o-identification" /><input wire:model="data.cpf" x-mask="999.999.999-99" type="text" inputmode="numeric" maxlength="14" pattern="[0-9]{3}\.[0-9]{3}\.[0-9]{3}-[0-9]{2}" autocomplete="off" placeholder="000.000.000-00"></span>
                             @error('data.cpf')<small class="profile-field-error">{{ $message }}</small>@enderror
                         </label>
                     @else

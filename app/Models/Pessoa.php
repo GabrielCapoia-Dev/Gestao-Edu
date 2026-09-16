@@ -251,6 +251,31 @@ class Pessoa extends Model
         return $digitos;
     }
 
+    public static function cpfValido(?string $cpf): bool
+    {
+        $digitos = static::normalizarCpf($cpf);
+
+        if ($digitos === null || strlen($digitos) !== 11 || preg_match('/^(\d)\1{10}$/', $digitos)) {
+            return false;
+        }
+
+        foreach ([9, 10] as $quantidade) {
+            $soma = 0;
+
+            for ($indice = 0; $indice < $quantidade; $indice++) {
+                $soma += (int) $digitos[$indice] * ($quantidade + 1 - $indice);
+            }
+
+            $verificador = ($soma * 10) % 11;
+
+            if ((int) $digitos[$quantidade] !== ($verificador === 10 ? 0 : $verificador)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public static function formatarCpf(?string $cpf): ?string
     {
         $digitos = static::normalizarCpf($cpf);

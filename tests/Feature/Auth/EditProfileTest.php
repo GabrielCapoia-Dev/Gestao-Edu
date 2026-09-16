@@ -59,11 +59,56 @@ class EditProfileTest extends TestCase
         Livewire::actingAs($user)
             ->test(EditProfile::class)
             ->assertFormFieldVisible('cpf')
-            ->fillForm(['cpf' => '12345678909'])
+            ->fillForm(['cpf' => '123.456.789-09'])
             ->call('save')
             ->assertHasNoFormErrors();
 
         $this->assertSame('12345678909', $pessoa->refresh()->cpf);
+    }
+
+    public function test_profile_rejects_invalid_cpf_check_digits_and_duplicate_archived_cpf(): void
+    {
+        $user = User::factory()->create(['email_approved' => true]);
+        $pessoa = Servidor::query()->create([
+            'user_id' => $user->id,
+            'nome' => $user->name,
+            'email' => $user->email,
+            'status' => Servidor::STATUS_INATIVO,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(EditProfile::class)
+            ->fillForm(['cpf' => '111.111.111-11'])
+            ->call('save')
+            ->assertHasFormErrors(['cpf']);
+
+        Livewire::actingAs($user)
+            ->test(EditProfile::class)
+            ->fillForm(['cpf' => '123.456.789-00'])
+            ->call('save')
+            ->assertHasFormErrors(['cpf']);
+
+        Livewire::actingAs($user)
+            ->test(EditProfile::class)
+            ->fillForm(['cpf' => '123.456.789/09'])
+            ->call('save')
+            ->assertHasFormErrors(['cpf' => 'regex']);
+
+        $arquivada = Servidor::query()->create([
+            'nome' => 'Outra Pessoa',
+            'email' => 'outra.pessoa@example.com',
+            'cpf' => '12345678909',
+            'status' => Servidor::STATUS_INATIVO,
+        ]);
+        $arquivada->delete();
+
+        Livewire::actingAs($user)
+            ->test(EditProfile::class)
+            ->fillForm(['cpf' => '123.456.789-09'])
+            ->call('save')
+            ->assertHasFormErrors(['cpf']);
+
+        $this->assertNull($pessoa->refresh()->cpf);
     }
 
     public function test_user_cannot_replace_existing_cpf_from_profile(): void

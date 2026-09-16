@@ -8,6 +8,7 @@ use App\Models\ProfessorComponenteSolicitacao;
 use App\Models\TurmaComponenteProfessor;
 use App\Services\ProfessorComponenteSolicitacaoService;
 use Caresome\FilamentAuthDesigner\Pages\Auth\EditProfile as BaseEditProfile;
+use Closure;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\TextInput;
@@ -22,7 +23,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
@@ -131,11 +131,24 @@ class EditProfile extends BaseEditProfile
         return TextInput::make('cpf')
             ->label('CPF')
             ->prefixIcon('heroicon-o-identification')
-            ->placeholder('Informe seu CPF')
+            ->placeholder('000.000.000-00')
             ->helperText('Depois de preenchido, o CPF só poderá ser corrigido pela equipe autorizada.')
-            ->length(11)
-            ->rule('digits:11')
-            ->rule(fn () => Rule::unique('servidores', 'cpf')->ignore($this->getPessoa()?->getKey()))
+            ->nullable()
+            ->rule('regex:/^(?:\d{11}|\d{3}\.\d{3}\.\d{3}-\d{2})$/')
+            ->validationMessages(['regex' => 'Use o formato 000.000.000-00.'])
+            ->rule(fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
+                $cpf = Pessoa::normalizarCpf((string) $value);
+
+                if (! Pessoa::cpfValido($cpf)) {
+                    $fail('Informe um CPF válido.');
+
+                    return;
+                }
+
+                if (Pessoa::withTrashed()->where('cpf', $cpf)->whereKeyNot($this->getPessoa()?->getKey())->exists()) {
+                    $fail('Este CPF já está vinculado a outra pessoa.');
+                }
+            })
             ->visible(fn (): bool => $this->hasCpfPending())
             ->dehydrated(fn (): bool => $this->hasCpfPending());
     }
@@ -153,7 +166,7 @@ class EditProfile extends BaseEditProfile
 
     public function hasCpfPending(): bool
     {
-        return ! $this->getUser()->hasRole('Admin') && blank($this->getPessoa()?->cpf);
+        return ! $this->getUser()->hasRole('Admin') && ($pessoa = $this->getPessoa()) && blank($pessoa->cpf);
     }
 
     public function getCargoLabel(): string
