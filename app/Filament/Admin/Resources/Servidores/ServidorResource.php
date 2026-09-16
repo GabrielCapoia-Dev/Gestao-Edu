@@ -267,15 +267,6 @@ class ServidorResource extends Resource
                             ->toggleable()
                             ->extraAttributes(['class' => 'pessoa-card-field pessoa-card-field--email'], merge: true),
 
-                        TextColumn::make('email_duplicado')
-                            ->label('Conflito de e-mail')
-                            ->description('Conflito', position: 'above')
-                            ->getStateUsing(fn (Servidor $record): ?string => $record->email_duplicado ? 'E-mail duplicado' : null)
-                            ->badge()
-                            ->color('danger')
-                            ->placeholder('—')
-                            ->extraAttributes(['class' => 'pessoa-card-field pessoa-card-field--email-conflito'], merge: true),
-
                         TextColumn::make('status')
                             ->label('Status')
                             ->description('Status', position: 'above')
