@@ -3,6 +3,7 @@
 namespace Tests\Feature\Auth;
 
 use App\Filament\Admin\Pages\Auth\EditProfile;
+use App\Models\Role;
 use App\Models\Servidor;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -82,6 +83,23 @@ class EditProfileTest extends TestCase
         Livewire::actingAs($user)
             ->test(EditProfile::class)
             ->assertFormFieldHidden('cpf');
+    }
+
+    public function test_admin_is_not_prompted_to_fill_cpf(): void
+    {
+        $user = User::factory()->create(['email_approved' => true]);
+        $user->assignRole(Role::findOrCreate('Admin', 'web'));
+        Servidor::query()->create([
+            'user_id' => $user->id,
+            'nome' => $user->name,
+            'email' => $user->email,
+            'status' => Servidor::STATUS_ATIVO,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(EditProfile::class)
+            ->assertFormFieldHidden('cpf')
+            ->assertDontSee('Seu cadastro está quase completo');
     }
 
     public function test_user_can_update_profile_photo(): void

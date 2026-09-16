@@ -4,9 +4,7 @@
     $cpfPendente = $this->hasCpfPending();
     $pessoa = $this->getPessoa();
     $isProfessor = $this->hasProfessorProfile();
-    $vinculosProfessor = $isProfessor ? $this->getProfessorCurrentLinks() : collect();
-    $opcoesProfessor = $isProfessor ? $this->getProfessorAvailableLinks() : collect();
-    $solicitacoesProfessor = $isProfessor ? $this->getProfessorRequests() : collect();
+    $contextosProfessor = $isProfessor ? $this->getProfessorContexts() : collect();
     $podeAnalisarSolicitacoes = $this->canReviewProfessorRequests();
     $solicitacoesParaAnalise = $podeAnalisarSolicitacoes ? $this->getProfessorRequestsForReview() : collect();
 @endphp
@@ -19,7 +17,7 @@
                     @if ($this->profilePhoto || filled($user->avatar_url))
                         <span class="profile-photo__initials">{{ $this->getProfileInitials() }}</span>
                         <img src="{{ $this->getPhotoPreviewUrl() }}" alt="Foto de {{ $user->name }}" x-on:error="$el.remove()">
-                    @else
+                    @elseif (! $user->hasRole('Admin'))
                         <span class="profile-photo__initials">{{ $this->getProfileInitials() }}</span>
                     @endif
                     <input wire:model="profilePhoto" type="file" accept="image/jpeg,image/png,image/webp">
@@ -127,82 +125,68 @@
                     <div><h2>Turmas e componentes</h2><p>Consulte seus vínculos e solicite componentes disponíveis na sua escola.</p></div>
                 </div>
 
-                <div class="profile-assignment-grid">
-                    <div class="profile-assignment-panel">
-                        <div class="profile-assignment-panel__title">
-                            <div><strong>Meus vínculos</strong><span>Turmas e componentes já liberados para você.</span></div>
-                            <em>{{ $vinculosProfessor->count() }}</em>
-                        </div>
-                        <div class="profile-assignment-list">
-                            @forelse ($vinculosProfessor as $vinculo)
-                                <article class="profile-assignment-item" wire:key="professor-link-{{ $vinculo->id }}">
-                                    <span class="profile-assignment-item__icon"><x-filament::icon icon="heroicon-o-check-circle" /></span>
-                                    <div>
-                                        <strong>{{ $vinculo->componente?->nome }}</strong>
-                                        <span>{{ $vinculo->turma?->serie?->nome }} · Turma {{ $vinculo->turma?->nome }} · {{ $vinculo->turma?->escola?->nome }}</span>
-                                    </div>
-                                    <em class="profile-request-status profile-request-status--approved">Ativo</em>
-                                </article>
-                            @empty
-                                <div class="profile-assignment-empty"><x-filament::icon icon="heroicon-o-book-open" /><span>Você ainda não possui turmas ou componentes vinculados.</span></div>
-                            @endforelse
-                        </div>
-                    </div>
-
-                    <div class="profile-assignment-panel">
-                        <div class="profile-assignment-panel__title">
-                            <div><strong>Componentes disponíveis</strong><span>Somente componentes sem professor da sua escola.</span></div>
-                            <em>{{ $opcoesProfessor->count() }}</em>
-                        </div>
-                        <div class="profile-assignment-list">
-                            @forelse ($opcoesProfessor as $opcao)
-                                @php $solicitacaoPendente = $opcao->solicitacoes->first(); @endphp
-                                <article class="profile-assignment-item" wire:key="professor-option-{{ $opcao->id }}">
-                                    <span class="profile-assignment-item__icon"><x-filament::icon icon="heroicon-o-book-open" /></span>
-                                    <div>
-                                        <strong>{{ $opcao->componente?->nome }}</strong>
-                                        <span>{{ $opcao->turma?->serie?->nome }} · Turma {{ $opcao->turma?->nome }} · {{ $opcao->turma?->escola?->nome }}</span>
-                                    </div>
-                                    @if ($solicitacaoPendente)
-                                        <em class="profile-request-status profile-request-status--pending">Aguardando</em>
-                                    @else
-                                        <button
-                                            type="button"
-                                            class="profile-inline-button"
-                                            wire:click="requestProfessorLink({{ $opcao->id }})"
-                                            wire:loading.attr="disabled"
-                                            wire:target="requestProfessorLink({{ $opcao->id }})"
-                                        >Solicitar</button>
-                                    @endif
-                                </article>
-                            @empty
-                                <div class="profile-assignment-empty"><x-filament::icon icon="heroicon-o-check-badge" /><span>Não há componentes sem professor disponíveis na sua escola.</span></div>
-                            @endforelse
-                        </div>
-                    </div>
-                </div>
-
-                @if ($solicitacoesProfessor->isNotEmpty())
-                    <div class="profile-request-history">
-                        <strong>Minhas solicitações</strong>
-                        <div>
-                            @foreach ($solicitacoesProfessor as $solicitacao)
-                                @php
-                                    $statusClass = match ($solicitacao->status) {
-                                        'aprovada' => 'approved',
-                                        'rejeitada' => 'rejected',
-                                        default => 'pending',
-                                    };
-                                @endphp
-                                <span wire:key="professor-request-{{ $solicitacao->id }}">
-                                    <b>{{ $solicitacao->vinculo?->componente?->nome }}</b>
-                                    <small>{{ $solicitacao->vinculo?->turma?->serie?->nome }} · Turma {{ $solicitacao->vinculo?->turma?->nome }}</small>
-                                    <em class="profile-request-status profile-request-status--{{ $statusClass }}">{{ ucfirst($solicitacao->status) }}</em>
-                                </span>
+                <div x-data="{ matricula: @js($contextosProfessor->first()['chave'] ?? ''), escola: @js($contextosProfessor->first()['escolas']->first()['id'] ?? 0) }">
+                    @if ($contextosProfessor->count() > 1)
+                        <div class="profile-assignment-tabs" role="tablist" aria-label="Matrículas">
+                            @foreach ($contextosProfessor as $contexto)
+                                <button type="button" role="tab" :aria-selected="matricula === @js($contexto['chave'])" :class="{ 'is-active': matricula === @js($contexto['chave']) }" x-on:click="matricula = @js($contexto['chave']); escola = {{ $contexto['escolas']->first()['id'] }}">Matrícula {{ $contexto['matricula'] }}</button>
                             @endforeach
                         </div>
-                    </div>
-                @endif
+                    @endif
+
+                    @forelse ($contextosProfessor as $contexto)
+                        <div x-show="matricula === @js($contexto['chave'])" x-cloak>
+                            @if ($contexto['escolas']->count() > 1)
+                                <div class="profile-assignment-tabs profile-assignment-tabs--schools" role="tablist" aria-label="Escolas da matrícula {{ $contexto['matricula'] }}">
+                                    @foreach ($contexto['escolas'] as $escola)
+                                        <button type="button" role="tab" :aria-selected="escola === {{ $escola['id'] }}" :class="{ 'is-active': escola === {{ $escola['id'] }} }" x-on:click="escola = {{ $escola['id'] }}">{{ $escola['nome'] }}</button>
+                                    @endforeach
+                                </div>
+                            @endif
+
+                            @foreach ($contexto['escolas'] as $escola)
+                                <div x-show="escola === {{ $escola['id'] }}" x-cloak>
+                                    <div class="profile-assignment-grid">
+                                        <div class="profile-assignment-panel">
+                                            <div class="profile-assignment-panel__title"><div><strong>Meus vínculos</strong><span>Turmas e componentes já liberados para você.</span></div><em>{{ $escola['atuais']->count() }}</em></div>
+                                            <div class="profile-assignment-list">
+                                                @forelse ($escola['atuais'] as $vinculo)
+                                                    <article class="profile-assignment-item" wire:key="professor-link-{{ $contexto['chave'] }}-{{ $escola['id'] }}-{{ $vinculo['turma']->id }}-{{ $vinculo['componente']->id }}">
+                                                        <span class="profile-assignment-item__icon"><x-filament::icon icon="heroicon-o-check-circle" /></span>
+                                                        <div><strong>{{ $vinculo['componente']->nome }}</strong><span>{{ $vinculo['turma']->serie?->nome }} · Turma {{ $vinculo['turma']->nome }} · {{ $escola['nome'] }}</span></div>
+                                                        <em class="profile-request-status profile-request-status--approved">Ativo</em>
+                                                    </article>
+                                                @empty
+                                                    <div class="profile-assignment-empty"><x-filament::icon icon="heroicon-o-book-open" /><span>Você ainda não possui turmas ou componentes vinculados nesta escola.</span></div>
+                                                @endforelse
+                                            </div>
+                                        </div>
+                                        <div class="profile-assignment-panel">
+                                            <div class="profile-assignment-panel__title"><div><strong>Componentes disponíveis</strong><span>Componentes sem professor nas turmas desta escola.</span></div><em>{{ $escola['opcoes']->count() }}</em></div>
+                                            <div class="profile-assignment-list">
+                                                @forelse ($escola['opcoes'] as $opcao)
+                                                    <article class="profile-assignment-item" wire:key="professor-option-{{ $contexto['chave'] }}-{{ $escola['id'] }}-{{ $opcao['turma']->id }}-{{ $opcao['componente']->id }}">
+                                                        <span class="profile-assignment-item__icon"><x-filament::icon icon="heroicon-o-book-open" /></span>
+                                                        <div><strong>{{ $opcao['componente']->nome }}</strong><span>{{ $opcao['turma']->serie?->nome }} · Turma {{ $opcao['turma']->nome }} · {{ $escola['nome'] }}</span></div>
+                                                        @if ($opcao['pendente'])
+                                                            <em class="profile-request-status profile-request-status--pending">Aguardando</em>
+                                                        @else
+                                                            <button type="button" class="profile-inline-button" wire:click="requestProfessorComponent({{ $escola['professor_id'] }}, {{ $opcao['turma']->id }}, {{ $opcao['componente']->id }})" wire:loading.attr="disabled">Solicitar</button>
+                                                        @endif
+                                                    </article>
+                                                @empty
+                                                    <div class="profile-assignment-empty"><x-filament::icon icon="heroicon-o-check-badge" /><span>Não há componentes sem professor nesta escola.</span></div>
+                                                @endforelse
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @empty
+                        <div class="profile-assignment-empty">Nenhum vínculo ativo de professor foi encontrado.</div>
+                    @endforelse
+                </div>
             </section>
         @endif
 

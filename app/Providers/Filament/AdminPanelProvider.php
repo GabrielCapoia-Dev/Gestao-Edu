@@ -245,7 +245,7 @@ class AdminPanelProvider extends PanelProvider
                     $user = User::authUser();
 
                     return view('filament.partials.profile-cpf-menu-badge', [
-                        'missingCpf' => $user?->servidores()->whereNull('cpf')->exists() ?? false,
+                        'missingCpf' => $user && ! $user->hasRole('Admin') && $user->servidores()->whereNull('cpf')->exists(),
                     ]);
                 }
             )

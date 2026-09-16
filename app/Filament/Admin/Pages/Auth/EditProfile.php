@@ -19,6 +19,7 @@ use Filament\Support\Enums\Alignment;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -94,7 +95,7 @@ class EditProfile extends BaseEditProfile
             $this->profilePhoto = null;
         }
 
-        $this->cpfInformado = Pessoa::normalizarCpf($data['cpf'] ?? null);
+        $this->cpfInformado = $this->getUser()->hasRole('Admin') ? null : Pessoa::normalizarCpf($data['cpf'] ?? null);
         unset($data['cpf']);
 
         return $data;
@@ -152,7 +153,7 @@ class EditProfile extends BaseEditProfile
 
     public function hasCpfPending(): bool
     {
-        return blank($this->getPessoa()?->cpf);
+        return ! $this->getUser()->hasRole('Admin') && blank($this->getPessoa()?->cpf);
     }
 
     public function getCargoLabel(): string
@@ -220,6 +221,12 @@ class EditProfile extends BaseEditProfile
         return app(ProfessorComponenteSolicitacaoService::class)->solicitacoesDoProfessor($this->getUser());
     }
 
+    /** @return SupportCollection<int, array<string, mixed>> */
+    public function getProfessorContexts(): SupportCollection
+    {
+        return app(ProfessorComponenteSolicitacaoService::class)->contextosDoProfessor($this->getUser());
+    }
+
     public function canReviewProfessorRequests(): bool
     {
         return app(ProfessorComponenteSolicitacaoService::class)->podeAnalisar($this->getUser());
@@ -235,6 +242,23 @@ class EditProfile extends BaseEditProfile
     {
         try {
             app(ProfessorComponenteSolicitacaoService::class)->solicitar($this->getUser(), $vinculoId);
+
+            Notification::make()
+                ->title('Solicitação enviada')
+                ->body('O vínculo ficará pendente até a aprovação da administração ou da equipe gestora.')
+                ->success()
+                ->send();
+        } catch (AuthorizationException|ValidationException $exception) {
+            $this->notifyProfessorLinkError($exception);
+        }
+    }
+
+    public function requestProfessorComponent(int $professorId, int $turmaId, int $componenteId): void
+    {
+        try {
+            app(ProfessorComponenteSolicitacaoService::class)->solicitarComponente(
+                $this->getUser(), $professorId, $turmaId, $componenteId,
+            );
 
             Notification::make()
                 ->title('Solicitação enviada')
