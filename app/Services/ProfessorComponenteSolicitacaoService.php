@@ -36,7 +36,7 @@ class ProfessorComponenteSolicitacaoService
     /** @return Collection<int, TurmaComponenteProfessor> */
     public function opcoesDisponiveis(User $user): Collection
     {
-        $professores = $this->professoresAtivos($user)->keyBy('id_escola');
+        $professores = $this->professoresAtivos($user);
 
         if ($professores->isEmpty()) {
             return new Collection;
@@ -47,7 +47,7 @@ class ProfessorComponenteSolicitacaoService
         return TurmaComponenteProfessor::query()
             ->whereNull('professor_id')
             ->where('tem_professor', false)
-            ->whereHas('turma', fn ($turmas) => $turmas->whereIn('id_escola', $professores->keys()))
+            ->whereHas('turma', fn ($turmas) => $turmas->whereIn('id_escola', $professores->pluck('id_escola')->unique()))
             ->with([
                 'turma.escola',
                 'turma.serie',
@@ -228,7 +228,8 @@ class ProfessorComponenteSolicitacaoService
             return;
         }
 
-        if (! $this->scope->ehEquipeGestora($user) || ! $this->scope->canAccessEscola($user, $escolaId)) {
+        if (! $this->scope->ehEquipeGestora($user)
+            || ! in_array($escolaId, $this->scope->escolaIdsDosVinculos($user), true)) {
             throw new AuthorizationException('Você não pode analisar solicitações desta escola.');
         }
     }
