@@ -207,6 +207,9 @@ class ProfessorComponenteSolicitacaoServiceTest extends TestCase
             ->getTableRecords()
             ->firstWhere('id', $professor->servidor_id);
         $this->assertSame(1, (int) $registro->solicitacoes_pendentes_count);
+        $pagina
+            ->filterTable('solicitacoes_pendentes', true)
+            ->assertCanSeeTableRecords([$professor->servidor]);
 
         $service->aprovar($admin, $solicitacao->id);
 
@@ -215,6 +218,9 @@ class ProfessorComponenteSolicitacaoServiceTest extends TestCase
             ->getTableRecords()
             ->firstWhere('id', $professor->servidor_id);
         $this->assertSame(0, (int) $registro->solicitacoes_pendentes_count);
+        $pagina
+            ->filterTable('solicitacoes_pendentes', true)
+            ->assertCanNotSeeTableRecords([$professor->servidor]);
     }
 
     /** @return array{Escola, Setor} */

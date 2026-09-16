@@ -50,6 +50,7 @@ use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -329,6 +330,57 @@ class ServidorResource extends Resource
                     ->extraAttributes(['class' => 'pessoa-card-main-grid']),
             ])
             ->filters([
+                TernaryFilter::make('solicitacoes_pendentes')
+                    ->label('Solicitações de vínculo')
+                    ->trueLabel('Com solicitações pendentes')
+                    ->falseLabel('Sem solicitações pendentes')
+                    ->placeholder('Todas')
+                    ->visible(fn (): bool => ($user = Auth::user()) !== null
+                        && app(ProfessorComponenteSolicitacaoService::class)->podeAnalisar($user))
+                    ->queries(
+                        true: function (Builder $query): Builder {
+                            $user = Auth::user();
+                            $scope = app(PessoaScopeService::class);
+                            $acessoGlobal = $scope->hasGlobalAccess($user);
+                            $escolaIds = $acessoGlobal ? [] : $scope->escolaIdsDosVinculos($user);
+                            $table = $query->getModel()->getTable();
+
+                            return $query->whereExists(function ($pendentes) use ($table, $acessoGlobal, $escolaIds): void {
+                                $pendentes
+                                    ->selectRaw('1')
+                                    ->from('professor_componente_solicitacoes as solicitacoes')
+                                    ->join('professores', 'professores.id', '=', 'solicitacoes.professor_id')
+                                    ->join('turma_componente_professor as vinculos', 'vinculos.id', '=', 'solicitacoes.turma_componente_professor_id')
+                                    ->join('turmas', 'turmas.id', '=', 'vinculos.turma_id')
+                                    ->where('solicitacoes.status', ProfessorComponenteSolicitacao::STATUS_PENDENTE)
+                                    ->where('professores.ativo', true)
+                                    ->whereColumn('professores.servidor_id', "{$table}.id")
+                                    ->when(! $acessoGlobal, fn ($subquery) => $subquery->whereIn('turmas.id_escola', $escolaIds));
+                            });
+                        },
+                        false: function (Builder $query): Builder {
+                            $user = Auth::user();
+                            $scope = app(PessoaScopeService::class);
+                            $acessoGlobal = $scope->hasGlobalAccess($user);
+                            $escolaIds = $acessoGlobal ? [] : $scope->escolaIdsDosVinculos($user);
+                            $table = $query->getModel()->getTable();
+
+                            return $query->whereNotExists(function ($pendentes) use ($table, $acessoGlobal, $escolaIds): void {
+                                $pendentes
+                                    ->selectRaw('1')
+                                    ->from('professor_componente_solicitacoes as solicitacoes')
+                                    ->join('professores', 'professores.id', '=', 'solicitacoes.professor_id')
+                                    ->join('turma_componente_professor as vinculos', 'vinculos.id', '=', 'solicitacoes.turma_componente_professor_id')
+                                    ->join('turmas', 'turmas.id', '=', 'vinculos.turma_id')
+                                    ->where('solicitacoes.status', ProfessorComponenteSolicitacao::STATUS_PENDENTE)
+                                    ->where('professores.ativo', true)
+                                    ->whereColumn('professores.servidor_id', "{$table}.id")
+                                    ->when(! $acessoGlobal, fn ($subquery) => $subquery->whereIn('turmas.id_escola', $escolaIds));
+                            });
+                        },
+                        blank: fn (Builder $query): Builder => $query,
+                    ),
+
                 SelectFilter::make('cargo')
                     ->label('Cargo')
                     ->columnSpan(3)
