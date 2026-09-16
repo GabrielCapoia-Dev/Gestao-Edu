@@ -38,6 +38,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -621,10 +622,11 @@ class ServidorResource extends Resource
                                         'decisao' => 'pendente',
                                     ])->values()->all())
                                     ->schema([
-                                        TextInput::make('descricao')
+                                        Textarea::make('descricao')
                                             ->label('Solicitação')
                                             ->disabled()
                                             ->dehydrated(false)
+                                            ->rows(3)
                                             ->columnSpan(2),
                                         Hidden::make('solicitacao_id'),
                                         Select::make('decisao')
