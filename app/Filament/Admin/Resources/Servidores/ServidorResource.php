@@ -35,6 +35,8 @@ use Filament\Actions\RestoreAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -538,6 +540,89 @@ class ServidorResource extends Resource
                         ])),
 
                     ...PessoaAcessoActions::recordActions(),
+
+                    Action::make('analisar_solicitacoes_professor')
+                        ->label('Analisar solicitações')
+                        ->icon('heroicon-o-bell-alert')
+                        ->color('warning')
+                        ->visible(fn (Servidor $record): bool => (int) $record->solicitacoes_pendentes_count > 0
+                            && app(ProfessorComponenteSolicitacaoService::class)->podeAnalisar(Auth::user()))
+                        ->modalWidth('3xl')
+                        ->modalHeading(fn (Servidor $record): string => "Solicitações de {$record->nome}")
+                        ->modalDescription('Confirme ou recuse cada turma e componente solicitado pelo professor.')
+                        ->modalSubmitActionLabel('Salvar decisões')
+                        ->schema(function (Servidor $record): array {
+                            $solicitacoes = app(ProfessorComponenteSolicitacaoService::class)
+                                ->solicitacoesParaAnaliseDoServidor(Auth::user(), $record->getKey());
+
+                            return [
+                                Repeater::make('decisoes')
+                                    ->label('Turmas e componentes pendentes')
+                                    ->default($solicitacoes->map(fn (ProfessorComponenteSolicitacao $solicitacao): array => [
+                                        'solicitacao_id' => $solicitacao->getKey(),
+                                        'descricao' => collect([
+                                            $solicitacao->vinculo?->turma?->serie?->nome,
+                                            'Turma '.$solicitacao->vinculo?->turma?->nome,
+                                            $solicitacao->vinculo?->componente?->nome,
+                                            $solicitacao->vinculo?->turma?->escola?->nome,
+                                        ])->filter()->implode(' · '),
+                                        'decisao' => 'pendente',
+                                    ])->values()->all())
+                                    ->schema([
+                                        TextInput::make('descricao')
+                                            ->label('Solicitação')
+                                            ->disabled()
+                                            ->dehydrated(false)
+                                            ->columnSpan(2),
+                                        Hidden::make('solicitacao_id'),
+                                        Select::make('decisao')
+                                            ->label('Decisão')
+                                            ->options([
+                                                'pendente' => 'Não decidir agora',
+                                                'aprovar' => 'Aprovar vínculo',
+                                                'recusar' => 'Recusar solicitação',
+                                            ])
+                                            ->required(),
+                                    ])
+                                    ->columns(3)
+                                    ->addable(false)
+                                    ->deletable(false)
+                                    ->reorderable(false),
+                            ];
+                        })
+                        ->action(function (Servidor $record, array $data): void {
+                            $service = app(ProfessorComponenteSolicitacaoService::class);
+                            $processadas = 0;
+
+                            foreach ($data['decisoes'] ?? [] as $decisao) {
+                                $solicitacaoId = (int) ($decisao['solicitacao_id'] ?? 0);
+                                $tipo = $decisao['decisao'] ?? 'pendente';
+
+                                if (! $solicitacaoId || ! in_array($tipo, ['aprovar', 'recusar'], true)) {
+                                    continue;
+                                }
+
+                                $solicitacao = ProfessorComponenteSolicitacao::query()
+                                    ->whereKey($solicitacaoId)
+                                    ->where('status', ProfessorComponenteSolicitacao::STATUS_PENDENTE)
+                                    ->first();
+
+                                if (! $solicitacao) {
+                                    continue;
+                                }
+
+                                $tipo === 'aprovar'
+                                    ? $service->aprovar(Auth::user(), $solicitacaoId)
+                                    : $service->rejeitar(Auth::user(), $solicitacaoId);
+                                $processadas++;
+                            }
+
+                            Notification::make()
+                                ->title($processadas ? 'Decisões salvas' : 'Nenhuma decisão alterada')
+                                ->body($processadas ? "{$processadas} solicitação(ões) analisada(s)." : 'Selecione aprovar ou recusar em pelo menos uma solicitação.')
+                                ->{$processadas ? 'success' : 'info'}()
+                                ->send();
+                        }),
 
                     Action::make('alterar_status')
                         ->label('Alterar status')

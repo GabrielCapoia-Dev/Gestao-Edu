@@ -231,6 +231,14 @@ class ProfessorComponenteSolicitacaoService
         return $query->oldest()->get();
     }
 
+    /** @return Collection<int, ProfessorComponenteSolicitacao> */
+    public function solicitacoesParaAnaliseDoServidor(User $user, int $servidorId): Collection
+    {
+        return $this->solicitacoesParaAnalise($user)
+            ->filter(fn (ProfessorComponenteSolicitacao $solicitacao): bool => (int) $solicitacao->professor?->servidor_id === $servidorId)
+            ->values();
+    }
+
     public function solicitar(User $user, int $vinculoId): ProfessorComponenteSolicitacao
     {
         return DB::transaction(function () use ($user, $vinculoId): ProfessorComponenteSolicitacao {
