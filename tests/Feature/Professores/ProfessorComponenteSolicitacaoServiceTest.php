@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Professores;
 
+use App\Filament\Admin\Resources\Servidores\Pages\ManageServidores;
 use App\Models\ComponenteCurricular;
+use App\Models\Enums\ListaPermissoes;
 use App\Models\Escola;
 use App\Models\PessoaMatricula;
 use App\Models\Professor;
@@ -17,6 +19,8 @@ use App\Models\User;
 use App\Services\ProfessorComponenteSolicitacaoService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 class ProfessorComponenteSolicitacaoServiceTest extends TestCase
@@ -72,19 +76,45 @@ class ProfessorComponenteSolicitacaoServiceTest extends TestCase
         $service->solicitar($user, $vinculoOutraEscola->id);
     }
 
-    public function test_component_with_professor_is_not_available_for_request(): void
+    public function test_occupied_component_can_be_requested_and_approval_replaces_only_its_professor(): void
     {
         [$escola] = $this->criarEscola('Escola Ocupada');
-        [$user] = $this->criarProfessor($escola, 'Professor Solicitante');
-        [, $professorAtual] = $this->criarProfessor($escola, 'Professor Atual');
+        [$user, $professorSolicitante] = $this->criarProfessor($escola, 'Professor Solicitante');
+        [$userAtual, $professorAtual] = $this->criarProfessor($escola, 'Professor Atual');
         $vinculo = $this->criarVinculoVago($escola);
         $vinculo->update(['professor_id' => $professorAtual->id, 'tem_professor' => true]);
+        $outroComponente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-OUTRO',
+            'nome' => 'Língua Portuguesa',
+        ]);
+        $outroVinculo = TurmaComponenteProfessor::query()->create([
+            'turma_id' => $vinculo->turma_id,
+            'componente_curricular_id' => $outroComponente->id,
+            'professor_id' => $professorAtual->id,
+            'tem_professor' => true,
+        ]);
+        $service = app(ProfessorComponenteSolicitacaoService::class);
+        $opcao = $service->contextosDoProfessor($user)->first()['escolas']->first()['opcoes']->firstWhere('turma.id', $vinculo->turma_id);
 
-        $this->assertFalse(
-            app(ProfessorComponenteSolicitacaoService::class)
-                ->opcoesDisponiveis($user)
-                ->contains('id', $vinculo->id)
-        );
+        $this->assertSame('ocupado', $opcao['estado']);
+        $this->assertSame('PROFESSOR ATUAL', $opcao['professor_atual']);
+        $this->assertTrue($service->opcoesDisponiveis($user)->contains('id', $vinculo->id));
+
+        $solicitacao = $service->solicitarComponente($user, $professorSolicitante->id, $vinculo->turma_id, $vinculo->componente_curricular_id);
+        [$concorrente, $professorConcorrente] = $this->criarProfessor($escola, 'Professor Concorrente');
+        $solicitacaoConcorrente = $service->solicitarComponente($concorrente, $professorConcorrente->id, $vinculo->turma_id, $vinculo->componente_curricular_id);
+        $this->assertSame($professorAtual->id, $vinculo->fresh()->professor_id);
+        $this->assertSame(ProfessorComponenteSolicitacao::STATUS_PENDENTE, $solicitacao->status);
+
+        $admin = User::factory()->create();
+        $admin->assignRole(Role::findOrCreate('Admin', 'web'));
+        $service->aprovar($admin, $solicitacao->id);
+
+        $this->assertSame($professorSolicitante->id, $vinculo->fresh()->professor_id);
+        $this->assertSame(ProfessorComponenteSolicitacao::STATUS_REJEITADA, $solicitacaoConcorrente->fresh()->status);
+        $this->assertSame($professorAtual->id, $outroVinculo->fresh()->professor_id);
+        $this->assertFalse($service->vinculosAtuais($userAtual)->contains('id', $vinculo->id));
+        $this->assertTrue($service->vinculosAtuais($user)->contains('id', $vinculo->id));
     }
 
     public function test_professor_can_request_series_component_without_existing_pivot_and_approval_activates_it(): void
@@ -157,6 +187,34 @@ class ProfessorComponenteSolicitacaoServiceTest extends TestCase
         $vinculoFora = $this->criarVinculoVago($escolaC);
         $this->expectException(AuthorizationException::class);
         $service->solicitarComponente($user, $professorB->id, $vinculoFora->turma_id, $vinculoFora->componente_curricular_id);
+    }
+
+    public function test_professor_listing_counts_pending_requests_and_clears_indicator_after_approval(): void
+    {
+        [$escola] = $this->criarEscola('Escola Avisos');
+        [$user, $professor] = $this->criarProfessor($escola);
+        $vinculo = $this->criarVinculoVago($escola);
+        $service = app(ProfessorComponenteSolicitacaoService::class);
+        $solicitacao = $service->solicitarComponente($user, $professor->id, $vinculo->turma_id, $vinculo->componente_curricular_id);
+
+        [$admin] = $this->criarProfessor($escola, 'Administrador de Teste');
+        $admin->update(['email_approved' => true, 'email_verified_at' => now()]);
+        $admin->assignRole(Role::findOrCreate('Admin', 'web'));
+        $admin->givePermissionTo(Permission::findOrCreate(ListaPermissoes::ListarPessoas->label(), 'web'));
+
+        $pagina = Livewire::actingAs($admin)->test(ManageServidores::class)->assertOk();
+        $registro = $pagina->instance()
+            ->getTableRecords()
+            ->firstWhere('id', $professor->servidor_id);
+        $this->assertSame(1, (int) $registro->solicitacoes_pendentes_count);
+
+        $service->aprovar($admin, $solicitacao->id);
+
+        $pagina = Livewire::actingAs($admin)->test(ManageServidores::class)->assertOk();
+        $registro = $pagina->instance()
+            ->getTableRecords()
+            ->firstWhere('id', $professor->servidor_id);
+        $this->assertSame(0, (int) $registro->solicitacoes_pendentes_count);
     }
 
     /** @return array{Escola, Setor} */

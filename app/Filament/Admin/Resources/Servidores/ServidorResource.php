@@ -12,6 +12,7 @@ use App\Models\EventoCalendario;
 use App\Models\Pessoa;
 use App\Models\PessoaMatricula;
 use App\Models\Professor;
+use App\Models\ProfessorComponenteSolicitacao;
 use App\Models\ProfessorMatricula;
 use App\Models\Role;
 use App\Models\Servidor;
@@ -21,6 +22,7 @@ use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
 use App\Services\PessoaExclusaoDefinitivaService;
 use App\Services\PessoaScopeService;
+use App\Services\ProfessorComponenteSolicitacaoService;
 use App\Services\ServidorService;
 use App\Services\UserService;
 use BackedEnum;
@@ -117,7 +119,7 @@ class ServidorResource extends Resource
             ->modifyQueryUsing(function (Builder $query): Builder {
                 $table = $query->getModel()->getTable();
 
-                return $query
+                $query
                     ->select("{$table}.*")
                     ->selectSub(function ($duplicados) use ($table): void {
                         $duplicados
@@ -138,6 +140,32 @@ class ServidorResource extends Resource
                         'vinculosAtivos.funcaoAdministrativa:id,codigo,nome,direcao_escolar,coordenacao_pedagogica,secretaria_escolar',
                         'vinculosAtivos.escola:id,nome',
                     ]);
+
+                $user = Auth::user();
+                if (! $user || ! app(ProfessorComponenteSolicitacaoService::class)->podeAnalisar($user)) {
+                    return $query->selectRaw('0 as solicitacoes_pendentes_count');
+                }
+
+                $scope = app(PessoaScopeService::class);
+                $acessoGlobal = $scope->hasGlobalAccess($user);
+                $escolaIds = $acessoGlobal ? [] : $scope->escolaIdsDosVinculos($user);
+
+                return $query->selectSub(function ($pendentes) use ($table, $acessoGlobal, $escolaIds): void {
+                    $pendentes
+                        ->selectRaw('count(*)')
+                        ->from('professor_componente_solicitacoes as solicitacoes')
+                        ->join('professores as professores_solicitantes', 'professores_solicitantes.id', '=', 'solicitacoes.professor_id')
+                        ->join('turma_componente_professor as vinculos_solicitados', 'vinculos_solicitados.id', '=', 'solicitacoes.turma_componente_professor_id')
+                        ->join('turmas as turmas_solicitadas', 'turmas_solicitadas.id', '=', 'vinculos_solicitados.turma_id')
+                        ->where('solicitacoes.status', ProfessorComponenteSolicitacao::STATUS_PENDENTE)
+                        ->where('professores_solicitantes.ativo', true)
+                        ->whereColumn('professores_solicitantes.servidor_id', "{$table}.id")
+                        ->whereColumn('professores_solicitantes.id_escola', 'turmas_solicitadas.id_escola');
+
+                    if (! $acessoGlobal) {
+                        $pendentes->whereIn('turmas_solicitadas.id_escola', $escolaIds);
+                    }
+                }, 'solicitacoes_pendentes_count');
             })
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(10)
@@ -156,7 +184,15 @@ class ServidorResource extends Resource
                     ->copyable()
                     ->copyMessage('Nome copiado')
                     ->copyMessageDuration(1500)
-                    ->tooltip('Clique para copiar o nome')
+                    ->icon(fn (Servidor $record): ?string => (int) $record->solicitacoes_pendentes_count > 0 ? 'heroicon-o-bell-alert' : null)
+                    ->iconColor('warning')
+                    ->tooltip(function (Servidor $record): string {
+                        $quantidade = (int) $record->solicitacoes_pendentes_count;
+
+                        return $quantidade > 0
+                            ? "{$quantidade} ".($quantidade === 1 ? 'solicitação pendente' : 'solicitações pendentes').' de vínculo. Clique para copiar o nome.'
+                            : 'Clique para copiar o nome';
+                    })
                     ->weight('bold')
                     ->extraAttributes(['class' => 'pessoa-card-name'], merge: true),
 

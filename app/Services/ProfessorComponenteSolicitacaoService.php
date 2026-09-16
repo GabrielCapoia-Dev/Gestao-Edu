@@ -36,7 +36,7 @@ class ProfessorComponenteSolicitacaoService
             ->orderBy('id_escola')->orderBy('id_serie')->orderBy('nome')->get();
         $vinculos = TurmaComponenteProfessor::query()
             ->whereIn('turma_id', $turmas->pluck('id'))
-            ->with('componente')
+            ->with(['componente', 'professor.pessoa'])
             ->get();
         $vinculosPorTurma = $vinculos->groupBy('turma_id');
         $pendentes = ProfessorComponenteSolicitacao::query()
@@ -62,25 +62,37 @@ class ProfessorComponenteSolicitacaoService
                         $turmasDaEscola = $turmas->where('id_escola', (int) $escolaId);
                         $opcoes = collect();
                         $atuais = collect();
+                        $turmasComComponentes = collect();
 
                         foreach ($turmasDaEscola as $turma) {
                             $vinculosDaTurma = $vinculosPorTurma->get($turma->id, collect());
                             $componentes = $turma->serie?->componentesCurriculares ?? collect();
                             $componentes = $componentes->merge($vinculosDaTurma->pluck('componente')->filter())->unique('id')->sortBy('nome');
+                            $componentesDaTurma = collect();
 
                             foreach ($componentes as $componente) {
                                 $vinculo = $vinculosDaTurma->firstWhere('componente_curricular_id', $componente->id);
+                                $meu = $vinculo && $professorIds->contains($vinculo->professor_id) && $vinculo->tem_professor;
+                                $ocupado = $vinculo && $vinculo->professor_id !== null && $vinculo->tem_professor;
+                                $opcao = [
+                                    'turma' => $turma,
+                                    'componente' => $componente,
+                                    'estado' => $meu ? 'meu' : ($ocupado ? 'ocupado' : 'vago'),
+                                    'professor_atual' => $ocupado ? $vinculo->professor?->nomeCanonico() : null,
+                                    'pendente' => $vinculo && $professorIds->contains(
+                                        fn (int $id): bool => $pendentes->has($id.':'.$vinculo->id),
+                                    ),
+                                ];
+                                $componentesDaTurma->push($opcao);
 
-                                if ($vinculo && $professorIds->contains($vinculo->professor_id) && $vinculo->tem_professor) {
-                                    $atuais->push(['turma' => $turma, 'componente' => $componente]);
-                                } elseif (! $vinculo || ($vinculo->professor_id === null && ! $vinculo->tem_professor)) {
-                                    $opcoes->push([
-                                        'turma' => $turma,
-                                        'componente' => $componente,
-                                        'pendente' => $vinculo && $pendentes->has($professor->id.':'.$vinculo->id),
-                                    ]);
+                                if ($meu) {
+                                    $atuais->push($opcao);
+                                } else {
+                                    $opcoes->push($opcao);
                                 }
                             }
+
+                            $turmasComComponentes->push(['turma' => $turma, 'componentes' => $componentesDaTurma]);
                         }
 
                         return [
@@ -89,6 +101,12 @@ class ProfessorComponenteSolicitacaoService
                             'professor_id' => $professor->id,
                             'atuais' => $atuais,
                             'opcoes' => $opcoes,
+                            'series' => $turmasComComponentes
+                                ->groupBy(fn (array $item): int => (int) $item['turma']->id_serie)
+                                ->map(fn (SupportCollection $itens): array => [
+                                    'nome' => $itens->first()['turma']->serie?->nome ?: 'Série não informada',
+                                    'turmas' => $itens->values(),
+                                ])->values(),
                         ];
                     })->values(),
                 ];
@@ -121,8 +139,8 @@ class ProfessorComponenteSolicitacaoService
                 ['professor_id' => null, 'tem_professor' => false],
             );
 
-            if ($vinculo->professor_id !== null || $vinculo->tem_professor) {
-                throw ValidationException::withMessages(['componente' => 'Este componente já possui professor.']);
+            if ((int) $vinculo->professor_id === $professor->id && $vinculo->tem_professor) {
+                throw ValidationException::withMessages(['componente' => 'Você já está vinculado a este componente.']);
             }
 
             return ProfessorComponenteSolicitacao::query()->updateOrCreate(
@@ -163,8 +181,7 @@ class ProfessorComponenteSolicitacaoService
         $professorIds = $professores->pluck('id');
 
         return TurmaComponenteProfessor::query()
-            ->whereNull('professor_id')
-            ->where('tem_professor', false)
+            ->where(fn ($vinculos) => $vinculos->whereNull('professor_id')->orWhereNotIn('professor_id', $professorIds))
             ->whereHas('turma', fn ($turmas) => $turmas->whereIn('id_escola', $professores->pluck('id_escola')->unique()))
             ->with([
                 'turma.escola',
@@ -204,7 +221,7 @@ class ProfessorComponenteSolicitacaoService
 
         $query = ProfessorComponenteSolicitacao::query()
             ->where('status', ProfessorComponenteSolicitacao::STATUS_PENDENTE)
-            ->with(['professor.pessoa', 'vinculo.turma.escola', 'vinculo.turma.serie', 'vinculo.componente']);
+            ->with(['professor.pessoa', 'vinculo.turma.escola', 'vinculo.turma.serie', 'vinculo.componente', 'vinculo.professor.pessoa']);
 
         if (! $user->hasRole('Admin')) {
             $escolaIds = $this->scope->escolaIdsDosVinculos($user);
@@ -228,9 +245,9 @@ class ProfessorComponenteSolicitacaoService
                 throw new AuthorizationException('Você não possui vínculo de professor ativo nesta escola.');
             }
 
-            if ($vinculo->professor_id !== null || $vinculo->tem_professor) {
+            if ($professor->id === (int) $vinculo->professor_id && $vinculo->tem_professor) {
                 throw ValidationException::withMessages([
-                    'vinculo' => 'Este componente já possui professor.',
+                    'vinculo' => 'Você já está vinculado a este componente.',
                 ]);
             }
 
@@ -270,14 +287,16 @@ class ProfessorComponenteSolicitacaoService
                 throw ValidationException::withMessages(['solicitacao' => 'O vínculo funcional do professor não está mais válido para esta escola.']);
             }
 
-            if ($vinculo->professor_id !== null || $vinculo->tem_professor) {
-                throw ValidationException::withMessages(['solicitacao' => 'Este componente já possui professor.']);
-            }
+            $professorAnteriorId = $vinculo->professor_id;
 
             $vinculo->update([
                 'professor_id' => $solicitacao->professor_id,
                 'tem_professor' => true,
             ]);
+
+            app(ProfessorEscolaVinculoService::class)->sincronizarPorProfessores(
+                array_values(array_filter([$professorAnteriorId, $solicitacao->professor_id])),
+            );
 
             $solicitacao->update([
                 'status' => ProfessorComponenteSolicitacao::STATUS_APROVADA,
