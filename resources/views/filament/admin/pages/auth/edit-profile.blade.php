@@ -148,8 +148,8 @@
                                 <div x-show="escola === {{ $escola['id'] }}" x-cloak>
                                     <div class="profile-series-browser">
                                         @forelse ($escola['series'] as $serie)
-                                            <details class="profile-series-group">
-                                                <summary class="profile-series-group__heading">
+                                            <details class="profile-series-group" x-data="{ aberto: false }" x-bind:open="aberto">
+                                                <summary class="profile-series-group__heading" x-on:click.prevent="aberto = !aberto">
                                                     <div><span class="profile-assignment-item__icon"><x-filament::icon icon="heroicon-o-academic-cap" /></span><h3>{{ $serie['nome'] }}</h3></div>
                                                     <div><small>{{ $serie['turmas']->count() }} turma{{ $serie['turmas']->count() === 1 ? '' : 's' }}</small><x-filament::icon class="profile-series-group__chevron" icon="heroicon-o-chevron-down" /></div>
                                                 </summary>
@@ -164,13 +164,16 @@
                                                                         <div>
                                                                             <strong>{{ $opcao['componente']->nome }}</strong>
                                                                             <span>{{ match ($opcao['estado']) { 'meu' => 'Você é o professor deste componente', 'ocupado' => 'Professor atual: '.($opcao['professor_atual'] ?: 'Não informado'), default => 'Sem professor vinculado' } }}</span>
+                                                                            @if ($opcao['estado'] === 'ocupado')
+                                                                                <small class="profile-assignment-item__notice"><x-filament::icon icon="heroicon-o-information-circle" /> Ao solicitar, você estará solicitando substituir o professor atual deste componente nesta turma. A alteração só será válida após aprovação.</small>
+                                                                            @endif
                                                                         </div>
                                                                         @if ($opcao['estado'] === 'meu')
                                                                             <em class="profile-request-status profile-request-status--approved">Meu vínculo</em>
                                                                         @elseif ($opcao['pendente'])
                                                                             <em class="profile-request-status profile-request-status--pending">Aguardando aprovação</em>
                                                                         @else
-                                                                            <button type="button" class="profile-inline-button" wire:click="requestProfessorComponent({{ $escola['professor_id'] }}, {{ $turma['turma']->id }}, {{ $opcao['componente']->id }})" wire:loading.attr="disabled">{{ $opcao['estado'] === 'ocupado' ? 'Solicitar substituição' : 'Solicitar vínculo' }}</button>
+                                                                            <button type="button" class="profile-inline-button" wire:click="requestProfessorComponent({{ $escola['professor_id'] }}, {{ $turma['turma']->id }}, {{ $opcao['componente']->id }})" @if ($opcao['estado'] === 'ocupado') wire:confirm="Você está solicitando substituir o professor atual deste componente nesta turma. Deseja continuar?" @endif wire:loading.attr="disabled">{{ $opcao['estado'] === 'ocupado' ? 'Solicitar substituição' : 'Solicitar vínculo' }}</button>
                                                                         @endif
                                                                     </article>
                                                                 @empty

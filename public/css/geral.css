@@ -4098,6 +4098,24 @@
     white-space: nowrap;
 }
 
+.profile-assignment-item__notice {
+    display: flex;
+    align-items: flex-start;
+    gap: .25rem;
+    overflow: visible !important;
+    color: #a15c00 !important;
+    line-height: 1.35;
+    white-space: normal !important;
+    text-overflow: clip !important;
+}
+
+.profile-assignment-item__notice svg {
+    flex: 0 0 auto;
+    width: .85rem;
+    height: .85rem;
+    margin-top: .08rem;
+}
+
 .profile-assignment-empty {
     display: flex;
     min-height: 7rem;
