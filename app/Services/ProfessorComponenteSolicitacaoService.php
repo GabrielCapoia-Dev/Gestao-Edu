@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Professor;
+use App\Models\ComponenteCurricular;
 use App\Models\ProfessorComponenteSolicitacao;
 use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
@@ -23,7 +24,7 @@ class ProfessorComponenteSolicitacaoService
         $professores = $user->professores()
             ->where('ativo', true)
             ->whereNotNull('id_escola')
-            ->with(['escola', 'professorMatricula'])
+            ->with(['escola', 'professorMatricula', 'componentesFuncionais'])
             ->get();
 
         if ($professores->isEmpty()) {
@@ -59,6 +60,8 @@ class ProfessorComponenteSolicitacaoService
                     'escolas' => $porMatricula->groupBy('id_escola')->map(function (SupportCollection $porEscola, int|string $escolaId) use ($turmas, $vinculosPorTurma, $pendentes): array {
                         $professor = $porEscola->first();
                         $professorIds = $porEscola->pluck('id');
+                        $componentesFuncionaisIds = $porEscola->flatMap(fn (Professor $item) => $item->componentesFuncionais->pluck('id'))
+                            ->map(fn ($id): int => (int) $id)->unique()->values();
                         $turmasDaEscola = $turmas->where('id_escola', (int) $escolaId);
                         $opcoes = collect();
                         $atuais = collect();
@@ -71,6 +74,9 @@ class ProfessorComponenteSolicitacaoService
                             $componentesDaTurma = collect();
 
                             foreach ($componentes as $componente) {
+                                if ($componentesFuncionaisIds->isNotEmpty() && ! $componentesFuncionaisIds->contains((int) $componente->id)) {
+                                    continue;
+                                }
                                 $vinculo = $vinculosDaTurma->firstWhere('componente_curricular_id', $componente->id);
                                 $meu = $vinculo && $professorIds->contains($vinculo->professor_id) && $vinculo->tem_professor;
                                 $ocupado = $vinculo && $vinculo->professor_id !== null && $vinculo->tem_professor;
@@ -101,9 +107,10 @@ class ProfessorComponenteSolicitacaoService
                             'professor_id' => $professor->id,
                             'atuais' => $atuais,
                             'opcoes' => $opcoes,
-                            'series' => $turmasComComponentes
+                                'series' => $turmasComComponentes
                                 ->groupBy(fn (array $item): int => (int) $item['turma']->id_serie)
-                                ->map(fn (SupportCollection $itens): array => [
+                                ->map(fn (SupportCollection $itens, int|string $serieId): array => [
+                                    'id' => (int) $serieId,
                                     'nome' => $itens->first()['turma']->serie?->nome ?: 'Série não informada',
                                     'turmas' => $itens->values(),
                                 ])->values(),
@@ -111,6 +118,28 @@ class ProfessorComponenteSolicitacaoService
                     })->values(),
                 ];
             })->values();
+    }
+
+    /** @return Collection<int, ComponenteCurricular> */
+    public function componentesFuncionais(User $user): Collection
+    {
+        $ids = $this->professoresAtivos($user)->load('componentesFuncionais')
+            ->flatMap(fn (Professor $professor) => $professor->componentesFuncionais->pluck('id'))
+            ->unique()->values();
+
+        return ComponenteCurricular::query()->whereKey($ids)->orderBy('nome')->get();
+    }
+
+    public function salvarComponentesFuncionais(User $user, array $componentesIds): void
+    {
+        $professores = $this->professoresAtivos($user);
+        $validos = ComponenteCurricular::query()->whereKey(collect($componentesIds)->map(fn ($id): int => (int) $id)->filter()->unique())->pluck('id')->all();
+
+        DB::transaction(function () use ($professores, $validos): void {
+            foreach ($professores as $professor) {
+                $professor->componentesFuncionais()->sync($validos);
+            }
+        });
     }
 
     public function solicitarComponente(User $user, int $professorId, int $turmaId, int $componenteId): ProfessorComponenteSolicitacao

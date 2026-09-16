@@ -3944,6 +3944,25 @@
     margin-top: .15rem;
 }
 
+.profile-assignment-tabs--series {
+    margin-bottom: .85rem;
+}
+
+.profile-assignment-tabs--series button {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+}
+
+.profile-assignment-tabs--series button svg {
+    width: 1rem;
+}
+
+.profile-assignment-tabs--series button small {
+    color: #71829b;
+    font-weight: 600;
+}
+
 .profile-assignment-tabs button {
     max-width: 100%;
     padding: .55rem .85rem;
@@ -4044,6 +4063,62 @@
     background: #fff;
 }
 
+.profile-class-group--collapsible {
+    padding: 0;
+    overflow: hidden;
+}
+
+.profile-class-group__heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .85rem;
+    cursor: pointer;
+    list-style: none;
+}
+
+.profile-class-group__heading::-webkit-details-marker {
+    display: none;
+}
+
+.profile-class-group__heading h4 {
+    margin: 0;
+}
+
+.profile-class-group--collapsible[open] .profile-class-group__heading {
+    border-bottom: 1px solid #e1e9f3;
+}
+
+.profile-class-group--collapsible .profile-class-group__components {
+    padding: .75rem;
+}
+
+.profile-input--select {
+    align-items: flex-start;
+    padding: .55rem .7rem;
+}
+
+.profile-input--select select {
+    width: 100%;
+    min-height: 6.5rem;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: #263b5b;
+    font: inherit;
+}
+
+.profile-functional-link {
+    display: flex;
+    align-items: flex-end;
+    gap: .75rem;
+}
+
+.profile-functional-link .profile-field {
+    flex: 1;
+}
+
 .profile-class-group h4 {
     margin-bottom: .7rem;
     color: #18365b;
@@ -4069,6 +4144,15 @@
 @media (max-width: 900px) {
     .profile-series-group__classes {
         grid-template-columns: 1fr;
+    }
+
+    .profile-functional-link {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .profile-functional-link .profile-inline-button {
+        align-self: flex-start;
     }
 }
 

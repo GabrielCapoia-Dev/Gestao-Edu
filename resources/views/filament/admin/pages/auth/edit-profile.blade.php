@@ -98,6 +98,20 @@
                             <span><small>CPF</small><strong>{{ \App\Models\Pessoa::formatarCpf($pessoa?->cpf) }}</strong></span><em>Somente leitura</em>
                         </div>
                     @endif
+                    @if ($isProfessor)
+                        <div class="profile-functional-link profile-field--full">
+                            <label class="profile-field">
+                                <span>Vínculo funcional</span>
+                                <span class="profile-input profile-input--select"><x-filament::icon icon="heroicon-o-book-open" /><select wire:model="componentesFuncionais" multiple size="4" aria-label="Componentes do vínculo funcional">
+                                    @foreach ($this->getProfessorComponentOptions() as $componente)
+                                        <option value="{{ $componente->id }}" @selected(in_array((int) $componente->id, $this->getProfessorFunctionalComponentIds(), true))>{{ $componente->nome }}</option>
+                                    @endforeach
+                                </select></span>
+                                <small>Selecione os componentes que você leciona. Eles serão usados para filtrar as turmas abaixo.</small>
+                            </label>
+                            <button type="button" class="profile-inline-button" wire:click="confirmProfessorFunctionalComponents" wire:loading.attr="disabled">Confirmar componentes</button>
+                        </div>
+                    @endif
                 </div>
             </section>
 
@@ -160,17 +174,20 @@
 
                             @foreach ($contexto['escolas'] as $escola)
                                 <div x-show="escola === {{ $escola['id'] }}" x-cloak>
-                                    <div class="profile-series-browser">
-                                        @forelse ($escola['series'] as $serie)
-                                            <details class="profile-series-group" x-data="{ aberto: false }" x-bind:open="aberto">
-                                                <summary class="profile-series-group__heading" x-on:click.prevent="aberto = !aberto">
-                                                    <div><span class="profile-assignment-item__icon"><x-filament::icon icon="heroicon-o-academic-cap" /></span><h3>{{ $serie['nome'] }}</h3></div>
-                                                    <div><small>{{ $serie['turmas']->count() }} turma{{ $serie['turmas']->count() === 1 ? '' : 's' }}</small><x-filament::icon class="profile-series-group__chevron" icon="heroicon-o-chevron-down" /></div>
-                                                </summary>
+                                    <div class="profile-series-browser" x-data="{ serieSelecionada: 0 }">
+                                        <div class="profile-assignment-tabs profile-assignment-tabs--series" role="tablist" aria-label="Séries">
+                                            @foreach ($escola['series'] as $serieIndex => $serie)
+                                                <button type="button" role="tab" :aria-selected="serieSelecionada === {{ $serieIndex }}" :class="{ 'is-active': serieSelecionada === {{ $serieIndex }} }" x-on:click="serieSelecionada = {{ $serieIndex }}"><x-filament::icon icon="heroicon-o-academic-cap" />{{ $serie['nome'] }}<small>{{ $serie['turmas']->count() }} turma{{ $serie['turmas']->count() === 1 ? '' : 's' }}</small></button>
+                                            @endforeach
+                                        </div>
+                                        @forelse ($escola['series'] as $serieIndex => $serie)
+                                            <div x-show="serieSelecionada === {{ $serieIndex }}" x-cloak>
                                                 <div class="profile-series-group__classes">
                                                     @foreach ($serie['turmas'] as $turma)
-                                                        <div class="profile-class-group">
-                                                            <h4>Turma {{ $turma['turma']->nome }} <small>· {{ \App\Models\Professor::TURNOS[$turma['turma']->turno] ?? $turma['turma']->turno }}</small></h4>
+                                                        <details class="profile-class-group profile-class-group--collapsible" x-data="{ aberto: false }" x-bind:open="aberto">
+                                                            <summary class="profile-class-group__heading" x-on:click.prevent="aberto = !aberto">
+                                                                <h4>Turma {{ $turma['turma']->nome }} <small>· {{ \App\Models\Professor::TURNOS[$turma['turma']->turno] ?? $turma['turma']->turno }}</small></h4><x-filament::icon class="profile-series-group__chevron" icon="heroicon-o-chevron-down" />
+                                                            </summary>
                                                             <div class="profile-class-group__components">
                                                                 @forelse ($turma['componentes'] as $opcao)
                                                                     <article class="profile-assignment-item" wire:key="professor-option-{{ $contexto['chave'] }}-{{ $escola['id'] }}-{{ $turma['turma']->id }}-{{ $opcao['componente']->id }}">
@@ -194,10 +211,10 @@
                                                                     <p class="profile-class-group__empty">Nenhum componente configurado para esta turma.</p>
                                                                 @endforelse
                                                             </div>
-                                                        </div>
+                                                        </details>
                                                     @endforeach
                                                 </div>
-                                            </details>
+                                            </div>
                                         @empty
                                             <div class="profile-assignment-empty">Não há turmas cadastradas nesta escola.</div>
                                         @endforelse

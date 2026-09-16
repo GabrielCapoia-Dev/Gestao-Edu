@@ -224,6 +224,16 @@ class Professor extends Model
         )->withPivot('turma_id');
     }
 
+    public function componentesFuncionais()
+    {
+        return $this->belongsToMany(
+            ComponenteCurricular::class,
+            'professor_componente_funcional',
+            'professor_id',
+            'componente_curricular_id',
+        )->withTimestamps();
+    }
+
     /**
      * Verifica se o professor tem função administrativa
      */

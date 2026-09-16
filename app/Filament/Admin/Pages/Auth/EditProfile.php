@@ -37,6 +37,8 @@ class EditProfile extends BaseEditProfile
 
     public mixed $profilePhoto = null;
 
+    public ?array $componentesFuncionais = null;
+
     private ?string $cpfInformado = null;
 
     private ?Pessoa $pessoaCache = null;
@@ -269,6 +271,40 @@ class EditProfile extends BaseEditProfile
     public function getProfessorCurrentLinks(): Collection
     {
         return app(ProfessorComponenteSolicitacaoService::class)->vinculosAtuais($this->getUser());
+    }
+
+    /** @return Collection<int, \App\Models\ComponenteCurricular> */
+    public function getProfessorComponentOptions(): Collection
+    {
+        return \App\Models\ComponenteCurricular::query()->orderBy('nome')->get();
+    }
+
+    /** @return array<int, int> */
+    public function getProfessorFunctionalComponentIds(): array
+    {
+        if ($this->componentesFuncionais !== null) {
+            return array_map('intval', $this->componentesFuncionais);
+        }
+
+        return app(ProfessorComponenteSolicitacaoService::class)->componentesFuncionais($this->getUser())
+            ->pluck('id')->map(fn ($id): int => (int) $id)->all();
+    }
+
+    public function confirmProfessorFunctionalComponents(): void
+    {
+        try {
+            app(ProfessorComponenteSolicitacaoService::class)->salvarComponentesFuncionais(
+                $this->getUser(), $this->componentesFuncionais ?? [],
+            );
+            $this->componentesFuncionais = array_map('intval', $this->componentesFuncionais ?? []);
+
+            Notification::make()
+                ->title('Vínculo funcional atualizado')
+                ->body('A lista de turmas foi atualizada conforme os componentes selecionados.')
+                ->success()->send();
+        } catch (AuthorizationException|ValidationException $exception) {
+            $this->notifyProfessorLinkError($exception);
+        }
     }
 
     /** @return Collection<int, TurmaComponenteProfessor> */
