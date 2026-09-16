@@ -148,11 +148,11 @@
                                 <div x-show="escola === {{ $escola['id'] }}" x-cloak>
                                     <div class="profile-series-browser">
                                         @forelse ($escola['series'] as $serie)
-                                            <section class="profile-series-group">
-                                                <header class="profile-series-group__heading">
+                                            <details class="profile-series-group">
+                                                <summary class="profile-series-group__heading">
                                                     <div><span class="profile-assignment-item__icon"><x-filament::icon icon="heroicon-o-academic-cap" /></span><h3>{{ $serie['nome'] }}</h3></div>
-                                                    <small>{{ $serie['turmas']->count() }} turma{{ $serie['turmas']->count() === 1 ? '' : 's' }}</small>
-                                                </header>
+                                                    <div><small>{{ $serie['turmas']->count() }} turma{{ $serie['turmas']->count() === 1 ? '' : 's' }}</small><x-filament::icon class="profile-series-group__chevron" icon="heroicon-o-chevron-down" /></div>
+                                                </summary>
                                                 <div class="profile-series-group__classes">
                                                     @foreach ($serie['turmas'] as $turma)
                                                         <div class="profile-class-group">
@@ -180,7 +180,7 @@
                                                         </div>
                                                     @endforeach
                                                 </div>
-                                            </section>
+                                            </details>
                                         @empty
                                             <div class="profile-assignment-empty">Não há turmas cadastradas nesta escola.</div>
                                         @endforelse

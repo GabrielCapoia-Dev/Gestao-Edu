@@ -3911,6 +3911,31 @@
 .profile-series-group__heading {
     justify-content: space-between;
     margin-bottom: .9rem;
+    cursor: pointer;
+    list-style: none;
+}
+
+.profile-series-group__heading::-webkit-details-marker {
+    display: none;
+}
+
+.profile-series-group__heading:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 4px;
+}
+
+.profile-series-group__chevron {
+    width: 1rem;
+    color: #52709a;
+    transition: transform .2s ease;
+}
+
+.profile-series-group[open] .profile-series-group__chevron {
+    transform: rotate(180deg);
+}
+
+.profile-series-group[open] .profile-series-group__heading {
+    margin-bottom: .9rem;
 }
 
 .profile-series-group__heading h3 {
