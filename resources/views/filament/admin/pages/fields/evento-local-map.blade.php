@@ -4,8 +4,6 @@
     x-init="init()"
     wire:ignore
 >
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-
     <div class="evento-local-map__search">
         <input
             type="search"
@@ -25,7 +23,6 @@
     <div x-ref="map" class="evento-local-map__canvas"></div>
     <p x-show="message" x-text="message" class="evento-local-map__message" role="status"></p>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script>
         function eventoLocalMap() {
             return {
