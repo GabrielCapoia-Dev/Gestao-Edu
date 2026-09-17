@@ -3,6 +3,7 @@
 namespace App\Services\Dashboard\Calendar\Sources;
 
 use App\Contracts\Dashboard\CalendarEventSource;
+use App\Models\Enums\EventoCalendarioCategoria;
 use App\Models\EventoCalendario;
 use App\Models\EventoCalendarioEscola;
 use App\Services\Dashboard\PublicoAlvoService;
@@ -216,7 +217,9 @@ class ManualCalendarEventSource implements CalendarEventSource
             fim: $fim,
             diaInteiro: false,
             categoria: $categoria->value,
-            categoriaLabel: $categoria->label(),
+            categoriaLabel: $categoria === EventoCalendarioCategoria::OUTRO && filled($evento->categoria_detalhe)
+                ? (string) $evento->categoria_detalhe
+                : $categoria->label(),
             assunto: null,
             status: null,
             statusLabel: null,

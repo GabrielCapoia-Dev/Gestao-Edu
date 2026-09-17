@@ -224,8 +224,12 @@ class EventoCalendarioService
             $dados['texto_botao'] = null;
         } elseif (! $this->linkSeguro($dados['link_acao'] ?? null)) {
             throw ValidationException::withMessages([
-                'link_acao' => 'Informe uma URL HTTP(S) ou um caminho interno iniciado por /.',
+                'link_acao' => 'Informe um link iniciado por https://.',
             ]);
+        }
+
+        if (($dados['categoria'] ?? null) !== EventoCalendarioCategoria::OUTRO->value) {
+            $dados['categoria_detalhe'] = null;
         }
 
         $enviarEspecificas = Arr::pull($dados, 'enviar_escolas_especificas');
@@ -270,12 +274,25 @@ class EventoCalendarioService
             'titulo' => ['required', 'string', 'max:160'],
             'descricao' => ['nullable', 'string', 'max:5000'],
             'local' => ['nullable', 'string', 'max:255'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'categoria' => ['required', Rule::enum(EventoCalendarioCategoria::class)],
+            'categoria_detalhe' => [
+                'nullable',
+                'string',
+                'max:160',
+                Rule::requiredIf(($dados['categoria'] ?? null) === EventoCalendarioCategoria::OUTRO->value),
+            ],
             'prioridade' => ['required', Rule::enum(DashboardPrioridade::class)],
             'data_inicio' => ['required', 'date'],
             'data_fim' => ['required', 'date', 'after:data_inicio'],
             'link_acao' => ['nullable', 'string', 'max:2048'],
-            'texto_botao' => ['nullable', 'string', 'max:80'],
+            'texto_botao' => [
+                'nullable',
+                'string',
+                'max:80',
+                Rule::requiredIf(filled($dados['link_acao'] ?? null)),
+            ],
             'ativo' => ['boolean'],
             'cor' => ['required', Rule::enum(EventoCalendarioCor::class)],
         ], [
@@ -493,11 +510,7 @@ class EventoCalendarioService
             return false;
         }
 
-        if (str_starts_with($link, '/') && ! str_starts_with($link, '//')) {
-            return true;
-        }
-
-        return in_array(strtolower((string) parse_url($link, PHP_URL_SCHEME)), ['http', 'https'], true);
+        return strtolower((string) parse_url($link, PHP_URL_SCHEME)) === 'https';
     }
 
     private function dataHora(string $data, string $hora): CarbonImmutable
