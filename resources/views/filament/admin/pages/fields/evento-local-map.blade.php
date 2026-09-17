@@ -34,8 +34,9 @@
                 localInput() { return document.querySelector('input[name$="[local]"]'); },
                 latitudeInput() { return document.querySelector('input[name$="[latitude]"]'); },
                 longitudeInput() { return document.querySelector('input[name$="[longitude]"]'); },
-                init() {
-                    if (! window.L || this.$refs.map.dataset.initialized) return;
+                async init() {
+                    if (this.$refs.map.dataset.initialized) return;
+                    while (! window.L) await new Promise(resolve => setTimeout(resolve, 50));
                     this.$refs.map.dataset.initialized = 'true';
                     this.map = L.map(this.$refs.map).setView([-15.78, -47.93], 4);
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
