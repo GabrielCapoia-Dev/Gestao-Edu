@@ -413,7 +413,7 @@ class EventoCalendarioForm
     /** @param array<string, mixed> $data @return array<string, mixed> */
     private static function linkRule(): Closure
     {
-        return static function (string $attribute, mixed $value, Closure $fail): void {
+        return static function (mixed $value, Closure $fail): void {
             if (blank($value)) {
                 return;
             }
