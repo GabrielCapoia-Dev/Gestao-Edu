@@ -14,6 +14,7 @@ use Closure;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Utilities\Get;
@@ -37,7 +38,7 @@ class EditProfile extends BaseEditProfile
 
     public mixed $profilePhoto = null;
 
-    public ?array $componentesFuncionais = null;
+    public array $componentesFuncionaisForm = ['componentes' => []];
 
     private ?string $cpfInformado = null;
 
@@ -81,6 +82,7 @@ class EditProfile extends BaseEditProfile
             ->pluck('portaria')
             ->filter()
             ->first();
+        $this->componentesFuncionaisForm['componentes'] = $this->getProfessorFunctionalComponentIds();
 
         return $data;
     }
@@ -138,6 +140,23 @@ class EditProfile extends BaseEditProfile
                 $this->getCurrentPasswordFormComponent(),
                 TextInput::make('portaria')->hidden(),
             ]);
+    }
+
+    public function componentesFuncionaisForm(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                Select::make('componentes')
+                    ->label('Vínculo funcional')
+                    ->options(fn (): array => $this->getProfessorComponentOptions()->pluck('nome', 'id')->all())
+                    ->multiple()
+                    ->searchable()
+                    ->preload()
+                    ->placeholder('Selecione os componentes que você leciona')
+                    ->default(fn (): array => $this->getProfessorFunctionalComponentIds())
+                    ->helperText('Os componentes selecionados serão usados para filtrar as turmas abaixo.'),
+            ])
+            ->statePath('componentesFuncionaisForm');
     }
 
     protected function getCpfFormComponent(): Component
@@ -282,10 +301,6 @@ class EditProfile extends BaseEditProfile
     /** @return array<int, int> */
     public function getProfessorFunctionalComponentIds(): array
     {
-        if ($this->componentesFuncionais !== null) {
-            return array_map('intval', $this->componentesFuncionais);
-        }
-
         return app(ProfessorComponenteSolicitacaoService::class)->componentesFuncionais($this->getUser())
             ->pluck('id')->map(fn ($id): int => (int) $id)->all();
     }
@@ -294,9 +309,8 @@ class EditProfile extends BaseEditProfile
     {
         try {
             app(ProfessorComponenteSolicitacaoService::class)->salvarComponentesFuncionais(
-                $this->getUser(), $this->componentesFuncionais ?? [],
+                $this->getUser(), $this->componentesFuncionaisForm['componentes'] ?? [],
             );
-            $this->componentesFuncionais = array_map('intval', $this->componentesFuncionais ?? []);
 
             Notification::make()
                 ->title('Vínculo funcional atualizado')
@@ -307,19 +321,6 @@ class EditProfile extends BaseEditProfile
         }
     }
 
-    public function toggleProfessorFunctionalComponent(int $componenteId): void
-    {
-        $selecionados = $this->getProfessorFunctionalComponentIds();
-
-        if (in_array($componenteId, $selecionados, true)) {
-            $selecionados = array_values(array_diff($selecionados, [$componenteId]));
-        } else {
-            $selecionados[] = $componenteId;
-        }
-
-        sort($selecionados);
-        $this->componentesFuncionais = $selecionados;
-    }
 
     /** @return Collection<int, TurmaComponenteProfessor> */
     public function getProfessorAvailableLinks(): Collection
