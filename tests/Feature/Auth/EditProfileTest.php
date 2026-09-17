@@ -59,7 +59,10 @@ class EditProfileTest extends TestCase
         Livewire::actingAs($user)
             ->test(EditProfile::class)
             ->assertFormFieldVisible('cpf')
-            ->fillForm(['cpf' => '123.456.789-09'])
+            ->fillForm([
+                'cpf' => '123.456.789-09',
+                'telefone' => '(44) 99999-9999',
+            ])
             ->call('save')
             ->assertHasNoFormErrors();
 
@@ -109,6 +112,44 @@ class EditProfileTest extends TestCase
             ->assertHasFormErrors(['cpf']);
 
         $this->assertNull($pessoa->refresh()->cpf);
+    }
+
+    public function test_profile_requires_valid_phone_format_and_length(): void
+    {
+        $user = User::factory()->create(['email_approved' => true]);
+        Servidor::query()->create([
+            'user_id' => $user->id,
+            'nome' => $user->name,
+            'email' => $user->email,
+            'cpf' => '12345678909',
+            'status' => Servidor::STATUS_INATIVO,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(EditProfile::class)
+            ->fillForm(['telefone' => ''])
+            ->call('save')
+            ->assertHasFormErrors(['telefone' => 'required']);
+
+        Livewire::actingAs($user)
+            ->test(EditProfile::class)
+            ->fillForm(['telefone' => '44999999999'])
+            ->call('save')
+            ->assertHasFormErrors(['telefone']);
+
+        Livewire::actingAs($user)
+            ->test(EditProfile::class)
+            ->fillForm(['telefone' => '(44) 9999-9999'])
+            ->call('save')
+            ->assertHasFormErrors(['telefone']);
+
+        Livewire::actingAs($user)
+            ->test(EditProfile::class)
+            ->fillForm(['telefone' => '(44) 99999-9999'])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame('(44) 99999-9999', $user->servidores()->first()->refresh()->telefone);
     }
 
     public function test_user_cannot_replace_existing_cpf_from_profile(): void
@@ -166,6 +207,7 @@ class EditProfileTest extends TestCase
         Livewire::actingAs($user)
             ->test(EditProfile::class)
             ->set('profilePhoto', UploadedFile::fake()->image('perfil.jpg', 300, 300))
+            ->fillForm(['telefone' => '(44) 99999-9999'])
             ->call('save')
             ->assertHasNoErrors();
 

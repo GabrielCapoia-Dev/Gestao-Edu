@@ -42,6 +42,8 @@ class EditProfile extends BaseEditProfile
 
     private ?string $cpfInformado = null;
 
+    private ?string $telefoneInformado = null;
+
     private ?Pessoa $pessoaCache = null;
 
     public function getTitle(): string
@@ -77,6 +79,7 @@ class EditProfile extends BaseEditProfile
     protected function mutateFormDataBeforeFill(array $data): array
     {
         $data['cpf'] = $this->getPessoa()?->cpf;
+        $data['telefone'] = $this->getPessoa()?->telefone;
         $data['portaria'] = app(PerfilEquipeGestoraService::class)
             ->vinculosDoPerfil($this->getUser())
             ->pluck('portaria')
@@ -109,6 +112,11 @@ class EditProfile extends BaseEditProfile
         $this->cpfInformado = $this->getUser()->hasRole('Admin') ? null : Pessoa::normalizarCpf($data['cpf'] ?? null);
         unset($data['cpf']);
 
+        $this->telefoneInformado = filled($data['telefone'] ?? null)
+            ? trim((string) $data['telefone'])
+            : null;
+        unset($data['telefone']);
+
         return $data;
     }
 
@@ -125,6 +133,10 @@ class EditProfile extends BaseEditProfile
             $pessoa->update(['cpf' => $this->cpfInformado]);
         }
 
+        if ($pessoa && filled($this->telefoneInformado)) {
+            $pessoa->update(['telefone' => $this->telefoneInformado]);
+        }
+
         return $record;
     }
 
@@ -135,6 +147,7 @@ class EditProfile extends BaseEditProfile
                 $this->getNameFormComponent(),
                 $this->getEmailFormComponent(),
                 $this->getCpfFormComponent(),
+                $this->getTelefoneFormComponent(),
                 $this->getPasswordFormComponent(),
                 $this->getPasswordConfirmationFormComponent(),
                 $this->getCurrentPasswordFormComponent(),
@@ -185,6 +198,23 @@ class EditProfile extends BaseEditProfile
             })
             ->visible(fn (): bool => $this->hasCpfPending())
             ->dehydrated(fn (): bool => $this->hasCpfPending());
+    }
+
+    protected function getTelefoneFormComponent(): Component
+    {
+        return TextInput::make('telefone')
+            ->label('Telefone')
+            ->prefixIcon('heroicon-o-phone')
+            ->placeholder('(44) 99999-9999')
+            ->mask('(99) 99999-9999')
+            ->required(fn (): bool => $this->getPessoa() !== null)
+            ->rule('regex:/^\(\d{2}\) \d{5}-\d{4}$/')
+            ->validationMessages([
+                'required' => 'Informe o telefone.',
+                'regex' => 'Use o formato (99) 99999-9999, com 11 números.',
+            ])
+            ->visible(fn (): bool => $this->getPessoa() !== null)
+            ->dehydrated(fn (): bool => $this->getPessoa() !== null);
     }
 
     public function getPessoa(): ?Pessoa
