@@ -85,8 +85,8 @@
             </header>
             <div
                 class="gi-event-detail__map"
-                x-data
-                x-init="setTimeout(() => window.initEventoDetailMaps?.(), 50)"
+                x-data="eventoDetailMap({ latitude: {{ (float) $evento->latitude }}, longitude: {{ (float) $evento->longitude }} })"
+                x-init="init()"
                 data-evento-detail-map
                 data-latitude="{{ $evento->latitude }}"
                 data-longitude="{{ $evento->longitude }}"
