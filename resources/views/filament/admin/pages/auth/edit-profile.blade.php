@@ -102,11 +102,29 @@
                         <div class="profile-functional-link profile-field--full">
                             <label class="profile-field">
                                 <span>Vínculo funcional</span>
-                                <span class="profile-input profile-input--select"><x-filament::icon icon="heroicon-o-book-open" /><select wire:model="componentesFuncionais" multiple size="4" aria-label="Componentes do vínculo funcional">
-                                    @foreach ($this->getProfessorComponentOptions() as $componente)
-                                        <option value="{{ $componente->id }}" @selected(in_array((int) $componente->id, $this->getProfessorFunctionalComponentIds(), true))>{{ $componente->nome }}</option>
-                                    @endforeach
-                                </select></span>
+                                <div class="profile-filament-select" x-data="{ aberto: false }" x-on:click.outside="aberto = false">
+                                    <x-filament::input.wrapper :valid="true" class="profile-filament-select__wrapper">
+                                        <button type="button" class="profile-filament-select__trigger" aria-haspopup="listbox" x-on:click="aberto = !aberto" :aria-expanded="aberto">
+                                            <x-filament::icon icon="heroicon-o-book-open" />
+                                            <span class="profile-filament-select__tags">
+                                                @forelse ($this->getProfessorComponentOptions()->whereIn('id', $this->getProfessorFunctionalComponentIds())->sortBy('nome') as $componente)
+                                                    <span class="profile-filament-select__tag">{{ $componente->nome }}</span>
+                                                @empty
+                                                    <span class="profile-filament-select__placeholder">Selecione os componentes</span>
+                                                @endforelse
+                                            </span>
+                                            <x-filament::icon class="profile-filament-select__chevron" icon="heroicon-m-chevron-down" />
+                                        </button>
+                                    </x-filament::input.wrapper>
+                                    <div class="profile-filament-select__dropdown" x-show="aberto" x-cloak x-transition role="listbox" aria-multiselectable="true">
+                                        @foreach ($this->getProfessorComponentOptions() as $componente)
+                                            <label class="profile-filament-select__option">
+                                                <input type="checkbox" wire:model="componentesFuncionais" value="{{ $componente->id }}">
+                                                <span>{{ $componente->nome }}</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                </div>
                                 <small>Selecione os componentes que você leciona. Eles serão usados para filtrar as turmas abaixo.</small>
                             </label>
                             <button type="button" class="profile-inline-button" wire:click="confirmProfessorFunctionalComponents" wire:loading.attr="disabled">Confirmar componentes</button>
