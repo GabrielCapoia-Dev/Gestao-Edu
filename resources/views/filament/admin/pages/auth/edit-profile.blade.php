@@ -119,7 +119,7 @@
                                     <div class="profile-filament-select__dropdown" x-show="aberto" x-cloak x-transition role="listbox" aria-multiselectable="true">
                                         @foreach ($this->getProfessorComponentOptions() as $componente)
                                             <label class="profile-filament-select__option" wire:key="functional-component-option-{{ $componente->id }}">
-                                                <input type="checkbox" wire:model="componentesFuncionais" value="{{ $componente->id }}" @checked(in_array((int) $componente->id, $this->getProfessorFunctionalComponentIds(), true))>
+                                                <input type="checkbox" wire:click.prevent="toggleProfessorFunctionalComponent({{ $componente->id }})" value="{{ $componente->id }}" @checked(in_array((int) $componente->id, $this->getProfessorFunctionalComponentIds(), true))>
                                                 <span>{{ $componente->nome }}</span>
                                             </label>
                                         @endforeach

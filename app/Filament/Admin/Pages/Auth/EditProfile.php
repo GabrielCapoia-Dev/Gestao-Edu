@@ -307,6 +307,20 @@ class EditProfile extends BaseEditProfile
         }
     }
 
+    public function toggleProfessorFunctionalComponent(int $componenteId): void
+    {
+        $selecionados = $this->getProfessorFunctionalComponentIds();
+
+        if (in_array($componenteId, $selecionados, true)) {
+            $selecionados = array_values(array_diff($selecionados, [$componenteId]));
+        } else {
+            $selecionados[] = $componenteId;
+        }
+
+        sort($selecionados);
+        $this->componentesFuncionais = $selecionados;
+    }
+
     /** @return Collection<int, TurmaComponenteProfessor> */
     public function getProfessorAvailableLinks(): Collection
     {
