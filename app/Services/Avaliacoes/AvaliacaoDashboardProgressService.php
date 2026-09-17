@@ -254,11 +254,24 @@ class AvaliacaoDashboardProgressService
             $turmaId = (int) $historico->turma_id;
             $total = (int) $historico->total;
             $preenchidas = min((int) $historico->preenchidas, $total);
-            $this->acumularResumo($resultado[$avaliacaoId], 'turmas', $turmaId, $preenchidas, $total);
-            $this->acumularResumo($resultado[$avaliacaoId], 'series', (int) $historico->serie_id, $preenchidas, $total);
-            $this->acumularResumo($resultado[$avaliacaoId], 'escolas', (int) $historico->escola_id, $preenchidas, $total);
-            $resultado[$avaliacaoId]['preenchidas'] += $preenchidas;
-            $resultado[$avaliacaoId]['total'] += $total;
+            $componenteId = (int) $historico->componente_chave;
+            if ($componenteId !== AvaliacaoDashboardTurmaResumoService::TOTAL_COMPONENT_KEY) {
+                $this->acumularResumo($resultado[$avaliacaoId], 'componentes', $componenteId, $preenchidas, $total);
+                $resultado[$avaliacaoId]['componentes_por_turma'][$turmaId][$componenteId] ??= [
+                    'preenchidas' => 0,
+                    'total' => 0,
+                    'percentual' => 0,
+                ];
+                $resultado[$avaliacaoId]['componentes_por_turma'][$turmaId][$componenteId]['preenchidas'] += $preenchidas;
+                $resultado[$avaliacaoId]['componentes_por_turma'][$turmaId][$componenteId]['total'] += $total;
+            }
+            if ($componenteId === AvaliacaoDashboardTurmaResumoService::TOTAL_COMPONENT_KEY) {
+                $this->acumularResumo($resultado[$avaliacaoId], 'turmas', $turmaId, $preenchidas, $total);
+                $this->acumularResumo($resultado[$avaliacaoId], 'series', (int) $historico->serie_id, $preenchidas, $total);
+                $this->acumularResumo($resultado[$avaliacaoId], 'escolas', (int) $historico->escola_id, $preenchidas, $total);
+                $resultado[$avaliacaoId]['preenchidas'] += $preenchidas;
+                $resultado[$avaliacaoId]['total'] += $total;
+            }
         }
 
         return $this->finalizarResumos($resultado);
