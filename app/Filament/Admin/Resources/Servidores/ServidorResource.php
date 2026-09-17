@@ -545,6 +545,7 @@ class ServidorResource extends Resource
                         ->visible(fn (Servidor $record): bool => (int) $record->solicitacoes_pendentes_count > 0
                             && app(ProfessorComponenteSolicitacaoService::class)->podeAnalisar(Auth::user()))
                         ->modalWidth('5xl')
+                        ->extraModalWindowAttributes(['class' => 'professor-request-review-modal'], merge: true)
                         ->modalHeading(fn (Servidor $record): string => "Solicitações de {$record->nome}")
                         ->modalDescription('Confirme ou recuse cada turma e componente solicitado pelo professor.')
                         ->modalSubmitActionLabel('Salvar decisões')
@@ -555,13 +556,15 @@ class ServidorResource extends Resource
                                 ->groupBy(fn (ProfessorComponenteSolicitacao $solicitacao): string => (string) ($solicitacao->vinculo?->turma_id ?: 'solicitacao-'.$solicitacao->getKey()))
                                 ->map(function ($solicitacoesDaTurma): array {
                                     $primeira = $solicitacoesDaTurma->first();
+                                    $turmaLabel = collect([
+                                        'Turma '.$primeira?->vinculo?->turma?->nome,
+                                        $primeira?->vinculo?->turma?->serie?->nome,
+                                        $primeira?->vinculo?->turma?->escola?->nome,
+                                    ])->filter()->implode(' · ');
 
                                     return [
-                                        'turma_descricao' => collect([
-                                            $primeira?->vinculo?->turma?->serie?->nome,
-                                            'Turma '.$primeira?->vinculo?->turma?->nome,
-                                            $primeira?->vinculo?->turma?->escola?->nome,
-                                        ])->filter()->implode(' · '),
+                                        'turma_label' => $turmaLabel,
+                                        'turma_descricao' => $turmaLabel,
                                         'decisao_turma' => 'pendente',
                                         'componentes' => $solicitacoesDaTurma->map(fn (ProfessorComponenteSolicitacao $solicitacao): array => [
                                             'solicitacao_id' => $solicitacao->getKey(),
@@ -591,6 +594,7 @@ class ServidorResource extends Resource
                                     ->label('Turmas pendentes')
                                     ->default($turmas)
                                     ->schema([
+                                        Hidden::make('turma_label'),
                                         Textarea::make('turma_descricao')
                                             ->label('Turma')
                                             ->disabled()
@@ -632,7 +636,7 @@ class ServidorResource extends Resource
                                     ])
                                     ->columns(3)
                                     ->collapsible()
-                                    ->itemLabel(fn (array $state): ?string => $state['turma_descricao'] ?? null)
+                                    ->itemLabel(fn (array $state): ?string => $state['turma_label'] ?? $state['turma_descricao'] ?? null)
                                     ->addable(false)
                                     ->deletable(false)
                                     ->reorderable(false),
