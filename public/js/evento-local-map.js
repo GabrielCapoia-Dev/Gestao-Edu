@@ -3,6 +3,7 @@ window.eventoLocalMap = function () {
         map: null,
         marker: null,
         query: '',
+        results: [],
         loading: false,
         message: '',
         localInput() { return document.querySelector('input[name$="[local]"]'); },
@@ -12,7 +13,7 @@ window.eventoLocalMap = function () {
             if (this.$refs.map.dataset.initialized) return;
             while (! window.L) await new Promise(resolve => setTimeout(resolve, 50));
             this.$refs.map.dataset.initialized = 'true';
-            this.map = L.map(this.$refs.map).setView([-15.78, -47.93], 4);
+            this.map = L.map(this.$refs.map).setView([-23.7658, -53.3250], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
                 attribution: '&copy; OpenStreetMap contributors',
@@ -27,17 +28,29 @@ window.eventoLocalMap = function () {
             if (! this.query.trim()) return;
             this.loading = true;
             this.message = '';
+            this.results = [];
             try {
                 const url = new URL('https://nominatim.openstreetmap.org/search');
-                url.search = new URLSearchParams({ q: this.query.trim(), format: 'jsonv2', limit: '1', 'accept-language': 'pt-BR' });
+                url.search = new URLSearchParams({
+                    q: `${this.query.trim()}, Umuarama, Paraná, Brasil`,
+                    format: 'jsonv2',
+                    limit: '8',
+                    countrycodes: 'br',
+                    viewbox: '-54.4,-23.2,-52.4,-24.5',
+                    bounded: '0',
+                    'accept-language': 'pt-BR',
+                });
                 const response = await fetch(url, { headers: { Accept: 'application/json' } });
-                const results = await response.json();
-                if (! results.length) { this.message = 'Nenhum local encontrado.'; return; }
-                const result = results[0];
-                await this.selectPoint(parseFloat(result.lat), parseFloat(result.lon), false, result.display_name);
+                this.results = await response.json();
+                if (! this.results.length) { this.message = 'Nenhum local encontrado em Umuarama e região.'; return; }
+                if (this.results.length === 1) await this.selectResult(this.results[0]);
             } catch (error) {
                 this.message = 'Não foi possível pesquisar o local agora.';
             } finally { this.loading = false; }
+        },
+        async selectResult(result) {
+            this.results = [];
+            await this.selectPoint(parseFloat(result.lat), parseFloat(result.lon), false, result.display_name);
         },
         async selectPoint(lat, lng, reverse = true, label = null) {
             const latitude = this.latitudeInput();
