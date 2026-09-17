@@ -278,13 +278,17 @@ class AppServiceProvider extends ServiceProvider
         $actionLoadingJs = 'js/app/action-loading.js';
         $actionLoadingCss = 'css/action-loading.css';
         $geralCss = 'css/geral.css';
+        $eventoModalCss = 'css/evento-calendario-modal.css';
 
         FilamentAsset::register([
             Js::make('filament-modal-select-fix', asset($selectFixJs).'?v='.$assetVersion($selectFixJs)),
             Js::make('filament-date-paste', asset($datePasteJs).'?v='.$assetVersion($datePasteJs)),
             Js::make('action-loading', asset($actionLoadingJs).'?v='.$assetVersion($actionLoadingJs)),
             Css::make('geral', asset($geralCss).'?v='.$assetVersion($geralCss)),
+            Css::make('evento-calendario-modal', asset($eventoModalCss).'?v='.$assetVersion($eventoModalCss)),
             Css::make('action-loading', asset($actionLoadingCss).'?v='.$assetVersion($actionLoadingCss)),
+            Css::make('leaflet-css', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'),
+            Js::make('leaflet-js', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'),
         ]);
 
         // ── Render Hooks ───────────────────────────────────────────────────────
