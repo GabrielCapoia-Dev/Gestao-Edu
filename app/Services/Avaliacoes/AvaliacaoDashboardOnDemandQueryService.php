@@ -38,6 +38,7 @@ class AvaliacaoDashboardOnDemandQueryService
             ->join('alunos as aln', 'aln.id_turma', '=', 'at.turma_origem_id')
             ->join('avaliacao_pauta as ap', 'ap.avaliacao_id', '=', 'at.avaliacao_id')
             ->join('pautas as p', 'p.id', '=', 'ap.pauta_id')
+            ->join('avaliacoes as av', 'av.id', '=', 'at.avaliacao_id')
             ->where('p.status', true)
             ->where(function (QueryBuilder $pautas): void {
                 $pautas
@@ -95,6 +96,7 @@ class AvaliacaoDashboardOnDemandQueryService
             ->fromSub($respostas, 'ar')
             ->join('turmas as t', 't.id', '=', 'ar.turma_id')
             ->join('alunos as aln', 'aln.id', '=', 'ar.aluno_id')
+            ->join('avaliacoes as av', 'av.id', '=', 'ar.avaliacao_id')
             ->join('pautas as p', 'p.id', '=', 'ar.pauta_id')
             ->join('alternativas as alt', 'alt.id', '=', 'ar.alternativa_id');
 
@@ -105,6 +107,10 @@ class AvaliacaoDashboardOnDemandQueryService
                     ->orWhereRaw("TRIM(COALESCE(ar.observacao, '')) <> ''");
             });
         }
+
+        $query->where(function (QueryBuilder $alunos): void {
+            $alunos->whereNull('aln.data_matricula')->orWhereColumn('aln.data_matricula', '<=', 'av.data_fim');
+        });
 
         return $query;
     }
@@ -226,12 +232,14 @@ SQL))
 
         if (app(AvaliacaoPersistencia::class)->leRelacional()) {
             return DB::table('avaliacao_turma_ciclos as ciclo_scope')
+                ->join('avaliacoes as avaliacao_scope', 'avaliacao_scope.id', '=', 'ciclo_scope.avaliacao_id')
                 ->whereIn('ciclo_scope.avaliacao_id', $avaliacaoIds)
                 ->whereIn('ciclo_scope.status', ['aberta', 'reaberta'])
                 ->select([
                     'ciclo_scope.avaliacao_id',
                     'ciclo_scope.turma_avaliativa_id as turma_id',
                     'ciclo_scope.turma_origem_id',
+                    'avaliacao_scope.data_fim',
                 ]);
         }
 
@@ -255,7 +263,9 @@ SQL))
         $case .= ' ELSE at_scope.turma_id END';
 
         return DB::table('avaliacao_turma as at_scope')
+            ->join('avaliacoes as avaliacao_scope', 'avaliacao_scope.id', '=', 'at_scope.avaliacao_id')
             ->select(['at_scope.avaliacao_id', 'at_scope.turma_id'])
+            ->select('avaliacao_scope.data_fim')
             ->selectRaw("{$case} AS turma_origem_id", $bindings)
             ->whereIn('at_scope.avaliacao_id', $avaliacaoIds)
             ->whereIn('at_scope.turma_id', array_map('intval', array_keys($origensPorTurma)));
@@ -303,6 +313,10 @@ SQL))
                     ->orWhereNull($alias.'.pendencia_origem_aluno_id')
                     ->orWhere($alias.'.pendencia_origem_aluno_id', '<=', 0);
             });
+
+        $query->where(function (QueryBuilder $alunos) use ($alias): void {
+            $alunos->whereNull($alias.'.data_matricula')->orWhereColumn($alias.'.data_matricula', '<=', 'at.data_fim');
+        });
     }
 
     /** @return list<int> */

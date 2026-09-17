@@ -167,6 +167,7 @@ class AvaliacaoDashboardTurmaResumoService
     {
         return DB::table('avaliacao_pauta as ap')
             ->join('pautas as p', 'p.id', '=', 'ap.pauta_id')
+            ->join('avaliacoes as av', 'av.id', '=', 'ap.avaliacao_id')
             ->join('alunos as aln', 'aln.id_turma', '=', DB::raw((string) $turmaOrigemId))
             ->where('ap.avaliacao_id', $avaliacaoId)
             ->where('p.status', true)
@@ -183,6 +184,9 @@ class AvaliacaoDashboardTurmaResumoService
                     ->when($serieId === null, fn (Builder $query) => $query->whereNull('p.serie_id'))
                     ->when($serieId !== null, fn (Builder $query) => $query->orWhere('p.serie_id', $serieId));
             })
+            ->where(function (Builder $query): void {
+                $query->whereNull('aln.data_matricula')->orWhereColumn('aln.data_matricula', '<=', 'av.data_fim');
+            })
             ->select('aln.id as aluno_id', 'p.id as pauta_id')
             ->selectRaw('COALESCE(p.componente_curricular_id, 0) as componente_chave')
             ->distinct()
@@ -196,6 +200,7 @@ class AvaliacaoDashboardTurmaResumoService
             ->join('pautas as p', 'p.id', '=', 'ar.pauta_id')
             ->join('alternativas as alt', 'alt.id', '=', 'ar.alternativa_id')
             ->join('alunos as aln', 'aln.id', '=', 'ar.aluno_id')
+            ->join('avaliacoes as av', 'av.id', '=', 'ar.avaliacao_id')
             ->where('ar.ciclo_id', (int) $ciclo->id)
             ->where('p.status', true)
             ->whereIn('aln.status', [Aluno::STATUS_MATRICULADO, Aluno::STATUS_PENDENTE])
@@ -204,6 +209,9 @@ class AvaliacaoDashboardTurmaResumoService
                     ->where('aln.status', '!=', Aluno::STATUS_PENDENTE)
                     ->orWhereNull('aln.pendencia_origem_aluno_id')
                     ->orWhere('aln.pendencia_origem_aluno_id', '<=', 0);
+            })
+            ->where(function (Builder $query): void {
+                $query->whereNull('aln.data_matricula')->orWhereColumn('aln.data_matricula', '<=', 'av.data_fim');
             })
             ->where(function (Builder $completas): void {
                 $completas
