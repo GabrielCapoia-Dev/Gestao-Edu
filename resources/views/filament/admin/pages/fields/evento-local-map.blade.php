@@ -8,6 +8,7 @@
         <input
             type="search"
             x-model="query"
+            @input.debounce.300ms="filterSuggestions()"
             @keydown.enter.prevent="search()"
             placeholder="Pesquise um endereço ou local"
             aria-label="Pesquisar local do evento"
@@ -23,8 +24,8 @@
     <div x-show="results.length" class="evento-local-map__results" role="listbox" aria-label="Locais encontrados">
         <template x-for="result in results" :key="result.place_id">
             <button type="button" role="option" @click="selectResult(result)">
-                <strong x-text="result.name || result.display_name"></strong>
-                <small x-text="result.display_name"></small>
+                <strong x-text="result.name || result.label || result.display_name"></strong>
+                <small x-text="result.display_name || 'Local salvo neste navegador'"></small>
             </button>
         </template>
     </div>
