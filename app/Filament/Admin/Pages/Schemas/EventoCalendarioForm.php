@@ -117,15 +117,15 @@ class EventoCalendarioForm
                         ->maxLength(160)
                         ->required(fn (Get $get): bool => $get('categoria') === EventoCalendarioCategoria::OUTRO->value)
                         ->visible(fn (Get $get): bool => $get('categoria') === EventoCalendarioCategoria::OUTRO->value),
-                    DatePicker::make('data_evento')
-                        ->label('Data do evento')
-                        ->required()
-                        ->native(false),
                     Grid::make([
                         'default' => 1,
-                        'md' => 3,
+                        'md' => 4,
                     ])
                         ->schema([
+                            DatePicker::make('data_evento')
+                                ->label('Data do evento')
+                                ->required()
+                                ->native(false),
                             Select::make('periodo')
                                 ->label('Período')
                                 ->options([
