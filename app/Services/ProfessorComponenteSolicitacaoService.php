@@ -98,7 +98,9 @@ class ProfessorComponenteSolicitacaoService
                                 }
                             }
 
-                            $turmasComComponentes->push(['turma' => $turma, 'componentes' => $componentesDaTurma]);
+                            if ($componentesDaTurma->isNotEmpty()) {
+                                $turmasComComponentes->push(['turma' => $turma, 'componentes' => $componentesDaTurma]);
+                            }
                         }
 
                         return [
