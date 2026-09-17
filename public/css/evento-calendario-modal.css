@@ -71,6 +71,13 @@
 .evento-create-modal .fi-input-wrp { border-radius: .7rem; }
 .evento-create-modal .evento-local-map { padding-top: .25rem; }
 
+.gi-event-detail__map {
+    min-height: 18rem;
+    border: 1px solid #dbe5f1;
+    border-radius: .85rem;
+    overflow: hidden;
+}
+
 @media (max-width: 640px) {
     .evento-create-modal__intro { align-items: flex-start; padding: 1rem; }
     .evento-create-modal__tip { display: none; }

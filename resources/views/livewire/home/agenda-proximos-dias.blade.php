@@ -157,6 +157,15 @@
                                         @if ($event->actionUrl)
                                             <a href="{{ $event->actionUrl }}">{{ $event->actionLabel ?: 'Acessar' }}</a>
                                         @endif
+                                        @if ($event->source === 'manual')
+                                            <button
+                                                type="button"
+                                                class="home-agenda__event-open"
+                                                wire:click="mountAction('abrirEvento', { source: @js($event->source), reference: @js($event->reference), titulo: @js($event->titulo) })"
+                                            >
+                                                Abrir evento
+                                            </button>
+                                        @endif
                                     </div>
                                 </article>
                             @empty
