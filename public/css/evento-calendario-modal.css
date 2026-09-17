@@ -96,7 +96,7 @@
 
 .fi-modal-window.gi-event-detail-modal-window .gi-event-detail {
     margin: 0;
-    padding: 1rem 1.25rem 1.25rem;
+    padding: 0 1.25rem 1.25rem;
 }
 
 .fi-modal-window.gi-event-detail-modal-window {
@@ -106,9 +106,37 @@
 
 .fi-modal-window.gi-event-detail-modal-window .gi-event-detail__hero {
     display: grid !important;
-    min-height: 8.5rem;
-    margin: -1rem -1.25rem 0 !important;
+    min-height: 7.2rem;
+    margin: 0 -1.25rem 1rem !important;
     box-sizing: border-box;
+    padding: 1.35rem 1.6rem;
+}
+
+.fi-modal-window.gi-event-detail-modal-window .gi-event-detail__intro {
+    padding: 0 .15rem .15rem;
+}
+
+.fi-modal-window.gi-event-detail-modal-window .gi-event-detail__grid {
+    gap: .8rem;
+    margin: 0 0 .15rem;
+}
+
+.fi-modal-window.gi-event-detail-modal-window .gi-event-detail__grid > div {
+    min-height: 4.4rem;
+    padding: .85rem 1rem;
+    border-color: #dce7f3;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(24, 61, 112, .035);
+}
+
+.fi-modal-window.gi-event-detail-modal-window .gi-event-detail__grid dt {
+    color: #58708e;
+    letter-spacing: .04em;
+}
+
+.fi-modal-window.gi-event-detail-modal-window .gi-event-detail__grid dd {
+    color: #102d68;
+    font-weight: 700;
 }
 
 .gi-event-detail__generic {
