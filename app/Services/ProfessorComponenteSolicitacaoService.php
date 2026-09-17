@@ -51,7 +51,7 @@ class ProfessorComponenteSolicitacaoService
             ->groupBy(fn (Professor $professor): string => $professor->professor_matricula_id
                 ? 'matricula:'.$professor->professor_matricula_id
                 : 'legado:'.($professor->matricula ?: $professor->id))
-            ->map(function (SupportCollection $porMatricula, string $chaveMatricula) use ($turmas, $vinculosPorTurma, $pendentes): array {
+            ->map(function (SupportCollection $porMatricula, string $chaveMatricula) use ($turmas, $vinculosPorTurma, $pendentes, $filtrarComponentesFuncionais): array {
                 $primeiro = $porMatricula->first();
 
                 return [
