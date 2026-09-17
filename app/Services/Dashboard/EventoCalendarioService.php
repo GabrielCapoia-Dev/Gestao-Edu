@@ -180,6 +180,10 @@ class EventoCalendarioService
             $inicio = trim((string) $horaInicio);
             $fim = trim((string) $horaFim);
 
+            if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $data, $partes)) {
+                $data = sprintf('%s-%s-%s', $partes[3], $partes[2], $partes[1]);
+            }
+
             if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $data)) {
                 throw ValidationException::withMessages(['data_evento' => 'Informe uma data válida.']);
             }
