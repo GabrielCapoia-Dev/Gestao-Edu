@@ -8,6 +8,18 @@
 @endphp
 
 <div class="gi-event-detail gi-event-detail--management">
+    <header class="gi-event-detail__hero">
+        <div class="gi-event-detail__hero-icon" aria-hidden="true">{{ mb_substr($evento->titulo, 0, 1) }}</div>
+        <div class="gi-event-detail__hero-copy">
+            <p class="gi-eyebrow">AGENDA ESCOLAR</p>
+            <h2>{{ $evento->titulo }}</h2>
+            <p>{{ $evento->local ?: 'Local não informado' }}</p>
+        </div>
+        <div class="gi-event-detail__hero-meta">
+            <span>{{ $evento->data_inicio->format('d/m/Y') }}</span>
+            <span>{{ $evento->data_inicio->format('H:i') }}–{{ $evento->data_fim->format('H:i') }}</span>
+        </div>
+    </header>
     <section class="gi-event-detail__intro">
         <div>
             <span class="gi-event-detail__status gi-event-detail__status--{{ $evento->status?->value ?? 'inativo' }}">
@@ -73,6 +85,8 @@
             </header>
             <div
                 class="gi-event-detail__map"
+                x-data
+                x-init="setTimeout(() => window.initEventoDetailMaps?.(), 50)"
                 data-evento-detail-map
                 data-latitude="{{ $evento->latitude }}"
                 data-longitude="{{ $evento->longitude }}"
