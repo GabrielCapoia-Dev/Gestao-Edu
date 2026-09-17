@@ -34,7 +34,6 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\RestoreAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
-use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -327,6 +326,7 @@ class ServidorResource extends Resource
                     ->trueLabel('Com solicitações pendentes')
                     ->falseLabel('Sem solicitações pendentes')
                     ->placeholder('Todas')
+                    ->columnSpan(4)
                     ->visible(fn (): bool => ($user = Auth::user()) !== null
                         && app(ProfessorComponenteSolicitacaoService::class)->podeAnalisar($user))
                     ->queries(
@@ -375,7 +375,7 @@ class ServidorResource extends Resource
 
                 SelectFilter::make('cargo')
                     ->label('Cargo')
-                    ->columnSpan(3)
+                    ->columnSpan(4)
                     ->placeholder('Todos os cargos')
                     ->options([
                         self::CARGO_PROFESSOR => 'Professor',
@@ -401,7 +401,7 @@ class ServidorResource extends Resource
 
                 SelectFilter::make('quantidade_matriculas')
                     ->label('Quantidade de matrículas')
-                    ->columnSpan(3)
+                    ->columnSpan(4)
                     ->placeholder('Todas as quantidades')
                     ->options([
                         'uma' => 'Uma matrícula',
@@ -416,7 +416,7 @@ class ServidorResource extends Resource
 
                 SelectFilter::make('turno_matricula')
                     ->label('Turno da matrícula')
-                    ->columnSpan(3)
+                    ->columnSpan(4)
                     ->placeholder('Todos os turnos')
                     ->options(PessoaMatricula::turnosOptions())
                     ->multiple()
@@ -429,21 +429,21 @@ class ServidorResource extends Resource
 
                 SelectFilter::make('status')
                     ->label('Status')
-                    ->columnSpan(3)
+                    ->columnSpan(4)
                     ->placeholder('Todos os status')
                     ->options(Servidor::statusOptions())
                     ->multiple(),
 
                 TrashedFilter::make()
                     ->label('Cadastros arquivados')
-                    ->columnSpan(3)
+                    ->columnSpan(4)
                     ->placeholder('Sem arquivados')
                     ->trueLabel('Com arquivados')
                     ->falseLabel('Somente arquivados'),
 
                 SelectFilter::make('id_escola')
                     ->label('Escola')
-                    ->columnSpan(3)
+                    ->columnSpan(4)
                     ->placeholder('Todas as escolas')
                     ->options(fn (): array => static::escolasOptionsEscopadas())
                     ->multiple()
@@ -470,36 +470,9 @@ class ServidorResource extends Resource
                     ->searchable()
                     ->preload(),
 
-                SelectFilter::make('setor_id')
-                    ->label('Setor')
-                    ->columnSpan(3)
-                    ->placeholder('Todos os setores')
-                    ->options(fn (): array => static::setoresOptionsEscopados())
-                    ->multiple()
-                    ->query(function (Builder $query, array $data): Builder {
-                        $setorIds = collect($data['values'] ?? [])
-                            ->filter()
-                            ->map(fn ($id): int => (int) $id)
-                            ->values()
-                            ->all();
-
-                        if ($setorIds === []) {
-                            return $query;
-                        }
-
-                        return $query->where(function (Builder $pessoas) use ($setorIds): void {
-                            $pessoas
-                                ->whereIn('setor_id', $setorIds)
-                                ->orWhereHas('vinculosAtivos', fn (Builder $vinculos): Builder => $vinculos
-                                    ->whereIn('setor_id', $setorIds));
-                        });
-                    })
-                    ->searchable()
-                    ->preload(),
-
                 SelectFilter::make('nivel_acesso')
                     ->label('Nível de acesso')
-                    ->columnSpan(3)
+                    ->columnSpan(4)
                     ->placeholder('Todos os níveis')
                     ->options(fn (): array => Role::query()->orderBy('name')->pluck('name', 'id')->all())
                     ->multiple()
@@ -517,29 +490,9 @@ class ServidorResource extends Resource
                     ->preload()
                     ->visible(fn (): bool => Gate::allows('viewAny', User::class)),
 
-                Filter::make('periodo_cadastro')
-                    ->label('Período de cadastro')
-                    ->columnSpan(6)
-                    ->columns(2)
-                    ->schema([
-                        DatePicker::make('data_inicio')
-                            ->label('Cadastrado a partir de'),
-                        DatePicker::make('data_fim')
-                            ->label('Cadastrado até'),
-                    ])
-                    ->query(fn (Builder $query, array $data): Builder => $query
-                        ->when(
-                            filled($data['data_inicio'] ?? null),
-                            fn (Builder $pessoas): Builder => $pessoas->whereDate('created_at', '>=', $data['data_inicio']),
-                        )
-                        ->when(
-                            filled($data['data_fim'] ?? null),
-                            fn (Builder $pessoas): Builder => $pessoas->whereDate('created_at', '<=', $data['data_fim']),
-                        )),
-
                 Filter::make('email_duplicado')
                     ->label('E-mail duplicado')
-                    ->columnSpan(3)
+                    ->columnSpan(4)
                     ->query(fn (Builder $query): Builder => $query->comEmailDuplicado()),
             ], layout: FiltersLayout::AboveContent)
             ->filtersFormColumns(12)
