@@ -133,6 +133,39 @@
     margin: 0 0 .15rem;
 }
 
+.fi-modal-window.gi-event-detail-modal-window .gi-event-detail__overview {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, .9fr);
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid #dbe5f1;
+    border-radius: 1rem;
+    background: #fff;
+    box-shadow: 0 4px 14px rgba(24, 61, 112, .045);
+    align-items: stretch;
+}
+
+.fi-modal-window.gi-event-detail-modal-window .gi-event-detail__overview .gi-event-detail__grid {
+    align-content: start;
+    margin: 0;
+}
+
+.fi-modal-window.gi-event-detail-modal-window .gi-event-detail__overview .gi-event-detail__section {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    margin: 0;
+    border-color: #dbe5f1;
+    box-shadow: none;
+}
+
+.fi-modal-window.gi-event-detail-modal-window .gi-event-detail__overview .gi-event-detail__map {
+    flex: 1;
+    min-height: 20rem;
+    border: 0;
+    border-radius: 0 0 1rem 1rem;
+}
+
 .fi-modal-window.gi-event-detail-modal-window .gi-event-detail__grid > div {
     position: relative;
     min-height: 4.75rem;
@@ -195,6 +228,10 @@
 .gi-event-detail__hero-meta { display: grid; gap: .3rem; text-align: right; color: #e6f1ff; font-size: .8rem; font-weight: 700; }
 
 @media (max-width: 640px) {
+    .fi-modal-window.gi-event-detail-modal-window .gi-event-detail__overview {
+        grid-template-columns: 1fr;
+        padding: .75rem;
+    }
     .gi-event-detail__hero { grid-template-columns: auto 1fr; }
     .gi-event-detail__hero-meta { grid-column: 1 / -1; text-align: left; }
 }
