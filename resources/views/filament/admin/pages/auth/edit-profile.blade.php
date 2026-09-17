@@ -13,7 +13,7 @@
         : collect();
 @endphp
 
-<div class="profile-page">
+<div class="profile-page fi-fixed-positioning-context">
     <form wire:submit="save" class="profile-page__form">
         <header class="profile-hero">
             <div class="profile-hero__identity">

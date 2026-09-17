@@ -274,9 +274,7 @@ class AvaliacaoDashboardProgressService
             $resumos->whereIn('turma_rapida.id_escola', $this->ids($escolaIds));
         }
 
-        if ($professorIds === null) {
-            $resumos->where('resumo_rapido.componente_chave', AvaliacaoDashboardTurmaResumoService::TOTAL_COMPONENT_KEY);
-        } else {
+        if ($professorIds !== null) {
             $professorIds = $this->ids($professorIds);
             $resumos->where('resumo_rapido.componente_chave', '!=', AvaliacaoDashboardTurmaResumoService::TOTAL_COMPONENT_KEY);
             $professorIds === []
@@ -304,7 +302,15 @@ class AvaliacaoDashboardProgressService
             $avaliacaoId = (int) $linha->avaliacao_id;
             $total = (int) $linha->total;
             $preenchidas = min((int) $linha->preenchidas, $total);
-            $this->acumularLinha($resultado[$avaliacaoId], $linha, $preenchidas, $total, (int) $linha->componente_chave);
+            $componenteId = (int) $linha->componente_chave;
+            $this->acumularLinha(
+                $resultado[$avaliacaoId],
+                $linha,
+                $preenchidas,
+                $total,
+                $componenteId,
+                $professorIds !== null || $componenteId === AvaliacaoDashboardTurmaResumoService::TOTAL_COMPONENT_KEY,
+            );
         }
 
         $historicos = DB::table('avaliacao_snapshot_resumos_componentes as resumo_historico')
@@ -349,20 +355,24 @@ class AvaliacaoDashboardProgressService
         return $this->finalizarResumos($resultado);
     }
 
-    private function acumularLinha(array &$resumo, object $linha, int $preenchidas, int $total, ?int $componenteId = null): void
+    private function acumularLinha(array &$resumo, object $linha, int $preenchidas, int $total, ?int $componenteId = null, bool $incluirAgregados = true): void
     {
         $turmaId = (int) $linha->turma_id;
-        $this->acumularResumo($resumo, 'turmas', $turmaId, $preenchidas, $total);
-        $this->acumularResumo($resumo, 'series', (int) $linha->serie_id, $preenchidas, $total);
-        $this->acumularResumo($resumo, 'escolas', (int) $linha->escola_id, $preenchidas, $total);
+        if ($incluirAgregados) {
+            $this->acumularResumo($resumo, 'turmas', $turmaId, $preenchidas, $total);
+            $this->acumularResumo($resumo, 'series', (int) $linha->serie_id, $preenchidas, $total);
+            $this->acumularResumo($resumo, 'escolas', (int) $linha->escola_id, $preenchidas, $total);
+        }
         if ($componenteId !== null && $componenteId !== AvaliacaoDashboardTurmaResumoService::TOTAL_COMPONENT_KEY) {
             $this->acumularResumo($resumo, 'componentes', $componenteId, $preenchidas, $total);
             $resumo['componentes_por_turma'][$turmaId][$componenteId] ??= ['preenchidas' => 0, 'total' => 0, 'percentual' => 0];
             $resumo['componentes_por_turma'][$turmaId][$componenteId]['preenchidas'] += $preenchidas;
             $resumo['componentes_por_turma'][$turmaId][$componenteId]['total'] += $total;
         }
-        $resumo['preenchidas'] += $preenchidas;
-        $resumo['total'] += $total;
+        if ($incluirAgregados) {
+            $resumo['preenchidas'] += $preenchidas;
+            $resumo['total'] += $total;
+        }
     }
 
     private function finalizarResumos(array $resultado): array
