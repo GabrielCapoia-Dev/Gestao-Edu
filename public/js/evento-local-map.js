@@ -32,18 +32,23 @@ window.eventoLocalMap = function () {
             try {
                 const url = new URL('https://nominatim.openstreetmap.org/search');
                 url.search = new URLSearchParams({
-                    q: `${this.query.trim()}, Umuarama, Paraná, Brasil`,
+                    q: this.query.trim(),
                     format: 'jsonv2',
-                    limit: '8',
+                    limit: '10',
                     countrycodes: 'br',
                     viewbox: '-54.4,-23.2,-52.4,-24.5',
                     bounded: '0',
+                    dedupe: '1',
+                    addressdetails: '1',
+                    namedetails: '1',
                     'accept-language': 'pt-BR',
                 });
                 const response = await fetch(url, { headers: { Accept: 'application/json' } });
-                this.results = await response.json();
+                this.results = (await response.json()).sort((left, right) => {
+                    const local = value => /umuarama|alto para[ií]so|perobal|xambr[eê]/i.test(value.display_name || '') ? 0 : 1;
+                    return local(left) - local(right);
+                });
                 if (! this.results.length) { this.message = 'Nenhum local encontrado em Umuarama e região.'; return; }
-                if (this.results.length === 1) await this.selectResult(this.results[0]);
             } catch (error) {
                 this.message = 'Não foi possível pesquisar o local agora.';
             } finally { this.loading = false; }
