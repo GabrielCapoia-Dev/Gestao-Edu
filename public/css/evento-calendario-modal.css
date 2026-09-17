@@ -99,6 +99,29 @@
     padding: 1rem 1.25rem 1.25rem;
 }
 
+.fi-modal-window.gi-event-detail-modal-window {
+    width: min(70rem, 92vw) !important;
+    max-width: min(70rem, 92vw) !important;
+}
+
+.fi-modal-window.gi-event-detail-modal-window .gi-event-detail__hero {
+    display: grid !important;
+    min-height: 8.5rem;
+    margin: -1rem -1.25rem 0 !important;
+    box-sizing: border-box;
+}
+
+.gi-event-detail__generic {
+    grid-column: 1 / -1;
+    padding: 1rem;
+    border: 1px dashed #b8cbe2;
+    border-radius: .75rem;
+    background: #f8fbff;
+}
+
+.gi-event-detail__generic strong { color: #123b7a; }
+.gi-event-detail__generic p { margin: .3rem 0 0; color: #5d718d; font-size: .82rem; }
+
 .gi-event-detail__hero-icon {
     display: grid;
     width: 3.25rem;
