@@ -89,6 +89,16 @@
     background: linear-gradient(120deg, #123b7a, #1764b3);
 }
 
+.fi-modal-window.gi-event-detail-modal-window .fi-modal-content {
+    padding: 0 !important;
+    background: #f5f8fc;
+}
+
+.fi-modal-window.gi-event-detail-modal-window .gi-event-detail {
+    margin: 0;
+    padding: 1rem 1.25rem 1.25rem;
+}
+
 .gi-event-detail__hero-icon {
     display: grid;
     width: 3.25rem;
