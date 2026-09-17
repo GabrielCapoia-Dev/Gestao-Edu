@@ -7,9 +7,17 @@ window.eventoLocalMap = function () {
         suggestions: [],
         loading: false,
         message: '',
-        localInput() { return document.querySelector('input[name$="[local]"]'); },
-        latitudeInput() { return document.querySelector('input[name$="[latitude]"]'); },
-        longitudeInput() { return document.querySelector('input[name$="[longitude]"]'); },
+        fieldInput(field) {
+            return [...document.querySelectorAll('input')].find(input => {
+                const name = input.name || '';
+                return name.endsWith(`[${field}]`)
+                    || name.endsWith(`.${field}`)
+                    || (input.getAttribute('wire:model') || '').endsWith(`.${field}`);
+            }) || null;
+        },
+        localInput() { return this.fieldInput('local'); },
+        latitudeInput() { return this.fieldInput('latitude'); },
+        longitudeInput() { return this.fieldInput('longitude'); },
         async init() {
             if (this.$refs.map.dataset.initialized) return;
             while (! window.L) await new Promise(resolve => setTimeout(resolve, 50));
@@ -78,11 +86,6 @@ window.eventoLocalMap = function () {
         async selectPoint(lat, lng, reverse = true, label = null) {
             const latitude = this.latitudeInput();
             const longitude = this.longitudeInput();
-            if (! latitude || ! longitude) return;
-            latitude.value = lat.toFixed(7);
-            longitude.value = lng.toFixed(7);
-            latitude.dispatchEvent(new Event('input', { bubbles: true }));
-            longitude.dispatchEvent(new Event('input', { bubbles: true }));
             if (! this.marker) this.marker = L.marker([lat, lng], { draggable: true }).addTo(this.map);
             else this.marker.setLatLng([lat, lng]);
             this.marker.off('dragend').on('dragend', ({ target }) => {
@@ -90,6 +93,12 @@ window.eventoLocalMap = function () {
                 this.selectPoint(point.lat, point.lng, true);
             });
             this.map.setView([lat, lng], 16);
+            if (latitude && longitude) {
+                latitude.value = lat.toFixed(7);
+                longitude.value = lng.toFixed(7);
+                latitude.dispatchEvent(new Event('input', { bubbles: true }));
+                longitude.dispatchEvent(new Event('input', { bubbles: true }));
+            }
             if (label) this.setAddress(label);
             else if (reverse) await this.reverseGeocode(lat, lng);
             if (this.localInput()?.value) this.saveSuggestion(this.localInput().value, lat, lng);
