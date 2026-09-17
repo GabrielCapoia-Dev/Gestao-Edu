@@ -16,6 +16,8 @@
         });
     };
 
+    window.initEventoDetailMaps = initMaps;
+
     document.addEventListener('DOMContentLoaded', initMaps);
     document.addEventListener('livewire:navigated', initMaps);
     document.addEventListener('livewire:morphed', initMaps);

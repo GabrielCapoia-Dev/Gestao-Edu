@@ -113,6 +113,7 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
             ->label('Abrir evento')
             ->modalHeading(fn (array $arguments): string => $arguments['titulo'] ?? 'Detalhes do evento')
             ->modalWidth('6xl')
+            ->extraModalWindowAttributes(['class' => 'gi-event-detail-modal-window'], merge: true)
             ->modalSubmitAction(false)
             ->modalCancelActionLabel('Fechar')
             ->modalContent(function (array $arguments): View {

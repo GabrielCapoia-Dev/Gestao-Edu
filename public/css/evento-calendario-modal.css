@@ -78,6 +78,39 @@
     overflow: hidden;
 }
 
+.gi-event-detail__hero {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 1rem;
+    margin: -1rem -1rem 0;
+    padding: 1.35rem 1.5rem;
+    color: #fff;
+    background: linear-gradient(120deg, #123b7a, #1764b3);
+}
+
+.gi-event-detail__hero-icon {
+    display: grid;
+    width: 3.25rem;
+    height: 3.25rem;
+    place-items: center;
+    border: 1px solid rgba(255,255,255,.38);
+    border-radius: 1rem;
+    background: rgba(255,255,255,.14);
+    font-size: 1.45rem;
+    font-weight: 800;
+}
+
+.gi-event-detail__hero-copy h2 { margin: 0; color: #fff; font-size: 1.25rem; font-weight: 800; }
+.gi-event-detail__hero-copy p:last-child { margin: .2rem 0 0; color: #d9e9ff; }
+.gi-event-detail__hero-copy .gi-eyebrow { margin: 0 0 .2rem; color: #b9d9ff; }
+.gi-event-detail__hero-meta { display: grid; gap: .3rem; text-align: right; color: #e6f1ff; font-size: .8rem; font-weight: 700; }
+
+@media (max-width: 640px) {
+    .gi-event-detail__hero { grid-template-columns: auto 1fr; }
+    .gi-event-detail__hero-meta { grid-column: 1 / -1; text-align: left; }
+}
+
 @media (max-width: 640px) {
     .evento-create-modal__intro { align-items: flex-start; padding: 1rem; }
     .evento-create-modal__tip { display: none; }
