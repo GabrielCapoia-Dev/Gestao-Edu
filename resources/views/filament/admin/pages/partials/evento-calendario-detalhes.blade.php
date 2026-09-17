@@ -37,6 +37,7 @@
         @endif
     </section>
 
+    <div class="gi-event-detail__overview">
     <dl class="gi-event-detail__grid">
         <div>
             <dt>Criado por</dt>
@@ -89,6 +90,8 @@
                 aria-label="Mapa do local do evento"
             ></div>
         </section>
+
+    </div>
 
     @unless ($evento->enviar_todas_escolas)
     <section class="gi-event-detail__section">
