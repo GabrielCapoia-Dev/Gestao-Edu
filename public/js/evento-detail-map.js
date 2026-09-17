@@ -16,6 +16,13 @@ window.eventoDetailMap = ({ latitude, longitude, query }) => ({
                 window.L.marker([lat, lng]).addTo(map);
                 this.$el.dataset.mapReady = 'true';
                 setTimeout(() => map.invalidateSize(), 100);
+
+                fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
+                    headers: { Accept: 'application/json' },
+                }).then((response) => response.json()).then((result) => {
+                    const target = this.$el.closest('.gi-event-detail__section')?.querySelector('[data-evento-detail-address]');
+                    if (result.display_name && target) target.textContent = result.display_name;
+                }).catch(() => {});
             };
 
             render(

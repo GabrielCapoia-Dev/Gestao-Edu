@@ -135,7 +135,7 @@
 
 .fi-modal-window.gi-event-detail-modal-window .gi-event-detail__overview {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(20rem, .9fr);
+    grid-template-columns: 1fr;
     gap: 1rem;
     padding: 1rem;
     border: 1px solid #dbe5f1;
@@ -167,6 +167,14 @@
     min-height: 20rem;
     border: 0;
     border-radius: 0 0 1rem 1rem;
+}
+
+.fi-modal-window.gi-event-detail-modal-window .gi-event-detail__address {
+    max-width: 48rem;
+    margin: .3rem 0 0;
+    color: #58708e;
+    font-size: .82rem;
+    line-height: 1.4;
 }
 
 .fi-modal-window.gi-event-detail-modal-window .gi-event-detail__grid > div {

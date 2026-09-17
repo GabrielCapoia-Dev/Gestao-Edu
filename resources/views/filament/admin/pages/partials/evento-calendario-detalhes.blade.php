@@ -78,6 +78,9 @@
                 <div>
                     <p class="gi-eyebrow">Localização</p>
                     <h3>Local do evento</h3>
+                    <p class="gi-event-detail__address" data-evento-detail-address>
+                        {{ $evento->local ?: 'Endereço não informado' }}
+                    </p>
                 </div>
             </header>
             <div
