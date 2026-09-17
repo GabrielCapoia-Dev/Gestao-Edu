@@ -14,7 +14,7 @@
         : collect();
 @endphp
 
-<div class="profile-page fi-fixed-positioning-context">
+<div class="profile-page">
     <form wire:submit="save" class="profile-page__form">
         <header class="profile-hero">
             <div class="profile-hero__identity">
@@ -111,7 +111,7 @@
                     @endif
                     @if ($isProfessor)
                         <div class="profile-functional-link profile-field--full">
-                            <div class="profile-functional-link__field">
+                            <div class="profile-functional-link__field fi-fixed-positioning-context">
                                 {{ $this->componentesFuncionaisForm }}
                             </div>
                             <button type="button" class="profile-inline-button" wire:click="confirmProfessorFunctionalComponents" wire:loading.attr="disabled">Confirmar componentes</button>
