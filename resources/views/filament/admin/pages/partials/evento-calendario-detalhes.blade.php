@@ -2,9 +2,6 @@
     $totalEstudantes = (int) $evento->escolasAgendadas
         ->where('precisa_transporte', true)
         ->sum('quantidade_estimada_transporte');
-    $escolasAbrangentes = $evento->enviar_todas_escolas
-        ? ($evento->publicoAlvo?->escolas ?? collect())
-        : collect();
 @endphp
 
 <div class="gi-event-detail gi-event-detail--management">
@@ -75,7 +72,6 @@
         @endif
     </dl>
 
-    @if (filled($evento->latitude) && filled($evento->longitude))
         <section class="gi-event-detail__section">
             <header>
                 <div>
@@ -85,7 +81,7 @@
             </header>
             <div
                 class="gi-event-detail__map"
-                x-data="eventoDetailMap({ latitude: {{ (float) $evento->latitude }}, longitude: {{ (float) $evento->longitude }} })"
+                x-data="eventoDetailMap({ latitude: {{ $evento->latitude !== null ? (float) $evento->latitude : 'null' }}, longitude: {{ $evento->longitude !== null ? (float) $evento->longitude : 'null' }}, query: @js($evento->local ?: 'Umuarama') })"
                 x-init="init()"
                 data-evento-detail-map
                 data-latitude="{{ $evento->latitude }}"
@@ -93,7 +89,6 @@
                 aria-label="Mapa do local do evento"
             ></div>
         </section>
-    @endif
 
     <section class="gi-event-detail__section">
         <header>
@@ -102,36 +97,16 @@
                 <h3>Escolas participantes</h3>
             </div>
             <span class="gi-event-detail__count">
-                @if ($evento->enviar_todas_escolas)
-                    {{ $escolasAbrangentes->isNotEmpty() ? $escolasAbrangentes->count().' escola(s)' : 'Todas do escopo' }}
-                @else
-                    {{ $evento->escolasAgendadas->count() }} escola(s)
-                @endif
+                {{ $evento->enviar_todas_escolas ? 'Evento genérico' : $evento->escolasAgendadas->count().' escola(s)' }}
             </span>
         </header>
 
         <div class="gi-event-detail__schools gi-event-detail__schools--management">
             @if ($evento->enviar_todas_escolas)
-                @forelse ($escolasAbrangentes as $escola)
-                    <article class="gi-event-detail__school">
-                        <div class="gi-event-detail__school-heading">
-                            <strong>{{ $escola->nome }}</strong>
-                        </div>
-
-                        @if ($escola->turmasDoEvento->isNotEmpty())
-                            <p>
-                                <b>Turmas:</b>
-                                {{ $escola->turmasDoEvento->map(fn ($turma) => trim(($turma->serie?->nome ? $turma->serie->nome.' ' : '').$turma->nome))->join(', ') }}
-                            </p>
-                        @else
-                            <p class="gi-event-detail__muted">Nenhuma turma cadastrada nesta escola.</p>
-                        @endif
-                    </article>
-                @empty
-                    <div class="gi-event-detail__empty">
-                        O evento foi enviado para todas as escolas autorizadas no escopo do criador.
-                    </div>
-                @endforelse
+                <div class="gi-event-detail__generic">
+                    <strong>Evento genérico</strong>
+                    <p>Este evento não possui escolas vinculadas e está disponível para todos os usuários autorizados.</p>
+                </div>
             @else
                 @forelse ($evento->escolasAgendadas as $agendamento)
                     <article class="gi-event-detail__school">
