@@ -38,7 +38,7 @@ class EditProfile extends BaseEditProfile
 
     public mixed $profilePhoto = null;
 
-    public array $componentesFuncionaisForm = ['componentes' => []];
+    public array $componentesFuncionaisState = ['componentes' => []];
 
     private ?string $cpfInformado = null;
 
@@ -82,7 +82,7 @@ class EditProfile extends BaseEditProfile
             ->pluck('portaria')
             ->filter()
             ->first();
-        $this->componentesFuncionaisForm['componentes'] = $this->getProfessorFunctionalComponentIds();
+        $this->componentesFuncionaisState['componentes'] = $this->getProfessorFunctionalComponentIds();
 
         return $data;
     }
@@ -156,7 +156,7 @@ class EditProfile extends BaseEditProfile
                     ->default(fn (): array => $this->getProfessorFunctionalComponentIds())
                     ->helperText('Os componentes selecionados serão usados para filtrar as turmas abaixo.'),
             ])
-            ->statePath('componentesFuncionaisForm');
+            ->statePath('componentesFuncionaisState');
     }
 
     protected function getCpfFormComponent(): Component
@@ -309,7 +309,7 @@ class EditProfile extends BaseEditProfile
     {
         try {
             app(ProfessorComponenteSolicitacaoService::class)->salvarComponentesFuncionais(
-                $this->getUser(), $this->componentesFuncionaisForm['componentes'] ?? [],
+                $this->getUser(), $this->componentesFuncionaisState['componentes'] ?? [],
             );
 
             Notification::make()
