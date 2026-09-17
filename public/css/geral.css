@@ -8013,7 +8013,7 @@ html.dark {
     }
 
     .profile-page {
-        padding: 1rem;
+        padding: 1rem 1rem calc(1rem + 9rem);
     }
 
     .profile-hero {
