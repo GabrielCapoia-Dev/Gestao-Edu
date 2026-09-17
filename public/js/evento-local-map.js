@@ -4,6 +4,7 @@ window.eventoLocalMap = function () {
         marker: null,
         query: '',
         results: [],
+        suggestions: [],
         loading: false,
         message: '',
         localInput() { return document.querySelector('input[name$="[local]"]'); },
@@ -13,6 +14,7 @@ window.eventoLocalMap = function () {
             if (this.$refs.map.dataset.initialized) return;
             while (! window.L) await new Promise(resolve => setTimeout(resolve, 50));
             this.$refs.map.dataset.initialized = 'true';
+            this.loadSuggestions();
             this.map = L.map(this.$refs.map).setView([-23.7658, -53.3250], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
@@ -53,9 +55,25 @@ window.eventoLocalMap = function () {
                 this.message = 'Não foi possível pesquisar o local agora.';
             } finally { this.loading = false; }
         },
+        loadSuggestions() {
+            try {
+                this.suggestions = JSON.parse(localStorage.getItem('gestao-edu:evento-locais') || '[]');
+            } catch (error) { this.suggestions = []; }
+        },
+        filterSuggestions() {
+            const term = this.query.trim().toLocaleLowerCase();
+            this.results = term.length < 2
+                ? []
+                : this.suggestions.filter(item => item.label.toLocaleLowerCase().includes(term));
+        },
+        saveSuggestion(label, lat, lng) {
+            const items = [{ label, lat, lng }, ...this.suggestions.filter(item => item.label !== label)].slice(0, 10);
+            this.suggestions = items;
+            localStorage.setItem('gestao-edu:evento-locais', JSON.stringify(items));
+        },
         async selectResult(result) {
             this.results = [];
-            await this.selectPoint(parseFloat(result.lat), parseFloat(result.lon), false, result.display_name);
+            await this.selectPoint(parseFloat(result.lat), parseFloat(result.lon), false, result.display_name || result.label);
         },
         async selectPoint(lat, lng, reverse = true, label = null) {
             const latitude = this.latitudeInput();
@@ -74,6 +92,7 @@ window.eventoLocalMap = function () {
             this.map.setView([lat, lng], 16);
             if (label) this.setAddress(label);
             else if (reverse) await this.reverseGeocode(lat, lng);
+            if (this.localInput()?.value) this.saveSuggestion(this.localInput().value, lat, lng);
         },
         async reverseGeocode(lat, lng) {
             try {
