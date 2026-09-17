@@ -156,22 +156,20 @@
                                 @foreach ($contexto['escolas'] as $escola)
                                     <div class="profile-linked-school">
                                         <h4><x-filament::icon icon="heroicon-o-building-office" /> {{ $escola['nome'] }}</h4>
-                                        @foreach ($escola['series'] as $serie)
-                                            <details class="profile-linked-series">
-                                                <summary><span>{{ $serie['nome'] }}</span><small>{{ $serie['turmas']->count() }} turma{{ $serie['turmas']->count() === 1 ? '' : 's' }}</small><x-filament::icon icon="heroicon-o-chevron-down" /></summary>
-                                                <div>
-                                                    @foreach ($serie['turmas'] as $turma)
-                                                        @foreach ($turma['componentes'] as $opcao)
-                                                            <article class="profile-linked-item">
-                                                                <span class="profile-assignment-item__icon"><x-filament::icon icon="heroicon-o-book-open" /></span>
-                                                                <strong>{{ $opcao['componente']->nome }}</strong>
-                                                                <span>Turma {{ $turma['turma']->nome }} · {{ \App\Models\Professor::TURNOS[$turma['turma']->turno] ?? $turma['turma']->turno }}</span>
-                                                            </article>
-                                                        @endforeach
-                                                    @endforeach
-                                                </div>
-                                            </details>
-                                        @endforeach
+                                        <div class="profile-linked-turmas">
+                                            @foreach ($escola['series'] as $serie)
+                                                @foreach ($serie['turmas'] as $turma)
+                                                    <article class="profile-linked-turma">
+                                                        <h5><x-filament::icon icon="heroicon-o-user-group" /> {{ $serie['nome'] }} - {{ $turma['turma']->nome }} <small>· {{ \App\Models\Professor::TURNOS[$turma['turma']->turno] ?? $turma['turma']->turno }}</small></h5>
+                                                        <div class="profile-linked-components">
+                                                            @foreach ($turma['componentes'] as $opcao)
+                                                                <span class="profile-linked-component">{{ $opcao['componente']->nome }}</span>
+                                                            @endforeach
+                                                        </div>
+                                                    </article>
+                                                @endforeach
+                                            @endforeach
+                                        </div>
                                     </div>
                                 @endforeach
                             </section>
