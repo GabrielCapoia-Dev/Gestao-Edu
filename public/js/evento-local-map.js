@@ -18,6 +18,15 @@ window.eventoLocalMap = function () {
         localInput() { return this.fieldInput('local'); },
         latitudeInput() { return this.fieldInput('latitude'); },
         longitudeInput() { return this.fieldInput('longitude'); },
+        setField(input, value) {
+            if (! input) return;
+            input.value = value;
+            const model = input.getAttribute('wire:model') || input.getAttribute('wire:model.live');
+            const component = input.closest('[wire\\:id]');
+            if (model && component && window.Livewire) {
+                window.Livewire.find(component.getAttribute('wire:id'))?.$wire.set(model, value, false);
+            }
+        },
         async init() {
             if (this.$refs.map.dataset.initialized) return;
             while (! window.L) await new Promise(resolve => setTimeout(resolve, 50));
@@ -94,10 +103,8 @@ window.eventoLocalMap = function () {
             });
             this.map.setView([lat, lng], 16);
             if (latitude && longitude) {
-                latitude.value = lat.toFixed(7);
-                longitude.value = lng.toFixed(7);
-                latitude.dispatchEvent(new Event('input', { bubbles: true }));
-                longitude.dispatchEvent(new Event('input', { bubbles: true }));
+                this.setField(latitude, lat.toFixed(7));
+                this.setField(longitude, lng.toFixed(7));
             }
             if (label) this.setAddress(label);
             else if (reverse) await this.reverseGeocode(lat, lng);
@@ -114,9 +121,7 @@ window.eventoLocalMap = function () {
         },
         setAddress(address) {
             const input = this.localInput();
-            if (! input) return;
-            input.value = address;
-            input.dispatchEvent(new Event('input', { bubbles: true }));
+            if (input && ! input.value.trim()) this.setField(input, address);
             this.query = address;
         },
     };
