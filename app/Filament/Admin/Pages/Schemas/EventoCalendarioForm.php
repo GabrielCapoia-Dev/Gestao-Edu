@@ -12,7 +12,6 @@ use App\Models\Turma;
 use App\Models\User;
 use App\Services\Dashboard\DashboardUserContextFactory;
 use App\Services\Dashboard\EventoCalendarioEscolaService;
-use Closure;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
@@ -174,7 +173,7 @@ class EventoCalendarioForm
                                 ->label('Link de ação')
                                 ->placeholder('https://exemplo.gov.br/...')
                                 ->maxLength(2048)
-                                ->rule(self::linkRule())
+                                ->rule('starts_with:https://')
                                 ->live(),
                             TextInput::make('texto_botao')
                                 ->label('Texto do botão')
@@ -408,20 +407,6 @@ class EventoCalendarioForm
                 ]),
 
         ];
-    }
-
-    /** @param array<string, mixed> $data @return array<string, mixed> */
-    private static function linkRule(): Closure
-    {
-        return static function (mixed $value, Closure $fail): void {
-            if (blank($value)) {
-                return;
-            }
-
-            if (strtolower((string) parse_url(trim((string) $value), PHP_URL_SCHEME)) !== 'https') {
-                $fail('Informe um link iniciado por https://.');
-            }
-        };
     }
 
     public static function dadosParaEdicao(EventoCalendario $evento, array $data): array
