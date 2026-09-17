@@ -342,8 +342,11 @@ class EditProfile extends BaseEditProfile
     }
 
     /** @return SupportCollection<int, array<string, mixed>> */
-    public function getProfessorLinkedContexts(SupportCollection $contexts): SupportCollection
+    public function getProfessorLinkedContexts(): SupportCollection
     {
+        $contexts = app(ProfessorComponenteSolicitacaoService::class)
+            ->contextosDoProfessor($this->getUser(), false);
+
         return $contexts->map(function (array $context): array {
             $escolas = collect($context['escolas'])->map(function (array $escola): ?array {
                 $series = collect($escola['series'])->map(function (array $serie): ?array {

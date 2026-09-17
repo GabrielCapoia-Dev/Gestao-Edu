@@ -152,6 +152,36 @@ class ProfessorComponenteSolicitacaoServiceTest extends TestCase
         ]);
     }
 
+    public function test_linked_contexts_keep_active_components_outside_functional_filter(): void
+    {
+        [$escola] = $this->criarEscola('Escola Vínculos Atuais');
+        [$user, $professor] = $this->criarProfessor($escola);
+        $serie = Serie::query()->create(['codigo' => 'SER-ATUAIS', 'nome' => 'Infantil 3']);
+        $componenteVinculado = ComponenteCurricular::query()->create(['codigo' => 'COMP-ARTES', 'nome' => 'Artes']);
+        $componenteFuncional = ComponenteCurricular::query()->create(['codigo' => 'COMP-CIENCIAS', 'nome' => 'Ciências']);
+        $serie->componentesCurriculares()->attach([$componenteVinculado->id, $componenteFuncional->id]);
+        $professor->componentesFuncionais()->attach($componenteFuncional->id);
+        $turma = Turma::query()->create([
+            'codigo' => 'TUR-ATUAIS', 'nome' => 'A', 'turno' => 'manha',
+            'id_serie' => $serie->id, 'id_escola' => $escola->id,
+        ]);
+        TurmaComponenteProfessor::query()->create([
+            'turma_id' => $turma->id,
+            'componente_curricular_id' => $componenteVinculado->id,
+            'professor_id' => $professor->id,
+            'tem_professor' => true,
+        ]);
+        $service = app(ProfessorComponenteSolicitacaoService::class);
+
+        $filtrado = $service->contextosDoProfessor($user)->first()['escolas']->first();
+        $completo = $service->contextosDoProfessor($user, false)->first()['escolas']->first();
+
+        $this->assertCount(0, $filtrado['atuais']);
+        $this->assertTrue($completo['atuais']->contains(
+            fn (array $opcao): bool => $opcao['componente']->is($componenteVinculado),
+        ));
+    }
+
     public function test_contexts_are_grouped_by_matricula_and_school_and_request_is_school_scoped(): void
     {
         [$escolaA] = $this->criarEscola('Escola A');
