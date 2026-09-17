@@ -7,6 +7,7 @@
     $gestaoVinculos = $this->getGestaoVinculos();
     $isCoordinator = $this->hasCoordinatorProfile();
     $contextosProfessor = $isProfessor ? $this->getProfessorContexts() : collect();
+    $contextosProfessorVinculados = $isProfessor ? $this->getProfessorLinkedContexts($contextosProfessor) : collect();
     $podeAnalisarSolicitacoes = $this->canReviewProfessorRequests();
     $solicitacoesParaAnalise = $podeAnalisarSolicitacoes && ! app(\App\Services\PessoaScopeService::class)->ehEquipeGestora($user)
         ? $this->getProfessorRequestsForReview()
@@ -141,11 +142,50 @@
         </div>
 
         @if ($isProfessor)
-            <section class="profile-card profile-card--assignments">
-                <div class="profile-card__heading">
+            @if ($contextosProfessorVinculados->isNotEmpty())
+                <section class="profile-card profile-card--assignments profile-card--linked">
+                    <div class="profile-card__heading">
+                        <span class="profile-card__icon"><x-filament::icon icon="heroicon-o-check-badge" /></span>
+                        <div><h2>Minhas turmas e componentes</h2><p>Visualização dos vínculos de professor ativos.</p></div>
+                    </div>
+
+                    <div class="profile-linked-list">
+                        @foreach ($contextosProfessorVinculados as $contexto)
+                            <section class="profile-linked-context">
+                                <h3><x-filament::icon icon="heroicon-o-identification" /> Matrícula {{ $contexto['matricula'] }}</h3>
+                                @foreach ($contexto['escolas'] as $escola)
+                                    <div class="profile-linked-school">
+                                        <h4><x-filament::icon icon="heroicon-o-building-office" /> {{ $escola['nome'] }}</h4>
+                                        @foreach ($escola['series'] as $serie)
+                                            <details class="profile-linked-series">
+                                                <summary><span>{{ $serie['nome'] }}</span><small>{{ $serie['turmas']->count() }} turma{{ $serie['turmas']->count() === 1 ? '' : 's' }}</small><x-filament::icon icon="heroicon-o-chevron-down" /></summary>
+                                                <div>
+                                                    @foreach ($serie['turmas'] as $turma)
+                                                        @foreach ($turma['componentes'] as $opcao)
+                                                            <article class="profile-linked-item">
+                                                                <span class="profile-assignment-item__icon"><x-filament::icon icon="heroicon-o-book-open" /></span>
+                                                                <strong>{{ $opcao['componente']->nome }}</strong>
+                                                                <span>Turma {{ $turma['turma']->nome }} · {{ \App\Models\Professor::TURNOS[$turma['turma']->turno] ?? $turma['turma']->turno }}</span>
+                                                            </article>
+                                                        @endforeach
+                                                    @endforeach
+                                                </div>
+                                            </details>
+                                        @endforeach
+                                    </div>
+                                @endforeach
+                            </section>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
+
+            <details class="profile-card profile-card--assignments profile-card--collapsible">
+                <summary class="profile-card__heading profile-card__heading--collapsible">
                     <span class="profile-card__icon"><x-filament::icon icon="heroicon-o-academic-cap" /></span>
-                    <div><h2>Turmas e componentes</h2><p>Explore as séries da sua escola e solicite um componente, mesmo que já tenha professor.</p></div>
-                </div>
+                    <div><h2>Solicitar acesso a turmas</h2><p>Explore as séries e solicite acesso a um componente, mesmo que já tenha professor.</p></div>
+                    <x-filament::icon class="profile-card__chevron" icon="heroicon-o-chevron-down" />
+                </summary>
 
                 <div x-data="{ matricula: @js($contextosProfessor->first()['chave'] ?? ''), escola: @js($contextosProfessor->first()['escolas']->first()['id'] ?? 0) }">
                     @if ($contextosProfessor->count() > 1)
@@ -220,7 +260,7 @@
                         <div class="profile-assignment-empty">Nenhum vínculo ativo de professor foi encontrado.</div>
                     @endforelse
                 </div>
-            </section>
+            </details>
         @endif
 
         @if ($isCoordinator)
