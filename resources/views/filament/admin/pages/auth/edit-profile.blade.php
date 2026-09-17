@@ -142,14 +142,14 @@
         </div>
 
         @if ($isProfessor)
-            @if ($contextosProfessorVinculados->isNotEmpty())
-                <section class="profile-card profile-card--assignments profile-card--linked">
+            <section class="profile-card profile-card--assignments profile-card--linked">
                     <div class="profile-card__heading">
                         <span class="profile-card__icon"><x-filament::icon icon="heroicon-o-check-badge" /></span>
                         <div><h2>Minhas turmas e componentes</h2><p>Visualização dos vínculos de professor ativos.</p></div>
                     </div>
 
-                    <div class="profile-linked-list">
+                    @if ($contextosProfessorVinculados->isNotEmpty())
+                        <div class="profile-linked-list">
                         @foreach ($contextosProfessorVinculados as $contexto)
                             <section class="profile-linked-context">
                                 <h3><x-filament::icon icon="heroicon-o-identification" /> Matrícula {{ $contexto['matricula'] }}</h3>
@@ -176,9 +176,11 @@
                                 @endforeach
                             </section>
                         @endforeach
-                    </div>
+                        </div>
+                    @else
+                        <div class="profile-assignment-empty">Você não está vinculado a nenhuma turma.</div>
+                    @endif
                 </section>
-            @endif
 
             <details class="profile-card profile-card--assignments profile-card--collapsible">
                 <summary class="profile-card__heading profile-card__heading--collapsible">
