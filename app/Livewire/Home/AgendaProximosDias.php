@@ -126,7 +126,10 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
                 ];
 
                 if ($this->podeVisualizarRede($context->user)) {
-                    $resultados['rede'] = $aggregator->aggregate($this->contextoObrigatorio('rede'));
+                    $resultados['rede'] = $this->filtrarResultadoPor(
+                        $aggregator->aggregate($this->contextoObrigatorio('rede')),
+                        static fn ($evento): bool => ! in_array($evento->categoria, self::CATEGORIAS_MANUTENCAO, true),
+                    );
                 }
 
                 if ($this->podeVisualizarVeiculos($context->user)) {

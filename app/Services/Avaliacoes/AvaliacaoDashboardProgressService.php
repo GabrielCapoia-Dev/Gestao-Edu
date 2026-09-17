@@ -342,14 +342,18 @@ class AvaliacaoDashboardProgressService
         }
 
         foreach ($historicos
-            ->groupBy('ciclo_historico.avaliacao_id', 'turma_historica.id', 'turma_historica.id_escola', 'turma_historica.id_serie')
-            ->selectRaw('ciclo_historico.avaliacao_id, turma_historica.id as turma_id, turma_historica.id_escola as escola_id, turma_historica.id_serie as serie_id')
+            ->groupBy('ciclo_historico.avaliacao_id', 'turma_historica.id', 'turma_historica.id_escola', 'turma_historica.id_serie', 'resumo_historico.componente_curricular_id')
+            ->selectRaw('ciclo_historico.avaliacao_id, turma_historica.id as turma_id, turma_historica.id_escola as escola_id, turma_historica.id_serie as serie_id, COALESCE(resumo_historico.componente_curricular_id, 0) as componente_chave')
             ->selectRaw('SUM(resumo_historico.respostas_esperadas) as total, SUM(resumo_historico.respostas_concluidas) as preenchidas')
             ->get() as $linha) {
             $avaliacaoId = (int) $linha->avaliacao_id;
             $total = (int) $linha->total;
             $preenchidas = min((int) $linha->preenchidas, $total);
-            $this->acumularLinha($resultado[$avaliacaoId], $linha, $preenchidas, $total, (int) $linha->componente_chave);
+            $componenteId = (int) $linha->componente_chave;
+            $this->acumularLinha(
+                $resultado[$avaliacaoId], $linha, $preenchidas, $total, $componenteId,
+                $professorIds !== null || $componenteId === AvaliacaoDashboardTurmaResumoService::TOTAL_COMPONENT_KEY,
+            );
         }
 
         return $this->finalizarResumos($resultado);
