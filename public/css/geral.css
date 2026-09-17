@@ -7677,7 +7677,7 @@ html.dark {
 .profile-page {
     max-width: none;
     margin: 0 auto;
-    padding: clamp(1rem, 2vw, 2rem) clamp(1rem, 2.5vw, 3rem);
+    padding: clamp(1rem, 2vw, 2rem) clamp(1rem, 2.5vw, 3rem) calc(clamp(1rem, 2vw, 2rem) + 5.5rem);
 }
 
 .profile-page__form {
@@ -7912,7 +7912,19 @@ html.dark {
 }
 
 .profile-actions {
-    padding: 1.25rem 0 0;
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 40;
+    display: flex;
+    justify-content: flex-end;
+    gap: .7rem;
+    padding: .75rem max(clamp(1rem, 2.5vw, 3rem), env(safe-area-inset-right)) .75rem max(clamp(1rem, 2.5vw, 3rem), env(safe-area-inset-left));
+    border-top: 1px solid rgba(207, 220, 236, .95);
+    background: rgba(245, 248, 252, .94);
+    box-shadow: 0 -8px 24px rgba(30, 64, 108, .1);
+    backdrop-filter: blur(12px);
 }
 
 @media (max-width: 850px) {
@@ -7934,6 +7946,17 @@ html.dark {
 
     .profile-layout > .profile-card:last-child {
         padding-left: 1.25rem;
+    }
+}
+
+@media (max-width: 560px) {
+    .profile-page {
+        padding-bottom: calc(1rem + 9rem);
+    }
+
+    .profile-actions {
+        padding-top: .65rem;
+        padding-bottom: calc(.65rem + env(safe-area-inset-bottom));
     }
 }
 
