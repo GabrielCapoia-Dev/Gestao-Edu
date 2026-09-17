@@ -345,8 +345,8 @@ class EditProfile extends BaseEditProfile
     public function getProfessorLinkedContexts(SupportCollection $contexts): SupportCollection
     {
         return $contexts->map(function (array $context): array {
-            $escolas = collect($context['escolas'])->map(function (array $escola): array {
-                $series = collect($escola['series'])->map(function (array $serie): array {
+            $escolas = collect($context['escolas'])->map(function (array $escola): ?array {
+                $series = collect($escola['series'])->map(function (array $serie): ?array {
                     $turmas = collect($serie['turmas'])->map(function (array $turma): ?array {
                         $componentes = collect($turma['componentes'])
                             ->filter(fn (array $opcao): bool => $opcao['estado'] === 'meu')

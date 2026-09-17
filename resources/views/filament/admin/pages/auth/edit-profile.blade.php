@@ -99,6 +99,16 @@
                             <span><small>CPF</small><strong>{{ \App\Models\Pessoa::formatarCpf($pessoa?->cpf) }}</strong></span><em>Somente leitura</em>
                         </div>
                     @endif
+                    @if ($gestaoVinculos->isNotEmpty())
+                        <div class="profile-manager-portarias profile-field--full">
+                            <label class="profile-field">
+                                <span>Portaria</span>
+                                <span class="profile-input"><x-filament::icon icon="heroicon-o-document-text" /><input wire:model="data.portaria" type="text" maxlength="255" placeholder="Informe a portaria"></span>
+                                <small>Aplicada aos vínculos ativos de Diretor e Coordenador.</small>
+                                @error('data.portaria')<small class="profile-field-error">{{ $message }}</small>@enderror
+                            </label>
+                        </div>
+                    @endif
                     @if ($isProfessor)
                         <div class="profile-functional-link profile-field--full">
                             <div class="profile-functional-link__field">
@@ -128,16 +138,6 @@
                         <div class="profile-fact"><span><x-filament::icon :icon="$fact['icon']" /></span><div><small>{{ $fact['label'] }}</small><strong>{{ $fact['value'] }}</strong></div></div>
                     @endforeach
                 </div>
-                @if ($gestaoVinculos->isNotEmpty())
-                    <div class="profile-manager-portarias">
-                        <label class="profile-field">
-                            <span>Portaria</span>
-                            <span class="profile-input"><x-filament::icon icon="heroicon-o-document-text" /><input wire:model="data.portaria" type="text" maxlength="255" placeholder="Informe a portaria"></span>
-                            <small>Aplicada aos vínculos ativos de Diretor e Coordenador.</small>
-                            @error('data.portaria')<small class="profile-field-error">{{ $message }}</small>@enderror
-                        </label>
-                    </div>
-                @endif
             </section>
         </div>
 
