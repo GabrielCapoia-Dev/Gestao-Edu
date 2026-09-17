@@ -3596,6 +3596,60 @@
     font-weight: 900;
 }
 
+/* Modal de análise das solicitações: os cards precisam continuar identificáveis
+   quando recolhidos e manter contraste suficiente em telas claras. */
+.professor-request-review-modal .fi-modal-content {
+    background: #f3f7fc;
+}
+
+.professor-request-review-modal .fi-modal-header {
+    background: linear-gradient(135deg, #eef6ff 0%, #ffffff 72%);
+    border-bottom-color: #c6d8ee;
+}
+
+.professor-request-review-modal .fi-modal-heading,
+.professor-request-review-modal .fi-fo-field-wrp-label,
+.professor-request-review-modal .fi-fo-repeater-item-header,
+.professor-request-review-modal .fi-fo-repeater-item-header button {
+    color: #17345d;
+}
+
+.professor-request-review-modal .fi-fo-field-wrp-label {
+    font-weight: 800;
+}
+
+.professor-request-review-modal .fi-fo-field-wrp-helper-text {
+    color: #526b8d;
+}
+
+.professor-request-review-modal .fi-fo-repeater-item {
+    border: 1px solid #aec6e3;
+    border-radius: .75rem;
+    background: #ffffff;
+    box-shadow: 0 3px 10px rgba(28, 71, 120, .12);
+}
+
+.professor-request-review-modal .fi-fo-repeater-item-header {
+    background: #e7f1fd;
+    border-bottom: 1px solid #c4d8ef;
+}
+
+.professor-request-review-modal .fi-fo-repeater-item .fi-fo-repeater-item {
+    background: #f8fbff;
+    border-color: #c8d9ed;
+    box-shadow: none;
+}
+
+.professor-request-review-modal .fi-input-wrp {
+    border-color: #a9c1df;
+    background: #ffffff;
+}
+
+.professor-request-review-modal .fi-input-wrp:focus-within {
+    border-color: #2563c7;
+    box-shadow: 0 0 0 1px #2563c7;
+}
+
 .profile-manager-portarias {
     margin-top: 1.25rem;
     padding-top: 1.25rem;
