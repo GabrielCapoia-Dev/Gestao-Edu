@@ -7,7 +7,7 @@
     $gestaoVinculos = $this->getGestaoVinculos();
     $isCoordinator = $this->hasCoordinatorProfile();
     $contextosProfessor = $isProfessor ? $this->getProfessorContexts() : collect();
-    $contextosProfessorVinculados = $isProfessor ? $this->getProfessorLinkedContexts($contextosProfessor) : collect();
+    $contextosProfessorVinculados = $isProfessor ? $this->getProfessorLinkedContexts() : collect();
     $podeAnalisarSolicitacoes = $this->canReviewProfessorRequests();
     $solicitacoesParaAnalise = $podeAnalisarSolicitacoes && ! app(\App\Services\PessoaScopeService::class)->ehEquipeGestora($user)
         ? $this->getProfessorRequestsForReview()

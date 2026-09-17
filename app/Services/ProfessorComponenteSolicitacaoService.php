@@ -19,7 +19,7 @@ class ProfessorComponenteSolicitacaoService
     public function __construct(private readonly PessoaScopeService $scope) {}
 
     /** @return SupportCollection<int, array<string, mixed>> */
-    public function contextosDoProfessor(User $user): SupportCollection
+    public function contextosDoProfessor(User $user, bool $filtrarComponentesFuncionais = true): SupportCollection
     {
         $professores = $user->professores()
             ->where('ativo', true)
@@ -57,11 +57,13 @@ class ProfessorComponenteSolicitacaoService
                 return [
                     'chave' => $chaveMatricula,
                     'matricula' => $primeiro->professorMatricula?->matricula ?: ($primeiro->matricula ?: 'Não informada'),
-                    'escolas' => $porMatricula->groupBy('id_escola')->map(function (SupportCollection $porEscola, int|string $escolaId) use ($turmas, $vinculosPorTurma, $pendentes): array {
+                    'escolas' => $porMatricula->groupBy('id_escola')->map(function (SupportCollection $porEscola, int|string $escolaId) use ($turmas, $vinculosPorTurma, $pendentes, $filtrarComponentesFuncionais): array {
                         $professor = $porEscola->first();
                         $professorIds = $porEscola->pluck('id');
-                        $componentesFuncionaisIds = $porEscola->flatMap(fn (Professor $item) => $item->componentesFuncionais->pluck('id'))
-                            ->map(fn ($id): int => (int) $id)->unique()->values();
+                        $componentesFuncionaisIds = $filtrarComponentesFuncionais
+                            ? $porEscola->flatMap(fn (Professor $item) => $item->componentesFuncionais->pluck('id'))
+                                ->map(fn ($id): int => (int) $id)->unique()->values()
+                            : collect();
                         $turmasDaEscola = $turmas->where('id_escola', (int) $escolaId);
                         $opcoes = collect();
                         $atuais = collect();
