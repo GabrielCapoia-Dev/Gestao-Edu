@@ -90,6 +90,7 @@
             ></div>
         </section>
 
+    @unless ($evento->enviar_todas_escolas)
     <section class="gi-event-detail__section">
         <header>
             <div>
@@ -102,13 +103,7 @@
         </header>
 
         <div class="gi-event-detail__schools gi-event-detail__schools--management">
-            @if ($evento->enviar_todas_escolas)
-                <div class="gi-event-detail__generic">
-                    <strong>Evento genérico</strong>
-                    <p>Este evento não possui escolas vinculadas e está disponível para todos os usuários autorizados.</p>
-                </div>
-            @else
-                @forelse ($evento->escolasAgendadas as $agendamento)
+            @forelse ($evento->escolasAgendadas as $agendamento)
                     <article class="gi-event-detail__school">
                         <div class="gi-event-detail__school-heading">
                             <strong>{{ $agendamento->escola?->nome ?? 'Escola não informada' }}</strong>
@@ -137,11 +132,12 @@
                     </article>
                 @empty
                     <div class="gi-event-detail__empty">Nenhuma escola vinculada a este evento.</div>
-                @endforelse
-            @endif
+            @endforelse
         </div>
     </section>
+    @endunless
 
+    @unless ($evento->enviar_todas_escolas)
     <section class="gi-event-detail__section">
         <header>
             <div>
@@ -170,4 +166,5 @@
             @endforelse
         </ol>
     </section>
+    @endunless
 </div>

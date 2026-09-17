@@ -1,8 +1,11 @@
 window.eventoDetailMap = ({ latitude, longitude, query }) => ({
     init() {
-        if (!window.L) return;
+        const start = () => {
+            if (!window.L) {
+                setTimeout(start, 150);
+                return;
+            }
 
-        this.$nextTick(() => {
             if (this.$el.dataset.mapReady === 'true') return;
 
             const render = (lat, lng) => {
@@ -15,16 +18,25 @@ window.eventoDetailMap = ({ latitude, longitude, query }) => ({
                 setTimeout(() => map.invalidateSize(), 100);
             };
 
-            if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
-                render(latitude, longitude);
-                return;
-            }
+            render(
+                Number.isFinite(latitude) ? latitude : -23.7658,
+                Number.isFinite(longitude) ? longitude : -53.3250,
+            );
+
+            if (Number.isFinite(latitude) && Number.isFinite(longitude)) return;
 
             fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=br&q=${encodeURIComponent(`${query}, Umuarama, Paraná`)}`, {
                 headers: { Accept: 'application/json' },
             }).then((response) => response.json()).then((items) => {
-                if (items[0]) render(Number(items[0].lat), Number(items[0].lon));
+                if (!items[0]) return;
+                const lat = Number(items[0].lat);
+                const lng = Number(items[0].lon);
+                this.$el.dataset.mapReady = 'false';
+                this.$el.replaceChildren();
+                render(lat, lng);
             });
-        });
+        };
+
+        this.$nextTick(start);
     },
 });
