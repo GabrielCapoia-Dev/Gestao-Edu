@@ -18,7 +18,6 @@
         ['label' => 'Portaria', 'value' => $detalhes['portaria'], 'icon' => 'heroicon-o-document-text', 'visible' => filled($detalhes['portaria'])],
     ])->where('visible', true)->values()->all();
 
-    $temAcesso = is_array($detalhes['acesso']);
     $temPedagogico = is_array($detalhes['pedagogico']);
 @endphp
 
@@ -130,19 +129,6 @@
             <x-filament::icon icon="heroicon-o-identification" />
             Vínculos e lotações
         </button>
-
-        @if ($temAcesso)
-            <button
-                type="button"
-                role="tab"
-                x-on:click="tab = 'acesso'"
-                x-bind:aria-selected="tab === 'acesso'"
-                x-bind:class="{ 'is-active': tab === 'acesso' }"
-            >
-                <x-filament::icon icon="heroicon-o-shield-check" />
-                Acesso ao sistema
-            </button>
-        @endif
 
         @if ($temPedagogico)
             <button
@@ -315,86 +301,6 @@
                 @endif
             </div>
         </section>
-
-        @if ($temAcesso)
-            <section
-                class="pessoa-custom-view__panel"
-                role="tabpanel"
-                x-show="tab === 'acesso'"
-                x-cloak
-                x-transition.opacity.duration.150ms
-            >
-                <article class="pessoa-custom-view__card">
-                    <header>
-                        <span class="pessoa-custom-view__card-icon">
-                            <x-filament::icon icon="heroicon-o-shield-check" />
-                        </span>
-                        <div>
-                            <h3>Acesso ao sistema</h3>
-                            <p>Conta, aprovação, perfis e últimas atividades.</p>
-                        </div>
-                        <span class="pessoa-custom-view__badge pessoa-custom-view__badge--{{ $detalhes['acesso']['tone'] }}">
-                            <span class="pessoa-custom-view__status-dot"></span>
-                            {{ $detalhes['acesso']['status'] }}
-                        </span>
-                    </header>
-
-                    @if ($detalhes['acesso']['possui_conta'])
-                        <dl class="pessoa-custom-view__details-grid pessoa-custom-view__details-grid--access">
-                            <div>
-                                <dt>Nome da conta</dt>
-                                <dd>{{ $detalhes['acesso']['nome'] }}</dd>
-                            </div>
-                            <div>
-                                <dt>E-mail de acesso</dt>
-                                <dd>{{ $detalhes['acesso']['email'] }}</dd>
-                            </div>
-                            <div>
-                                <dt>E-mail aprovado</dt>
-                                <dd>{{ $detalhes['acesso']['email_aprovado'] }}</dd>
-                            </div>
-                            <div>
-                                <dt>E-mail verificado</dt>
-                                <dd>{{ $detalhes['acesso']['email_verificado'] }}</dd>
-                            </div>
-                            <div>
-                                <dt>Troca de senha</dt>
-                                <dd>{{ $detalhes['acesso']['troca_senha'] }}</dd>
-                            </div>
-                            <div>
-                                <dt>Escola da conta</dt>
-                                <dd>{{ $detalhes['acesso']['escola'] }}</dd>
-                            </div>
-                            <div>
-                                <dt>Último login</dt>
-                                <dd>{{ $detalhes['acesso']['ultimo_login'] }}</dd>
-                            </div>
-                            <div>
-                                <dt>Última atividade</dt>
-                                <dd>{{ $detalhes['acesso']['ultima_atividade'] }}</dd>
-                            </div>
-                        </dl>
-
-                        <div class="pessoa-custom-view__roles">
-                            <small>Níveis de acesso</small>
-                            <div>
-                                @forelse ($detalhes['acesso']['perfis'] as $perfil)
-                                    <span>{{ $perfil }}</span>
-                                @empty
-                                    <span class="is-empty">Nenhum nível de acesso atribuído</span>
-                                @endforelse
-                            </div>
-                        </div>
-                    @else
-                        <div class="pessoa-custom-view__empty pessoa-custom-view__empty--large">
-                            <x-filament::icon icon="heroicon-o-user-minus" />
-                            <strong>Esta pessoa ainda não possui uma conta vinculada</strong>
-                            <span>O cadastro funcional existe, mas não há credencial de acesso ao sistema.</span>
-                        </div>
-                    @endif
-                </article>
-            </section>
-        @endif
 
         @if ($temPedagogico)
             <section

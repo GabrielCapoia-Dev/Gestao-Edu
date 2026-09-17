@@ -99,6 +99,13 @@
                             <span><small>CPF</small><strong>{{ \App\Models\Pessoa::formatarCpf($pessoa?->cpf) }}</strong></span><em>Somente leitura</em>
                         </div>
                     @endif
+                    @if ($pessoa)
+                        <label class="profile-field profile-field--full">
+                            <span>Telefone</span>
+                            <span class="profile-input"><x-filament::icon icon="heroicon-o-phone" /><input wire:model="data.telefone" x-mask="(99) 99999-9999" type="tel" inputmode="numeric" maxlength="15" pattern="\(\d{2}\) \d{5}-\d{4}" autocomplete="tel" placeholder="(44) 99999-9999" required></span>
+                            @error('data.telefone')<small class="profile-field-error">{{ $message }}</small>@enderror
+                        </label>
+                    @endif
                     @if ($gestaoVinculos->isNotEmpty())
                         <div class="profile-manager-portarias profile-field--full">
                             <label class="profile-field">
