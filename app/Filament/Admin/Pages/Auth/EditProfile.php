@@ -341,6 +341,32 @@ class EditProfile extends BaseEditProfile
         return app(ProfessorComponenteSolicitacaoService::class)->contextosDoProfessor($this->getUser());
     }
 
+    /** @return SupportCollection<int, array<string, mixed>> */
+    public function getProfessorLinkedContexts(SupportCollection $contexts): SupportCollection
+    {
+        return $contexts->map(function (array $context): array {
+            $escolas = collect($context['escolas'])->map(function (array $escola): array {
+                $series = collect($escola['series'])->map(function (array $serie): array {
+                    $turmas = collect($serie['turmas'])->map(function (array $turma): ?array {
+                        $componentes = collect($turma['componentes'])
+                            ->filter(fn (array $opcao): bool => $opcao['estado'] === 'meu')
+                            ->values();
+
+                        return $componentes->isEmpty()
+                            ? null
+                            : [...$turma, 'componentes' => $componentes];
+                    })->filter()->values();
+
+                    return $turmas->isEmpty() ? null : [...$serie, 'turmas' => $turmas];
+                })->filter()->values();
+
+                return $series->isEmpty() ? null : [...$escola, 'series' => $series];
+            })->filter()->values();
+
+            return [...$context, 'escolas' => $escolas];
+        })->filter(fn (array $context): bool => $context['escolas']->isNotEmpty())->values();
+    }
+
     public function canReviewProfessorRequests(): bool
     {
         return app(ProfessorComponenteSolicitacaoService::class)->podeAnalisar($this->getUser());
