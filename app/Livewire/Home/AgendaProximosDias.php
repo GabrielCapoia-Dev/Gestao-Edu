@@ -8,10 +8,12 @@ use App\Models\EventoCalendario;
 use App\Models\User;
 use App\Services\Dashboard\Calendar\CalendarEventAggregator;
 use App\Services\Dashboard\DashboardUserContextFactory;
+use App\Services\Dashboard\EventoCalendarioListQueryService;
 use App\Services\ProfilePreviewService;
 use App\Support\Dashboard\Calendar\CalendarAggregationResult;
 use App\Support\Dashboard\Calendar\CalendarQueryContext;
 use Carbon\CarbonImmutable;
+use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
 use Filament\Actions\CreateAction;
@@ -103,6 +105,26 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
             'novoEvento',
             app(ProfilePreviewService::class)->effectiveUser(),
         );
+    }
+
+    public function abrirEventoAction(): Action
+    {
+        return Action::make('abrirEvento')
+            ->label('Abrir evento')
+            ->modalHeading(fn (array $arguments): string => $arguments['titulo'] ?? 'Detalhes do evento')
+            ->modalWidth('6xl')
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Fechar')
+            ->modalContent(function (array $arguments): View {
+                $user = app(ProfilePreviewService::class)->effectiveUser();
+                abort_unless($user && ($arguments['source'] ?? null) === 'manual', 403);
+                $id = (int) explode('@', (string) ($arguments['reference'] ?? ''), 2)[0];
+                abort_unless($id > 0, 404);
+
+                return view('filament.admin.pages.partials.evento-calendario-detalhes', [
+                    'evento' => app(EventoCalendarioListQueryService::class)->detalhes($user, $id),
+                ]);
+            });
     }
 
     public function render(): View

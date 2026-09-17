@@ -63,6 +63,24 @@
         @endif
     </dl>
 
+    @if (filled($evento->latitude) && filled($evento->longitude))
+        <section class="gi-event-detail__section">
+            <header>
+                <div>
+                    <p class="gi-eyebrow">Localização</p>
+                    <h3>Local do evento</h3>
+                </div>
+            </header>
+            <div
+                class="gi-event-detail__map"
+                data-evento-detail-map
+                data-latitude="{{ $evento->latitude }}"
+                data-longitude="{{ $evento->longitude }}"
+                aria-label="Mapa do local do evento"
+            ></div>
+        </section>
+    @endif
+
     <section class="gi-event-detail__section">
         <header>
             <div>
