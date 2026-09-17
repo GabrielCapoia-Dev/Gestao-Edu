@@ -180,8 +180,8 @@
                     @endif
                 </section>
 
-            <details class="profile-card profile-card--assignments profile-card--collapsible">
-                <summary class="profile-card__heading profile-card__heading--collapsible">
+            <details class="profile-card profile-card--assignments profile-card--collapsible" x-data="{ aberto: true }" x-bind:open="aberto">
+                <summary class="profile-card__heading profile-card__heading--collapsible" x-on:click.prevent="aberto = !aberto">
                     <span class="profile-card__icon"><x-filament::icon icon="heroicon-o-academic-cap" /></span>
                     <div><h2>Solicitar acesso a turmas</h2><p>Explore as séries e solicite acesso a um componente, mesmo que já tenha professor.</p></div>
                     <x-filament::icon class="profile-card__chevron" icon="heroicon-o-chevron-down" />

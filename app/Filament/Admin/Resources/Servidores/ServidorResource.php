@@ -544,45 +544,95 @@ class ServidorResource extends Resource
                         ->color('warning')
                         ->visible(fn (Servidor $record): bool => (int) $record->solicitacoes_pendentes_count > 0
                             && app(ProfessorComponenteSolicitacaoService::class)->podeAnalisar(Auth::user()))
-                        ->modalWidth('3xl')
+                        ->modalWidth('5xl')
                         ->modalHeading(fn (Servidor $record): string => "Solicitações de {$record->nome}")
                         ->modalDescription('Confirme ou recuse cada turma e componente solicitado pelo professor.')
                         ->modalSubmitActionLabel('Salvar decisões')
                         ->schema(function (Servidor $record): array {
                             $solicitacoes = app(ProfessorComponenteSolicitacaoService::class)
                                 ->solicitacoesParaAnaliseDoServidor(Auth::user(), $record->getKey());
+                            $turmas = $solicitacoes
+                                ->groupBy(fn (ProfessorComponenteSolicitacao $solicitacao): string => (string) ($solicitacao->vinculo?->turma_id ?: 'solicitacao-'.$solicitacao->getKey()))
+                                ->map(function ($solicitacoesDaTurma): array {
+                                    $primeira = $solicitacoesDaTurma->first();
+
+                                    return [
+                                        'turma_descricao' => collect([
+                                            $primeira?->vinculo?->turma?->serie?->nome,
+                                            'Turma '.$primeira?->vinculo?->turma?->nome,
+                                            $primeira?->vinculo?->turma?->escola?->nome,
+                                        ])->filter()->implode(' · '),
+                                        'decisao_turma' => 'pendente',
+                                        'componentes' => $solicitacoesDaTurma->map(fn (ProfessorComponenteSolicitacao $solicitacao): array => [
+                                            'solicitacao_id' => $solicitacao->getKey(),
+                                            'descricao' => collect([
+                                                $solicitacao->vinculo?->componente?->nome,
+                                                $solicitacao->vinculo?->professor_id
+                                                    ? 'Substitui '.($solicitacao->vinculo->professor?->nomeCanonico() ?: 'professor atual')
+                                                    : 'Sem professor vinculado',
+                                            ])->filter()->implode(' · '),
+                                            'decisao' => 'pendente',
+                                        ])->values()->all(),
+                                    ];
+                                })->values()->all();
 
                             return [
-                                Repeater::make('decisoes')
-                                    ->label('Turmas e componentes pendentes')
-                                    ->default($solicitacoes->map(fn (ProfessorComponenteSolicitacao $solicitacao): array => [
-                                        'solicitacao_id' => $solicitacao->getKey(),
-                                        'descricao' => collect([
-                                            $solicitacao->vinculo?->turma?->serie?->nome,
-                                            'Turma '.$solicitacao->vinculo?->turma?->nome,
-                                            $solicitacao->vinculo?->componente?->nome,
-                                            $solicitacao->vinculo?->turma?->escola?->nome,
-                                        ])->filter()->implode(' · '),
-                                        'decisao' => 'pendente',
-                                    ])->values()->all())
+                                Select::make('decisao_geral')
+                                    ->label('Decisão em massa')
+                                    ->options([
+                                        'pendente' => 'Decidir individualmente',
+                                        'aprovar' => 'Aprovar todas as solicitações',
+                                        'recusar' => 'Recusar todas as solicitações',
+                                    ])
+                                    ->default('pendente')
+                                    ->helperText('Use esta opção para aplicar a mesma decisão em todas as turmas deste professor.')
+                                    ->required(),
+                                Repeater::make('turmas')
+                                    ->label('Turmas pendentes')
+                                    ->default($turmas)
                                     ->schema([
-                                        Textarea::make('descricao')
-                                            ->label('Solicitação')
+                                        Textarea::make('turma_descricao')
+                                            ->label('Turma')
                                             ->disabled()
                                             ->dehydrated(false)
-                                            ->rows(3)
+                                            ->rows(2)
                                             ->columnSpan(2),
-                                        Hidden::make('solicitacao_id'),
-                                        Select::make('decisao')
-                                            ->label('Decisão')
+                                        Select::make('decisao_turma')
+                                            ->label('Decisão da turma')
                                             ->options([
-                                                'pendente' => 'Não decidir agora',
-                                                'aprovar' => 'Aprovar vínculo',
-                                                'recusar' => 'Recusar solicitação',
+                                                'pendente' => 'Decidir componentes',
+                                                'aprovar' => 'Aprovar turma inteira',
+                                                'recusar' => 'Recusar turma inteira',
                                             ])
                                             ->required(),
+                                        Repeater::make('componentes')
+                                            ->label('Componentes solicitados')
+                                            ->schema([
+                                                Textarea::make('descricao')
+                                                    ->label('Componente')
+                                                    ->disabled()
+                                                    ->dehydrated(false)
+                                                    ->rows(2)
+                                                    ->columnSpan(2),
+                                                Hidden::make('solicitacao_id'),
+                                                Select::make('decisao')
+                                                    ->label('Decisão')
+                                                    ->options([
+                                                        'pendente' => 'Não decidir agora',
+                                                        'aprovar' => 'Aprovar componente',
+                                                        'recusar' => 'Recusar componente',
+                                                    ])
+                                                    ->required(),
+                                            ])
+                                            ->columns(3)
+                                            ->columnSpanFull()
+                                            ->addable(false)
+                                            ->deletable(false)
+                                            ->reorderable(false),
                                     ])
                                     ->columns(3)
+                                    ->collapsible()
+                                    ->itemLabel(fn (array $state): ?string => $state['turma_descricao'] ?? null)
                                     ->addable(false)
                                     ->deletable(false)
                                     ->reorderable(false),
@@ -591,28 +641,35 @@ class ServidorResource extends Resource
                         ->action(function (Servidor $record, array $data): void {
                             $service = app(ProfessorComponenteSolicitacaoService::class);
                             $processadas = 0;
+                            $decisaoGeral = $data['decisao_geral'] ?? 'pendente';
 
-                            foreach ($data['decisoes'] ?? [] as $decisao) {
-                                $solicitacaoId = (int) ($decisao['solicitacao_id'] ?? 0);
-                                $tipo = $decisao['decisao'] ?? 'pendente';
+                            foreach ($data['turmas'] ?? [] as $turma) {
+                                $decisaoTurma = $turma['decisao_turma'] ?? 'pendente';
 
-                                if (! $solicitacaoId || ! in_array($tipo, ['aprovar', 'recusar'], true)) {
-                                    continue;
+                                foreach ($turma['componentes'] ?? [] as $componente) {
+                                    $solicitacaoId = (int) ($componente['solicitacao_id'] ?? 0);
+                                    $tipo = $decisaoGeral !== 'pendente'
+                                        ? $decisaoGeral
+                                        : ($decisaoTurma !== 'pendente' ? $decisaoTurma : ($componente['decisao'] ?? 'pendente'));
+
+                                    if (! $solicitacaoId || ! in_array($tipo, ['aprovar', 'recusar'], true)) {
+                                        continue;
+                                    }
+
+                                    $solicitacao = ProfessorComponenteSolicitacao::query()
+                                        ->whereKey($solicitacaoId)
+                                        ->where('status', ProfessorComponenteSolicitacao::STATUS_PENDENTE)
+                                        ->first();
+
+                                    if (! $solicitacao) {
+                                        continue;
+                                    }
+
+                                    $tipo === 'aprovar'
+                                        ? $service->aprovar(Auth::user(), $solicitacaoId)
+                                        : $service->rejeitar(Auth::user(), $solicitacaoId);
+                                    $processadas++;
                                 }
-
-                                $solicitacao = ProfessorComponenteSolicitacao::query()
-                                    ->whereKey($solicitacaoId)
-                                    ->where('status', ProfessorComponenteSolicitacao::STATUS_PENDENTE)
-                                    ->first();
-
-                                if (! $solicitacao) {
-                                    continue;
-                                }
-
-                                $tipo === 'aprovar'
-                                    ? $service->aprovar(Auth::user(), $solicitacaoId)
-                                    : $service->rejeitar(Auth::user(), $solicitacaoId);
-                                $processadas++;
                             }
 
                             Notification::make()
