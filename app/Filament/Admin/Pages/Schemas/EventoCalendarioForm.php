@@ -21,6 +21,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ViewField;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -72,13 +73,39 @@ class EventoCalendarioForm
                         ->placeholder('Ex.: Centro de Formação Municipal')
                         ->maxLength(255)
                         ->columnSpanFull(),
+                    TextInput::make('latitude')->hidden()->dehydrated(),
+                    TextInput::make('longitude')->hidden()->dehydrated(),
+                    ViewField::make('mapa_local')
+                        ->label('Localização no mapa')
+                        ->view('filament.admin.pages.fields.evento-local-map')
+                        ->dehydrated(false)
+                        ->columnSpanFull(),
                     Select::make('categoria')
                         ->label('Categoria')
-                        ->options(collect(EventoCalendarioCategoria::cases())->mapWithKeys(
+                        ->options(collect([
+                            EventoCalendarioCategoria::PEDAGOGICO,
+                            EventoCalendarioCategoria::RH,
+                            EventoCalendarioCategoria::DOCUMENTACAO_ESCOLAR,
+                            EventoCalendarioCategoria::EDUCACAO_ESPECIAL,
+                            EventoCalendarioCategoria::EDUCACAO_INFANTIL,
+                            EventoCalendarioCategoria::AGE,
+                            EventoCalendarioCategoria::ADMINISTRATIVO,
+                            EventoCalendarioCategoria::PALESTRA,
+                            EventoCalendarioCategoria::CURSO,
+                            EventoCalendarioCategoria::PREMIACAO,
+                            EventoCalendarioCategoria::OUTRO,
+                        ])->mapWithKeys(
                             fn ($item): array => [$item->value => $item->label()],
                         )->all())
                         ->required()
+                        ->live()
                         ->native(false),
+                    TextInput::make('categoria_detalhe')
+                        ->label('Qual é a categoria?')
+                        ->placeholder('Descreva a categoria deste evento')
+                        ->maxLength(160)
+                        ->required(fn (Get $get): bool => $get('categoria') === EventoCalendarioCategoria::OUTRO->value)
+                        ->visible(fn (Get $get): bool => $get('categoria') === EventoCalendarioCategoria::OUTRO->value),
                     DatePicker::make('data_evento')
                         ->label('Data do evento')
                         ->required()
@@ -143,15 +170,6 @@ class EventoCalendarioForm
                         'md' => 2,
                     ])
                         ->schema([
-                            Toggle::make('inserir_link')
-                                ->label('Inserir link?')
-                                ->live()
-                                ->afterStateUpdated(function (bool $state, Set $set): void {
-                                    if (! $state) {
-                                        $set('link_acao', null);
-                                        $set('texto_botao', null);
-                                    }
-                                }),
                             Toggle::make('enviar_escolas_especificas')
                                 ->label('Enviar para escolas específicas')
                                 ->helperText('Desmarcado, o evento será enviado para todas as escolas do seu escopo.')
@@ -174,12 +192,10 @@ class EventoCalendarioForm
             Section::make('Link de ação')
                 ->columns(2)
                 ->columnSpanFull()
-                ->visible(fn (Get $get): bool => (bool) $get('inserir_link'))
                 ->schema([
                     TextInput::make('link_acao')
                         ->label('Link de ação')
-                        ->placeholder('https://... ou /admin/...')
-                        ->required(fn (Get $get): bool => (bool) $get('inserir_link'))
+                        ->placeholder('https://exemplo.gov.br/...')
                         ->maxLength(2048)
                         ->rule(static function (): Closure {
                             return static function (string $attribute, mixed $value, Closure $fail): void {
@@ -188,17 +204,17 @@ class EventoCalendarioForm
                                 }
 
                                 $link = trim((string) $value);
-                                $relativo = str_starts_with($link, '/') && ! str_starts_with($link, '//');
                                 $protocolo = strtolower((string) parse_url($link, PHP_URL_SCHEME));
 
-                                if (! $relativo && ! in_array($protocolo, ['http', 'https'], true)) {
-                                    $fail('Informe uma URL HTTP(S) ou um caminho interno iniciado por /.');
+                                if ($protocolo !== 'https') {
+                                    $fail('Informe um link iniciado por https://.');
                                 }
                             };
                         })
                         ->columnSpanFull(),
                     TextInput::make('texto_botao')
                         ->label('Texto do botão')
+                        ->required(fn (Get $get): bool => filled($get('link_acao')))
                         ->maxLength(80),
                 ]),
 
@@ -418,7 +434,9 @@ class EventoCalendarioForm
             'hora_inicio' => $inicio,
             'hora_fim' => $fim,
             'periodo' => self::periodoCorrespondente($inicio, $fim),
-            'inserir_link' => filled($evento->link_acao),
+            'categoria_detalhe' => $evento->categoria_detalhe,
+            'latitude' => $evento->latitude,
+            'longitude' => $evento->longitude,
             'enviar_escolas_especificas' => ! $evento->enviar_todas_escolas,
             'escolas_agendadas' => app(EventoCalendarioEscolaService::class)->paraFormulario($evento),
             'selecionar_todas_escolas_filtro' => false,

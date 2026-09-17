@@ -47,7 +47,9 @@
         </div>
         <div>
             <dt>Categoria</dt>
-            <dd>{{ $evento->categoria?->label() ?? 'Não informada' }}</dd>
+            <dd>{{ $evento->categoria === \App\Models\Enums\EventoCalendarioCategoria::OUTRO && filled($evento->categoria_detalhe)
+                ? $evento->categoria_detalhe
+                : ($evento->categoria?->label() ?? 'Não informada') }}</dd>
         </div>
         <div>
             <dt>Local</dt>
