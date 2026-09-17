@@ -302,6 +302,21 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
             ->values();
     }
 
+    /** @return array{preenchidas: int, total: int, percentual: int} */
+    public function progressoDoComponenteNaTurma(int $turmaId, int $componenteId): array
+    {
+        $pautas = $this->gruposPorComponenteDaTurma($turmaId)
+            ->first(fn ($grupo): bool => (int) $grupo['componente_id'] === $componenteId)['pautas'] ?? collect();
+        $preenchidas = $pautas->sum(fn ($pauta): int => (int) ($this->progressoPorPauta[$turmaId][$pauta->id]['preenchidas'] ?? 0));
+        $total = $pautas->sum(fn ($pauta): int => (int) ($this->progressoPorPauta[$turmaId][$pauta->id]['total'] ?? 0));
+
+        return [
+            'preenchidas' => $preenchidas,
+            'total' => $total,
+            'percentual' => $total > 0 ? min(100, (int) round(($preenchidas / $total) * 100)) : 0,
+        ];
+    }
+
     public function carregarProgressoAvaliacoesProfessor(): void
     {
         if ($this->progressoAvaliacoesProfessorPronto || $this->avaliacao) {

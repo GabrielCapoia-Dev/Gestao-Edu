@@ -146,7 +146,7 @@
                                 </div>
                                 <div class="av-professor-component-grid">
                                     @forelse ($componentesTurma as $grupo)
-                                        @php($progressoComponente = $progressoNavegacao['componentes_por_turma'][$turmaIdAtual][(int) $grupo['componente_id']] ?? ['preenchidas' => 0, 'total' => 0, 'percentual' => 0])
+                                        @php($progressoComponente = $this->progressoDoComponenteNaTurma($turmaIdAtual, (int) $grupo['componente_id']))
                                         <button type="button" class="av-professor-component-card" wire:click="abrirComponente({{ $turmaIdAtual }}, {{ $grupo['componente_id'] }})">
                                             <span class="av-professor-component-card__name">{{ $grupo['componente_nome'] }}</span>
                                             <span class="av-professor-component-card__teacher">{{ $grupo['professor_nome'] }}</span>
