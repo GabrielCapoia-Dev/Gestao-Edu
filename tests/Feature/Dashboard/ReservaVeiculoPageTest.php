@@ -65,7 +65,7 @@ class ReservaVeiculoPageTest extends TestCase
                 'hora_inicio' => '09:00',
                 'hora_fim' => '11:00',
                 'tipo_local' => 'escola',
-                'escola_id' => $escola->id,
+                'escola_ids' => [$escola->id],
                 'local_outro' => null,
                 'atividade' => 'Acompanhamento no CMEI',
                 'veiculo_transporte_id' => $veiculo->id,

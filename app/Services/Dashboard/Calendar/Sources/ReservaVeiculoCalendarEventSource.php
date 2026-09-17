@@ -36,6 +36,7 @@ class ReservaVeiculoCalendarEventSource implements CalendarEventSource
                 'veiculo:id,placa,identificacao,cor',
                 'usuario:id,name',
                 'escola:id,nome',
+                'escolas:id,nome',
             ])
             ->orderBy('data_inicio')
             ->limit(max(1, (int) config('dashboard.calendar.max_events', 500)) + 1)
@@ -90,12 +91,15 @@ class ReservaVeiculoCalendarEventSource implements CalendarEventSource
             $visiveis->where('usuario_id', $context->user->id);
 
             if ($context->userContext->escolaIds !== []) {
-                $visiveis->orWhereIn('escola_id', $context->userContext->escolaIds);
+                $visiveis->orWhereHas('escolas', fn (Builder $escolas): Builder => $escolas->whereIn('escolas.id', $context->userContext->escolaIds));
             }
         });
 
         if ($context->escolaId) {
-            $query->where('escola_id', $context->escolaId);
+            $query->where(function (Builder $q) use ($context): void {
+                $q->where('escola_id', $context->escolaId)
+                    ->orWhereHas('escolas', fn (Builder $escolas): Builder => $escolas->whereKey($context->escolaId));
+            });
         }
 
         return $query;

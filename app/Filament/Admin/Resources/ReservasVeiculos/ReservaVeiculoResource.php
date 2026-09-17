@@ -42,6 +42,7 @@ class ReservaVeiculoResource extends Resource
             'veiculo:id,placa,identificacao,cor,ativo',
             'usuario:id,name,email',
             'escola:id,nome',
+            'escolas:id,nome',
             'canceladoPor:id,name',
         ]);
     }

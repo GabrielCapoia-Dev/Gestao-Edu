@@ -351,11 +351,15 @@ class AvaliacaoDashboardProgressService
 
     private function acumularLinha(array &$resumo, object $linha, int $preenchidas, int $total, ?int $componenteId = null): void
     {
-        $this->acumularResumo($resumo, 'turmas', (int) $linha->turma_id, $preenchidas, $total);
+        $turmaId = (int) $linha->turma_id;
+        $this->acumularResumo($resumo, 'turmas', $turmaId, $preenchidas, $total);
         $this->acumularResumo($resumo, 'series', (int) $linha->serie_id, $preenchidas, $total);
         $this->acumularResumo($resumo, 'escolas', (int) $linha->escola_id, $preenchidas, $total);
         if ($componenteId !== null && $componenteId !== AvaliacaoDashboardTurmaResumoService::TOTAL_COMPONENT_KEY) {
             $this->acumularResumo($resumo, 'componentes', $componenteId, $preenchidas, $total);
+            $resumo['componentes_por_turma'][$turmaId][$componenteId] ??= ['preenchidas' => 0, 'total' => 0, 'percentual' => 0];
+            $resumo['componentes_por_turma'][$turmaId][$componenteId]['preenchidas'] += $preenchidas;
+            $resumo['componentes_por_turma'][$turmaId][$componenteId]['total'] += $total;
         }
         $resumo['preenchidas'] += $preenchidas;
         $resumo['total'] += $total;
@@ -371,6 +375,13 @@ class AvaliacaoDashboardProgressService
                 }
                 unset($item);
             }
+            foreach ($resumo['componentes_por_turma'] as &$componentes) {
+                foreach ($componentes as &$item) {
+                    $item['percentual'] = $this->percentual($item['preenchidas'], $item['total']);
+                }
+                unset($item);
+            }
+            unset($componentes);
         }
         unset($resumo);
 
@@ -379,7 +390,7 @@ class AvaliacaoDashboardProgressService
 
     private function resumoVazio(): array
     {
-        return ['preenchidas' => 0, 'total' => 0, 'percentual' => 0, 'escolas' => [], 'series' => [], 'turmas' => [], 'componentes' => []];
+        return ['preenchidas' => 0, 'total' => 0, 'percentual' => 0, 'escolas' => [], 'series' => [], 'turmas' => [], 'componentes' => [], 'componentes_por_turma' => []];
     }
 
     private function acumularResumo(array &$resumo, string $nivel, int $id, int $preenchidas, int $total): void

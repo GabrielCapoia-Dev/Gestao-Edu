@@ -28,6 +28,7 @@ class ReservaVeiculoService
                 'veiculo:id,placa,identificacao,ativo',
                 'usuario:id,name,email',
                 'escola:id,nome',
+                'escolas:id,nome',
                 'canceladoPor:id,name',
             ])
             ->orderByDesc('data_inicio');
@@ -52,10 +53,11 @@ class ReservaVeiculoService
                 ->findOrFail($dados['veiculo_transporte_id']);
 
             $this->validarDisponibilidade($veiculo->id, $periodos);
-            [$escolaId, $localNome] = $this->resolverLocal($dados);
+            [$escolaId, $localNome, $escolaIds] = $this->resolverLocal($dados);
             $grupo = count($periodos) > 1 ? (string) Str::uuid() : null;
 
-            return collect($periodos)->map(fn (array $periodo): ReservaVeiculo => ReservaVeiculo::query()->create([
+            return collect($periodos)->map(function (array $periodo) use ($escolaId, $localNome, $escolaIds, $ator, $dados, $veiculo, $grupo): ReservaVeiculo {
+                $reserva = ReservaVeiculo::query()->create([
                 'veiculo_transporte_id' => $veiculo->id,
                 'usuario_id' => $ator->id,
                 'escola_id' => $escolaId,
@@ -67,7 +69,12 @@ class ReservaVeiculoService
                 'grupo_recorrencia' => $grupo,
                 'criado_por_id' => $ator->id,
                 'atualizado_por_id' => $ator->id,
-            ]));
+                ]);
+                if ($escolaIds !== []) {
+                    $reserva->escolas()->sync($escolaIds);
+                }
+                return $reserva;
+            });
         });
     }
 
@@ -100,7 +107,7 @@ class ReservaVeiculoService
             }
 
             $this->validarDisponibilidade($veiculo->id, $periodo, $reserva->id);
-            [$escolaId, $localNome] = $this->resolverLocal($dados);
+            [$escolaId, $localNome, $escolaIds] = $this->resolverLocal($dados);
 
             $reserva->fill([
                 'veiculo_transporte_id' => $veiculo->id,
@@ -111,6 +118,7 @@ class ReservaVeiculoService
                 'data_fim' => $periodo[0]['fim'],
                 'atualizado_por_id' => $ator->id,
             ])->save();
+            $reserva->escolas()->sync($escolaIds);
 
             return $reserva->fresh(['veiculo', 'usuario', 'escola']);
         });
@@ -207,6 +215,10 @@ class ReservaVeiculoService
     /** @return array<string, mixed> */
     private function validarCriacao(array $dados): array
     {
+        if (! array_key_exists('escola_ids', $dados) && array_key_exists('escola_id', $dados)) {
+            $dados['escola_ids'] = $dados['escola_id'] ? [$dados['escola_id']] : null;
+        }
+
         $validados = validator($dados, [
             'data_inicial' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'reservar_varios_dias' => ['required', 'boolean'],
@@ -231,6 +243,10 @@ class ReservaVeiculoService
     /** @return array<string, mixed> */
     private function validarEdicao(array $dados): array
     {
+        if (! array_key_exists('escola_ids', $dados) && array_key_exists('escola_id', $dados)) {
+            $dados['escola_ids'] = $dados['escola_id'] ? [$dados['escola_id']] : null;
+        }
+
         return validator($dados, [
             'data' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             ...$this->regrasComuns(),
@@ -245,7 +261,9 @@ class ReservaVeiculoService
             'hora_fim' => ['required', 'date_format:H:i', 'after:hora_inicio'],
             'atividade' => ['required', 'string', 'max:500'],
             'tipo_local' => ['required', Rule::in(['escola', 'outros'])],
-            'escola_id' => ['nullable', 'required_if:tipo_local,escola', 'integer', 'exists:escolas,id'],
+            'escola_ids' => ['nullable', 'required_if:tipo_local,escola', 'array', 'min:1'],
+            'escola_ids.*' => ['integer', 'exists:escolas,id'],
+            'escola_id' => ['nullable', 'integer', 'exists:escolas,id'],
             'local_outro' => ['nullable', 'required_if:tipo_local,outros', 'string', 'max:255'],
             'veiculo_transporte_id' => [
                 'required',
@@ -263,7 +281,7 @@ class ReservaVeiculoService
             'data_final.required' => 'Informe a data final do intervalo.',
             'data_final.after_or_equal' => 'A data final deve ser igual ou posterior à data inicial.',
             'hora_fim.after' => 'O horário final deve ser posterior ao horário inicial.',
-            'escola_id.required_if' => 'Selecione a escola ou o CMEI de destino.',
+            'escola_ids.required_if' => 'Selecione ao menos uma escola ou CMEI de destino.',
             'local_outro.required_if' => 'Informe o local da atividade.',
             'veiculo_transporte_id.exists' => 'O veículo selecionado não está disponível para reserva.',
         ];
@@ -379,23 +397,24 @@ class ReservaVeiculoService
         }
     }
 
-    /** @return array{0: int|null, 1: string} */
+    /** @return array{0: int|null, 1: string, 2: list<int>} */
     private function resolverLocal(array $dados): array
     {
         if ($dados['tipo_local'] === 'escola') {
-            $escola = Escola::query()->ativas()->find($dados['escola_id']);
+            $escolaIds = array_values(array_unique(array_map('intval', $dados['escola_ids'] ?? (($dados['escola_id'] ?? null) ? [$dados['escola_id']] : []))));
+            $escolas = Escola::query()->ativas()->whereIn('id', $escolaIds)->orderBy('nome')->get();
 
-            if (! $escola) {
+            if ($escolas->count() !== count($escolaIds)) {
                 throw ValidationException::withMessages([
                     'escola_id' => 'A escola ou o CMEI selecionado não está ativo.',
                 ]);
             }
 
-            return [$escola->id, $escola->nome];
+            return [$escolas->first()->id, $escolas->pluck('nome')->implode(', '), $escolaIds];
         }
 
         return [
-            null,
+            null, [],
             Str::of((string) $dados['local_outro'])->squish()->limit(255)->toString(),
         ];
     }

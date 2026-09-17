@@ -100,6 +100,29 @@ class ReservaVeiculoServiceTest extends TestCase
         );
     }
 
+    public function test_cria_uma_reserva_com_varias_escolas(): void
+    {
+        $segundaEscola = Escola::query()->create([
+            'codigo' => 'ESC-RESERVA-2',
+            'nome' => 'Segunda Escola',
+            'ativo' => true,
+        ]);
+
+        $reservas = $this->service->criarEmLote($this->usuario, $this->dados([
+            'tipo_local' => 'escola',
+            'escola_ids' => [$this->escola->id, $segundaEscola->id],
+        ]));
+
+        $reserva = $reservas->firstOrFail()->load('escolas');
+        $this->assertCount(1, $reservas);
+        $this->assertSame(
+            [$this->escola->id, $segundaEscola->id],
+            $reserva->escolas->pluck('id')->sort()->values()->all(),
+        );
+        $this->assertSame('Escola Destino, Segunda Escola', $reserva->local_nome);
+        $this->assertSame($this->escola->id, $reserva->escola_id);
+    }
+
     public function test_impede_conflito_de_horario_e_permite_intervalo_adjacente(): void
     {
         $this->service->criarEmLote($this->usuario, $this->dados([

@@ -6,6 +6,7 @@ use App\Models\Enums\ReservaVeiculoStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class ReservaVeiculo extends Model
 {
@@ -51,6 +52,11 @@ class ReservaVeiculo extends Model
     public function escola(): BelongsTo
     {
         return $this->belongsTo(Escola::class);
+    }
+
+    public function escolas(): BelongsToMany
+    {
+        return $this->belongsToMany(Escola::class, 'reserva_veiculo_escola');
     }
 
     public function criadoPor(): BelongsTo

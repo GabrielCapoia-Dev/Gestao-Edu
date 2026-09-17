@@ -182,7 +182,7 @@ final class ReservaVeiculoForm
                     ->native(false)
                     ->live(),
 
-                Select::make('escola_id')
+                Select::make('escola_ids')
                     ->label('Escola ou CMEI')
                     ->options(fn (): array => Escola::query()
                         ->ativas()
@@ -191,6 +191,7 @@ final class ReservaVeiculoForm
                         ->all())
                     ->searchable()
                     ->preload()
+                    ->multiple()
                     ->native(false)
                     ->required(fn (Get $get): bool => $get('tipo_local') === 'escola')
                     ->visible(fn (Get $get): bool => $get('tipo_local') === 'escola'),
