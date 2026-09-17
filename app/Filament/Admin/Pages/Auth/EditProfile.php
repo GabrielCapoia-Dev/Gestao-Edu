@@ -296,7 +296,7 @@ class EditProfile extends BaseEditProfile
     /** @return Collection<int, \App\Models\ComponenteCurricular> */
     public function getProfessorComponentOptions(): Collection
     {
-        return \App\Models\ComponenteCurricular::query()->orderBy('nome')->get();
+        return app(ProfessorComponenteSolicitacaoService::class)->componentesDisponiveisParaProfessor($this->getUser());
     }
 
     /** @return array<int, int> */

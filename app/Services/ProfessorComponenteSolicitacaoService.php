@@ -121,19 +121,46 @@ class ProfessorComponenteSolicitacaoService
     }
 
     /** @return Collection<int, ComponenteCurricular> */
+    public function componentesDisponiveisParaProfessor(User $user): Collection
+    {
+        $professores = $this->professoresAtivos($user);
+
+        if ($professores->isEmpty()) {
+            return new Collection;
+        }
+
+        $turmas = Turma::query()
+            ->whereIn('id_escola', $professores->pluck('id_escola')->filter()->unique())
+            ->with('serie.componentesCurriculares')
+            ->get();
+        $componentesIds = $turmas
+            ->flatMap(fn (Turma $turma) => $turma->serie?->componentesCurriculares?->pluck('id') ?? [])
+            ->merge(TurmaComponenteProfessor::query()
+                ->whereIn('turma_id', $turmas->pluck('id'))
+                ->pluck('componente_curricular_id'))
+            ->map(fn ($id): int => (int) $id)
+            ->filter()->unique()->values();
+
+        return ComponenteCurricular::query()->whereKey($componentesIds)->orderBy('nome')->get();
+    }
+
+    /** @return Collection<int, ComponenteCurricular> */
     public function componentesFuncionais(User $user): Collection
     {
         $ids = $this->professoresAtivos($user)->load('componentesFuncionais')
             ->flatMap(fn (Professor $professor) => $professor->componentesFuncionais->pluck('id'))
             ->unique()->values();
 
-        return ComponenteCurricular::query()->whereKey($ids)->orderBy('nome')->get();
+        return $this->componentesDisponiveisParaProfessor($user)
+            ->whereIn('id', $ids)->values();
     }
 
     public function salvarComponentesFuncionais(User $user, array $componentesIds): void
     {
         $professores = $this->professoresAtivos($user);
-        $validos = ComponenteCurricular::query()->whereKey(collect($componentesIds)->map(fn ($id): int => (int) $id)->filter()->unique())->pluck('id')->all();
+        $solicitados = collect($componentesIds)->map(fn ($id): int => (int) $id)->filter()->unique();
+        $validos = $this->componentesDisponiveisParaProfessor($user)
+            ->whereIn('id', $solicitados)->pluck('id')->all();
 
         DB::transaction(function () use ($professores, $validos): void {
             foreach ($professores as $professor) {
