@@ -152,6 +152,7 @@ class EditProfile extends BaseEditProfile
                     ->multiple()
                     ->searchable()
                     ->preload()
+                    ->live(false)
                     ->placeholder('Selecione os componentes que você leciona')
                     ->default(fn (): array => $this->getProfessorFunctionalComponentIds())
                     ->helperText('Os componentes selecionados serão usados para filtrar as turmas abaixo.'),
