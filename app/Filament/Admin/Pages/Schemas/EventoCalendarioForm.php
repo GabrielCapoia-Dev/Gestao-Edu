@@ -80,26 +80,37 @@ class EventoCalendarioForm
                         ->view('filament.admin.pages.fields.evento-local-map')
                         ->dehydrated(false)
                         ->columnSpanFull(),
-                    Select::make('categoria')
-                        ->label('Categoria')
-                        ->options(collect([
-                            EventoCalendarioCategoria::PEDAGOGICO,
-                            EventoCalendarioCategoria::RH,
-                            EventoCalendarioCategoria::DOCUMENTACAO_ESCOLAR,
-                            EventoCalendarioCategoria::EDUCACAO_ESPECIAL,
-                            EventoCalendarioCategoria::EDUCACAO_INFANTIL,
-                            EventoCalendarioCategoria::AGE,
-                            EventoCalendarioCategoria::ADMINISTRATIVO,
-                            EventoCalendarioCategoria::PALESTRA,
-                            EventoCalendarioCategoria::CURSO,
-                            EventoCalendarioCategoria::PREMIACAO,
-                            EventoCalendarioCategoria::OUTRO,
-                        ])->mapWithKeys(
-                            fn ($item): array => [$item->value => $item->label()],
-                        )->all())
-                        ->required()
-                        ->live()
-                        ->native(false),
+                    Grid::make(['default' => 1, 'md' => 2])
+                        ->schema([
+                            Select::make('categoria')
+                                ->label('Categoria')
+                                ->options(collect([
+                                    EventoCalendarioCategoria::PEDAGOGICO,
+                                    EventoCalendarioCategoria::RH,
+                                    EventoCalendarioCategoria::DOCUMENTACAO_ESCOLAR,
+                                    EventoCalendarioCategoria::EDUCACAO_ESPECIAL,
+                                    EventoCalendarioCategoria::EDUCACAO_INFANTIL,
+                                    EventoCalendarioCategoria::AGE,
+                                    EventoCalendarioCategoria::ADMINISTRATIVO,
+                                    EventoCalendarioCategoria::PALESTRA,
+                                    EventoCalendarioCategoria::CURSO,
+                                    EventoCalendarioCategoria::PREMIACAO,
+                                    EventoCalendarioCategoria::OUTRO,
+                                ])->mapWithKeys(
+                                    fn ($item): array => [$item->value => $item->label()],
+                                )->all())
+                                ->required()
+                                ->live()
+                                ->native(false),
+                            Select::make('cor')
+                                ->label('Identificação visual')
+                                ->options(collect(EventoCalendarioCor::cases())->mapWithKeys(
+                                    fn ($item): array => [$item->value => $item->label()],
+                                )->all())
+                                ->default(EventoCalendarioCor::AZUL->value)
+                                ->required()
+                                ->native(false),
+                        ]),
                     TextInput::make('categoria_detalhe')
                         ->label('Qual é a categoria?')
                         ->placeholder('Descreva a categoria deste evento')
@@ -110,33 +121,33 @@ class EventoCalendarioForm
                         ->label('Data do evento')
                         ->required()
                         ->native(false),
-                    Select::make('periodo')
-                        ->label('Período')
-                        ->options([
-                            'manha' => 'Manhã',
-                            'tarde' => 'Tarde',
-                            'noite' => 'Noite',
-                            'dia_todo' => 'Dia todo',
-                        ])
-                        ->placeholder('Preencher horários automaticamente')
-                        ->helperText('O período apenas sugere os horários. Você poderá alterá-los livremente.')
-                        ->live()
-                        ->afterStateUpdated(function (mixed $state, Get $get, Set $set) use ($user): void {
-                            $periodo = self::PERIODOS[(string) $state] ?? null;
-
-                            if ($periodo) {
-                                $set('hora_inicio', $periodo['inicio']);
-                                $set('hora_fim', $periodo['fim']);
-                                $set('turnos_filtro', self::turnosParaPeriodo((string) $state));
-                                self::atualizarDistribuicao($user, $get, $set, $periodo['inicio'], $periodo['fim']);
-                            }
-                        })
-                        ->native(false),
                     Grid::make([
                         'default' => 1,
-                        'md' => 2,
+                        'md' => 3,
                     ])
                         ->schema([
+                            Select::make('periodo')
+                                ->label('Período')
+                                ->options([
+                                    'manha' => 'Manhã',
+                                    'tarde' => 'Tarde',
+                                    'noite' => 'Noite',
+                                    'dia_todo' => 'Dia todo',
+                                ])
+                                ->placeholder('Preencher automaticamente')
+                                ->helperText('Sugere os horários')
+                                ->live()
+                                ->afterStateUpdated(function (mixed $state, Get $get, Set $set) use ($user): void {
+                                    $periodo = self::PERIODOS[(string) $state] ?? null;
+
+                                    if ($periodo) {
+                                        $set('hora_inicio', $periodo['inicio']);
+                                        $set('hora_fim', $periodo['fim']);
+                                        $set('turnos_filtro', self::turnosParaPeriodo((string) $state));
+                                        self::atualizarDistribuicao($user, $get, $set, $periodo['inicio'], $periodo['fim']);
+                                    }
+                                })
+                                ->native(false),
                             TimePicker::make('hora_inicio')
                                 ->label('Início')
                                 ->seconds(false)
@@ -157,14 +168,20 @@ class EventoCalendarioForm
                                 })
                                 ->required(),
                         ]),
-                    Select::make('cor')
-                        ->label('Identificação visual')
-                        ->options(collect(EventoCalendarioCor::cases())->mapWithKeys(
-                            fn ($item): array => [$item->value => $item->label()],
-                        )->all())
-                        ->default(EventoCalendarioCor::AZUL->value)
-                        ->required()
-                        ->native(false),
+                    Grid::make(['default' => 1, 'md' => 2])
+                        ->schema([
+                            TextInput::make('link_acao')
+                                ->label('Link de ação')
+                                ->placeholder('https://exemplo.gov.br/...')
+                                ->maxLength(2048)
+                                ->rule(self::linkRule())
+                                ->live(),
+                            TextInput::make('texto_botao')
+                                ->label('Texto do botão')
+                                ->placeholder('Ex.: Saiba mais')
+                                ->required(fn (Get $get): bool => filled($get('link_acao')))
+                                ->maxLength(80),
+                        ]),
                     Grid::make([
                         'default' => 1,
                         'md' => 2,
@@ -187,35 +204,6 @@ class EventoCalendarioForm
                                     self::atualizarDistribuicao($user, $get, $set);
                                 }),
                         ]),
-                ]),
-
-            Section::make('Link de ação')
-                ->columns(2)
-                ->columnSpanFull()
-                ->schema([
-                    TextInput::make('link_acao')
-                        ->label('Link de ação')
-                        ->placeholder('https://exemplo.gov.br/...')
-                        ->maxLength(2048)
-                        ->rule(static function (): Closure {
-                            return static function (string $attribute, mixed $value, Closure $fail): void {
-                                if (blank($value)) {
-                                    return;
-                                }
-
-                                $link = trim((string) $value);
-                                $protocolo = strtolower((string) parse_url($link, PHP_URL_SCHEME));
-
-                                if ($protocolo !== 'https') {
-                                    $fail('Informe um link iniciado por https://.');
-                                }
-                            };
-                        })
-                        ->columnSpanFull(),
-                    TextInput::make('texto_botao')
-                        ->label('Texto do botão')
-                        ->required(fn (Get $get): bool => filled($get('link_acao')))
-                        ->maxLength(80),
                 ]),
 
             Section::make('Distribuição por escola')
@@ -423,6 +411,19 @@ class EventoCalendarioForm
     }
 
     /** @param array<string, mixed> $data @return array<string, mixed> */
+    private static function linkRule(): Closure
+    {
+        return static function (string $attribute, mixed $value, Closure $fail): void {
+            if (blank($value)) {
+                return;
+            }
+
+            if (strtolower((string) parse_url(trim((string) $value), PHP_URL_SCHEME)) !== 'https') {
+                $fail('Informe um link iniciado por https://.');
+            }
+        };
+    }
+
     public static function dadosParaEdicao(EventoCalendario $evento, array $data): array
     {
         $inicio = $evento->data_inicio->format('H:i');

@@ -279,11 +279,13 @@ class AppServiceProvider extends ServiceProvider
         $actionLoadingCss = 'css/action-loading.css';
         $geralCss = 'css/geral.css';
         $eventoModalCss = 'css/evento-calendario-modal.css';
+        $eventoMapJs = 'js/evento-local-map.js';
 
         FilamentAsset::register([
             Js::make('filament-modal-select-fix', asset($selectFixJs).'?v='.$assetVersion($selectFixJs)),
             Js::make('filament-date-paste', asset($datePasteJs).'?v='.$assetVersion($datePasteJs)),
             Js::make('action-loading', asset($actionLoadingJs).'?v='.$assetVersion($actionLoadingJs)),
+            Js::make('evento-local-map', asset($eventoMapJs).'?v='.$assetVersion($eventoMapJs)),
             Css::make('geral', asset($geralCss).'?v='.$assetVersion($geralCss)),
             Css::make('evento-calendario-modal', asset($eventoModalCss).'?v='.$assetVersion($eventoModalCss)),
             Css::make('action-loading', asset($actionLoadingCss).'?v='.$assetVersion($actionLoadingCss)),
