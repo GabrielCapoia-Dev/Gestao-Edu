@@ -211,6 +211,11 @@ class EventoCalendarioForm
                     Select::make('publico_componente_ids')->label('Componentes curriculares')->multiple()->searchable()->preload()
                         ->options(fn (): array => \App\Models\ComponenteCurricular::query()->orderBy('nome')->pluck('nome', 'id')->all())->live()->afterStateUpdated(fn (Get $get, Set $set) => self::sincronizarRegraPublico($get, $set))->native(false),
                 ]),
+                ViewField::make('aplicar_filtros_participantes')
+                    ->hiddenLabel()
+                    ->dehydrated(false)
+                    ->view('filament.admin.pages.fields.evento-participantes-filter-action')
+                    ->columnSpanFull(),
                 ViewField::make('publico_participantes_tabela')
                     ->hiddenLabel()
                     ->dehydrated(false)

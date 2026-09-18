@@ -190,6 +190,16 @@ final class EventoCalendarioPublicoService
                             ->when($filtros['componente_ids'] ?? [], fn (Builder $q, array $ids): Builder => $q->whereHas('componentesPorTurma', fn (Builder $componentes): Builder => $componentes->whereIn('componente_curricular.id', $ids)));
                     });
                 }
+
+                if (($filtros['escola_ids'] ?? []) !== []
+                    && ($filtros['funcao_ids'] ?? []) === []
+                    && ($filtros['serie_ids'] ?? []) === []
+                    && ($filtros['componente_ids'] ?? []) === []
+                    && ($filtros['turnos'] ?? []) === []) {
+                    $query
+                        ->orWhereHas('escolas', fn (Builder $escolas): Builder => $escolas->whereKey($filtros['escola_ids']))
+                        ->orWhereIn('users.id_escola', $filtros['escola_ids']);
+                }
             });
     }
 
