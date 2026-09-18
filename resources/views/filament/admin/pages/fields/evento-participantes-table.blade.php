@@ -17,11 +17,11 @@
     @else
         <div class="evento-participantes__groups">
             @foreach ($grupos as $escola => $pessoas)
-                <section class="evento-participantes__group">
-                    <div class="evento-participantes__group-title">
+                <details class="evento-participantes__group" open>
+                    <summary class="evento-participantes__group-title">
                         <strong>{{ $escola }}</strong>
-                        <span>{{ $pessoas->count() }} pessoa(s)</span>
-                    </div>
+                        <span><span>{{ $pessoas->count() }} pessoa(s)</span><b aria-hidden="true">⌄</b></span>
+                    </summary>
                     <div class="evento-participantes__table-wrap">
                         <table class="evento-participantes__table">
                             <thead>
@@ -47,7 +47,7 @@
                             </tbody>
                         </table>
                     </div>
-                </section>
+                </details>
             @endforeach
         </div>
     @endif
@@ -62,6 +62,11 @@
     .evento-participantes__header input { width: min(20rem, 45%); border: 1px solid #cbd8e8; border-radius: .55rem; padding: .55rem .7rem; font-size: .8rem; }
     .evento-participantes__groups { display: grid; gap: .75rem; padding: .8rem; }
     .evento-participantes__group { border: 1px solid #e1e9f3; border-radius: .65rem; overflow: hidden; }
+    .evento-participantes__group > summary { list-style: none; cursor: pointer; }
+    .evento-participantes__group > summary::-webkit-details-marker { display: none; }
+    .evento-participantes__group > summary > span { display: inline-flex; align-items: center; gap: .65rem; }
+    .evento-participantes__group > summary b { color: #1d5fb8; font-size: 1rem; transition: transform .15s ease; }
+    .evento-participantes__group:not([open]) > summary b { transform: rotate(-90deg); }
     .evento-participantes__group-title { display: flex; justify-content: space-between; padding: .7rem .85rem; background: #f5f8fc; color: #173b73; font-size: .82rem; }
     .evento-participantes__table-wrap { overflow-x: auto; }
     .evento-participantes__table { width: 100%; border-collapse: collapse; font-size: .78rem; }
