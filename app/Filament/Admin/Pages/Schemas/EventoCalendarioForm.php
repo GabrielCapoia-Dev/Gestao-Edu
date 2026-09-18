@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\Dashboard\DashboardUserContextFactory;
 use App\Services\Dashboard\EventoCalendarioEscolaService;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -25,6 +26,8 @@ use Filament\Forms\Components\ViewField;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Wizard;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Components\Utilities\Get;
@@ -55,7 +58,7 @@ class EventoCalendarioForm
         $somenteTransporte = $user !== null
             && Gate::forUser($user)->allows('requiresTransport', EventoCalendario::class);
 
-        $eventoStep = Section::make('Evento')
+        $eventoStep = Grid::make(1)
                 ->columns(1)
                 ->columnSpanFull()
                 ->schema([
@@ -183,97 +186,59 @@ class EventoCalendarioForm
                                 ->required(fn (Get $get): bool => filled($get('link_acao')))
                                 ->maxLength(80),
                         ]),
-                    Grid::make([
-                        'default' => 1,
-                        'md' => 2,
-                    ])
-                        ->schema([
-                            Toggle::make('enviar_escolas_especificas')
-                                ->label('Enviar para escolas específicas')
-                                ->helperText('Desmarcado, o evento será enviado para todas as escolas do seu escopo.')
-                                ->default($somenteTransporte)
-                                ->disabled($somenteTransporte)
-                                ->dehydrated()
-                                ->live()
-                                ->afterStateUpdated(function (bool $state, Get $get, Set $set) use ($user): void {
-                                    if (! $state) {
-                                        $set('escolas_agendadas', []);
-
-                                        return;
-                                    }
-
-                                    self::atualizarDistribuicao($user, $get, $set);
-                                }),
-                        ]),
+                    Hidden::make('enviar_escolas_especificas')
+                        ->hidden()
+                        ->default($somenteTransporte)
+                        ->dehydrated(),
                 ]);
 
-        $publicoStep = Section::make('Público do evento')
-                ->description('Escolha quem poderá visualizar este evento.')
-                ->columnSpanFull()
-                ->schema([
+        $publicoStep = Tabs::make('Configuração do público')
+            ->columnSpanFull()
+            ->tabs([
+                Tab::make('Tipo de público')->schema([
                     Select::make('publico_tipo')
                         ->label('Tipo de público')
-                        ->options([
-                            'geral' => 'Evento geral por cargo',
-                            'segmentado' => 'Público segmentado por grupos',
-                        ])
-                        ->default('geral')
-                        ->required()
-                        ->live()
-                        ->native(false),
+                        ->options(['geral' => 'Evento geral por cargo', 'segmentado' => 'Público segmentado por grupos'])
+                        ->default('geral')->required()->live()->native(false),
                     Select::make('funcoes_administrativas_ids')
                         ->label('Cargos convidados')
-                        ->options(fn (): array => FuncaoAdministrativa::query()->where('ativo', true)->orderBy('nome')->pluck('nome', 'id')->all())
-                        ->multiple()
-                        ->searchable()
-                        ->preload()
+                        ->options(fn (): array => self::funcoesConviteOptions())
+                        ->multiple()->searchable()->preload()
                         ->required(fn (Get $get): bool => $get('publico_tipo') === 'geral')
-                        ->visible(fn (Get $get): bool => $get('publico_tipo') === 'geral')
-                        ->native(false),
-                    Repeater::make('publico_regras')
-                        ->label('Grupos de convite')
+                        ->visible(fn (Get $get): bool => $get('publico_tipo') === 'geral')->native(false),
+                ]),
+                Tab::make('Grupos de convite')->schema([
+                    Repeater::make('publico_regras')->label('Grupos de convite')
                         ->visible(fn (Get $get): bool => $get('publico_tipo') === 'segmentado')
                         ->schema([
                             Select::make('escola_ids')->label('Escolas')->multiple()->searchable()->options(fn (): array => self::schoolOptions($user))->native(false),
-                            Select::make('funcao_ids')->label('Cargos')->multiple()->searchable()->options(fn (): array => FuncaoAdministrativa::query()->where('ativo', true)->orderBy('nome')->pluck('nome', 'id')->all())->native(false),
+                            Select::make('funcao_ids')->label('Cargos')->multiple()->searchable()->options(fn (): array => self::funcoesConviteOptions())->native(false),
                             Select::make('turnos')->label('Turnos')->multiple()->options(self::turnoOptions())->native(false),
                             Select::make('serie_ids')->label('Séries')->multiple()->searchable()->options(fn (): array => Serie::query()->orderBy('nome')->pluck('nome', 'id')->all())->native(false),
                             Select::make('componente_ids')->label('Componentes')->multiple()->searchable()->options(fn (): array => \App\Models\ComponenteCurricular::query()->orderBy('nome')->pluck('nome', 'id')->all())->native(false),
                         ])->columns(2)->addActionLabel('Adicionar grupo')->live(),
-                    Placeholder::make('publico_resumo')
-                        ->label('Prévia dos convidados')
+                ]),
+                Tab::make('Convidados')->schema([
+                    Placeholder::make('publico_resumo')->label('Prévia dos convidados')
                         ->content(function (Get $get) use ($user): HtmlString {
-                            if (! $user || $get('publico_tipo') !== 'segmentado') {
-                                return new HtmlString('Selecione grupos para visualizar os convidados.');
-                            }
-
+                            if (! $user || $get('publico_tipo') !== 'segmentado') return new HtmlString('Selecione grupos para visualizar os convidados.');
                             try {
-                                $usuarios = app(\App\Services\Dashboard\EventoCalendarioPublicoService::class)
-                                    ->preview($user, $get('publico_regras') ?? [], $get('publico_excecoes_ids') ?? []);
-
+                                $usuarios = app(\App\Services\Dashboard\EventoCalendarioPublicoService::class)->preview($user, $get('publico_regras') ?? [], $get('publico_excecoes_ids') ?? []);
                                 $resumo = $usuarios->groupBy(fn ($usuario): string => (string) ($usuario->escola?->nome ?? 'Sem escola'))
-                                    ->map(fn ($grupo, $escola): string => '<strong>'.e($escola).'</strong>: '.e((string) $grupo->count()).' convidado(s)')
-                                    ->values()->implode('<br>');
-
+                                    ->map(fn ($grupo, $escola): string => '<strong>'.e($escola).'</strong>: '.e((string) $grupo->count()).' convidado(s)')->values()->implode('<br>');
                                 return new HtmlString($resumo !== '' ? $resumo : 'Nenhum usuário encontrado para os filtros informados.');
-                            } catch (\Illuminate\Validation\ValidationException) {
-                                return new HtmlString('Complete os filtros do grupo para visualizar os convidados.');
-                            }
-                        })
-                        ->columnSpanFull(),
-                    Select::make('publico_excecoes_ids')
-                        ->label('Remover pessoas específicas')
-                        ->multiple()
-                        ->searchable()
+                            } catch (\Illuminate\Validation\ValidationException) { return new HtmlString('Complete os filtros do grupo para visualizar os convidados.'); }
+                        })->columnSpanFull(),
+                    Select::make('publico_excecoes_ids')->label('Remover pessoas específicas')->multiple()->searchable()
                         ->options(fn (): array => $user ? app(\App\Services\Dashboard\PublicoAlvoOptionsService::class)->buscarUsuarios($user) : [])
-                        ->live()
-                        ->native(false),
-                ]);
+                        ->live()->native(false),
+                ]),
+            ]);
 
         $escolaStep = Section::make('Distribuição escolar')
                 ->description('Use os filtros para localizar e carregar automaticamente as escolas participantes.')
                 ->columnSpanFull()
-                ->visible(fn (Get $get): bool => (bool) $get('enviar_escolas_especificas'))
+                ->visible(fn (): bool => $somenteTransporte)
                 ->schema([
                     Grid::make([
                         'default' => 1,
@@ -651,6 +616,27 @@ class EventoCalendarioForm
                     ->filter()
                     ->implode(' - '),
             ])
+            ->all();
+    }
+
+    /** @return array<int|string, string> */
+    private static function funcoesConviteOptions(): array
+    {
+        return FuncaoAdministrativa::query()
+            ->where('ativo', true)
+            ->whereIn('codigo', [
+                'professor',
+                'diretor-escolar',
+                'coordenador-pedagogico',
+                'secretario-escolar',
+                'manutencao',
+                'obras',
+                'motorista',
+                'transporte',
+                'assessoria-pedagogica',
+            ])
+            ->orderBy('nome')
+            ->pluck('nome', 'id')
             ->all();
     }
 
