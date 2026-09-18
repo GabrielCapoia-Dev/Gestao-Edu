@@ -1,6 +1,11 @@
 @php
     $excecoes = collect($excecoes ?? [])->map(fn ($id): int => (int) $id)->all();
-    $grupos = collect($alunos ?? [])->groupBy(fn ($aluno) => $aluno->turma?->nome ?? 'Turma não identificada');
+    $grupos = collect($alunos ?? [])->groupBy(fn ($aluno) => implode(' - ', array_filter([
+        $aluno->turma?->escola?->nome,
+        $aluno->turma?->serie?->nome,
+        $aluno->turma?->nome,
+        $aluno->turma?->turno,
+    ])) ?: 'Turma não identificada');
     $total = collect($alunos ?? [])->reject(fn ($aluno) => in_array((int) $aluno->id, $excecoes, true))->count();
 @endphp
 

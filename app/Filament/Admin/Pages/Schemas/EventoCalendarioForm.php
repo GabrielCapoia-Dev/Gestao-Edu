@@ -230,6 +230,11 @@ class EventoCalendarioForm
                         return [
                             'usuarios' => $usuarios->values(),
                             'excecoes' => collect($get('publico_excecoes_ids') ?? [])->map(fn ($id): int => (int) $id)->all(),
+                            'escolasSelecionadas' => collect($get('publico_escola_ids') ?? [])
+                                ->filter()
+                                ->map(fn ($id): int => (int) $id)
+                                ->values()
+                                ->all(),
                         ];
                     })
                     ->columnSpanFull(),
@@ -439,11 +444,11 @@ class EventoCalendarioForm
         $transporteStep = Step::make('Transporte escolar')->schema([
             Hidden::make('transporte_excecoes_aluno_ids')->default([])->dehydrated(),
             ToggleButtons::make('precisa_transporte_evento')
-                ->label('Vai precisar de transporte para os alunos?')
+                ->label(new HtmlString('<span style="display:block;text-align:center;font-size:1rem;font-weight:600">Vai precisar de transporte para os alunos?</span>'))
                 ->options(['sim' => 'Sim', 'nao' => 'Não'])
                 ->inline()
                 ->colors(['sim' => 'primary', 'nao' => 'gray'])
-                ->extraAttributes(['class' => 'evento-transporte-pergunta', 'style' => 'display:block;text-align:center'])
+                ->extraAttributes(['class' => 'evento-transporte-pergunta', 'style' => 'display:flex;justify-content:center'])
                 ->columnSpanFull()
                 ->default('nao')
                 ->required()
@@ -512,7 +517,7 @@ class EventoCalendarioForm
             Step::make('Dados do evento')->schema([$eventoStep]),
             Step::make('Convidar participantes')->schema([$publicoStep]),
             $transporteStep,
-        ])->columnSpanFull()];
+        ])->submitAction(new HtmlString('<button type="submit" class="fi-btn fi-btn-color-primary fi-btn-size-md">Criar evento</button>'))->columnSpanFull()];
     }
 
     public static function dadosParaEdicao(EventoCalendario $evento, array $data): array
