@@ -10,11 +10,23 @@
             const ativo = candidatos.find((elemento) => /Dados do evento|Convidar participantes|Transporte escolar/.test(elemento.textContent || ''));
             const texto = ativo?.textContent?.trim() || '';
             modal.dataset.eventoStep = texto.includes('Transporte escolar') ? '3' : (texto.includes('Convidar participantes') ? '2' : '1');
+            const submit = modal.querySelector('.fi-modal-footer .fi-btn-color-primary');
+            if (submit) submit.textContent = modal.dataset.eventoStep === '3' ? 'Criar evento' : 'Próximo';
         };
         sync();
         const observer = new MutationObserver(sync);
         observer.observe(modal, { subtree: true, attributes: true, attributeFilter: ['class', 'aria-current', 'aria-selected', 'data-active'] });
         const timer = window.setInterval(sync, 150);
+        modal.addEventListener('click', (event) => {
+            const submit = event.target.closest('.fi-modal-footer .fi-btn-color-primary');
+            if (! submit || modal.dataset.eventoStep === '3') return;
+
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            const proximo = [...modal.querySelectorAll('.fi-sc-wizard-footer button')]
+                .find((botao) => (botao.textContent || '').trim().toLowerCase().includes('próximo'));
+            proximo?.click();
+        }, true);
         $el.addEventListener('alpine:destroy', () => { observer.disconnect(); window.clearInterval(timer); }, { once: true });
     });
 ">
@@ -34,8 +46,7 @@
 
 <style>
     .evento-create-modal { position:relative; }
-    .evento-create-modal:not([data-evento-step="3"]) .fi-modal-footer .fi-btn-color-primary { display:none; }
-    .evento-create-modal .fi-sc-wizard-footer { position:sticky; bottom:0; z-index:20; display:flex; justify-content:space-between; padding:1rem 1.5rem; border-top:1px solid #e2e8f0; background:#fff; box-shadow:0 -4px 12px rgba(15, 35, 65, .06); }
+    .evento-create-modal .fi-sc-wizard-footer { display:none; }
     .evento-create-modal .leaflet-container { position:relative; z-index:0; }
     .evento-create-modal .fi-dropdown-panel, .evento-create-modal .fi-select-options, .evento-create-modal [role="listbox"], .evento-create-modal .fi-fo-date-time-picker-panel { z-index:1000; }
 </style>

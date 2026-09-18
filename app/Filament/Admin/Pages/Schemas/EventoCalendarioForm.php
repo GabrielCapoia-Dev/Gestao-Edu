@@ -2,7 +2,6 @@
 
 namespace App\Filament\Admin\Pages\Schemas;
 
-use App\Models\Enums\EventoCalendarioCategoria;
 use App\Models\Enums\EventoCalendarioCor;
 use App\Models\Enums\EventoCalendarioTransporteEscopo;
 use App\Models\Aluno;
@@ -85,26 +84,6 @@ class EventoCalendarioForm
                         ->columnSpanFull(),
                     Grid::make(['default' => 1, 'md' => 2])
                         ->schema([
-                            Select::make('categoria')
-                                ->label('Categoria')
-                                ->options(collect([
-                                    EventoCalendarioCategoria::PEDAGOGICO,
-                                    EventoCalendarioCategoria::RH,
-                                    EventoCalendarioCategoria::DOCUMENTACAO_ESCOLAR,
-                                    EventoCalendarioCategoria::EDUCACAO_ESPECIAL,
-                                    EventoCalendarioCategoria::EDUCACAO_INFANTIL,
-                                    EventoCalendarioCategoria::AGE,
-                                    EventoCalendarioCategoria::ADMINISTRATIVO,
-                                    EventoCalendarioCategoria::PALESTRA,
-                                    EventoCalendarioCategoria::CURSO,
-                                    EventoCalendarioCategoria::PREMIACAO,
-                                    EventoCalendarioCategoria::OUTRO,
-                                ])->mapWithKeys(
-                                    fn ($item): array => [$item->value => $item->label()],
-                                )->all())
-                                ->required()
-                                ->live()
-                                ->native(false),
                             Select::make('cor')
                                 ->label('Identificação visual')
                                 ->options(collect(EventoCalendarioCor::cases())->mapWithKeys(
@@ -114,12 +93,7 @@ class EventoCalendarioForm
                                 ->required()
                                 ->native(false),
                         ]),
-                    TextInput::make('categoria_detalhe')
-                        ->label('Qual é a categoria?')
-                        ->placeholder('Descreva a categoria deste evento')
-                        ->maxLength(160)
-                        ->required(fn (Get $get): bool => $get('categoria') === EventoCalendarioCategoria::OUTRO->value)
-                        ->visible(fn (Get $get): bool => $get('categoria') === EventoCalendarioCategoria::OUTRO->value),
+                    Hidden::make('categoria')->default('administrativo')->dehydrated(),
                     Grid::make([
                         'default' => 1,
                         'md' => 4,
@@ -518,7 +492,7 @@ class EventoCalendarioForm
             'hora_inicio' => $inicio,
             'hora_fim' => $fim,
             'periodo' => self::periodoCorrespondente($inicio, $fim),
-            'categoria_detalhe' => $evento->categoria_detalhe,
+            'categoria' => $evento->categoria?->value ?? 'administrativo',
             'latitude' => $evento->latitude,
             'longitude' => $evento->longitude,
             'enviar_escolas_especificas' => ! $evento->enviar_todas_escolas,
