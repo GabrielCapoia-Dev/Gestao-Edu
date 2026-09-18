@@ -92,6 +92,12 @@ class EventoCalendarioForm
                                 ->default(EventoCalendarioCor::AZUL->value)
                                 ->required()
                                 ->native(false),
+                            TextInput::make('link_acao')
+                                ->label('Link de ação')
+                                ->placeholder('https://exemplo.gov.br/...')
+                                ->maxLength(2048)
+                                ->rule('starts_with:https://')
+                                ->live(),
                         ]),
                     Hidden::make('categoria')->default('administrativo')->dehydrated(),
                     Grid::make([
@@ -147,12 +153,6 @@ class EventoCalendarioForm
                         ]),
                     Grid::make(['default' => 1, 'md' => 2])
                         ->schema([
-                            TextInput::make('link_acao')
-                                ->label('Link de ação')
-                                ->placeholder('https://exemplo.gov.br/...')
-                                ->maxLength(2048)
-                                ->rule('starts_with:https://')
-                                ->live(),
                             TextInput::make('texto_botao')
                                 ->label('Texto do botão')
                                 ->placeholder('Ex.: Saiba mais')
