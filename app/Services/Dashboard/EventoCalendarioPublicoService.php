@@ -167,7 +167,7 @@ final class EventoCalendarioPublicoService
         return User::query()
             ->whereNull('users.deleted_at')
             ->where(function (Builder $pessoas): void {
-                $pessoas->whereHas('servidores', fn (Builder $servidores): Builder => $servidores->where('status', 'ativo'))
+                $pessoas->whereHas('servidores.vinculosAtivos')
                     ->orWhereHas('servidores.professores', fn (Builder $professores): Builder => $professores->where('ativo', true));
             })
             ->when($filtros['escola_ids'] ?? [], function (Builder $query, array $ids): Builder {
