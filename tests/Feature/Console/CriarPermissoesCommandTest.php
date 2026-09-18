@@ -60,6 +60,11 @@ class CriarPermissoesCommandTest extends TestCase
         $this->assertTrue($painelRole->hasPermissionTo('Visualizar Tela de Inicio'));
         $this->assertFalse($painelRole->hasPermissionTo('Listar Turmas'));
 
+        $equipeGestoraRole = Role::findByName('Equipe Gestora', 'web');
+        $this->assertTrue($equipeGestoraRole->hasPermissionTo(ListaPermissoes::ListarAvisos->label()));
+        $this->assertTrue($equipeGestoraRole->hasPermissionTo(ListaPermissoes::ListarMeusEventos->label()));
+        $this->assertTrue($equipeGestoraRole->hasPermissionTo(ListaPermissoes::VisualizarAgendaDeTodaARede->label()));
+
         $this->assertTrue($professorViewRole->hasPermissionTo('Listar Turmas'));
         $this->assertTrue($professorViewRole->hasPermissionTo('Listar Alunos'));
         $this->assertTrue($professorViewRole->hasPermissionTo('Responder Avaliações'));

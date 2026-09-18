@@ -38,6 +38,8 @@ class EquipeGestoraPermissionPreset
             ListaPermissoes::ConcluirAvaliacoes,
             ListaPermissoes::ReabrirAvaliacoes,
             ListaPermissoes::VincularPedidosAdicionais,
+            ListaPermissoes::ListarAvisos,
+            ListaPermissoes::ListarMeusEventos,
             ListaPermissoes::VisualizarAgendaDeTodaARede,
             ListaPermissoes::VisualizarHistoricoDePedidos,
             ListaPermissoes::VisualizarTelaDeInicio,
