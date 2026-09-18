@@ -27,6 +27,7 @@ class EventoCalendarioService
         private readonly EventoCalendarioWorkflowService $workflow,
         private readonly EventoTransporteAlocacaoService $alocacoesTransporte,
         private readonly EventoTransporteDisponibilidadeService $disponibilidadeTransporte,
+        private readonly EventoCalendarioPublicoService $publicoEventos,
     ) {}
 
     public function criar(
@@ -39,6 +40,8 @@ class EventoCalendarioService
     ): EventoCalendario {
         Gate::forUser($ator)->authorize('create', EventoCalendario::class);
         $this->rejeitarPublicoParalelo($publico, $dados);
+        $regrasPublico = $dados['publico_regras'] ?? [];
+        $excecoesPublico = $dados['publico_excecoes_ids'] ?? [];
         $publicacaoSolicitada = array_key_exists('ativo', $dados)
             ? filter_var($dados['ativo'], FILTER_VALIDATE_BOOLEAN)
             : $publicarAutomaticamente;
@@ -63,7 +66,7 @@ class EventoCalendarioService
             $ator,
         );
 
-        return DB::transaction(function () use ($dados, $agendamentos, $publico, $ator, $origem, $importacao): EventoCalendario {
+        return DB::transaction(function () use ($dados, $agendamentos, $publico, $ator, $origem, $importacao, $regrasPublico, $excecoesPublico): EventoCalendario {
             $publicoAlvo = $this->publicos->criar($ator, $publico);
             $evento = EventoCalendario::query()->create([
                 ...$dados,
@@ -75,6 +78,7 @@ class EventoCalendarioService
             ]);
 
             $this->escolas->sincronizar($evento, $agendamentos);
+            $this->publicoEventos->sincronizar($evento, $regrasPublico, $excecoesPublico, $ator);
             $this->workflow->registrarCriacao($evento, $ator);
 
             return $evento->refresh()->load('escolasAgendadas');
@@ -152,6 +156,12 @@ class EventoCalendarioService
             ])->save();
 
             $this->escolas->sincronizar($evento, $agendamentos);
+            $this->publicoEventos->sincronizar(
+                $evento,
+                $dados['publico_regras'] ?? [],
+                $dados['publico_excecoes_ids'] ?? [],
+                $ator,
+            );
             $this->workflow->registrarAtualizacao(
                 $evento,
                 $ator,
@@ -169,6 +179,7 @@ class EventoCalendarioService
     private function prepararDados(array $dados, User $ator): array
     {
         Arr::forget($dados, ['status', 'ativo']);
+        Arr::forget($dados, ['publico_regras', 'publico_excecoes_ids']);
         $dataEvento = Arr::pull($dados, 'data_evento');
         $horaInicio = Arr::pull($dados, 'hora_inicio');
         $horaFim = Arr::pull($dados, 'hora_fim');
@@ -451,6 +462,46 @@ class EventoCalendarioService
         array $agendamentos,
         User $ator,
     ): array {
+        $funcoes = collect($dados['funcoes_administrativas_ids'] ?? [])
+            ->filter(fn ($id): bool => is_numeric($id) && (int) $id > 0)
+            ->map(fn ($id): int => (int) $id)
+            ->unique()->values()->all();
+
+        if (($dados['publico_tipo'] ?? null) === 'segmentado') {
+            $contexto = $this->contextos->make($ator);
+            $ids = collect($dados['publico_regras'] ?? [])
+                ->flatMap(fn ($regra): array => is_array($regra) ? ($regra['escola_ids'] ?? []) : [])
+                ->filter(fn ($id): bool => is_numeric($id) && (int) $id > 0)
+                ->map(fn ($id): int => (int) $id)->unique()->values()->all();
+
+            if ($ids === []) {
+                $ids = $contexto->escopoGlobal
+                    ? Escola::query()->where('ativo', true)->pluck('id')->map(fn ($id): int => (int) $id)->all()
+                    : $contexto->escolaIds;
+            }
+
+            return [
+                'modo_correspondencia' => 'qualquer',
+                'todos_usuarios' => false,
+                'usuarios_ids' => [], 'roles_ids' => [], 'permissoes_ids' => [],
+                'funcoes_administrativas_ids' => [],
+                'escolas_ids' => $ids, 'setores_ids' => [],
+            ];
+        }
+
+        if ($funcoes !== []) {
+            return [
+                'modo_correspondencia' => 'qualquer',
+                'todos_usuarios' => false,
+                'usuarios_ids' => [],
+                'roles_ids' => [],
+                'permissoes_ids' => [],
+                'funcoes_administrativas_ids' => $funcoes,
+                'escolas_ids' => [],
+                'setores_ids' => [],
+            ];
+        }
+
         $todas = (bool) ($dados['enviar_todas_escolas'] ?? true);
         $escolaIds = [];
 
@@ -499,11 +550,9 @@ class EventoCalendarioService
             ]);
         }
 
-        if ($publico !== []) {
-            throw ValidationException::withMessages([
-                'publico_alvo' => 'Eventos manuais devem ser distribuídos exclusivamente por escola.',
-            ]);
-        }
+        // O público dos eventos manuais é tratado por PublicoAlvo e pelas
+        // regras dinâmicas do evento. O argumento permanece por compatibilidade
+        // com importações e chamadas antigas do serviço.
     }
 
     private function linkSeguro(mixed $link): bool

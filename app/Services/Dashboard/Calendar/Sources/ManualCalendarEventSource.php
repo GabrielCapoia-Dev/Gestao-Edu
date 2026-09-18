@@ -7,6 +7,7 @@ use App\Models\Enums\EventoCalendarioCategoria;
 use App\Models\EventoCalendario;
 use App\Models\EventoCalendarioEscola;
 use App\Services\Dashboard\PublicoAlvoService;
+use App\Services\Dashboard\EventoCalendarioPublicoService;
 use App\Support\Dashboard\Calendar\CalendarEventData;
 use App\Support\Dashboard\Calendar\CalendarEventDetailData;
 use App\Support\Dashboard\Calendar\CalendarQueryContext;
@@ -16,7 +17,10 @@ use Illuminate\Support\Str;
 
 class ManualCalendarEventSource implements CalendarEventSource
 {
-    public function __construct(private readonly PublicoAlvoService $publicos) {}
+    public function __construct(
+        private readonly PublicoAlvoService $publicos,
+        private readonly EventoCalendarioPublicoService $publicoEventos,
+    ) {}
 
     public function key(): string
     {
@@ -103,11 +107,16 @@ class ManualCalendarEventSource implements CalendarEventSource
 
         if (! $context->redeCompleta) {
             $query->where(function (Builder $visiveis) use ($context): void {
-                $this->publicos->aplicarEscopo(
-                    $visiveis,
-                    $context->user,
-                    'eventos_calendario.publico_alvo_id',
-                );
+                $visiveis->where(function (Builder $publicos) use ($context): void {
+                    $publicos->where('eventos_calendario.publico_tipo', 'segmentado')
+                        ->whereHas('publicoRegras');
+                    $this->publicoEventos->aplicarEscopo($publicos, $context->user);
+                });
+
+                $visiveis->orWhere(function (Builder $legado) use ($context): void {
+                    $legado->where('eventos_calendario.publico_tipo', '!=', 'segmentado');
+                    $this->publicos->aplicarEscopo($legado, $context->user, 'eventos_calendario.publico_alvo_id');
+                });
 
                 // "Para mim" também inclui o que o próprio usuário publicou. Isso
                 // não transforma usuários globais em destinatários de todas as escolas.

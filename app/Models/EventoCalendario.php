@@ -28,6 +28,7 @@ class EventoCalendario extends Model
         'escola_id',
         'setor_id',
         'enviar_todas_escolas',
+        'publico_tipo',
         'titulo',
         'descricao',
         'local',
@@ -95,6 +96,16 @@ class EventoCalendario extends Model
     public function escolasAgendadas(): HasMany
     {
         return $this->hasMany(EventoCalendarioEscola::class, 'evento_calendario_id');
+    }
+
+    public function publicoRegras(): HasMany
+    {
+        return $this->hasMany(EventoCalendarioPublicoRegra::class, 'evento_calendario_id');
+    }
+
+    public function publicoExcecoes(): HasMany
+    {
+        return $this->hasMany(EventoCalendarioPublicoExcecao::class, 'evento_calendario_id');
     }
 
     /**

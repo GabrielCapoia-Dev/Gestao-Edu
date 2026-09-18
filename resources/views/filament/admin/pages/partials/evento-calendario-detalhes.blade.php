@@ -38,7 +38,14 @@
     </section>
 
     <div class="gi-event-detail__overview">
-    <dl class="gi-event-detail__grid">
+        <section class="gi-event-detail__summary">
+            <header>
+                <div>
+                    <p class="gi-eyebrow">Informações do evento</p>
+                    <h3>Resumo</h3>
+                </div>
+            </header>
+            <dl class="gi-event-detail__grid">
         <div>
             <dt>Criado por</dt>
             <dd>{{ $evento->criadoPor?->name ?? 'Usuário não informado' }}</dd>
@@ -71,7 +78,8 @@
                 <dd>{{ number_format($totalEstudantes, 0, ',', '.') }} estudante(s)</dd>
             </div>
         @endif
-    </dl>
+            </dl>
+        </section>
 
         <section class="gi-event-detail__section">
             <header>
