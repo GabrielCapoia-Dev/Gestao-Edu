@@ -3383,10 +3383,20 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         // A projeção cobre os filtros estruturais da tela. Filtros por pauta,
         // professor, alternativa ou componente exigem a leitura detalhada.
-        return ($filtros['professores_ids'] ?? []) === []
-            && ($filtros['pautas_ids'] ?? []) === []
-            && ($filtros['alternativas_ids'] ?? []) === []
-            && ($filtros['componentes_ids'] ?? []) === [];
+        if (($filtros['professores_ids'] ?? []) !== []
+            || ($filtros['pautas_ids'] ?? []) !== []
+            || ($filtros['alternativas_ids'] ?? []) !== []
+            || ($filtros['componentes_ids'] ?? []) !== []) {
+            return false;
+        }
+
+        $avaliacoesComResumo = DB::table('avaliacao_dashboard_turma_resumos')
+            ->whereIn('avaliacao_id', $avaliacaoIds)
+            ->where('componente_chave', \App\Services\Avaliacoes\AvaliacaoDashboardTurmaResumoService::TOTAL_COMPONENT_KEY)
+            ->distinct()
+            ->count('avaliacao_id');
+
+        return $avaliacoesComResumo === count(array_unique(array_map('intval', $avaliacaoIds)));
     }
 
     private function queryResumosDeTurmas(array $avaliacaoIds, array $filtros): QueryBuilder
