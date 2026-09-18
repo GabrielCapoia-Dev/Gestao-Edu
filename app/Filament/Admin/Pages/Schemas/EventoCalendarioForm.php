@@ -637,17 +637,20 @@ class EventoCalendarioForm
     {
         return FuncaoAdministrativa::query()
             ->where('ativo', true)
-            ->whereIn('codigo', [
-                'professor',
-                'diretor-escolar',
-                'coordenador-pedagogico',
-                'secretario-escolar',
-                'manutencao',
-                'obras',
-                'motorista',
-                'transporte',
-                'assessoria-pedagogica',
-            ])
+            ->where(function (Builder $funcoes): void {
+                $funcoes
+                    ->where('exige_professor', true)
+                    ->orWhere('direcao_escolar', true)
+                    ->orWhere('coordenacao_pedagogica', true)
+                    ->orWhere('secretaria_escolar', true)
+                    ->orWhereIn('nome', [
+                        'Manutenção',
+                        'Obras',
+                        'Motorista',
+                        'Transporte',
+                        'Assessoria Pedagógica',
+                    ]);
+            })
             ->orderBy('nome')
             ->pluck('nome', 'id')
             ->all();
