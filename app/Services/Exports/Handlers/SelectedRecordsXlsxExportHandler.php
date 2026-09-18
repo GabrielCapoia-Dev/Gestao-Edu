@@ -54,7 +54,7 @@ class SelectedRecordsXlsxExportHandler implements ExportHandler
         [$headers, $rows, $fileName, $sheetName, $recordCount] = match ($exportRequest->type) {
             'turmas_selecionadas' => $this->turmas($user, $ids->all()),
             'turmas_selecionadas_detalhado' => $this->turmasDetalhadas($user, $ids->all()),
-            'servidores_selecionados' => $this->servidores($user, $ids->all()),
+            'servidores_selecionados', 'servidores_filtrados' => $this->servidores($user, $ids->all()),
             'alunos_selecionados' => $this->alunos($user, $ids->all()),
             default => throw new RuntimeException('Tipo de exportação de registros não suportado.'),
         };

@@ -143,6 +143,8 @@ class CalendarEventAggregatorTest extends TestCase
         $this->assertStringContainsString("'actions' => \$this->getCachedHeaderActions()", $dashboardPage);
         $this->assertStringContainsString("->label('Gerenciar avisos')", $dashboardPage);
         $this->assertStringContainsString("->label('Gerenciar agenda')", $dashboardPage);
+        $this->assertStringContainsString('ListaPermissoes::CriarAvisos->label()', $dashboardPage);
+        $this->assertStringContainsString('ListaPermissoes::CriarEventos->label()', $dashboardPage);
         $this->assertStringContainsString("->label('Visualizar calendário')", $dashboardPage);
         $this->assertStringContainsString("->label('Gerenciar reservas')", $dashboardPage);
         $this->assertStringContainsString("->label('Reservar veículo')", $dashboardPage);

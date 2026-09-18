@@ -128,6 +128,7 @@ class SelectedRecordsXlsxExportHandlerTest extends TestCase
             ['turmas_selecionadas_detalhado', $turmaSelecionada->id, 'Turmas detalhadas', 'Professor da Turma', 'B'],
             ['alunos_selecionados', $alunoSelecionado->id, 'Alunos', 'Aluno Selecionado', 'Aluno Não Selecionado'],
             ['servidores_selecionados', $servidorSelecionado->id, 'Servidores', 'Servidor Selecionado', 'Servidor Não Selecionado'],
+            ['servidores_filtrados', $servidorSelecionado->id, 'Servidores', 'Servidor Selecionado', 'Servidor Não Selecionado'],
         ];
 
         foreach ($casos as [$type, $id, $sheetName, $expected, $unexpected]) {
