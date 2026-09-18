@@ -1508,8 +1508,8 @@ class AvaliacaoTurmaWorkspace extends Component
         return $this->progressoConsolidado()['alunos'];
     }
 
-    /** @return array{turmas: array, pautas: array, alunos: array} */
-    private function progressoConsolidado(): array
+    /** @return array{turmas: array, pautas: array, alunos: array, componentes_por_turma: array} */
+    protected function progressoConsolidado(): array
     {
         if (is_array($this->progressoConsolidadoCache)) {
             return $this->progressoConsolidadoCache;
@@ -1518,6 +1518,7 @@ class AvaliacaoTurmaWorkspace extends Component
         $turmas = [];
         $pautas = [];
         $alunos = [];
+        $componentesPorTurma = [];
 
         foreach ($this->turmasDaSerieDisponiveis as $turma) {
             $turmaId = (int) $turma->id;
@@ -1558,6 +1559,22 @@ class AvaliacaoTurmaWorkspace extends Component
                     $preenchidasPorPauta[$pautaId] ?? 0,
                     $alunosRespondiveis->count(),
                 );
+
+                $componenteId = (int) ($pauta->componente_curricular_id ?? 0);
+                $componentesPorTurma[$turmaId][$componenteId] ??= [
+                    'preenchidas' => 0,
+                    'total' => 0,
+                    'percentual' => 0,
+                ];
+                $componentesPorTurma[$turmaId][$componenteId]['preenchidas'] += $preenchidasPorPauta[$pautaId] ?? 0;
+                $componentesPorTurma[$turmaId][$componenteId]['total'] += $alunosRespondiveis->count();
+            }
+
+            foreach ($componentesPorTurma[$turmaId] ?? [] as $componenteId => $progressoComponente) {
+                $componentesPorTurma[$turmaId][$componenteId] = $this->montarResumoProgresso(
+                    (int) $progressoComponente['preenchidas'],
+                    (int) $progressoComponente['total'],
+                );
             }
 
             foreach ($alunosDaTurma as $aluno) {
@@ -1572,6 +1589,7 @@ class AvaliacaoTurmaWorkspace extends Component
             'turmas' => $turmas,
             'pautas' => $pautas,
             'alunos' => $alunos,
+            'componentes_por_turma' => $componentesPorTurma,
         ];
     }
 

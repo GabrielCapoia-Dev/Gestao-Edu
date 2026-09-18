@@ -311,6 +311,7 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
 
         if ($pautas->isEmpty()) {
             return $this->progressoNavegacao['componentes_por_turma'][$turmaId][$componenteId]
+                ?? $this->progressoConsolidado()['componentes_por_turma'][$turmaId][$componenteId]
                 ?? ['preenchidas' => 0, 'total' => 0, 'percentual' => 0];
         }
         $preenchidas = $pautas->sum(fn ($pauta): int => (int) ($this->progressoPorPauta[$turmaId][$pauta->id]['preenchidas'] ?? 0));
