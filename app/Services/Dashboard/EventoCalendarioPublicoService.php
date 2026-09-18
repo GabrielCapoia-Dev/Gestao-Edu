@@ -169,9 +169,15 @@ final class EventoCalendarioPublicoService
             ->where(function (Builder $query) use ($filtros): void {
                 $query->whereHas('servidores', function (Builder $servidores) use ($filtros): void {
                     $servidores->where('servidores.status', 'ativo')
-                        ->whereHas('vinculosAtivos', function (Builder $vinculos) use ($filtros): void {
-                            $vinculos->when($filtros['funcao_ids'] ?? [], fn (Builder $q, array $ids): Builder => $q->whereIn('funcao_administrativa_id', $ids))
-                                ->when($filtros['escola_ids'] ?? [], fn (Builder $q, array $ids): Builder => $q->whereIn('id_escola', $ids));
+                        ->where(function (Builder $servidor) use ($filtros): void {
+                            $servidor->whereHas('vinculosAtivos', function (Builder $vinculos) use ($filtros): void {
+                                $vinculos->when($filtros['funcao_ids'] ?? [], fn (Builder $q, array $ids): Builder => $q->whereIn('funcao_administrativa_id', $ids))
+                                    ->when($filtros['escola_ids'] ?? [], fn (Builder $q, array $ids): Builder => $q->whereIn('id_escola', $ids));
+                            });
+
+                            if (($filtros['escola_ids'] ?? []) !== [] && ($filtros['funcao_ids'] ?? []) === []) {
+                                $servidor->orWhereIn('servidores.id_escola', $filtros['escola_ids']);
+                            }
                         });
                 });
 

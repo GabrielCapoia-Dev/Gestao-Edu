@@ -2,7 +2,7 @@
     $grupos = $usuarios->groupBy(fn ($usuario) => $usuario->escola?->nome ?? 'Sem escola');
 @endphp
 
-<div class="evento-participantes" x-data="{ busca: '' }">
+<div class="evento-participantes" x-data="{ busca: '', removidos: @js($excecoes ?? []) }">
     <div class="evento-participantes__header">
         <div>
             <p class="evento-participantes__eyebrow">PARTICIPANTES SELECIONADOS</p>
@@ -25,7 +25,7 @@
                     <div class="evento-participantes__table-wrap">
                         <table class="evento-participantes__table">
                             <thead>
-                                <tr><th>Nome</th><th>E-mail</th><th>Cargo</th></tr>
+                                <tr><th>Nome</th><th>E-mail</th><th>Cargo</th><th></th></tr>
                             </thead>
                             <tbody>
                                 @foreach ($pessoas as $pessoa)
@@ -35,10 +35,13 @@
                                             ->pluck('nome')->filter()->unique()->implode(', ');
                                         $textoBusca = strtolower(implode(' ', [(string) $pessoa->name, (string) $pessoa->email, $cargos]));
                                     @endphp
-                                    <tr x-show="!busca || @js($textoBusca).includes(busca.toLowerCase())">
+                                    <tr x-show="!removidos.includes({{ (int) $pessoa->id }}) && (!busca || @js($textoBusca).includes(busca.toLowerCase()))">
                                         <td>{{ $pessoa->name }}</td>
                                         <td>{{ $pessoa->email ?: 'Não informado' }}</td>
                                         <td>{{ $cargos ?: 'Professor' }}</td>
+                                        <td class="evento-participantes__remove-cell">
+                                            <button type="button" @click="removidos.push({{ (int) $pessoa->id }}); $wire.set('mountedActionsData.0.publico_excecoes_ids', [...new Set(removidos)])" title="Remover da lista" aria-label="Remover {{ $pessoa->name }}">&times;</button>
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -64,6 +67,8 @@
     .evento-participantes__table { width: 100%; border-collapse: collapse; font-size: .78rem; }
     .evento-participantes__table th, .evento-participantes__table td { padding: .6rem .85rem; border-top: 1px solid #edf1f6; text-align: left; }
     .evento-participantes__table th { color: #64748b; font-size: .68rem; text-transform: uppercase; letter-spacing: .03em; }
+    .evento-participantes__remove-cell { width: 2.5rem; text-align: center !important; }
+    .evento-participantes__remove-cell button { border: 0; background: transparent; color: #dc2626; cursor: pointer; font-size: 1.25rem; line-height: 1; }
     .evento-participantes__empty { padding: 1rem; color: #64748b; font-size: .8rem; }
     @media (max-width: 640px) { .evento-participantes__header { align-items: stretch; flex-direction: column; } .evento-participantes__header input { width: 100%; } }
 </style>

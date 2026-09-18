@@ -196,6 +196,7 @@ class EventoCalendarioForm
                 Hidden::make('publico_tipo')->default('segmentado')->dehydrated(),
                 Hidden::make('funcoes_administrativas_ids')->default([])->dehydrated(),
                 Hidden::make('publico_regras')->default([])->dehydrated(),
+                Hidden::make('publico_excecoes_ids')->default([])->dehydrated(),
                 Grid::make(['default' => 1, 'md' => 2])->schema([
                     Select::make('publico_escola_ids')->label('Escolas')->multiple()->searchable()->preload()
                         ->options(fn (): array => self::schoolOptions($user))->live()->afterStateUpdated(fn (Get $get, Set $set) => self::sincronizarRegraPublico($get, $set))->native(false),
@@ -219,12 +220,12 @@ class EventoCalendarioForm
                             ? app(\App\Services\Dashboard\EventoCalendarioPublicoService::class)->preview($user, self::regraPublico($get), $get('publico_excecoes_ids') ?? [])
                             : collect();
 
-                        return ['usuarios' => $usuarios->values()];
+                        return [
+                            'usuarios' => $usuarios->values(),
+                            'excecoes' => collect($get('publico_excecoes_ids') ?? [])->map(fn ($id): int => (int) $id)->all(),
+                        ];
                     })
                     ->columnSpanFull(),
-                Select::make('publico_excecoes_ids')->label('Remover pessoas específicas')->multiple()->searchable()
-                    ->options(fn (): array => $user ? app(\App\Services\Dashboard\PublicoAlvoOptionsService::class)->buscarUsuarios($user) : [])
-                    ->live()->native(false),
             ]);
 
         $escolaStep = Section::make('Distribuição escolar')
