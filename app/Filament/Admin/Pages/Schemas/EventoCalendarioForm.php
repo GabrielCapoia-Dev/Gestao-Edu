@@ -195,9 +195,7 @@ class EventoCalendarioForm
             ->schema([
                 Hidden::make('publico_tipo')->default('segmentado')->dehydrated(),
                 Hidden::make('funcoes_administrativas_ids')->default([])->dehydrated(),
-                Hidden::make('publico_regras')->default([[
-                    'escola_ids' => [], 'funcao_ids' => [], 'turnos' => [], 'serie_ids' => [], 'componente_ids' => [],
-                ]])->dehydrated(),
+                Hidden::make('publico_regras')->default([])->dehydrated(),
                 Grid::make(['default' => 1, 'md' => 2])->schema([
                     Select::make('publico_escola_ids')->label('Escolas')->multiple()->searchable()->preload()
                         ->options(fn (): array => self::schoolOptions($user))->live()->afterStateUpdated(fn (Get $get, Set $set) => self::sincronizarRegraPublico($get, $set))->native(false),
@@ -621,13 +619,17 @@ class EventoCalendarioForm
     /** @return array<int|string, string> */
     private static function regraPublico(Get $get): array
     {
-        return [[
+        $regra = [
             'escola_ids' => $get('publico_escola_ids') ?? [],
             'funcao_ids' => $get('publico_funcao_ids') ?? [],
             'turnos' => $get('publico_turnos') ?? [],
             'serie_ids' => $get('publico_serie_ids') ?? [],
             'componente_ids' => $get('publico_componente_ids') ?? [],
-        ]];
+        ];
+
+        return collect($regra)->contains(function (mixed $valor): bool {
+            return is_iterable($valor) ? count($valor) > 0 : filled($valor);
+        }) ? [$regra] : [];
     }
 
     private static function sincronizarRegraPublico(Get $get, Set $set): void
