@@ -1,5 +1,24 @@
 @php
-    $grupos = $usuarios->groupBy(fn ($usuario) => $usuario->escola?->nome ?? 'Sem escola');
+    $grupos = collect();
+
+    foreach ($usuarios as $usuario) {
+        $escolas = collect($usuario->escolas ?? [])
+            ->merge($usuario->escola ? [$usuario->escola] : [])
+            ->merge(collect($usuario->servidores ?? [])->flatMap(fn ($servidor) => $servidor->vinculosAtivos ?? [])->pluck('escola'))
+            ->merge(collect($usuario->servidores ?? [])->flatMap(fn ($servidor) => $servidor->professores ?? [])->pluck('escola'))
+            ->filter()
+            ->unique('id')
+            ->values();
+
+        foreach ($escolas as $escola) {
+            $grupos->put($escola->nome, $grupos->get($escola->nome, collect())->push($usuario));
+        }
+    }
+
+    // Não mascarar inconsistências de vínculo como uma escola válida.
+    if ($grupos->isEmpty() && $usuarios->isNotEmpty()) {
+        $grupos->put('Escola não identificada', $usuarios);
+    }
 @endphp
 
 <div class="evento-participantes" x-data="{ busca: '', removidos: @js($excecoes ?? []) }">

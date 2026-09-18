@@ -437,10 +437,14 @@ class EventoCalendarioForm
                 ]);
 
         $transporteStep = Step::make('Transporte escolar')->schema([
+            Hidden::make('transporte_excecoes_aluno_ids')->default([])->dehydrated(),
             ToggleButtons::make('precisa_transporte_evento')
                 ->label('Vai precisar de transporte para os alunos?')
                 ->options(['sim' => 'Sim', 'nao' => 'Não'])
                 ->inline()
+                ->colors(['sim' => 'primary', 'nao' => 'gray'])
+                ->extraAttributes(['class' => 'evento-transporte-pergunta', 'style' => 'display:block;text-align:center'])
+                ->columnSpanFull()
                 ->default('nao')
                 ->required()
                 ->live()
@@ -477,19 +481,31 @@ class EventoCalendarioForm
                             self::atualizarDistribuicao($user, $get, $set);
                         })->native(false),
                 ]),
-            Placeholder::make('transporte_estimativa')->label('Estimativa de alunos para transporte')
-                ->content(function (Get $get): string {
-                    if ($get('precisa_transporte_evento') !== 'sim') return 'Nenhum transporte será solicitado.';
+            ViewField::make('transporte_alunos_tabela')
+                ->hiddenLabel()
+                ->dehydrated(false)
+                ->visible(fn (Get $get): bool => $get('precisa_transporte_evento') === 'sim')
+                ->view('filament.admin.pages.fields.evento-transporte-alunos-table')
+                ->viewData(function (Get $get) use ($user): array {
                     $escolas = collect($get('transporte_escola_ids') ?? [])->filter()->values()->all();
-                    if ($escolas === []) return 'Selecione ao menos uma escola para calcular a estimativa.';
-                    return (string) Aluno::query()->join('turmas', 'turmas.id', '=', 'alunos.id_turma')
-                        ->whereIn('turmas.id_escola', $escolas)
-                        ->where('alunos.tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
-                        ->where('alunos.status', Aluno::STATUS_MATRICULADO)
-                        ->when($get('transporte_serie_ids') ?? [], fn (Builder $query, array $ids): Builder => $query->whereIn('turmas.id_serie', $ids))
-                        ->when($get('transporte_turnos') ?? [], fn (Builder $query, array $turnos): Builder => $query->whereIn('turmas.turno', $turnos))
-                        ->distinct('alunos.id')->count('alunos.id').' aluno(s) estimado(s).';
-                }),
+                    $alunos = $escolas === [] ? collect() : Aluno::query()
+                        ->with(['turma.escola:id,nome', 'turma.serie:id,nome'])
+                        ->whereHas('turma', function (Builder $query) use ($escolas, $get): void {
+                            $query->whereIn('id_escola', $escolas)
+                                ->when($get('transporte_serie_ids') ?? [], fn (Builder $q, array $ids) => $q->whereIn('id_serie', $ids))
+                                ->when($get('transporte_turnos') ?? [], fn (Builder $q, array $turnos) => $q->whereIn('turno', $turnos));
+                        })
+                        ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
+                        ->where('status', Aluno::STATUS_MATRICULADO)
+                        ->orderBy('nome')
+                        ->get();
+
+                    return [
+                        'alunos' => $alunos,
+                        'excecoes' => $get('transporte_excecoes_aluno_ids') ?? [],
+                    ];
+                })
+                ->columnSpanFull(),
         ]);
 
         return [Wizard::make([

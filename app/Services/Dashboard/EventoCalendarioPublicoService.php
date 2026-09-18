@@ -68,7 +68,13 @@ final class EventoCalendarioPublicoService
 
         foreach ($evento->publicoRegras as $regra) {
             $usuarios = $usuarios->merge($this->queryRegra($regra->filtros)
-                ->with(['escola:id,nome', 'servidores.funcoesAtivas'])
+                ->with([
+                    'escola:id,nome',
+                    'escolas:id,nome',
+                    'servidores.funcoesAtivas',
+                    'servidores.vinculosAtivos.escola:id,nome',
+                    'servidores.professores.escola:id,nome',
+                ])
                 ->get());
         }
 
@@ -88,7 +94,13 @@ final class EventoCalendarioPublicoService
 
         foreach ($this->normalizarRegras($regras, $ator) as $filtros) {
             $usuarios = $usuarios->merge($this->queryRegra($filtros)
-                ->with(['escola:id,nome', 'servidores.funcoesAtivas'])
+                ->with([
+                    'escola:id,nome',
+                    'escolas:id,nome',
+                    'servidores.funcoesAtivas',
+                    'servidores.vinculosAtivos.escola:id,nome',
+                    'servidores.professores.escola:id,nome',
+                ])
                 ->get());
         }
 
