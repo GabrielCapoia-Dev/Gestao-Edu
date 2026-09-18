@@ -49,8 +49,8 @@ function identificacaoEquipe(equipe) {
 
 function logoResponsiva(classe = "") {
   return `<picture class="brand-logo ${classe}">
-    <source media="(min-width: 700px)" srcset="/jogos/assets/logo-horizontal-inicial.png">
-    <img src="/jogos/assets/logo-vertical.png" alt="Jogos Infantis de Umuarama">
+    <source media="(min-width: 700px)" srcset="/jogos-assets/assets/logo-horizontal-inicial.png">
+    <img src="/jogos-assets/assets/logo-vertical.png" alt="Jogos Infantis de Umuarama">
   </picture>`;
 }
 
