@@ -186,7 +186,7 @@ final class EventoCalendarioPublicoService
             })
             ->when($filtros['turnos'] ?? [], fn (Builder $query, array $turnos): Builder => $query->whereHas('servidores.professores', fn (Builder $professores): Builder => $professores->where('ativo', true)->whereIn('turno', $turnos)))
             ->when($filtros['serie_ids'] ?? [], fn (Builder $query, array $ids): Builder => $query->whereHas('servidores.professores', fn (Builder $professores): Builder => $professores->where('ativo', true)->whereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereIn('id_serie', $ids))))
-            ->when($filtros['componente_ids'] ?? [], fn (Builder $query, array $ids): Builder => $query->whereHas('servidores.professores', fn (Builder $professores): Builder => $professores->where('ativo', true)->whereHas('componentesPorTurma', fn (Builder $componentes): Builder => $componentes->whereIn('componente_curricular.id', $ids))));
+            ->when($filtros['componente_ids'] ?? [], fn (Builder $query, array $ids): Builder => $query->whereHas('servidores.professores', fn (Builder $professores): Builder => $professores->where('ativo', true)->whereHas('componentesPorTurma', fn (Builder $componentes): Builder => $componentes->whereIn('componentes_curriculares.id', $ids))));
     }
 
     private function cargo(User $usuario): string
