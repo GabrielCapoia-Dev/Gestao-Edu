@@ -124,6 +124,13 @@ class AvaliacaoDashboardOnDemandTest extends TestCase
             'alunos_pendentes' => 0,
             'pautas_total' => 1,
         ]);
+        $this->assertDatabaseHas('avaliacao_dashboard_turma_resumos', [
+            'avaliacao_id' => $cenario['avaliacao']->id,
+            'turma_id' => $cenario['turma']->id,
+            'componente_chave' => $cenario['componente']->id,
+            'preenchimentos_esperados' => 1,
+            'preenchimentos_respondidos' => 1,
+        ]);
     }
 
     /**
