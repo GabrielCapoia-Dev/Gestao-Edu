@@ -154,6 +154,16 @@ class CalendarEventAggregatorTest extends TestCase
         $this->assertStringNotContainsString('nav-card', file_get_contents(public_path('css/geral.css')));
     }
 
+    public function test_dashboard_monta_avisos_e_agenda_somente_com_permissao_de_listagem(): void
+    {
+        $blade = file_get_contents(resource_path('views/filament/pages/dashboard.blade.php'));
+
+        $this->assertStringContainsString("@can('viewAny', \\App\\Models\\Aviso::class)", $blade);
+        $this->assertStringContainsString("@can('viewAny', \\App\\Models\\EventoCalendario::class)", $blade);
+        $this->assertStringContainsString('<livewire:home.avisos-banner lazy />', $blade);
+        $this->assertStringContainsString('<livewire:home.agenda-proximos-dias lazy />', $blade);
+    }
+
     public function test_agregador_aplica_filtros_de_categoria_status_prioridade_e_assunto(): void
     {
         $inicio = CarbonImmutable::parse('2026-07-20 00:00:00');

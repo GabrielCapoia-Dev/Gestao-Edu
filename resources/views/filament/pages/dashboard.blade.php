@@ -1,7 +1,11 @@
 <x-filament-panels::page>
     <div class="welcome-root">
-        <livewire:home.avisos-banner lazy />
+        @can('viewAny', \App\Models\Aviso::class)
+            <livewire:home.avisos-banner lazy />
+        @endcan
 
-        <livewire:home.agenda-proximos-dias lazy />
+        @can('viewAny', \App\Models\EventoCalendario::class)
+            <livewire:home.agenda-proximos-dias lazy />
+        @endcan
     </div>
 </x-filament-panels::page>

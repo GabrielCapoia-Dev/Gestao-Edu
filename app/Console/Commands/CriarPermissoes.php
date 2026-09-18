@@ -619,6 +619,10 @@ class CriarPermissoes extends Command
                 'guard_name' => 'web',
             ]);
 
+            if ($roleName === 'Visitante') {
+                $role->givePermissionTo(ListaPermissoes::VisualizarTelaDeInicio->label());
+            }
+
             $this->line(
                 $role->wasRecentlyCreated
                     ? "Nível configurável criado: {$roleName}"
