@@ -6,8 +6,15 @@
         modal.scrollTop = 0;
         modal.querySelectorAll('.fi-modal-content, [data-modal-content]').forEach((elemento) => elemento.scrollTop = 0);
         const sync = () => {
-            const candidatos = [...modal.querySelectorAll('[aria-current=\'step\'], [aria-selected=\'true\'], [data-active=\'true\'], [class*=\'active\'], [class*=\'current\']')];
-            const ativo = candidatos.find((elemento) => /Dados do evento|Convidar participantes|Transporte escolar/.test(elemento.textContent || ''));
+            const candidatos = [...modal.querySelectorAll(
+                '.fi-sc-wizard-header-step.fi-active, .fi-sc-wizard-header-step[aria-current=\'step\'], .fi-wizard-header-step.fi-active, .fi-wizard-header-step[aria-current=\'step\'], [class*=\'wizard\'][class*=\'step\'][aria-selected=\'true\']'
+            )];
+            let ativo = candidatos.find((elemento) => /Dados do evento|Convidar participantes|Transporte escolar/.test(elemento.textContent || ''));
+            if (! ativo) {
+                ativo = [...modal.querySelectorAll('[aria-current=\'step\'], [aria-selected=\'true\'], [data-active=\'true\'], [class*=\'active\'], [class*=\'current\']')]
+                    .find((elemento) => ['Dados do evento', 'Convidar participantes', 'Transporte escolar'].includes((elemento.textContent || '').trim()));
+            }
+            if (! ativo) return;
             const texto = ativo?.textContent?.trim() || '';
             modal.dataset.eventoStep = texto.includes('Transporte escolar') ? '3' : (texto.includes('Convidar participantes') ? '2' : '1');
             const submit = modal.querySelector('.fi-modal-footer .fi-btn-color-primary');
