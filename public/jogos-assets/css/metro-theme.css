@@ -125,6 +125,7 @@ button, a, select, input { border-radius: 0 !important; }
 .public-topbar { color: #d8eaff; background: #001f49; }
 .public-header { color: var(--ink); background: #fff; border-bottom-color: var(--metro-teal); }
 .public-main-nav { background: #fff; }
+.admin-bottom-nav { display: none; }
 .public-main-nav button { margin: .45rem .15rem; border: 1px solid #c5d1df; border-bottom: 4px solid transparent; border-radius: 6px 6px 0 0; color: var(--metro-dark); background: #eef4fb; white-space: normal; }
 .public-main-nav button:hover { color: var(--metro-dark); background: #e4effc; }
 .public-main-nav button:not(.active) { opacity: .62; }
@@ -399,6 +400,7 @@ button { border-radius: 9px !important; }
   .mobile-filter-toggle { display: inline-flex; min-height: 36px; padding: .45rem .7rem; border: 0; border-radius: 9px !important; color: #fff; background: #004a99; font-size: .72rem; font-weight: 800; text-transform: uppercase; }
   .public-main-nav { position: fixed; z-index: 20; right: 0; bottom: 0; left: 0; width: 100%; min-height: 62px; margin: 0; padding: .25rem; border-top: 3px solid #004a99; background: #fff; box-shadow: 0 -4px 16px rgba(0,32,80,.16); }
   .public-header .public-main-nav { position: fixed !important; z-index: 200 !important; right: 0 !important; bottom: 0 !important; left: 0 !important; display: flex !important; width: 100% !important; min-height: 62px; }
+  body.scoreboard-mode .public-header .public-main-nav { display: flex !important; visibility: visible !important; opacity: 1 !important; }
   .public-main-nav button { min-height: 54px; margin: 0; border: 0; border-radius: 7px !important; font-size: .62rem; line-height: 1.1; }
   .public-main-nav button { display: grid; grid-template-rows: 1fr auto; align-content: center; justify-items: center; gap: 2px; padding: .25rem .15rem; }
   .public-main-nav .nav-icon { display: grid; width: 22px; height: 22px; place-items: center; color: currentColor; line-height: 1; }
