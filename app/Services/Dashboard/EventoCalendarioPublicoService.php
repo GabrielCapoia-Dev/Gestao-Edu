@@ -15,7 +15,11 @@ final class EventoCalendarioPublicoService
     {
         $escolas = $usuario->idsEscolasVinculadas();
         $funcoes = $usuario->servidores()->with('funcoesAtivas:id')->get()
-            ->flatMap->funcoesAtivas->modelKeys();
+            ->flatMap->funcoesAtivas
+            ->pluck('id')
+            ->unique()
+            ->values()
+            ->all();
         $professores = $usuario->professores()->where('ativo', true)->get();
         $turnos = $professores->pluck('turno')->filter()->unique()->values()->all();
         $series = $professores->flatMap(fn ($professor) => $professor->turmas()->pluck('id_serie'))->filter()->unique()->values()->all();
