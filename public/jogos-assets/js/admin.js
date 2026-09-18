@@ -127,14 +127,21 @@ async function renderPartidas() {
 }
 
 function bindPartidas() {
-  document.querySelectorAll("[data-step]").forEach((botao) => botao.addEventListener("click", () => {
+  document.querySelectorAll("[data-step]").forEach((botao) => {
+    if (botao.dataset.jogosBound === "true") return;
+    botao.dataset.jogosBound = "true";
+    botao.addEventListener("click", () => {
     const chave = `${botao.dataset.id}:${botao.dataset.side}`;
     const output = document.querySelector(`#score-${botao.dataset.id}-${botao.dataset.side}`);
     const novo = Math.max(0, Number(output.value || output.textContent) + Number(botao.dataset.step));
     placaresTemporarios.set(chave, novo);
     output.textContent = novo;
-  }));
-  document.querySelectorAll("[data-save]").forEach((botao) => botao.addEventListener("click", async () => {
+    });
+  });
+  document.querySelectorAll("[data-save]").forEach((botao) => {
+    if (botao.dataset.jogosBound === "true") return;
+    botao.dataset.jogosBound = "true";
+    botao.addEventListener("click", async () => {
     const id = botao.dataset.save;
     const partida = (await api.getPartidas(filtros.periodo, filtros.dia, filtros.quadra, filtros.modalidade, filtros.genero)).find((item) => item.id === id);
     const placarA = Number(document.querySelector(`#score-${id}-A`).textContent);
@@ -151,8 +158,11 @@ function bindPartidas() {
     } catch (erro) {
       avisar(erro.message);
     }
-  }));
+    });
+  });
 }
+
+window.__jogosAdminRebindPartidas = bindPartidas;
 
 function bindFiltros() {
   document.querySelectorAll("[data-filter] [data-value]").forEach((botao) => botao.addEventListener("click", async () => {
