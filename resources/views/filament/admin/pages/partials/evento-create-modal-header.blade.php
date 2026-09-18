@@ -3,36 +3,39 @@
         const modal = $el.closest('.evento-create-modal');
         if (! modal) return;
         modal.dataset.eventoStep = '1';
+        modal.__eventoStep = 1;
         modal.scrollTop = 0;
         modal.querySelectorAll('.fi-modal-content, [data-modal-content]').forEach((elemento) => elemento.scrollTop = 0);
         const sync = () => {
-            const candidatos = [...modal.querySelectorAll(
-                '.fi-sc-wizard-header-step.fi-active, .fi-sc-wizard-header-step[aria-current=\'step\'], .fi-wizard-header-step.fi-active, .fi-wizard-header-step[aria-current=\'step\'], [class*=\'wizard\'][class*=\'step\'][aria-selected=\'true\']'
-            )];
-            let ativo = candidatos.find((elemento) => /Dados do evento|Convidar participantes|Transporte escolar/.test(elemento.textContent || ''));
-            if (! ativo) {
-                ativo = [...modal.querySelectorAll('[aria-current=\'step\'], [aria-selected=\'true\'], [data-active=\'true\'], [class*=\'active\'], [class*=\'current\']')]
-                    .find((elemento) => ['Dados do evento', 'Convidar participantes', 'Transporte escolar'].includes((elemento.textContent || '').trim()));
-            }
-            if (! ativo) return;
-            const texto = ativo?.textContent?.trim() || '';
-            modal.dataset.eventoStep = texto.includes('Transporte escolar') ? '3' : (texto.includes('Convidar participantes') ? '2' : '1');
+            modal.dataset.eventoStep = String(modal.__eventoStep || 1);
             const submit = modal.querySelector('.fi-modal-footer .fi-btn-color-primary');
-            if (submit) submit.textContent = modal.dataset.eventoStep === '3' ? 'Criar evento' : 'Próximo';
+            if (submit) submit.textContent = modal.__eventoStep === 3 ? 'Criar evento' : 'Próximo';
         };
         sync();
         const observer = new MutationObserver(sync);
         observer.observe(modal, { subtree: true, attributes: true, attributeFilter: ['class', 'aria-current', 'aria-selected', 'data-active'] });
         const timer = window.setInterval(sync, 150);
         modal.addEventListener('click', (event) => {
+            const passo = [...modal.querySelectorAll('.fi-sc-wizard-header-step, .fi-wizard-header-step, button')]
+                .find((elemento) => elemento.contains(event.target) && ['Dados do evento', 'Convidar participantes', 'Transporte escolar'].includes((elemento.textContent || '').trim()));
+            if (passo) {
+                modal.__eventoStep = passo.textContent.trim() === 'Dados do evento' ? 1 : (passo.textContent.trim() === 'Convidar participantes' ? 2 : 3);
+                sync();
+                return;
+            }
+
             const submit = event.target.closest('.fi-modal-footer .fi-btn-color-primary');
-            if (! submit || modal.dataset.eventoStep === '3') return;
+            if (! submit || modal.__eventoStep === 3) return;
 
             event.preventDefault();
             event.stopImmediatePropagation();
             const proximo = [...modal.querySelectorAll('.fi-sc-wizard-footer button')]
                 .find((botao) => (botao.textContent || '').trim().toLowerCase().includes('próximo'));
-            proximo?.click();
+            if (proximo) {
+                modal.__eventoStep = Math.min(3, modal.__eventoStep + 1);
+                proximo.click();
+                sync();
+            }
         }, true);
         $el.addEventListener('alpine:destroy', () => { observer.disconnect(); window.clearInterval(timer); }, { once: true });
     });
