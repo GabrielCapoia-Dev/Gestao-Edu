@@ -7,6 +7,7 @@ use App\Models\Enums\EventoCalendarioCor;
 use App\Models\Enums\EventoCalendarioTransporteEscopo;
 use App\Models\Escola;
 use App\Models\EventoCalendario;
+use App\Models\FuncaoAdministrativa;
 use App\Models\Serie;
 use App\Models\Turma;
 use App\Models\User;
@@ -24,6 +25,8 @@ use Filament\Forms\Components\ViewField;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Wizard;
+use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
@@ -52,8 +55,7 @@ class EventoCalendarioForm
         $somenteTransporte = $user !== null
             && Gate::forUser($user)->allows('requiresTransport', EventoCalendario::class);
 
-        return [
-            Section::make('Evento')
+        $eventoStep = Section::make('Evento')
                 ->columns(1)
                 ->columnSpanFull()
                 ->schema([
@@ -203,9 +205,72 @@ class EventoCalendarioForm
                                     self::atualizarDistribuicao($user, $get, $set);
                                 }),
                         ]),
-                ]),
+                ]);
 
-            Section::make('Distribuição por escola')
+        $publicoStep = Section::make('Público do evento')
+                ->description('Escolha quem poderá visualizar este evento.')
+                ->columnSpanFull()
+                ->schema([
+                    Select::make('publico_tipo')
+                        ->label('Tipo de público')
+                        ->options([
+                            'geral' => 'Evento geral por cargo',
+                            'segmentado' => 'Público segmentado por grupos',
+                        ])
+                        ->default('geral')
+                        ->required()
+                        ->live()
+                        ->native(false),
+                    Select::make('funcoes_administrativas_ids')
+                        ->label('Cargos convidados')
+                        ->options(fn (): array => FuncaoAdministrativa::query()->where('ativo', true)->orderBy('nome')->pluck('nome', 'id')->all())
+                        ->multiple()
+                        ->searchable()
+                        ->preload()
+                        ->required(fn (Get $get): bool => $get('publico_tipo') === 'geral')
+                        ->visible(fn (Get $get): bool => $get('publico_tipo') === 'geral')
+                        ->native(false),
+                    Repeater::make('publico_regras')
+                        ->label('Grupos de convite')
+                        ->visible(fn (Get $get): bool => $get('publico_tipo') === 'segmentado')
+                        ->schema([
+                            Select::make('escola_ids')->label('Escolas')->multiple()->searchable()->options(fn (): array => self::schoolOptions($user))->native(false),
+                            Select::make('funcao_ids')->label('Cargos')->multiple()->searchable()->options(fn (): array => FuncaoAdministrativa::query()->where('ativo', true)->orderBy('nome')->pluck('nome', 'id')->all())->native(false),
+                            Select::make('turnos')->label('Turnos')->multiple()->options(self::turnoOptions())->native(false),
+                            Select::make('serie_ids')->label('Séries')->multiple()->searchable()->options(fn (): array => Serie::query()->orderBy('nome')->pluck('nome', 'id')->all())->native(false),
+                            Select::make('componente_ids')->label('Componentes')->multiple()->searchable()->options(fn (): array => \App\Models\ComponenteCurricular::query()->orderBy('nome')->pluck('nome', 'id')->all())->native(false),
+                        ])->columns(2)->addActionLabel('Adicionar grupo')->live(),
+                    Placeholder::make('publico_resumo')
+                        ->label('Prévia dos convidados')
+                        ->content(function (Get $get) use ($user): HtmlString {
+                            if (! $user || $get('publico_tipo') !== 'segmentado') {
+                                return new HtmlString('Selecione grupos para visualizar os convidados.');
+                            }
+
+                            try {
+                                $usuarios = app(\App\Services\Dashboard\EventoCalendarioPublicoService::class)
+                                    ->preview($user, $get('publico_regras') ?? [], $get('publico_excecoes_ids') ?? []);
+
+                                $resumo = $usuarios->groupBy(fn ($usuario): string => (string) ($usuario->escola?->nome ?? 'Sem escola'))
+                                    ->map(fn ($grupo, $escola): string => '<strong>'.e($escola).'</strong>: '.e((string) $grupo->count()).' convidado(s)')
+                                    ->values()->implode('<br>');
+
+                                return new HtmlString($resumo !== '' ? $resumo : 'Nenhum usuário encontrado para os filtros informados.');
+                            } catch (\Illuminate\Validation\ValidationException) {
+                                return new HtmlString('Complete os filtros do grupo para visualizar os convidados.');
+                            }
+                        })
+                        ->columnSpanFull(),
+                    Select::make('publico_excecoes_ids')
+                        ->label('Remover pessoas específicas')
+                        ->multiple()
+                        ->searchable()
+                        ->options(fn (): array => $user ? app(\App\Services\Dashboard\PublicoAlvoOptionsService::class)->buscarUsuarios($user) : [])
+                        ->live()
+                        ->native(false),
+                ]);
+
+        $escolaStep = Section::make('Distribuição escolar')
                 ->description('Use os filtros para localizar e carregar automaticamente as escolas participantes.')
                 ->columnSpanFull()
                 ->visible(fn (Get $get): bool => (bool) $get('enviar_escolas_especificas'))
@@ -404,13 +469,17 @@ class EventoCalendarioForm
                         ->collapsible()
                         ->collapsed()
                         ->columnSpanFull(),
-                ]),
+                ]);
 
-        ];
+        return [Wizard::make([
+            Step::make('Dados do evento')->schema([$eventoStep]),
+            Step::make('Convidar participantes')->schema([$publicoStep, $escolaStep]),
+        ])->columnSpanFull()];
     }
 
     public static function dadosParaEdicao(EventoCalendario $evento, array $data): array
     {
+        $evento->loadMissing(['publicoAlvo.funcoesAdministrativas', 'publicoRegras', 'publicoExcecoes']);
         $inicio = $evento->data_inicio->format('H:i');
         $fim = $evento->data_fim->format('H:i');
 
@@ -429,6 +498,10 @@ class EventoCalendarioForm
             'escolas_filtro_ids' => $evento->escolasAgendadas->pluck('escola_id')->map(fn ($id): int => (int) $id)->all(),
             'turnos_filtro' => self::turnosParaPeriodo((string) self::periodoCorrespondente($inicio, $fim)),
             'precisa_transporte_grupo' => $evento->escolasAgendadas->contains('precisa_transporte', true),
+            'publico_tipo' => $evento->publico_tipo === 'segmentado' ? 'segmentado' : 'geral',
+            'funcoes_administrativas_ids' => $evento->publicoAlvo?->funcoesAdministrativas?->modelKeys() ?? [],
+            'publico_regras' => $evento->publicoRegras->map(fn ($regra): array => $regra->filtros ?? [])->values()->all(),
+            'publico_excecoes_ids' => $evento->publicoExcecoes->pluck('user_id')->map(fn ($id): int => (int) $id)->all(),
         ];
     }
 
