@@ -27,6 +27,7 @@ use App\Http\Middleware\EnsurePasswordIsChanged;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'public.home')->name('public.home');
+Route::view('/jogos', 'jogos.geral')->name('jogos.geral');
 Route::view('/politica-de-privacidade', 'public.privacy')->name('public.privacy');
 Route::view('/termos-de-servico', 'public.terms')->name('public.terms');
 Route::get('/pedidos/relatorio-geral', [PedidoRelatorioGeralController::class, 'exportar'])
