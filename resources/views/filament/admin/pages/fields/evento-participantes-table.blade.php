@@ -30,8 +30,10 @@
                             <tbody>
                                 @foreach ($pessoas as $pessoa)
                                     @php
-                                        $cargos = $pessoa->servidores?->flatMap->funcoesAtivas->pluck('nome')->filter()->unique()->implode(', ');
-                                        $textoBusca = mb_strtolower(implode(' ', [$pessoa->name, $pessoa->email, $cargos]));
+                                        $cargos = collect($pessoa->servidores ?? [])
+                                            ->flatMap(fn ($servidor) => $servidor->funcoesAtivas ?? [])
+                                            ->pluck('nome')->filter()->unique()->implode(', ');
+                                        $textoBusca = strtolower(implode(' ', [(string) $pessoa->name, (string) $pessoa->email, $cargos]));
                                     @endphp
                                     <tr x-show="!busca || @js($textoBusca).includes(busca.toLowerCase())">
                                         <td>{{ $pessoa->name }}</td>
