@@ -3304,12 +3304,6 @@ class DashboardAvaliacoes extends Page implements HasForms
                     $preenchimentosRespondidos > 0 => 'em_andamento',
                     default => 'nao_iniciado',
                 };
-                $parecerElegibilidade = $this->parecerElegibilidadeDaTurma(
-                    (int) $item->avaliacao_id,
-                    (int) $item->turma_id,
-                    $turmasDaPagina->get((int) $item->turma_id)
-                );
-
                 $linha = [
                     'avaliacao_id' => (int) $item->avaliacao_id,
                     'turma_id' => (int) $item->turma_id,
@@ -3337,8 +3331,8 @@ class DashboardAvaliacoes extends Page implements HasForms
                         'em_andamento' => 'Em andamento',
                         default => 'Não iniciado',
                     },
-                    'parecer_exportavel' => $parecerElegibilidade['pode_exportar'],
-                    'parecer_exportavel_motivo' => $parecerElegibilidade['motivo_bloqueio'],
+                    'parecer_exportavel' => false,
+                    'parecer_exportavel_motivo' => 'Verificação disponível ao selecionar a turma.',
                     'ultima_resposta' => $item->ultima_resposta_em
                         ? Carbon::parse($item->ultima_resposta_em)->format('d/m/Y H:i')
                         : '-',
@@ -3369,6 +3363,8 @@ class DashboardAvaliacoes extends Page implements HasForms
         } elseif (! $paginar) {
             $total = count($itens);
         }
+
+        $itens = $this->aplicarElegibilidadeNasLinhas($itens, $turmasDaPagina);
 
         return ['itens' => $itens, 'total' => $total];
     }
@@ -3579,11 +3575,6 @@ class DashboardAvaliacoes extends Page implements HasForms
                 $status = $respondidas >= $esperadas && $esperadas > 0
                     ? 'preenchido'
                     : ($respondidas > 0 ? 'em_andamento' : 'nao_iniciado');
-                $parecerElegibilidade = $this->parecerElegibilidadeDaTurma(
-                    (int) $item->avaliacao_id,
-                    (int) $item->turma_id,
-                    $turmas->get((int) $item->turma_id),
-                );
                 $linha = [
                     'avaliacao_id' => (int) $item->avaliacao_id,
                     'turma_id' => (int) $item->turma_id,
@@ -3610,8 +3601,8 @@ class DashboardAvaliacoes extends Page implements HasForms
                         'em_andamento' => 'Em andamento',
                         default => 'Não iniciado',
                     },
-                    'parecer_exportavel' => $parecerElegibilidade['pode_exportar'],
-                    'parecer_exportavel_motivo' => $parecerElegibilidade['motivo_bloqueio'],
+                    'parecer_exportavel' => false,
+                    'parecer_exportavel_motivo' => 'Verificação disponível ao selecionar a turma.',
                     'ultima_resposta' => $item->ultima_resposta_em
                         ? Carbon::parse($item->ultima_resposta_em)->format('d/m/Y H:i')
                         : '-',
@@ -3632,7 +3623,26 @@ class DashboardAvaliacoes extends Page implements HasForms
             $itens = $itens->forPage($this->acompanhamentoTurmasPagina, $this->acompanhamentoTurmasPorPagina)->values();
         }
 
+        $itens = collect($this->aplicarElegibilidadeNasLinhas($itens->all(), $turmas))->values();
+
         return ['itens' => $itens->all(), 'total' => $total];
+    }
+
+    /** @param array<int, array<string, int|float|string|bool>> $itens */
+    private function aplicarElegibilidadeNasLinhas(array $itens, Collection $turmas): array
+    {
+        foreach ($itens as &$linha) {
+            $parecerElegibilidade = $this->parecerElegibilidadeDaTurma(
+                (int) ($linha['avaliacao_id'] ?? 0),
+                (int) ($linha['turma_id'] ?? 0),
+                $turmas->get((int) ($linha['turma_id'] ?? 0)),
+            );
+            $linha['parecer_exportavel'] = $parecerElegibilidade['pode_exportar'];
+            $linha['parecer_exportavel_motivo'] = $parecerElegibilidade['motivo_bloqueio'];
+        }
+        unset($linha);
+
+        return $itens;
     }
 
     /**
@@ -4115,7 +4125,9 @@ class DashboardAvaliacoes extends Page implements HasForms
             'por_pagina' => $secao === 'acompanhamento' ? $this->acompanhamentoTurmasPorPagina : null,
         ];
 
-        return 'avaliacoes-dashboard:'.$secao.':'.hash('sha256', serialize($contexto));
+        $versao = $secao === 'acompanhamento' ? 'v2' : 'v1';
+
+        return 'avaliacoes-dashboard:'.$secao.'-'.$versao.':'.hash('sha256', serialize($contexto));
     }
 
     private function limparDashboardCache(): void
