@@ -73,6 +73,25 @@ class CriarPermissoesCommandTest extends TestCase
         $this->assertFalse($turmasRole->hasPermissionTo('Listar Pedidos'));
     }
 
+    public function test_it_creates_visitante_with_only_the_home_permission_and_preserves_manual_permissions(): void
+    {
+        Artisan::call('permissoes:criar');
+
+        $visitante = Role::findByName('Visitante', 'web');
+
+        $this->assertTrue($visitante->hasPermissionTo(ListaPermissoes::VisualizarTelaDeInicio->label()));
+        $this->assertFalse($visitante->hasPermissionTo(ListaPermissoes::ListarAvisos->label()));
+        $this->assertFalse($visitante->hasPermissionTo(ListaPermissoes::ListarMeusEventos->label()));
+
+        $visitante->givePermissionTo(ListaPermissoes::ListarAvisos->label());
+
+        Artisan::call('permissoes:criar');
+
+        $this->assertTrue(
+            Role::findByName('Visitante', 'web')->hasPermissionTo(ListaPermissoes::ListarAvisos->label()),
+        );
+    }
+
     public function test_it_synchronizes_transport_and_pedagogical_advisory_roles_with_exact_permissions(): void
     {
         Artisan::call('permissoes:criar');
