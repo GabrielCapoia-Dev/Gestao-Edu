@@ -203,6 +203,8 @@ class EventoCalendarioForm
                         ->options(fn (): array => self::schoolOptions($user))->live()->afterStateUpdated(fn (Get $get, Set $set) => self::sincronizarRegraPublico($get, $set))->native(false),
                     Select::make('publico_funcao_ids')->label('Cargos')->multiple()->searchable()->preload()
                         ->options(fn (): array => self::funcoesConviteOptions())->live()->afterStateUpdated(fn (Get $get, Set $set) => self::sincronizarRegraPublico($get, $set))->native(false),
+                ]),
+                Grid::make(['default' => 1, 'md' => 3])->schema([
                     Select::make('publico_turnos')->label('Turnos')->multiple()->options(self::turnoOptions())
                         ->live()->afterStateUpdated(fn (Get $get, Set $set) => self::sincronizarRegraPublico($get, $set))->native(false),
                     Select::make('publico_serie_ids')->label('Séries')->multiple()->searchable()->preload()
@@ -210,17 +212,18 @@ class EventoCalendarioForm
                     Select::make('publico_componente_ids')->label('Componentes curriculares')->multiple()->searchable()->preload()
                         ->options(fn (): array => \App\Models\ComponenteCurricular::query()->orderBy('nome')->pluck('nome', 'id')->all())->live()->afterStateUpdated(fn (Get $get, Set $set) => self::sincronizarRegraPublico($get, $set))->native(false),
                 ]),
-                Placeholder::make('publico_resumo')->label('Pessoas convidadas')
-                    ->content(function (Get $get) use ($user): HtmlString {
-                        if (! $user) return new HtmlString('Nenhum usuário disponível.');
-                        try {
-                            $usuarios = app(\App\Services\Dashboard\EventoCalendarioPublicoService::class)->preview($user, self::regraPublico($get), $get('publico_excecoes_ids') ?? []);
-                            if ($usuarios->isEmpty()) return new HtmlString('Nenhuma pessoa encontrada para os filtros informados.');
-                            $linhas = $usuarios->groupBy(fn ($usuario): string => (string) ($usuario->escola?->nome ?? 'Sem escola'))
-                                ->map(fn ($grupo, $escola): string => '<tr><td>'.e($escola).'</td><td>'.e($grupo->pluck('name')->filter()->implode(', ')).'</td><td>'.e((string) $grupo->count()).'</td></tr>')->values()->implode('');
-                            return new HtmlString('<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr><th class="text-left">Escola</th><th class="text-left">Pessoas</th><th class="text-left">Total</th></tr></thead><tbody>'.$linhas.'</tbody></table></div>');
-                        } catch (\Illuminate\Validation\ValidationException) { return new HtmlString('Complete os filtros para visualizar as pessoas.'); }
-                    })->columnSpanFull(),
+                ViewField::make('publico_participantes_tabela')
+                    ->hiddenLabel()
+                    ->dehydrated(false)
+                    ->view('filament.admin.pages.fields.evento-participantes-table')
+                    ->viewData(function (Get $get) use ($user): array {
+                        $usuarios = $user
+                            ? app(\App\Services\Dashboard\EventoCalendarioPublicoService::class)->preview($user, self::regraPublico($get), $get('publico_excecoes_ids') ?? [])
+                            : collect();
+
+                        return ['usuarios' => $usuarios->values()];
+                    })
+                    ->columnSpanFull(),
                 Select::make('publico_excecoes_ids')->label('Remover pessoas específicas')->multiple()->searchable()
                     ->options(fn (): array => $user ? app(\App\Services\Dashboard\PublicoAlvoOptionsService::class)->buscarUsuarios($user) : [])
                     ->live()->native(false),
