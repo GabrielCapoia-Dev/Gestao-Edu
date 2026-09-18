@@ -166,6 +166,12 @@ final class EventoCalendarioPublicoService
     {
         return User::query()
             ->whereNull('users.deleted_at')
+            ->where(function (Builder $escola): void {
+                $escola->whereNotNull('users.id_escola')
+                    ->orWhereHas('escolas')
+                    ->orWhereHas('servidores.vinculosAtivos', fn (Builder $vinculos): Builder => $vinculos->whereNotNull('id_escola'))
+                    ->orWhereHas('professores', fn (Builder $professores): Builder => $professores->whereNotNull('id_escola'));
+            })
             ->where(function (Builder $query) use ($filtros): void {
                 $query->whereHas('servidores', function (Builder $servidores) use ($filtros): void {
                     $servidores->where('servidores.status', 'ativo')
@@ -187,7 +193,8 @@ final class EventoCalendarioPublicoService
                             ->when($filtros['escola_ids'] ?? [], fn (Builder $q, array $ids): Builder => $q->whereIn('id_escola', $ids))
                             ->when($filtros['turnos'] ?? [], fn (Builder $q, array $turnos): Builder => $q->whereIn('turno', $turnos))
                             ->when($filtros['serie_ids'] ?? [], fn (Builder $q, array $ids): Builder => $q->whereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereIn('id_serie', $ids)))
-                            ->when($filtros['componente_ids'] ?? [], fn (Builder $q, array $ids): Builder => $q->whereHas('componentesPorTurma', fn (Builder $componentes): Builder => $componentes->whereIn('componente_curricular.id', $ids)));
+                            ->when($filtros['componente_ids'] ?? [], fn (Builder $q, array $ids): Builder => $q->whereHas('componentesPorTurma', fn (Builder $componentes): Builder => $componentes->whereIn('componente_curricular.id', $ids)))
+                            ->when($filtros['funcao_ids'] ?? [], fn (Builder $q, array $ids): Builder => $q->whereHas('vinculoFuncional', fn (Builder $vinculo): Builder => $vinculo->whereIn('funcao_administrativa_id', $ids)->where('status', 'ativo')));
                     });
                 }
 
