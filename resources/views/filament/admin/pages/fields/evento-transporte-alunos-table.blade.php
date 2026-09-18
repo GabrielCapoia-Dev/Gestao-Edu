@@ -1,11 +1,8 @@
 @php
     $excecoes = collect($excecoes ?? [])->map(fn ($id): int => (int) $id)->all();
-    $grupos = collect($alunos ?? [])->groupBy(fn ($aluno) => implode(' - ', array_filter([
-        $aluno->turma?->escola?->nome,
-        $aluno->turma?->serie?->nome,
-        $aluno->turma?->nome,
-        $aluno->turma?->turno,
-    ])) ?: 'Turma não identificada');
+    $grupos = collect($alunos ?? [])
+        ->groupBy(fn ($aluno) => $aluno->turma?->escola?->nome ?? 'Escola não identificada')
+        ->map(fn ($porEscola) => $porEscola->groupBy(fn ($aluno) => $aluno->turma?->serie?->nome ?? 'Série não identificada'));
     $total = collect($alunos ?? [])->reject(fn ($aluno) => in_array((int) $aluno->id, $excecoes, true))->count();
 @endphp
 
@@ -22,23 +19,35 @@
     @if ($grupos->isEmpty())
         <div class="evento-transporte-alunos__empty">Selecione ao menos uma escola para listar os alunos.</div>
     @else
+        <div class="evento-transporte-alunos__actions">
+            <button type="button" @click="$el.closest('.evento-transporte-alunos').querySelectorAll('details').forEach((grupo) => grupo.open = true)">Abrir todos</button>
+            <button type="button" @click="$el.closest('.evento-transporte-alunos').querySelectorAll('details').forEach((grupo) => grupo.open = false)">Fechar todos</button>
+        </div>
         <div class="evento-transporte-alunos__groups">
-            @foreach ($grupos as $turma => $alunosDaTurma)
-                <details open>
-                    <summary><strong>{{ $turma }}</strong><span>{{ $alunosDaTurma->count() }} aluno(s)⌄</span></summary>
-                    <table>
-                        <thead><tr><th>Aluno</th><th>Escola</th><th>Série</th><th></th></tr></thead>
-                        <tbody>
-                            @foreach ($alunosDaTurma as $aluno)
-                                <tr x-show="!removidos.includes({{ (int) $aluno->id }})">
-                                    <td>{{ $aluno->nome }}</td>
-                                    <td>{{ $aluno->turma?->escola?->nome ?? 'Não identificada' }}</td>
-                                    <td>{{ $aluno->turma?->serie?->nome ?? 'Não informada' }}</td>
-                                    <td><button type="button" title="Remover aluno" @click="removidos.push({{ (int) $aluno->id }}); $wire.set('mountedActionsData.0.transporte_excecoes_aluno_ids', [...new Set(removidos)])">&times;</button></td>
-                                </tr>
+            @foreach ($grupos as $escola => $porSerie)
+                <details>
+                    <summary><strong>{{ $escola }}</strong><span>{{ $porSerie->flatten()->count() }} aluno(s)⌄</span></summary>
+                    @foreach ($porSerie as $serie => $alunosDaSerie)
+                        <details class="evento-transporte-alunos__serie">
+                            <summary><strong>{{ $serie }}</strong><span>{{ $alunosDaSerie->count() }} aluno(s)⌄</span></summary>
+                            @foreach ($alunosDaSerie->groupBy(fn ($aluno) => $aluno->turma?->nome ?? 'Turma não identificada') as $turma => $alunosDaTurma)
+                                <details class="evento-transporte-alunos__turma">
+                                    <summary><strong>{{ $turma }} - {{ $alunosDaTurma->first()->turma?->turno ?? 'Turno não identificado' }}</strong><span>{{ $alunosDaTurma->count() }} aluno(s)⌄</span></summary>
+                                    <table>
+                                        <thead><tr><th>Aluno</th><th></th></tr></thead>
+                                        <tbody>
+                                            @foreach ($alunosDaTurma as $aluno)
+                                                <tr x-show="!removidos.includes({{ (int) $aluno->id }})">
+                                                    <td>{{ $aluno->nome }}</td>
+                                                    <td><button type="button" title="Remover aluno" @click="removidos.push({{ (int) $aluno->id }}); $wire.set('mountedActionsData.0.transporte_excecoes_aluno_ids', [...new Set(removidos)])">&times;</button></td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </details>
                             @endforeach
-                        </tbody>
-                    </table>
+                        </details>
+                    @endforeach
                 </details>
             @endforeach
         </div>
@@ -52,7 +61,10 @@
     .evento-transporte-alunos h3 { margin:0; color:#172b4d; font-size:1rem; }
     .evento-transporte-alunos__heading span, .evento-transporte-alunos__heading strong { color:#64748b; font-size:.75rem; }
     .evento-transporte-alunos__groups { display:grid; gap:.65rem; padding:.8rem; }
+    .evento-transporte-alunos__actions { display:flex; justify-content:flex-end; gap:.4rem; padding:.7rem .8rem 0; }
+    .evento-transporte-alunos__actions button { border:1px solid #cbd8e8; border-radius:.45rem; background:#f7faff; color:#1d4d91; padding:.45rem .6rem; font-size:.72rem; font-weight:600; cursor:pointer; }
     .evento-transporte-alunos details { border:1px solid #dce7f3; border-radius:.6rem; overflow:hidden; }
+    .evento-transporte-alunos__serie, .evento-transporte-alunos__turma { margin:.55rem; border-color:#e7edf5 !important; }
     .evento-transporte-alunos summary { display:flex; justify-content:space-between; padding:.7rem .85rem; cursor:pointer; background:#f5f8fc; color:#173b73; font-size:.8rem; }
     .evento-transporte-alunos summary span { color:#64748b; font-weight:400; }
     .evento-transporte-alunos table { width:100%; border-collapse:collapse; font-size:.78rem; }

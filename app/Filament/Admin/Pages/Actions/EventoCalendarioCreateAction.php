@@ -24,7 +24,7 @@ final class EventoCalendarioCreateAction
             ->modalWidth('6xl')
             ->extraModalWindowAttributes(['class' => 'evento-create-modal'], merge: true)
             ->modalContent(fn () => view('filament.admin.pages.partials.evento-create-modal-header'))
-            ->modalSubmitAction(false)
+            ->modalSubmitActionLabel('Criar evento')
             ->modalCancelActionLabel('Cancelar')
             ->modalFooterActionsAlignment('end')
             ->closeModalByClickingAway(false)

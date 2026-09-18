@@ -23,7 +23,6 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Components\ViewField;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Grid;
@@ -443,27 +442,14 @@ class EventoCalendarioForm
 
         $transporteStep = Step::make('Transporte escolar')->schema([
             Hidden::make('transporte_excecoes_aluno_ids')->default([])->dehydrated(),
-            ToggleButtons::make('precisa_transporte_evento')
-                ->label(new HtmlString('<span style="display:block;text-align:center;font-size:1rem;font-weight:600">Vai precisar de transporte para os alunos?</span>'))
-                ->options(['sim' => 'Sim', 'nao' => 'Não'])
-                ->inline()
-                ->colors(['sim' => 'primary', 'nao' => 'gray'])
-                ->extraAttributes(['class' => 'evento-transporte-pergunta', 'style' => 'display:flex;justify-content:center'])
-                ->columnSpanFull()
-                ->default('nao')
-                ->required()
-                ->live()
-                ->afterStateUpdated(function (string $state, Get $get, Set $set) use ($user): void {
-                    $precisa = $state === 'sim';
-                    $set('enviar_escolas_especificas', $precisa);
-                    $set('precisa_transporte_grupo', $precisa);
-                    if (! $precisa) {
-                        $set('escolas_agendadas', []);
-                        return;
-                    }
-
-                    self::atualizarDistribuicao($user, $get, $set);
-                }),
+            ViewField::make('precisa_transporte_evento_controle')
+                ->hiddenLabel()
+                ->dehydrated(false)
+                ->view('filament.admin.pages.fields.evento-transporte-pergunta')
+                ->viewData(fn (Get $get): array => [
+                    'selecionado' => $get('precisa_transporte_evento') ?: 'nao',
+                ])
+                ->columnSpanFull(),
             Grid::make(['default' => 1, 'md' => 3])
                 ->visible(fn (Get $get): bool => $get('precisa_transporte_evento') === 'sim')
                 ->schema([
@@ -517,7 +503,7 @@ class EventoCalendarioForm
             Step::make('Dados do evento')->schema([$eventoStep]),
             Step::make('Convidar participantes')->schema([$publicoStep]),
             $transporteStep,
-        ])->submitAction(new HtmlString('<button type="submit" class="fi-btn fi-btn-color-primary fi-btn-size-md">Criar evento</button>'))->columnSpanFull()];
+        ])->contained(false)->columnSpanFull()];
     }
 
     public static function dadosParaEdicao(EventoCalendario $evento, array $data): array
