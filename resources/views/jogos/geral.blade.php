@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#004090">
     <meta name="description" content="Classificação e resultados dos Jogos Infantis de Umuarama 2026.">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Placar ao vivo | Jogos Infantis de Umuarama 2026</title>
     <link rel="stylesheet" href="{{ asset('jogos-assets/css/styles.css') }}?v=20260917-paleta-logo">
     <link rel="stylesheet" href="{{ asset('jogos-assets/css/metro-theme.css') }}?v=20260918-responsive-menus">
@@ -52,6 +53,6 @@
   </head>
   <body>
     <main id="app" class="public-app"></main>
-    <script type="module" src="{{ asset('jogos-assets/js/geral.js') }}?v=20260918-admin-integrado-2"></script>
+    <script type="module" src="{{ asset('jogos-assets/js/geral.js') }}?v=20260918-json-api"></script>
   </body>
 </html>

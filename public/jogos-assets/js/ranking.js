@@ -1,4 +1,4 @@
-import { CONFIG, GENEROS, STATUS } from "./config.js";
+import { CONFIG, GENEROS, STATUS } from "./config.js?v=20260918-json-api";
 
 function criarLinha(equipe) {
   return { equipeId: equipe.id, cor: equipe.cor, hex: equipe.hex, mascote: equipe.mascote, sprite: equipe.sprite, pontos: 0, jogos: 0, vitorias: 0, empates: 0, derrotas: 0 };

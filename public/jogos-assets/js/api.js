@@ -1,8 +1,23 @@
-import { CONFIG, STATUS } from "./config.js";
-import { dadosIniciais } from "./data.js";
-import { calcularClassificacao } from "./ranking.js";
+import { CONFIG, STATUS } from "./config.js?v=20260918-json-api";
+import { dadosIniciais } from "./data.js?v=20260918-json-api";
+import { calcularClassificacao } from "./ranking.js?v=20260918-json-api";
 
 const usandoAppsScript = typeof google !== "undefined" && Boolean(google.script?.run);
+const usandoServidorLaravel = !usandoAppsScript;
+
+async function chamarLaravel(method, body) {
+  const response = await fetch("/jogos/api", {
+    method,
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')?.content ?? "",
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!response.ok) throw new Error(`Falha ao acessar o armazenamento dos jogos (${response.status}).`);
+  return response.json();
+}
 
 function chamarServidor(funcao, ...argumentos) {
   return new Promise((resolve, reject) => {
@@ -17,7 +32,7 @@ function clonar(valor) {
   return JSON.parse(JSON.stringify(valor));
 }
 
-function carregar() {
+function carregarLocal() {
   try {
     const salvo = localStorage.getItem(CONFIG.storageKey);
     return salvo ? JSON.parse(salvo) : clonar(dadosIniciais);
@@ -26,8 +41,35 @@ function carregar() {
   }
 }
 
-function persistir(dados) {
+let dadosServidor = null;
+let servidorInicializado = false;
+
+async function carregar() {
+  if (!usandoServidorLaravel || dadosServidor) return dadosServidor ?? carregarLocal();
+  try {
+    const resposta = await chamarLaravel("GET");
+    if (resposta.data) {
+      dadosServidor = resposta.data;
+    } else {
+      dadosServidor = clonar(dadosIniciais);
+      await persistir(dadosServidor);
+    }
+    servidorInicializado = true;
+    return dadosServidor;
+  } catch {
+    return carregarLocal();
+  }
+}
+
+async function persistir(dados) {
   localStorage.setItem(CONFIG.storageKey, JSON.stringify(dados));
+  dadosServidor = dados;
+  if (usandoServidorLaravel && !servidorInicializado) {
+    await chamarLaravel("POST", dados);
+    servidorInicializado = true;
+  } else if (usandoServidorLaravel) {
+    await chamarLaravel("POST", dados);
+  }
   window.dispatchEvent(new CustomEvent("jogos:atualizado"));
 }
 
@@ -55,7 +97,7 @@ export const api = {
   },
   async getPlacar(periodo, limite = 6) {
     if (usandoAppsScript) return chamarServidor("apiGetPlacar", periodo, limite);
-    const dados = carregar();
+    const dados = await carregar();
     return {
       ranking: calcularClassificacao(dados, periodo, "GERAL"),
       resultados: dados.partidas
@@ -66,17 +108,17 @@ export const api = {
   },
   async getCronograma(periodo, dia) {
     if (usandoAppsScript) return chamarServidor("apiGetCronograma", periodo, dia);
-    return carregar().partidas
+    return (await carregar()).partidas
       .filter((partida) => partida.periodo === periodo && partida.dia === dia)
       .sort((a, b) => String(a.quadra).localeCompare(String(b.quadra)) || String(a.horario).localeCompare(String(b.horario)) || a.ordem - b.ordem);
   },
   async getClassificacao(periodo, genero) {
     if (usandoAppsScript) return chamarServidor("apiGetClassificacao", periodo, genero);
-    return calcularClassificacao(carregar(), periodo, genero);
+    return calcularClassificacao(await carregar(), periodo, genero);
   },
   async getUltimosResultados(periodo, limite = 6) {
     if (usandoAppsScript) return chamarServidor("apiGetUltimosResultados", periodo, limite);
-    const dados = carregar();
+    const dados = await carregar();
     return dados.partidas
       .filter((partida) => partida.periodo === periodo && partida.status === STATUS.finalizado)
       .sort((a, b) => new Date(b.atualizadoEm) - new Date(a.atualizadoEm))
@@ -84,7 +126,7 @@ export const api = {
   },
   async getPartidas(periodo, dia, quadra, modalidadeId, genero) {
     if (usandoAppsScript) return chamarServidor("apiGetPartidas", periodo, dia, quadra, modalidadeId, genero);
-    return carregar().partidas
+    return (await carregar()).partidas
       .filter((partida) => partida.periodo === periodo && partida.dia === dia && partida.quadra === quadra)
       .filter((partida) => !modalidadeId || partida.modalidadeId === modalidadeId)
       .filter((partida) => !genero || partida.genero === genero)
@@ -92,7 +134,7 @@ export const api = {
   },
   async salvarResultado(partidaId, placarA, placarB) {
     if (usandoAppsScript) return chamarServidor("apiSalvarResultado", partidaId, placarA, placarB);
-    const dados = carregar();
+    const dados = await carregar();
     const partida = buscarPartida(dados, partidaId);
     if (partida.status === STATUS.finalizado) throw new Error("Este resultado já está protegido.");
     const antes = `${partida.placarA}x${partida.placarB} (${partida.status})`;
@@ -103,7 +145,7 @@ export const api = {
   },
   async editarResultado(partidaId, placarA, placarB) {
     if (usandoAppsScript) return chamarServidor("apiEditarResultado", partidaId, placarA, placarB);
-    const dados = carregar();
+    const dados = await carregar();
     const partida = buscarPartida(dados, partidaId);
     const antes = `${partida.placarA}x${partida.placarB}`;
     Object.assign(partida, { placarA, placarB, status: STATUS.finalizado, atualizadoEm: new Date().toISOString() });

@@ -25,7 +25,7 @@ export const CONFIG = Object.freeze({
     Object.freeze({ id: "ONKEN_BASQUETE_FEM", quadraId: "QUADRA_2", modalidadeId: "BASQUETE", genero: "FEMININO", nome: "Basquete feminino", ordem: 3 }),
     Object.freeze({ id: "ONKEN_BASQUETE_MASC", quadraId: "QUADRA_2", modalidadeId: "BASQUETE", genero: "MASCULINO", nome: "Basquete masculino", ordem: 4 }),
   ]),
-  storageKey: "jogos-infantis-umuarama-2026-v2-11-equipes",
+  storageKey: "jogos-infantis-umuarama-2026-v3-base-zero",
   criteriosDesempate: Object.freeze(["pontos", "vitorias", "cor"]),
 });
 

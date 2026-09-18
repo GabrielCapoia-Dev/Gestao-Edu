@@ -1,5 +1,5 @@
-import { GENEROS, STATUS } from "./config.js";
-import { api } from "./api.js";
+import { GENEROS, STATUS } from "./config.js?v=20260918-json-api";
+import { api } from "./api.js?v=20260918-json-api";
 
 const app = document.querySelector("#admin-app");
 const toast = document.querySelector("#toast");

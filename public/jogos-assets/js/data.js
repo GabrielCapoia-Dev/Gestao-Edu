@@ -1,4 +1,4 @@
-import { CONFIG, STATUS } from "./config.js";
+import { CONFIG, STATUS } from "./config.js?v=20260918-json-api";
 
 export const periodos = [
   { id: "MANHA", nome: "Manhã" },
@@ -72,7 +72,6 @@ function criarPartidas() {
           const minutosInicio = 8 * 60 + 30 + ordem * 13;
           const hora = Math.floor(minutosInicio / 60);
           const minuto = minutosInicio % 60;
-          const finalizada = indiceDia === 0 && ordem < 2;
           lista.push({
             id: `PARTIDA_${String(lista.length + 1).padStart(3, "0")}`,
             periodo: periodo.id,
@@ -83,11 +82,11 @@ function criarPartidas() {
             genero: estacao.genero,
             equipeAId: equipeA.id,
             equipeBId: equipeB.id,
-            status: finalizada ? STATUS.finalizado : STATUS.aguardando,
+            status: STATUS.aguardando,
             ordem: ordem + 1,
-            placarA: finalizada ? (deslocamento * 2 + ordem + 3) % 6 : 0,
-            placarB: finalizada ? (deslocamento + ordem + 1) % 5 : 0,
-            atualizadoEm: finalizada ? new Date(2026, 8, 8, hora, minuto).toISOString() : null,
+            placarA: 0,
+            placarB: 0,
+            atualizadoEm: null,
             estacaoId: estacao.id,
           });
         }

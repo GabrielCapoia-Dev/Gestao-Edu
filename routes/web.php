@@ -14,6 +14,7 @@ use App\Http\Controllers\Exports\ExportRequestController;
 use App\Http\Controllers\FeedbackPedidoExportController;
 use App\Http\Controllers\InventarioRelatorioController;
 use App\Http\Controllers\InventarioRomaneioController;
+use App\Http\Controllers\JogosController;
 use App\Http\Controllers\NotificationCenterController;
 use App\Http\Controllers\PedidoArquivoController;
 use App\Http\Controllers\PedidoMerendaEmpenhoController;
@@ -28,6 +29,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'public.home')->name('public.home');
 Route::view('/jogos', 'jogos.geral')->name('jogos.geral');
+Route::get('/jogos/api', [JogosController::class, 'show'])->name('jogos.api.show');
+Route::post('/jogos/api', [JogosController::class, 'store'])->name('jogos.api.store');
 Route::view('/politica-de-privacidade', 'public.privacy')->name('public.privacy');
 Route::view('/termos-de-servico', 'public.terms')->name('public.terms');
 Route::get('/pedidos/relatorio-geral', [PedidoRelatorioGeralController::class, 'exportar'])
