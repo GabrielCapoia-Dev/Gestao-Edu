@@ -41,6 +41,7 @@ return [
         'turmas_selecionadas' => SelectedRecordsXlsxExportHandler::class,
         'turmas_selecionadas_detalhado' => SelectedRecordsXlsxExportHandler::class,
         'servidores_selecionados' => SelectedRecordsXlsxExportHandler::class,
+        'servidores_filtrados' => SelectedRecordsXlsxExportHandler::class,
         'alunos_selecionados' => SelectedRecordsXlsxExportHandler::class,
     ],
 ];

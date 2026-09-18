@@ -60,15 +60,31 @@ class Dashboard extends Page
                 ->label('Gerenciar avisos')
                 ->icon('heroicon-o-megaphone')
                 ->color('gray')
-                ->visible(fn (): bool => $usuario !== null
-                    && Gate::forUser($usuario)->allows('viewAny', Aviso::class))
+                ->visible(fn (): bool => $usuarioEfetivo !== null
+                    && $usuarioEfetivo->hasAnyPermissionTo([
+                        ListaPermissoes::CriarAvisos->label(),
+                        ListaPermissoes::EditarAvisos->label(),
+                        ListaPermissoes::ExcluirAvisos->label(),
+                        ListaPermissoes::PublicarAvisos->label(),
+                        ListaPermissoes::GerenciarPublicoAlvoDeAvisos->label(),
+                    ]))
                 ->url(fn (): string => AvisoResource::getUrl()),
 
             Action::make('gerenciar_agenda')
                 ->label('Gerenciar agenda')
                 ->icon('heroicon-o-calendar-days')
                 ->visible(fn (): bool => $usuarioEfetivo !== null
-                    && Gate::forUser($usuarioEfetivo)->allows('viewAny', EventoCalendario::class))
+                    && $usuarioEfetivo->hasAnyPermissionTo([
+                        ListaPermissoes::CriarEventos->label(),
+                        ListaPermissoes::CriarEventosTransporte->label(),
+                        ListaPermissoes::EditarEventos->label(),
+                        ListaPermissoes::PublicarEventos->label(),
+                        ListaPermissoes::PublicarEventosTransporte->label(),
+                        ListaPermissoes::DesativarEventos->label(),
+                        ListaPermissoes::DesativarEventosTransporte->label(),
+                        ListaPermissoes::GerenciarPublicoAlvoDeEventos->label(),
+                        ListaPermissoes::GerenciarTransporteDeEventos->label(),
+                    ]))
                 ->url(fn (): string => GerenciarEventos::getUrl()),
 
             Action::make('visualizar_calendario')
