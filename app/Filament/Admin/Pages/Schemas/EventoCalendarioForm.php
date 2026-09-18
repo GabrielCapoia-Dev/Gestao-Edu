@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Pages\Schemas;
 use App\Models\Enums\EventoCalendarioCategoria;
 use App\Models\Enums\EventoCalendarioCor;
 use App\Models\Enums\EventoCalendarioTransporteEscopo;
+use App\Models\Aluno;
 use App\Models\Escola;
 use App\Models\EventoCalendario;
 use App\Models\FuncaoAdministrativa;
@@ -22,6 +23,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Components\ViewField;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Grid;
@@ -434,9 +436,66 @@ class EventoCalendarioForm
                         ->columnSpanFull(),
                 ]);
 
+        $transporteStep = Step::make('Transporte escolar')->schema([
+            ToggleButtons::make('precisa_transporte_evento')
+                ->label('Vai precisar de transporte para os alunos?')
+                ->options(['sim' => 'Sim', 'nao' => 'Não'])
+                ->inline()
+                ->default('nao')
+                ->required()
+                ->live()
+                ->afterStateUpdated(function (string $state, Get $get, Set $set) use ($user): void {
+                    $precisa = $state === 'sim';
+                    $set('enviar_escolas_especificas', $precisa);
+                    $set('precisa_transporte_grupo', $precisa);
+                    if (! $precisa) {
+                        $set('escolas_agendadas', []);
+                        return;
+                    }
+
+                    self::atualizarDistribuicao($user, $get, $set);
+                }),
+            Grid::make(['default' => 1, 'md' => 3])
+                ->visible(fn (Get $get): bool => $get('precisa_transporte_evento') === 'sim')
+                ->schema([
+                    Select::make('transporte_escola_ids')->label('Escolas')->multiple()->searchable()->preload()
+                        ->options(fn (): array => self::schoolOptions($user))->live()
+                        ->afterStateUpdated(function (Get $get, Set $set) use ($user): void {
+                            $set('selecionar_todas_escolas_filtro', false);
+                            $set('escolas_filtro_ids', $get('transporte_escola_ids'));
+                            self::atualizarDistribuicao($user, $get, $set);
+                        })->native(false),
+                    Select::make('transporte_serie_ids')->label('Séries')->multiple()->searchable()->preload()
+                        ->options(fn (): array => Serie::query()->orderBy('nome')->pluck('nome', 'id')->all())->live()
+                        ->afterStateUpdated(function (Get $get, Set $set) use ($user): void {
+                            $set('series_filtro_ids', $get('transporte_serie_ids'));
+                            self::atualizarDistribuicao($user, $get, $set);
+                        })->native(false),
+                    Select::make('transporte_turnos')->label('Turnos')->multiple()->options(self::turnoOptions())->live()
+                        ->afterStateUpdated(function (Get $get, Set $set) use ($user): void {
+                            $set('turnos_filtro', $get('transporte_turnos'));
+                            self::atualizarDistribuicao($user, $get, $set);
+                        })->native(false),
+                ]),
+            Placeholder::make('transporte_estimativa')->label('Estimativa de alunos para transporte')
+                ->content(function (Get $get): string {
+                    if ($get('precisa_transporte_evento') !== 'sim') return 'Nenhum transporte será solicitado.';
+                    $escolas = collect($get('transporte_escola_ids') ?? [])->filter()->values()->all();
+                    if ($escolas === []) return 'Selecione ao menos uma escola para calcular a estimativa.';
+                    return (string) Aluno::query()->join('turmas', 'turmas.id', '=', 'alunos.id_turma')
+                        ->whereIn('turmas.id_escola', $escolas)
+                        ->where('alunos.tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
+                        ->where('alunos.status', Aluno::STATUS_MATRICULADO)
+                        ->when($get('transporte_serie_ids') ?? [], fn (Builder $query, array $ids): Builder => $query->whereIn('turmas.id_serie', $ids))
+                        ->when($get('transporte_turnos') ?? [], fn (Builder $query, array $turnos): Builder => $query->whereIn('turmas.turno', $turnos))
+                        ->distinct('alunos.id')->count('alunos.id').' aluno(s) estimado(s).';
+                }),
+        ]);
+
         return [Wizard::make([
             Step::make('Dados do evento')->schema([$eventoStep]),
-            Step::make('Convidar participantes')->schema([$publicoStep, $escolaStep]),
+            Step::make('Convidar participantes')->schema([$publicoStep]),
+            $transporteStep,
         ])->columnSpanFull()];
     }
 
@@ -461,6 +520,7 @@ class EventoCalendarioForm
             'escolas_filtro_ids' => $evento->escolasAgendadas->pluck('escola_id')->map(fn ($id): int => (int) $id)->all(),
             'turnos_filtro' => self::turnosParaPeriodo((string) self::periodoCorrespondente($inicio, $fim)),
             'precisa_transporte_grupo' => $evento->escolasAgendadas->contains('precisa_transporte', true),
+            'precisa_transporte_evento' => $evento->escolasAgendadas->contains('precisa_transporte', true) ? 'sim' : 'nao',
             'publico_tipo' => 'segmentado',
             'funcoes_administrativas_ids' => [],
             'publico_regras' => $evento->publicoRegras->map(fn ($regra): array => $regra->filtros ?? [])->values()->all(),
