@@ -410,6 +410,8 @@ h1, h2 { line-height: 1.1; letter-spacing: -0.025em; }
 }
 
 @media (min-width: 700px) {
+  html, body { overflow-y: auto; }
+  body.integrated-admin { min-height: 100vh; }
   .welcome-screen { padding: 2rem; }
   .welcome-logo { width: min(88vw, 920px); margin-bottom: 1rem; }
   .welcome-copy h1 span { font-size: .72em; }

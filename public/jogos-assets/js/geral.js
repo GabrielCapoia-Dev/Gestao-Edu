@@ -2,6 +2,7 @@ import { CONFIG } from "./config.js";
 import { api } from "./api.js";
 
 const app = document.querySelector("#app");
+let acessoAdminListenerRegistrado = false;
 let periodoAtual = null;
 let dadosBase;
 let timerAtualizacao;
@@ -104,7 +105,12 @@ function estruturaPlacar() {
     <span>Secretaria Municipal de Educação</span>
   </footer>`;
   app.querySelector("#nav-inicio").addEventListener("click", renderInicio);
-  app.querySelector("#abrir-acesso-admin").addEventListener("click", abrirAcessoAdmin);
+  if (!acessoAdminListenerRegistrado) {
+    document.addEventListener("click", (event) => {
+      if (event.target.closest("#abrir-acesso-admin")) abrirAcessoAdmin();
+    });
+    acessoAdminListenerRegistrado = true;
+  }
   app.querySelector("#mobile-filter-fab").addEventListener("click", abrirFiltrosMobile);
   atualizarFabFiltros();
   const mudarVisao = async (visao, registrar = true) => {
