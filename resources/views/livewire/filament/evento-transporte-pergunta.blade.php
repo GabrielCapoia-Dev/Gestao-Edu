@@ -5,12 +5,14 @@
         <button
             type="button"
             class="evento-transporte-pergunta__button {{ $selecionado === 'sim' ? 'is-active' : '' }}"
-            wire:click="selecionar('sim'); $parent.set('mountedActionsData.0.precisa_transporte_evento', 'sim')"
+            wire:click="selecionar('sim')"
+            x-on:click="Livewire.find($wire.__instance.parent).$set('mountedActionsData.0.precisa_transporte_evento', 'sim')"
         >Sim</button>
         <button
             type="button"
             class="evento-transporte-pergunta__button {{ $selecionado === 'nao' ? 'is-active' : '' }}"
-            wire:click="selecionar('nao'); $parent.set('mountedActionsData.0.precisa_transporte_evento', 'nao')"
+            wire:click="selecionar('nao')"
+            x-on:click="Livewire.find($wire.__instance.parent).$set('mountedActionsData.0.precisa_transporte_evento', 'nao')"
         >Não</button>
     </div>
 </div>
