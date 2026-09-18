@@ -3,21 +3,6 @@ import { dadosIniciais } from "./data.js?v=20260918-json-api";
 import { calcularClassificacao } from "./ranking.js?v=20260918-json-api";
 
 const usandoAppsScript = typeof google !== "undefined" && Boolean(google.script?.run);
-const usandoServidorLaravel = !usandoAppsScript;
-
-async function chamarLaravel(method, body) {
-  const response = await fetch("/jogos/api", {
-    method,
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')?.content ?? "",
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (!response.ok) throw new Error(`Falha ao acessar o armazenamento dos jogos (${response.status}).`);
-  return response.json();
-}
 
 function chamarServidor(funcao, ...argumentos) {
   return new Promise((resolve, reject) => {
@@ -41,35 +26,12 @@ function carregarLocal() {
   }
 }
 
-let dadosServidor = null;
-let servidorInicializado = false;
-
 async function carregar() {
-  if (!usandoServidorLaravel || dadosServidor) return dadosServidor ?? carregarLocal();
-  try {
-    const resposta = await chamarLaravel("GET");
-    if (resposta.data) {
-      dadosServidor = resposta.data;
-    } else {
-      dadosServidor = clonar(dadosIniciais);
-      await persistir(dadosServidor);
-    }
-    servidorInicializado = true;
-    return dadosServidor;
-  } catch {
-    return carregarLocal();
-  }
+  return carregarLocal();
 }
 
 async function persistir(dados) {
   localStorage.setItem(CONFIG.storageKey, JSON.stringify(dados));
-  dadosServidor = dados;
-  if (usandoServidorLaravel && !servidorInicializado) {
-    await chamarLaravel("POST", dados);
-    servidorInicializado = true;
-  } else if (usandoServidorLaravel) {
-    await chamarLaravel("POST", dados);
-  }
   window.dispatchEvent(new CustomEvent("jogos:atualizado"));
 }
 
@@ -140,7 +102,7 @@ export const api = {
     const antes = `${partida.placarA}x${partida.placarB} (${partida.status})`;
     Object.assign(partida, { placarA, placarB, status: STATUS.finalizado, atualizadoEm: new Date().toISOString() });
     registrarLog(dados, "SALVAR_RESULTADO", partida, antes, `${placarA}x${placarB} (${STATUS.finalizado})`);
-    persistir(dados);
+    await persistir(dados);
     return clonar(partida);
   },
   async editarResultado(partidaId, placarA, placarB) {
@@ -150,7 +112,7 @@ export const api = {
     const antes = `${partida.placarA}x${partida.placarB}`;
     Object.assign(partida, { placarA, placarB, status: STATUS.finalizado, atualizadoEm: new Date().toISOString() });
     registrarLog(dados, "ALTERAR_RESULTADO", partida, antes, `${placarA}x${placarB}`);
-    persistir(dados);
+    await persistir(dados);
     return clonar(partida);
   },
   async getUsuarioAtual() {
