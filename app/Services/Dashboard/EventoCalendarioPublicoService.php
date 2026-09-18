@@ -166,48 +166,27 @@ final class EventoCalendarioPublicoService
     {
         return User::query()
             ->whereNull('users.deleted_at')
-            ->where(function (Builder $escola): void {
-                $escola->whereNotNull('users.id_escola')
-                    ->orWhereHas('escolas')
-                    ->orWhereHas('servidores.vinculosAtivos', fn (Builder $vinculos): Builder => $vinculos->whereNotNull('id_escola'))
-                    ->orWhereHas('professores', fn (Builder $professores): Builder => $professores->whereNotNull('id_escola'));
+            ->where(function (Builder $pessoas): void {
+                $pessoas->whereHas('servidores', fn (Builder $servidores): Builder => $servidores->where('status', 'ativo'))
+                    ->orWhereHas('servidores.professores', fn (Builder $professores): Builder => $professores->where('ativo', true));
             })
-            ->where(function (Builder $query) use ($filtros): void {
-                $query->whereHas('servidores', function (Builder $servidores) use ($filtros): void {
-                    $servidores->where('servidores.status', 'ativo')
-                        ->where(function (Builder $servidor) use ($filtros): void {
-                            $servidor->whereHas('vinculosAtivos', function (Builder $vinculos) use ($filtros): void {
-                                $vinculos->when($filtros['funcao_ids'] ?? [], fn (Builder $q, array $ids): Builder => $q->whereIn('funcao_administrativa_id', $ids))
-                                    ->when($filtros['escola_ids'] ?? [], fn (Builder $q, array $ids): Builder => $q->whereIn('id_escola', $ids));
-                            });
-
-                            if (($filtros['escola_ids'] ?? []) !== [] && ($filtros['funcao_ids'] ?? []) === []) {
-                                $servidor->orWhereIn('servidores.id_escola', $filtros['escola_ids']);
-                            }
-                        });
+            ->when($filtros['escola_ids'] ?? [], function (Builder $query, array $ids): Builder {
+                return $query->where(function (Builder $filtro) use ($ids): void {
+                    $filtro->whereHas('escolas', fn (Builder $escolas): Builder => $escolas->whereKey($ids))
+                        ->orWhereIn('users.id_escola', $ids)
+                        ->orWhereHas('servidores.vinculosAtivos', fn (Builder $vinculos): Builder => $vinculos->whereIn('id_escola', $ids))
+                        ->orWhereHas('servidores.professores', fn (Builder $professores): Builder => $professores->where('ativo', true)->whereIn('id_escola', $ids));
                 });
-
-                if (($filtros['serie_ids'] ?? []) !== [] || ($filtros['componente_ids'] ?? []) !== [] || ($filtros['turnos'] ?? []) !== []) {
-                    $query->whereHas('professores', function (Builder $professores) use ($filtros): void {
-                        $professores->where('professores.ativo', true)
-                            ->when($filtros['escola_ids'] ?? [], fn (Builder $q, array $ids): Builder => $q->whereIn('id_escola', $ids))
-                            ->when($filtros['turnos'] ?? [], fn (Builder $q, array $turnos): Builder => $q->whereIn('turno', $turnos))
-                            ->when($filtros['serie_ids'] ?? [], fn (Builder $q, array $ids): Builder => $q->whereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereIn('id_serie', $ids)))
-                            ->when($filtros['componente_ids'] ?? [], fn (Builder $q, array $ids): Builder => $q->whereHas('componentesPorTurma', fn (Builder $componentes): Builder => $componentes->whereIn('componente_curricular.id', $ids)))
-                            ->when($filtros['funcao_ids'] ?? [], fn (Builder $q, array $ids): Builder => $q->whereHas('vinculoFuncional', fn (Builder $vinculo): Builder => $vinculo->whereIn('funcao_administrativa_id', $ids)->where('status', 'ativo')));
-                    });
-                }
-
-                if (($filtros['escola_ids'] ?? []) !== []
-                    && ($filtros['funcao_ids'] ?? []) === []
-                    && ($filtros['serie_ids'] ?? []) === []
-                    && ($filtros['componente_ids'] ?? []) === []
-                    && ($filtros['turnos'] ?? []) === []) {
-                    $query
-                        ->orWhereHas('escolas', fn (Builder $escolas): Builder => $escolas->whereKey($filtros['escola_ids']))
-                        ->orWhereIn('users.id_escola', $filtros['escola_ids']);
-                }
-            });
+            })
+            ->when($filtros['funcao_ids'] ?? [], function (Builder $query, array $ids): Builder {
+                return $query->where(function (Builder $filtro) use ($ids): void {
+                    $filtro->whereHas('servidores.vinculosAtivos', fn (Builder $vinculos): Builder => $vinculos->whereIn('funcao_administrativa_id', $ids))
+                        ->orWhereHas('servidores.professores', fn (Builder $professores): Builder => $professores->where('ativo', true)->whereHas('vinculoFuncional', fn (Builder $vinculo): Builder => $vinculo->whereIn('funcao_administrativa_id', $ids)->where('status', 'ativo')));
+                });
+            })
+            ->when($filtros['turnos'] ?? [], fn (Builder $query, array $turnos): Builder => $query->whereHas('servidores.professores', fn (Builder $professores): Builder => $professores->where('ativo', true)->whereIn('turno', $turnos)))
+            ->when($filtros['serie_ids'] ?? [], fn (Builder $query, array $ids): Builder => $query->whereHas('servidores.professores', fn (Builder $professores): Builder => $professores->where('ativo', true)->whereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereIn('id_serie', $ids))))
+            ->when($filtros['componente_ids'] ?? [], fn (Builder $query, array $ids): Builder => $query->whereHas('servidores.professores', fn (Builder $professores): Builder => $professores->where('ativo', true)->whereHas('componentesPorTurma', fn (Builder $componentes): Builder => $componentes->whereIn('componente_curricular.id', $ids))));
     }
 
     private function cargo(User $usuario): string
