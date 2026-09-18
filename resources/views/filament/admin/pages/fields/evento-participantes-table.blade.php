@@ -9,7 +9,11 @@
             <h3>Pessoas convidadas</h3>
             <span>{{ $usuarios->count() }} pessoa(s) encontrada(s) pelos filtros do evento</span>
         </div>
-        <input x-model.debounce.200ms="busca" type="search" placeholder="Filtrar pessoas na tabela..." aria-label="Filtrar pessoas na tabela">
+        <div class="evento-participantes__actions">
+            <button type="button" @click="$el.closest('.evento-participantes').querySelectorAll('details').forEach((grupo) => grupo.open = true)">Abrir todos</button>
+            <button type="button" @click="$el.closest('.evento-participantes').querySelectorAll('details').forEach((grupo) => grupo.open = false)">Fechar todos</button>
+            <input x-model.debounce.200ms="busca" type="search" placeholder="Filtrar pessoas na tabela..." aria-label="Filtrar pessoas na tabela">
+        </div>
     </div>
 
     @if ($grupos->isEmpty())
@@ -17,7 +21,7 @@
     @else
         <div class="evento-participantes__groups">
             @foreach ($grupos as $escola => $pessoas)
-                <details class="evento-participantes__group" open>
+                <details class="evento-participantes__group">
                     <summary class="evento-participantes__group-title">
                         <strong>{{ $escola }}</strong>
                         <span><span>{{ $pessoas->count() }} pessoa(s)</span><b aria-hidden="true">⌄</b></span>
@@ -60,6 +64,9 @@
     .evento-participantes h3 { margin: 0; color: #15233b; font-size: 1rem; }
     .evento-participantes__header span, .evento-participantes__group-title span { color: #64748b; font-size: .75rem; }
     .evento-participantes__header input { width: min(20rem, 45%); border: 1px solid #cbd8e8; border-radius: .55rem; padding: .55rem .7rem; font-size: .8rem; }
+    .evento-participantes__actions { display: flex; align-items: center; justify-content: flex-end; gap: .4rem; flex-wrap: wrap; }
+    .evento-participantes__actions button { border: 1px solid #cbd8e8; border-radius: .45rem; background: #f7faff; color: #1d4d91; padding: .45rem .6rem; font-size: .72rem; font-weight: 600; cursor: pointer; }
+    .evento-participantes__actions button:hover { border-color: #1d5fb8; background: #edf4ff; }
     .evento-participantes__groups { display: grid; gap: .75rem; padding: .8rem; }
     .evento-participantes__group { border: 1px solid #e1e9f3; border-radius: .65rem; overflow: hidden; }
     .evento-participantes__group > summary { list-style: none; cursor: pointer; }
@@ -75,5 +82,5 @@
     .evento-participantes__remove-cell { width: 2.5rem; text-align: center !important; }
     .evento-participantes__remove-cell button { border: 0; background: transparent; color: #dc2626; cursor: pointer; font-size: 1.25rem; line-height: 1; }
     .evento-participantes__empty { padding: 1rem; color: #64748b; font-size: .8rem; }
-    @media (max-width: 640px) { .evento-participantes__header { align-items: stretch; flex-direction: column; } .evento-participantes__header input { width: 100%; } }
+    @media (max-width: 640px) { .evento-participantes__header { align-items: stretch; flex-direction: column; } .evento-participantes__actions { justify-content: flex-start; } .evento-participantes__header input { width: 100%; } }
 </style>
