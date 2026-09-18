@@ -1,5 +1,8 @@
 @php
     $grupos = collect();
+    $escolasSelecionadas = collect($escolasSelecionadas ?? [])
+        ->map(fn ($id): int => (int) $id)
+        ->values();
 
     foreach ($usuarios as $usuario) {
         $escolas = collect($usuario->escolas ?? [])
@@ -8,6 +11,7 @@
             ->merge(collect($usuario->servidores ?? [])->flatMap(fn ($servidor) => $servidor->professores ?? [])->pluck('escola'))
             ->filter()
             ->unique('id')
+            ->when($escolasSelecionadas->isNotEmpty(), fn ($escolas) => $escolas->whereIn('id', $escolasSelecionadas->all())->values())
             ->values();
 
         foreach ($escolas as $escola) {
