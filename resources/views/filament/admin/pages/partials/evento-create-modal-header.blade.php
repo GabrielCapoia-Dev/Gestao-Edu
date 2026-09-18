@@ -2,13 +2,20 @@
     $nextTick(() => {
         const modal = $el.closest('.evento-create-modal');
         if (! modal) return;
+        modal.dataset.eventoStep = '1';
+        modal.scrollTop = 0;
+        modal.querySelectorAll('.fi-modal-content, [data-modal-content]').forEach((elemento) => elemento.scrollTop = 0);
         const sync = () => {
-            const active = modal.querySelector('[aria-current=\'step\'], [data-active=\'true\'], .fi-active');
-            const texto = active?.textContent?.trim() || '';
+            const candidatos = [...modal.querySelectorAll('[aria-current=\'step\'], [aria-selected=\'true\'], [data-active=\'true\'], [class*=\'active\'], [class*=\'current\']')];
+            const ativo = candidatos.find((elemento) => /Dados do evento|Convidar participantes|Transporte escolar/.test(elemento.textContent || ''));
+            const texto = ativo?.textContent?.trim() || '';
             modal.dataset.eventoStep = texto.includes('Transporte escolar') ? '3' : (texto.includes('Convidar participantes') ? '2' : '1');
         };
         sync();
-        new MutationObserver(sync).observe(modal, { subtree: true, attributes: true, attributeFilter: ['class', 'aria-current', 'data-active'] });
+        const observer = new MutationObserver(sync);
+        observer.observe(modal, { subtree: true, attributes: true, attributeFilter: ['class', 'aria-current', 'aria-selected', 'data-active'] });
+        const timer = window.setInterval(sync, 150);
+        $el.addEventListener('alpine:destroy', () => { observer.disconnect(); window.clearInterval(timer); }, { once: true });
     });
 ">
     <div class="evento-create-modal__intro-icon" aria-hidden="true">
@@ -27,8 +34,8 @@
 
 <style>
     .evento-create-modal { position:relative; }
-    .evento-create-modal[data-evento-step="1"] .fi-modal-footer .fi-btn-color-primary,
-    .evento-create-modal[data-evento-step="2"] .fi-modal-footer .fi-btn-color-primary { display:none; }
-    .evento-create-modal .fi-sc-wizard-footer { position:absolute; z-index:20; left:0; right:0; bottom:4.6rem; display:flex; justify-content:space-between; padding:1rem 1.5rem; border-top:1px solid #e2e8f0; background:#fff; }
-    .evento-create-modal .fi-modal-content { padding-bottom:5.2rem; }
+    .evento-create-modal:not([data-evento-step="3"]) .fi-modal-footer .fi-btn-color-primary { display:none; }
+    .evento-create-modal .fi-sc-wizard-footer { position:sticky; bottom:0; z-index:20; display:flex; justify-content:space-between; padding:1rem 1.5rem; border-top:1px solid #e2e8f0; background:#fff; box-shadow:0 -4px 12px rgba(15, 35, 65, .06); }
+    .evento-create-modal .leaflet-container { position:relative; z-index:0; }
+    .evento-create-modal .fi-dropdown-panel, .evento-create-modal .fi-select-options, .evento-create-modal [role="listbox"], .evento-create-modal .fi-fo-date-time-picker-panel { z-index:1000; }
 </style>
