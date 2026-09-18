@@ -59,7 +59,7 @@ body:has(.admin-header)::before {
 }
 body:has(.admin-header) { background-color: #eaf2ff; }
 .jogos-login-modal { align-items: center !important; }
-.jogos-login-modal.mobile-filter-modal { position: fixed; z-index: 100; inset: 0; display: grid; }
+.jogos-login-modal.mobile-filter-modal { position: fixed; z-index: 100; inset: 0; display: grid; justify-items: center; }
 .jogos-login-modal .mobile-filter-backdrop { position: absolute; inset: 0; background: rgba(0,24,60,.48); }
 .jogos-login-modal .mobile-filter-sheet { position: relative; display: flex; width: min(92vw, 390px); max-height: none; flex-direction: column; padding: 1.2rem; border-radius: 16px; color: #003b82; background: #fff; box-shadow: 0 12px 40px rgba(0,24,60,.3); }
 .jogos-login-modal .mobile-filter-sheet-head { flex: none; display: flex; align-items: center; margin-bottom: .5rem; border-bottom: 2px solid #5689da; }
@@ -398,6 +398,7 @@ button { border-radius: 9px !important; }
   body.scoreboard-mode .scoreboard-shell { padding-top: 2.4rem; }
   .mobile-filter-toggle { display: inline-flex; min-height: 36px; padding: .45rem .7rem; border: 0; border-radius: 9px !important; color: #fff; background: #004a99; font-size: .72rem; font-weight: 800; text-transform: uppercase; }
   .public-main-nav { position: fixed; z-index: 20; right: 0; bottom: 0; left: 0; width: 100%; min-height: 62px; margin: 0; padding: .25rem; border-top: 3px solid #004a99; background: #fff; box-shadow: 0 -4px 16px rgba(0,32,80,.16); }
+  .public-header .public-main-nav { position: fixed !important; z-index: 200 !important; right: 0 !important; bottom: 0 !important; left: 0 !important; display: flex !important; width: 100% !important; min-height: 62px; }
   .public-main-nav button { min-height: 54px; margin: 0; border: 0; border-radius: 7px !important; font-size: .62rem; line-height: 1.1; }
   .public-main-nav button { display: grid; grid-template-rows: 1fr auto; align-content: center; justify-items: center; gap: 2px; padding: .25rem .15rem; }
   .public-main-nav .nav-icon { display: grid; width: 22px; height: 22px; place-items: center; color: currentColor; line-height: 1; }
