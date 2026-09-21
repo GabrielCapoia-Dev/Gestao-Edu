@@ -5,13 +5,11 @@
         <button
             type="button"
             class="evento-transporte-pergunta__button {{ $selecionado === 'sim' ? 'is-active' : '' }}"
-            wire:click="selecionar('sim')"
             x-on:click="$dispatch('transport-option-selected', { value: 'sim' })"
         >Sim</button>
         <button
             type="button"
             class="evento-transporte-pergunta__button {{ $selecionado === 'nao' ? 'is-active' : '' }}"
-            wire:click="selecionar('nao')"
             x-on:click="$dispatch('transport-option-selected', { value: 'nao' })"
         >Não</button>
     </div>
