@@ -8,7 +8,7 @@
         modal.querySelectorAll('.fi-modal-content, [data-modal-content]').forEach((elemento) => elemento.scrollTop = 0);
         const sync = () => {
             modal.dataset.eventoStep = String(modal.__eventoStep || 1);
-            const submit = modal.querySelector('button[type="submit"]');
+            const submit = modal.querySelector('button[type=submit]');
             if (submit) {
                 submit.textContent = modal.__eventoStep === 3 ? 'Criar evento' : 'Próximo';
                 submit.style.display = '';
@@ -27,7 +27,7 @@
                 return;
             }
 
-            const submit = event.target.closest('button[type="submit"]');
+            const submit = event.target.closest('button[type=submit]');
             if (! submit || modal.__eventoStep === 3) return;
 
             event.preventDefault();
