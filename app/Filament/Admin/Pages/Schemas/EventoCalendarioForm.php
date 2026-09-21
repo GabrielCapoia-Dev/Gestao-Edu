@@ -82,7 +82,7 @@ class EventoCalendarioForm
                         ->view('filament.admin.pages.fields.evento-local-map')
                         ->dehydrated(false)
                         ->columnSpanFull(),
-                    Grid::make(['default' => 1, 'md' => 2])
+                    Grid::make(['default' => 1, 'md' => 3])
                         ->schema([
                             Select::make('cor')
                                 ->label('Identificação visual')
@@ -92,6 +92,17 @@ class EventoCalendarioForm
                                 ->default(EventoCalendarioCor::AZUL->value)
                                 ->required()
                                 ->native(false),
+                            TextInput::make('link_acao')
+                                ->label('Link de ação')
+                                ->placeholder('https://exemplo.gov.br/...')
+                                ->maxLength(2048)
+                                ->rule('starts_with:https://')
+                                ->live(),
+                            TextInput::make('texto_botao')
+                                ->label('Texto do botão')
+                                ->placeholder('Ex.: Saiba mais')
+                                ->required(fn (Get $get): bool => filled($get('link_acao')))
+                                ->maxLength(80),
                         ]),
                     Hidden::make('categoria')->default('administrativo')->dehydrated(),
                     Grid::make([
@@ -144,20 +155,6 @@ class EventoCalendarioForm
                                     self::atualizarDistribuicao($user, $get, $set);
                                 })
                                 ->required(),
-                        ]),
-                    Grid::make(['default' => 1, 'md' => 2])
-                        ->schema([
-                            TextInput::make('link_acao')
-                                ->label('Link de ação')
-                                ->placeholder('https://exemplo.gov.br/...')
-                                ->maxLength(2048)
-                                ->rule('starts_with:https://')
-                                ->live(),
-                            TextInput::make('texto_botao')
-                                ->label('Texto do botão')
-                                ->placeholder('Ex.: Saiba mais')
-                                ->required(fn (Get $get): bool => filled($get('link_acao')))
-                                ->maxLength(80),
                         ]),
                     Hidden::make('enviar_escolas_especificas')
                         ->hidden()
