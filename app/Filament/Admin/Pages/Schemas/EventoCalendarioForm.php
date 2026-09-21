@@ -13,6 +13,7 @@ use App\Models\Turma;
 use App\Models\User;
 use App\Services\Dashboard\DashboardUserContextFactory;
 use App\Services\Dashboard\EventoCalendarioEscolaService;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
@@ -170,6 +171,7 @@ class EventoCalendarioForm
                 Hidden::make('funcoes_administrativas_ids')->default([])->dehydrated(),
                 Hidden::make('publico_regras')->default([])->dehydrated(),
                 Hidden::make('publico_excecoes_ids')->default([])->dehydrated(),
+                Hidden::make('publico_preview_aplicado')->default(false)->dehydrated(false),
                 Grid::make(['default' => 1, 'md' => 2])->schema([
                     Select::make('publico_escola_ids')->label('Escolas')->multiple()->searchable()->preload()
                         ->options(fn (): array => self::schoolOptions($user))->live()->afterStateUpdated(fn (Get $get, Set $set) => self::sincronizarRegraPublico($get, $set))->native(false),
@@ -194,12 +196,13 @@ class EventoCalendarioForm
                     ->dehydrated(false)
                     ->view('filament.admin.pages.fields.evento-participantes-table')
                     ->viewData(function (Get $get) use ($user): array {
-                        $usuarios = $user
+                        $usuarios = (bool) $get('publico_preview_aplicado') && $user
                             ? app(\App\Services\Dashboard\EventoCalendarioPublicoService::class)->preview($user, self::regraPublico($get), $get('publico_excecoes_ids') ?? [])
                             : collect();
 
                         return [
                             'usuarios' => $usuarios->values(),
+                            'aguardandoFiltro' => ! (bool) $get('publico_preview_aplicado'),
                             'excecoes' => collect($get('publico_excecoes_ids') ?? [])->map(fn ($id): int => (int) $id)->all(),
                             'escolasSelecionadas' => collect($get('publico_escola_ids') ?? [])
                                 ->filter()
@@ -413,6 +416,7 @@ class EventoCalendarioForm
                 ]);
 
         $transporteStep = Step::make('Transporte escolar')->schema([
+            Hidden::make('escolas_agendadas')->default([])->dehydrated(),
             Hidden::make('transporte_excecoes_aluno_ids')->default([])->dehydrated(),
             ToggleButtons::make('precisa_transporte_evento')
                 ->label('Vai precisar de transporte para os alunos?')
@@ -422,10 +426,13 @@ class EventoCalendarioForm
                 ->required()
                 ->live()
                 ->extraAttributes(['class' => 'evento-transporte-pergunta'])
-                ->afterStateUpdated(function (string $state, Set $set): void {
+                ->afterStateUpdated(function (string $state, Get $get, Set $set): void {
                     $precisa = $state === 'sim';
                     $set('enviar_escolas_especificas', $precisa);
                     $set('precisa_transporte_grupo', $precisa);
+                    if ($precisa && blank($get('transporte_escola_ids'))) {
+                        $set('selecionar_todas_escolas_filtro', true);
+                    }
                     if (! $precisa) {
                         $set('escolas_agendadas', []);
                     }
@@ -436,14 +443,18 @@ class EventoCalendarioForm
                     Select::make('transporte_escola_ids')->label('Escolas')->multiple()->searchable()->preload()
                         ->options(fn (): array => self::schoolOptions($user))->live()
                         ->afterStateUpdated(function (Get $get, Set $set) use ($user): void {
-                            $set('selecionar_todas_escolas_filtro', false);
-                            $set('escolas_filtro_ids', $get('transporte_escola_ids'));
+                            $escolas = collect($get('transporte_escola_ids') ?? [])->filter()->values()->all();
+                            $set('selecionar_todas_escolas_filtro', $escolas === []);
+                            $set('escolas_filtro_ids', $escolas);
                             self::atualizarDistribuicao($user, $get, $set);
                         })->native(false),
                     Select::make('transporte_prefixos')->label('Tipo de escola')->multiple()
                         ->options(['CMEI' => 'CMEI', 'ESCOLA' => 'Escola'])
                         ->live()
                         ->afterStateUpdated(function (Get $get, Set $set) use ($user): void {
+                            if (blank($get('transporte_escola_ids'))) {
+                                $set('selecionar_todas_escolas_filtro', true);
+                            }
                             self::atualizarDistribuicao($user, $get, $set);
                         })->native(false),
                     Select::make('transporte_serie_ids')->label('Séries')->multiple()->searchable()->preload()
@@ -464,28 +475,52 @@ class EventoCalendarioForm
                 ->visible(fn (Get $get): bool => $get('precisa_transporte_evento') === 'sim')
                 ->view('filament.admin.pages.fields.evento-transporte-alunos-table')
                 ->viewData(function (Get $get) use ($user): array {
-                    $escolas = collect($get('transporte_escola_ids') ?? [])->filter()->values()->all();
-                    $alunos = Aluno::query()
-                        ->with(['turma.escola:id,nome', 'turma.serie:id,nome'])
-                        ->whereHas('turma', function (Builder $query) use ($escolas, $get): void {
-                            $query->when($escolas !== [], fn (Builder $q) => $q->whereIn('id_escola', $escolas))
-                                ->when($get('transporte_prefixos') ?? [], function (Builder $q, array $prefixos): void {
-                                    $q->whereHas('escola', fn (Builder $escola) => $escola->where(function (Builder $query) use ($prefixos): void {
-                                        foreach ($prefixos as $prefixo) {
-                                            $query->orWhere('nome', 'like', $prefixo . '%');
-                                        }
-                                    }));
-                                })
-                                ->when($get('transporte_serie_ids') ?? [], fn (Builder $q, array $ids) => $q->whereIn('id_serie', $ids))
-                                ->when($get('transporte_turnos') ?? [], fn (Builder $q, array $turnos) => $q->whereIn('turno', $turnos));
-                        })
-                        ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
-                        ->where('status', Aluno::STATUS_MATRICULADO)
-                        ->orderBy('nome')
-                        ->get();
+                    $escolas = collect($get('transporte_escola_ids') ?? [])->filter()->map(fn ($id): int => (int) $id)->values()->all();
+                    $prefixos = collect($get('transporte_prefixos') ?? [])->map(fn ($prefixo): string => mb_strtoupper(trim((string) $prefixo)))->filter()->values()->all();
+                    $series = collect($get('transporte_serie_ids') ?? [])->filter()->values()->all();
+                    $turnos = collect($get('transporte_turnos') ?? [])->filter()->values()->all();
+                    $possuiFiltro = $escolas !== [] || $prefixos !== [] || $series !== [] || $turnos !== [];
+                    $alunos = collect();
+                    $mensagem = null;
+
+                    if (! $possuiFiltro) {
+                        $mensagem = 'Selecione ao menos um filtro para listar os alunos.';
+                    } elseif ($user) {
+                        $escolasPermitidas = array_map('intval', array_keys(self::schoolOptions($user)));
+                        $escolasConsulta = $escolas !== []
+                            ? array_values(array_intersect($escolas, $escolasPermitidas))
+                            : $escolasPermitidas;
+
+                        $alunos = Aluno::query()
+                            ->select(['id', 'nome', 'id_turma'])
+                            ->with(['turma:id,nome,turno,id_escola,id_serie', 'turma.escola:id,nome', 'turma.serie:id,nome'])
+                            ->whereHas('turma', function (Builder $query) use ($escolasConsulta, $prefixos, $series, $turnos): void {
+                                $query->whereIn('id_escola', $escolasConsulta)
+                                    ->when($prefixos !== [], function (Builder $q) use ($prefixos): void {
+                                        $q->whereHas('escola', function (Builder $escola) use ($prefixos): void {
+                                            $escola->where(function (Builder $query) use ($prefixos): void {
+                                                foreach ($prefixos as $prefixo) {
+                                                    $query->orWhere('nome', 'like', $prefixo . '%');
+                                                }
+                                            });
+                                        });
+                                    })
+                                    ->when($series !== [], fn (Builder $q): Builder => $q->whereIn('id_serie', $series))
+                                    ->when($turnos !== [], fn (Builder $q): Builder => $q->whereIn('turno', $turnos));
+                            })
+                            ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
+                            ->where('status', Aluno::STATUS_MATRICULADO)
+                            ->orderBy('nome')
+                            ->get();
+
+                        if ($alunos->isEmpty()) {
+                            $mensagem = 'Nenhum aluno encontrado para os filtros informados.';
+                        }
+                    }
 
                     return [
                         'alunos' => $alunos,
+                        'mensagem' => $mensagem,
                         'excecoes' => $get('transporte_excecoes_aluno_ids') ?? [],
                     ];
                 })
@@ -496,7 +531,13 @@ class EventoCalendarioForm
             Step::make('Dados do evento')->schema([$eventoStep]),
             Step::make('Convidar participantes')->schema([$publicoStep]),
             $transporteStep,
-        ])->contained(false)->columnSpanFull()];
+        ])
+            ->contained(false)
+            ->nextAction(fn (Action $action): Action => $action->label('Próximo'))
+            ->previousAction(fn (Action $action): Action => $action->label('Voltar'))
+            ->cancelAction(new HtmlString('<button type="button" class="evento-wizard-action evento-wizard-action--secondary" wire:click="unmountAction">Cancelar</button>'))
+            ->submitAction(new HtmlString('<button type="submit" class="evento-wizard-action evento-wizard-action--primary">Criar evento</button>'))
+            ->columnSpanFull()];
     }
 
     public static function dadosParaEdicao(EventoCalendario $evento, array $data): array
@@ -701,6 +742,7 @@ class EventoCalendarioForm
     private static function sincronizarRegraPublico(Get $get, Set $set): void
     {
         $set('publico_regras', self::regraPublico($get));
+        $set('publico_preview_aplicado', false);
     }
 
     /** @return array<int|string, string> */
@@ -752,6 +794,7 @@ class EventoCalendarioForm
                 'serie_ids' => $get('series_filtro_ids'),
                 'turnos' => $get('turnos_filtro'),
                 'turma_ids' => $get('turmas_filtro_ids'),
+                'prefixos' => $get('transporte_prefixos'),
                 'precisa_transporte' => (bool) $get('precisa_transporte_grupo'),
             ], $user, $horaInicio, $horaFim);
 

@@ -21,6 +21,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class EventoCalendarioServiceTest extends TestCase
@@ -248,6 +249,47 @@ class EventoCalendarioServiceTest extends TestCase
         $this->assertSame(EventoCalendarioTransporteEscopo::TURMAS->value, $linhas[0]['escopo_transporte']);
         $this->assertSame([$manha->id], $linhas[0]['turmas_ids']);
         $this->assertSame(1, $linhas[0]['quantidade_estimada_transporte']);
+    }
+
+    public function test_prefixo_limita_escolas_agendadas_e_respeita_serie_e_turno(): void
+    {
+        [$ator, $escolaCmei] = $this->atorEscolar('PREFIXO-CMEI');
+        [, $escolaEscola] = $this->atorEscolar('PREFIXO-ESCOLA');
+        $escolaCmei->update(['nome' => 'CMEI - Unidade Central']);
+        $escolaEscola->update(['nome' => 'ESCOLA - Unidade Central']);
+
+        Role::findOrCreate('Admin', 'web');
+        $ator->assignRole('Admin');
+
+        $serie = Serie::query()->create(['codigo' => 'SER-PREFIXO', 'nome' => '1º Ano']);
+        $turmaCmei = Turma::query()->create([
+            'codigo' => 'TUR-PREFIXO-CMEI',
+            'nome' => '1º Ano Tarde CMEI',
+            'turno' => 'tarde',
+            'id_serie' => $serie->id,
+            'id_escola' => $escolaCmei->id,
+        ]);
+        $turmaEscola = Turma::query()->create([
+            'codigo' => 'TUR-PREFIXO-ESCOLA',
+            'nome' => '1º Ano Tarde Escola',
+            'turno' => 'tarde',
+            'id_serie' => $serie->id,
+            'id_escola' => $escolaEscola->id,
+        ]);
+        $this->aluno($turmaCmei, 'CGM-PREFIXO-CMEI', Aluno::TIPO_VINCULO_PRINCIPAL, Aluno::STATUS_MATRICULADO);
+        $this->aluno($turmaEscola, 'CGM-PREFIXO-ESCOLA', Aluno::TIPO_VINCULO_PRINCIPAL, Aluno::STATUS_MATRICULADO);
+
+        $linhas = app(EventoCalendarioEscolaService::class)->gerarPorFiltros([
+            'selecionar_todas_escolas' => true,
+            'prefixos' => ['CMEI'],
+            'serie_ids' => [$serie->id],
+            'turnos' => ['tarde'],
+            'precisa_transporte' => true,
+        ], $ator, '13:30', '17:30');
+
+        $this->assertCount(1, $linhas);
+        $this->assertSame($escolaCmei->id, $linhas[0]['escola_id']);
+        $this->assertSame([$turmaCmei->id], $linhas[0]['turmas_ids']);
     }
 
     public function test_formulario_oculta_link_e_nao_expoe_destinatarios(): void

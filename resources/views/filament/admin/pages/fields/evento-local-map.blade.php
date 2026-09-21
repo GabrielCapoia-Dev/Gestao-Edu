@@ -32,17 +32,4 @@
     <div x-ref="map" class="evento-local-map__canvas"></div>
     <p x-show="message" x-text="message" class="evento-local-map__message" role="status"></p>
 
-    <style>
-        .evento-local-map__search { display: flex; gap: .65rem; }
-        .evento-local-map__search input { flex: 1; border: 1px solid #cbd5e1; border-radius: .65rem; padding: .65rem .8rem; }
-        .evento-local-map__search button { border: 0; border-radius: .65rem; background: #17368d; color: #fff; padding: .65rem 1rem; font-weight: 600; }
-        .evento-local-map__search button:disabled { opacity: .6; }
-        .evento-local-map__hint, .evento-local-map__message { margin: .45rem 0; color: #64748b; font-size: .8rem; }
-        .evento-local-map__results { display: grid; gap: .35rem; max-height: 12rem; overflow-y: auto; margin: .5rem 0; }
-        .evento-local-map__results button { display: grid; gap: .12rem; padding: .55rem .7rem; border: 1px solid #dbe5f1; border-radius: .55rem; background: #fff; text-align: left; cursor: pointer; }
-        .evento-local-map__results button:hover { border-color: #377bd1; background: #f2f7ff; }
-        .evento-local-map__results strong { color: #17368d; font-size: .8rem; }
-        .evento-local-map__results small { color: #64748b; font-size: .7rem; }
-        .evento-local-map__canvas { height: 260px; border: 1px solid #cbd5e1; border-radius: .75rem; overflow: hidden; }
-    </style>
 </div>
