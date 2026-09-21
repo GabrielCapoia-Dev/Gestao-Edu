@@ -41,14 +41,14 @@
                         <input
                             type="checkbox"
                             value="{{ $optionValue }}"
-                            wire:model="{{ $model }}"
+                            wire:model.live="{{ $model }}"
                             wire:change="{{ $changeAction }}"
                         >
                         <span>{{ $optionLabel }}</span>
                     </label>
                 @else
                     <label class="evento-custom-modal__multi-select-option">
-                        <input type="checkbox" value="{{ $optionValue }}" wire:model="{{ $model }}">
+                        <input type="checkbox" value="{{ $optionValue }}" wire:model.live="{{ $model }}">
                         <span>{{ $optionLabel }}</span>
                     </label>
                 @endif
