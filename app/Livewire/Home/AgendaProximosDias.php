@@ -125,6 +125,8 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
         $context = $this->makeContext($this->escopoAgenda);
         $result = null;
         $tabsAgenda = [];
+        $podeCriarEvento = false;
+        $podeVisualizarVeiculos = false;
 
         if ($context) {
             try {
@@ -148,8 +150,11 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
                 }
 
                 if ($this->podeVisualizarVeiculos($context->user)) {
+                    $podeVisualizarVeiculos = true;
                     $resultados['veiculos'] = $aggregator->aggregate($this->contextoObrigatorio('veiculos'));
                 }
+
+                $podeCriarEvento = Gate::forUser($context->user)->allows('create', EventoCalendario::class);
 
                 $tabsAgenda = $this->montarAbas($context->user, $resultados);
                 $escopoAgendaAtivo = collect($tabsAgenda)->contains(
@@ -192,12 +197,8 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
             'periodOptions' => $this->periodOptions(),
             'tabsAgenda' => $tabsAgenda,
             'escopoAgendaAtivo' => $escopoAgendaAtivo ?? $this->escopoAgenda,
-            'podeCriarEvento' => $context
-                ? Gate::forUser($context->user)->allows('create', EventoCalendario::class)
-                : false,
-            'podeVisualizarVeiculos' => $context
-                ? $this->podeVisualizarVeiculos($context->user)
-                : false,
+            'podeCriarEvento' => $podeCriarEvento,
+            'podeVisualizarVeiculos' => $podeVisualizarVeiculos,
         ]);
     }
 

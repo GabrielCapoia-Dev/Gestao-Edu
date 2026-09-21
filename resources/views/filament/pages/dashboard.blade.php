@@ -6,6 +6,7 @@
 
         @can('viewAny', \App\Models\EventoCalendario::class)
             <livewire:home.agenda-proximos-dias lazy />
+            <livewire:home.evento-calendario-modal :mostrar-gatilho="false" lazy />
         @endcan
     </div>
 </x-filament-panels::page>

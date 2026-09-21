@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 final class EventoCalendarioModal extends Component
@@ -56,6 +57,8 @@ final class EventoCalendarioModal extends Component
 
     public bool $aberto = false;
 
+    public bool $mostrarGatilho = true;
+
     public bool $podeCriar = false;
 
     public bool $somenteTransporte = false;
@@ -66,17 +69,33 @@ final class EventoCalendarioModal extends Component
 
     public int $etapa = 1;
 
-    public function mount(): void
+    public function mount(bool $mostrarGatilho = true): void
     {
-        $preview = app(ProfilePreviewService::class);
-        $usuario = $preview->effectiveUser();
+        $this->mostrarGatilho = $mostrarGatilho;
 
-        $this->podeCriar = $usuario instanceof User
-            && ! $preview->isActive()
-            && Gate::forUser($usuario)->allows('create', EventoCalendario::class);
+        try {
+            $preview = app(ProfilePreviewService::class);
+            $usuario = $preview->effectiveUser();
 
-        $this->somenteTransporte = $usuario instanceof User
-            && Gate::forUser($usuario)->allows('requiresTransport', EventoCalendario::class);
+            $this->podeCriar = $usuario instanceof User
+                && ! $preview->isActive()
+                && Gate::forUser($usuario)->allows('create', EventoCalendario::class);
+
+            $this->somenteTransporte = $usuario instanceof User
+                && Gate::forUser($usuario)->allows('requiresTransport', EventoCalendario::class);
+        } catch (\Throwable $exception) {
+            report($exception);
+            $this->podeCriar = false;
+            $this->somenteTransporte = false;
+        }
+    }
+
+    #[On('abrir-evento-calendario')]
+    public function abrirPorEvento(): void
+    {
+        if ($this->podeCriar) {
+            $this->abrir();
+        }
     }
 
     public function abrir(): void

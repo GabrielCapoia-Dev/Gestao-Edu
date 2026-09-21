@@ -27,7 +27,14 @@
                 </div>
             @endif
             @if ($podeCriarEvento ?? false)
-                <livewire:home.evento-calendario-modal />
+                <button
+                    type="button"
+                    class="evento-custom-modal__trigger"
+                    wire:click="$dispatch('abrir-evento-calendario')"
+                >
+                    <x-heroicon-o-plus />
+                    <span>Novo evento</span>
+                </button>
             @endif
             <label class="home-agenda__days">
                 <span>Período</span>

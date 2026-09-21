@@ -1,11 +1,12 @@
-@if ($podeCriar)
-    <div class="evento-custom-modal" wire:key="evento-custom-modal">
+<div class="evento-custom-modal" wire:key="evento-custom-modal">
+    @if ($podeCriar && $mostrarGatilho)
         <button type="button" class="evento-custom-modal__trigger" wire:click="abrir">
             <x-heroicon-o-plus />
             <span>Novo evento</span>
         </button>
+    @endif
 
-        @if ($aberto)
+    @if ($podeCriar && $aberto)
             <div class="evento-custom-modal__backdrop" role="presentation">
                 <section
                     class="evento-custom-modal__panel"
@@ -375,6 +376,5 @@
                     </form>
                 </section>
             </div>
-        @endif
-    </div>
-@endif
+    @endif
+</div>
