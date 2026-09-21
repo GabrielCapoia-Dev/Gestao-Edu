@@ -430,7 +430,7 @@ class EventoCalendarioForm
                         $set('escolas_agendadas', []);
                     }
                 }),
-            Grid::make(['default' => 1, 'md' => 3])
+            Grid::make(['default' => 1, 'md' => 4])
                 ->visible(fn (Get $get): bool => $get('precisa_transporte_evento') === 'sim')
                 ->schema([
                     Select::make('transporte_escola_ids')->label('Escolas')->multiple()->searchable()->preload()
@@ -438,6 +438,12 @@ class EventoCalendarioForm
                         ->afterStateUpdated(function (Get $get, Set $set) use ($user): void {
                             $set('selecionar_todas_escolas_filtro', false);
                             $set('escolas_filtro_ids', $get('transporte_escola_ids'));
+                            self::atualizarDistribuicao($user, $get, $set);
+                        })->native(false),
+                    Select::make('transporte_prefixos')->label('Tipo de escola')->multiple()
+                        ->options(['CMEI' => 'CMEI', 'ESCOLA' => 'Escola'])
+                        ->live()
+                        ->afterStateUpdated(function (Get $get, Set $set) use ($user): void {
                             self::atualizarDistribuicao($user, $get, $set);
                         })->native(false),
                     Select::make('transporte_serie_ids')->label('Séries')->multiple()->searchable()->preload()
@@ -463,6 +469,13 @@ class EventoCalendarioForm
                         ->with(['turma.escola:id,nome', 'turma.serie:id,nome'])
                         ->whereHas('turma', function (Builder $query) use ($escolas, $get): void {
                             $query->when($escolas !== [], fn (Builder $q) => $q->whereIn('id_escola', $escolas))
+                                ->when($get('transporte_prefixos') ?? [], function (Builder $q, array $prefixos): void {
+                                    $q->whereHas('escola', fn (Builder $escola) => $escola->where(function (Builder $query) use ($prefixos): void {
+                                        foreach ($prefixos as $prefixo) {
+                                            $query->orWhere('nome', 'like', $prefixo . '%');
+                                        }
+                                    }));
+                                })
                                 ->when($get('transporte_serie_ids') ?? [], fn (Builder $q, array $ids) => $q->whereIn('id_serie', $ids))
                                 ->when($get('transporte_turnos') ?? [], fn (Builder $q, array $turnos) => $q->whereIn('turno', $turnos));
                         })
