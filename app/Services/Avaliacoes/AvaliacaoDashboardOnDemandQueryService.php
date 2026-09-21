@@ -67,6 +67,7 @@ class AvaliacaoDashboardOnDemandQueryService
     public function respostas(array $avaliacaoIds, bool $somenteCompletas = false): QueryBuilder
     {
         $avaliacaoIds = $this->ids($avaliacaoIds);
+        $respostasLegadas = null;
         if (app(AvaliacaoPersistencia::class)->leRelacional()) {
             $respostas = DB::table('avaliacao_respostas_operacionais')
                 ->whereIn('avaliacao_id', $avaliacaoIds)
@@ -81,6 +82,21 @@ class AvaliacaoDashboardOnDemandQueryService
                     'respondido_em',
                     'componente_curricular_id',
                 ]);
+
+            // A migração relacional é progressiva: documentos legados de
+            // turmas ainda não inicializadas continuam sendo a fonte válida
+            // das respostas. O UNION mantém ambos os formatos disponíveis e
+            // os consumidores consolidam por aluno/pauta, evitando duplicidade.
+            $respostasLegadas = $this->normalizarRespostasQuery(
+                $avaliacaoIds,
+                match (DB::connection()->getDriverName()) {
+                    'mysql' => $this->respostasExpandidasMysqlQuery($avaliacaoIds),
+                    'sqlite' => $this->respostasExpandidasSqliteQuery($avaliacaoIds),
+                    default => throw new RuntimeException(
+                        'Driver de banco não suportado para leitura sob demanda das avaliações.'
+                    ),
+                },
+            );
         } else {
             $respostasExpandidas = match (DB::connection()->getDriverName()) {
                 'mysql' => $this->respostasExpandidasMysqlQuery($avaliacaoIds),
@@ -90,6 +106,10 @@ class AvaliacaoDashboardOnDemandQueryService
                 ),
             };
             $respostas = $this->normalizarRespostasQuery($avaliacaoIds, $respostasExpandidas);
+        }
+
+        if ($respostasLegadas !== null) {
+            $respostas = $respostas->unionAll($respostasLegadas);
         }
 
         $query = DB::query()
