@@ -19,6 +19,8 @@ class EventoCalendarioEscolaService
 {
     private const TURNOS = ['manha', 'tarde', 'noite', 'integral'];
 
+    private const PREFIXOS_ESCOLA = ['CMEI', 'ESCOLA'];
+
     public function __construct(private readonly PessoaScopeService $scope) {}
 
     /**
@@ -143,10 +145,17 @@ class EventoCalendarioEscolaService
         $escolaIdsEntrada = $filtros['escola_ids'] ?? [];
         $serieIdsEntrada = $filtros['serie_ids'] ?? [];
         $turmaIdsEntrada = $filtros['turma_ids'] ?? [];
+        $prefixosEntrada = $filtros['prefixos'] ?? [];
 
         $escolaIds = $this->ids(is_iterable($escolaIdsEntrada) ? $escolaIdsEntrada : [], 'escolas_filtro_ids');
         $serieIds = $this->ids(is_iterable($serieIdsEntrada) ? $serieIdsEntrada : [], 'series_filtro_ids');
         $turmaIds = $this->ids(is_iterable($turmaIdsEntrada) ? $turmaIdsEntrada : [], 'turmas_filtro_ids');
+        $prefixos = collect(is_iterable($prefixosEntrada) ? $prefixosEntrada : [])
+            ->map(fn ($prefixo): string => mb_strtoupper(trim((string) $prefixo)))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
         $turnosEntrada = $filtros['turnos'] ?? [];
         $turnos = collect(is_iterable($turnosEntrada) ? $turnosEntrada : [])
             ->map(fn ($turno): string => mb_strtolower(trim((string) $turno)))
@@ -161,8 +170,22 @@ class EventoCalendarioEscolaService
             ]);
         }
 
+        if (array_diff($prefixos, self::PREFIXOS_ESCOLA) !== []) {
+            throw ValidationException::withMessages([
+                'prefixos_filtro' => 'Selecione apenas tipos de escola válidos.',
+            ]);
+        }
+
         $escolasAcessiveis = Escola::query()->where('ativo', true)->orderBy('nome');
         $this->scope->applyEscolaScope($escolasAcessiveis, $ator, 'id');
+
+        if ($prefixos !== []) {
+            $escolasAcessiveis->where(function (Builder $query) use ($prefixos): void {
+                foreach ($prefixos as $prefixo) {
+                    $query->orWhere('nome', 'like', $prefixo.'%');
+                }
+            });
+        }
 
         if (! $todasEscolas) {
             if ($escolaIds === []) {

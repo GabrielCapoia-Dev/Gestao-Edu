@@ -15,21 +15,54 @@
 }
 
 .evento-create-modal .fi-modal-content > .fi-sc {
-    padding: 1.25rem 1.5rem 1.5rem;
+    width: 100%;
+    padding: 0 1.5rem 1.5rem;
     max-height: min(65vh, 46rem);
     overflow-y: auto;
 }
 
-.evento-create-modal .fi-modal-footer {
-    padding: 1rem 1.5rem !important;
-    border-top: 1px solid #dbe5f1 !important;
-    background: #fff !important;
+.evento-create-modal .fi-sc-wizard-footer {
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .75rem;
+    padding: .9rem 1.5rem !important;
+    border-top: 1px solid #dbe5f1;
+    background: #fff;
 }
 
-.evento-create-modal .fi-modal-footer .fi-btn {
+.evento-wizard-action,
+.evento-create-modal .fi-sc-wizard-footer .fi-btn {
+    display: inline-flex;
     min-width: 8.5rem;
+    min-height: 2.65rem;
+    align-items: center;
+    justify-content: center;
     border-radius: .7rem;
+    border: 1px solid transparent;
     font-weight: 700;
+    line-height: 1.2;
+    cursor: pointer;
+}
+
+.evento-wizard-action--primary,
+.evento-create-modal .fi-sc-wizard-footer .fi-btn-primary {
+    color: #fff;
+    background: #173b91;
+    box-shadow: 0 4px 10px rgba(23, 59, 145, .2);
+}
+
+.evento-wizard-action--secondary,
+.evento-create-modal .fi-sc-wizard-footer .fi-btn-gray {
+    color: #263b58;
+    border-color: #d5dfec;
+    background: #fff;
+}
+
+.evento-create-modal .fi-sc-wizard-footer .fi-btn:disabled {
+    cursor: not-allowed;
+    opacity: .55;
 }
 
 .evento-create-modal__intro {
@@ -59,17 +92,107 @@
 .evento-create-modal__tip { display: flex; align-items: center; gap: .45rem; max-width: 15rem; margin-left: auto; color: #d9e9ff; font-size: .72rem; line-height: 1.35; }
 .evento-create-modal__tip svg { flex: 0 0 1rem; width: 1rem; height: 1rem; color: #8ed0ff; }
 
-.evento-create-modal .fi-section {
-    border: 1px solid #dbe5f1;
-    border-radius: .95rem;
-    background: #fff;
-    box-shadow: 0 4px 16px rgba(24, 61, 112, .04);
+.evento-create-modal .fi-input-wrp { border-radius: .7rem; }
+.evento-create-modal .evento-local-map { position: relative; z-index: 0; padding-top: .25rem; }
+.evento-create-modal .leaflet-container { position: relative; z-index: 0; }
+.evento-local-map__search { display: flex; gap: .65rem; }
+.evento-local-map__search input { flex: 1; border: 1px solid #cbd5e1; border-radius: .65rem; padding: .65rem .8rem; }
+.evento-local-map__search button { border: 0; border-radius: .65rem; background: #17368d; color: #fff; padding: .65rem 1rem; font-weight: 600; }
+.evento-local-map__search button:disabled { opacity: .6; }
+.evento-local-map__hint, .evento-local-map__message { margin: .45rem 0; color: #64748b; font-size: .8rem; }
+.evento-local-map__results { position: relative; z-index: 2; display: grid; gap: .35rem; max-height: 12rem; overflow-y: auto; margin: .5rem 0; }
+.evento-local-map__results button { display: grid; gap: .12rem; padding: .55rem .7rem; border: 1px solid #dbe5f1; border-radius: .55rem; background: #fff; text-align: left; cursor: pointer; }
+.evento-local-map__results button:hover { border-color: #377bd1; background: #f2f7ff; }
+.evento-local-map__results strong { color: #17368d; font-size: .8rem; }
+.evento-local-map__results small { color: #64748b; font-size: .7rem; }
+.evento-local-map__canvas { position: relative; z-index: 0; height: 260px; border: 1px solid #cbd5e1; border-radius: .75rem; overflow: hidden; }
+.evento-create-modal .fi-dropdown-panel,
+.evento-create-modal .fi-select-options,
+.evento-create-modal [role="listbox"],
+.evento-create-modal .fi-fo-date-time-picker-panel,
+.evento-create-modal [data-popper-placement] { z-index: 2200 !important; }
+
+.evento-create-modal .evento-transporte-pergunta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .75rem;
+    text-align: center;
 }
 
-.evento-create-modal .fi-section-header { border-bottom-color: #e5edf7; }
-.evento-create-modal .fi-section-header-heading { color: #102d68; font-weight: 800; }
-.evento-create-modal .fi-input-wrp { border-radius: .7rem; }
-.evento-create-modal .evento-local-map { padding-top: .25rem; }
+.evento-create-modal .evento-transporte-pergunta > label,
+.evento-create-modal .evento-transporte-pergunta .fi-fo-field-label {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+}
+
+.evento-create-modal .evento-transporte-pergunta [role="group"],
+.evento-create-modal .evento-transporte-pergunta .fi-fo-toggle-buttons,
+.evento-create-modal .evento-transporte-pergunta .fi-btn-group {
+    display: flex;
+    justify-content: center;
+    gap: .75rem;
+    width: 100%;
+}
+
+.evento-create-modal .evento-transporte-pergunta [role="group"] > button {
+    min-width: 5.5rem;
+    justify-content: center;
+    color: #173b73;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.evento-create-modal .evento-transporte-pergunta [role="group"] > button[aria-pressed="true"],
+.evento-create-modal .evento-transporte-pergunta [role="group"] > button[data-state="on"] {
+    color: #fff;
+}
+
+.evento-create-modal .evento-transporte-alunos,
+.evento-create-modal .evento-participantes {
+    position: relative;
+    z-index: 1;
+}
+
+.evento-transporte-alunos { border: 1px solid #cbdcf2; border-radius: .75rem; overflow: hidden; background: #fff; }
+.evento-transporte-alunos__heading { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1rem 1.1rem; border-bottom: 1px solid #e2eaf4; }
+.evento-transporte-alunos__heading p { margin: 0 0 .2rem; color: #1d5fb8; font-size: .68rem; font-weight: 700; letter-spacing: .05em; }
+.evento-transporte-alunos h3 { margin: 0; color: #172b4d; font-size: 1rem; }
+.evento-transporte-alunos__heading span, .evento-transporte-alunos__heading strong { color: #64748b; font-size: .75rem; }
+.evento-transporte-alunos__groups { display: grid; gap: .65rem; padding: .8rem; }
+.evento-transporte-alunos__actions { display: flex; justify-content: flex-end; gap: .4rem; padding: .7rem .8rem 0; }
+.evento-transporte-alunos__actions button, .evento-participantes__actions button { border: 1px solid #cbd8e8; border-radius: .45rem; background: #f7faff; color: #1d4d91; padding: .45rem .6rem; font-size: .72rem; font-weight: 600; cursor: pointer; }
+.evento-transporte-alunos details, .evento-participantes__group { border: 1px solid #dce7f3; border-radius: .6rem; overflow: hidden; }
+.evento-transporte-alunos__serie, .evento-transporte-alunos__turma { margin: .55rem; border-color: #e7edf5 !important; }
+.evento-transporte-alunos summary { display: flex; justify-content: space-between; padding: .7rem .85rem; cursor: pointer; background: #f5f8fc; color: #173b73; font-size: .8rem; }
+.evento-transporte-alunos summary span { color: #64748b; font-weight: 400; }
+.evento-transporte-alunos table, .evento-participantes__table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+.evento-transporte-alunos th, .evento-transporte-alunos td, .evento-participantes__table th, .evento-participantes__table td { padding: .6rem .85rem; border-top: 1px solid #edf1f6; text-align: left; }
+.evento-transporte-alunos th, .evento-participantes__table th { color: #64748b; font-size: .68rem; text-transform: uppercase; }
+.evento-transporte-alunos td:last-child, .evento-participantes__remove-cell { width: 2.5rem; text-align: center !important; }
+.evento-transporte-alunos td button, .evento-participantes__remove-cell button { border: 0; background: transparent; color: #dc2626; cursor: pointer; font-size: 1.25rem; line-height: 1; }
+.evento-transporte-alunos__empty, .evento-participantes__empty { padding: 1rem; color: #64748b; font-size: .8rem; }
+.evento-participantes { border: 1px solid #d7e2f0; border-radius: .8rem; background: #fff; overflow: hidden; }
+.evento-participantes__header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1rem 1.1rem; border-bottom: 1px solid #e4ebf3; }
+.evento-participantes__eyebrow { margin: 0 0 .2rem; color: #1d5fb8; font-size: .68rem; font-weight: 700; letter-spacing: .05em; }
+.evento-participantes h3 { margin: 0; color: #15233b; font-size: 1rem; }
+.evento-participantes__header span, .evento-participantes__group-title span { color: #64748b; font-size: .75rem; }
+.evento-participantes__header input { width: min(20rem, 45%); border: 1px solid #cbd8e8; border-radius: .55rem; padding: .55rem .7rem; font-size: .8rem; }
+.evento-participantes__actions { display: flex; align-items: center; justify-content: flex-end; gap: .4rem; flex-wrap: wrap; }
+.evento-participantes__groups { display: grid; gap: .75rem; padding: .8rem; }
+.evento-participantes__group > summary { list-style: none; cursor: pointer; }
+.evento-participantes__group > summary::-webkit-details-marker { display: none; }
+.evento-participantes__group > summary > span { display: inline-flex; align-items: center; gap: .65rem; }
+.evento-participantes__group > summary b { color: #1d5fb8; font-size: 1rem; transition: transform .15s ease; }
+.evento-participantes__group:not([open]) > summary b { transform: rotate(-90deg); }
+.evento-participantes__group-title { display: flex; justify-content: space-between; padding: .7rem .85rem; background: #f5f8fc; color: #173b73; font-size: .82rem; }
+.evento-participantes__table-wrap { overflow-x: auto; }
+.evento-participantes-filter-action { display: flex; align-items: center; gap: .75rem; margin-top: -.25rem; }
+.evento-participantes-filter-action__button { display: inline-flex; align-items: center; gap: .45rem; border: 0; border-radius: .55rem; background: #173b91; color: #fff; padding: .58rem .9rem; font-size: .8rem; font-weight: 700; cursor: pointer; box-shadow: 0 4px 10px rgba(23, 59, 145, .2); }
+.evento-participantes-filter-action__button:hover { background: #2453b4; }
+.evento-participantes-filter-action__icon { width: 1rem; height: 1rem; }
+.evento-participantes-filter-action span:last-child { color: #64748b; font-size: .75rem; }
 
 .gi-event-detail__map {
     min-height: 18rem;
@@ -276,5 +399,13 @@
     .evento-create-modal__intro { align-items: flex-start; padding: 1rem; }
     .evento-create-modal__tip { display: none; }
     .evento-create-modal .fi-modal-content > .fi-sc { padding: 1rem; }
-    .evento-create-modal .fi-modal-footer { padding: .85rem 1rem !important; }
+    .evento-create-modal .fi-sc-wizard-footer { align-items: stretch; padding: .85rem 1rem !important; }
+    .evento-wizard-action, .evento-create-modal .fi-sc-wizard-footer .fi-btn { min-width: 0; flex: 1; }
+    .evento-participantes__header { align-items: stretch; flex-direction: column; }
+    .evento-participantes__actions { justify-content: flex-start; }
+    .evento-participantes__header input { width: 100%; }
+}
+
+@media (max-width: 900px) {
+    .evento-create-modal .fi-sc-wizard-footer { flex-wrap: wrap; }
 }

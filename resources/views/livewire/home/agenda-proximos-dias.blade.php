@@ -27,7 +27,7 @@
                 </div>
             @endif
             @if ($podeCriarEvento ?? false)
-                {{ $this->novoEventoAction }}
+                <livewire:home.evento-calendario-modal />
             @endif
             <label class="home-agenda__days">
                 <span>Período</span>
