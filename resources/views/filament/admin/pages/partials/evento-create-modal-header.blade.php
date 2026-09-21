@@ -7,7 +7,7 @@
         modal.scrollTop = 0;
         modal.querySelectorAll('.fi-modal-content, [data-modal-content]').forEach((elemento) => elemento.scrollTop = 0);
         const sync = () => {
-            const activeStep = modal.querySelector('[aria-current="step"], [data-active="true"], .fi-sc-wizard-header-step-active, .fi-wizard-header-step-active');
+            const activeStep = modal.querySelector('[aria-current=\'step\'], [data-active=\'true\'], .fi-sc-wizard-header-step-active, .fi-wizard-header-step-active');
             const activeText = (activeStep?.textContent || '').trim();
             if (activeText.includes('Convidar participantes')) modal.__eventoStep = 2;
             else if (activeText.includes('Transporte escolar')) modal.__eventoStep = 3;
