@@ -153,45 +153,42 @@
                                     </div>
 
                                     <div class="evento-custom-modal__grid evento-custom-modal__grid--two">
-                                        <div class="evento-custom-modal__field">
-                                            <label for="publico-escolas">Escolas</label>
-                                            <select id="publico-escolas" wire:model="data.publico_escola_ids" multiple size="4">
-                                                @foreach ($escolasOpcoes as $id => $nome)
-                                                    <option value="{{ $id }}">{{ $nome }}</option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                        <div class="evento-custom-modal__field">
-                                            <label for="publico-funcoes">Cargos</label>
-                                            <select id="publico-funcoes" wire:model="data.publico_funcao_ids" multiple size="4">
-                                                @foreach ($funcoesOpcoes as $id => $nome)
-                                                    <option value="{{ $id }}">{{ $nome }}</option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                        <div class="evento-custom-modal__field">
-                                            <label for="publico-turnos">Turnos</label>
-                                            <select id="publico-turnos" wire:model="data.publico_turnos" multiple size="4">
-                                                @foreach (['manha' => 'Manhã', 'tarde' => 'Tarde', 'noite' => 'Noite', 'integral' => 'Integral'] as $id => $nome)
-                                                    <option value="{{ $id }}">{{ $nome }}</option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                        <div class="evento-custom-modal__field">
-                                            <label for="publico-series">Séries</label>
-                                            <select id="publico-series" wire:model="data.publico_serie_ids" multiple size="4">
-                                                @foreach ($seriesOpcoes as $id => $nome)
-                                                    <option value="{{ $id }}">{{ $nome }}</option>
-                                                @endforeach
-                                            </select>
-                                        </div>
+                                        <x-evento-multi-select
+                                            id="publico-escolas"
+                                            label="Escolas"
+                                            model="data.publico_escola_ids"
+                                            :options="$escolasOpcoes"
+                                            :selected="$data['publico_escola_ids'] ?? []"
+                                        />
+                                        <x-evento-multi-select
+                                            id="publico-funcoes"
+                                            label="Cargos"
+                                            model="data.publico_funcao_ids"
+                                            :options="$funcoesOpcoes"
+                                            :selected="$data['publico_funcao_ids'] ?? []"
+                                        />
+                                        <x-evento-multi-select
+                                            id="publico-turnos"
+                                            label="Turnos"
+                                            model="data.publico_turnos"
+                                            :options="['manha' => 'Manhã', 'tarde' => 'Tarde', 'noite' => 'Noite', 'integral' => 'Integral']"
+                                            :selected="$data['publico_turnos'] ?? []"
+                                        />
+                                        <x-evento-multi-select
+                                            id="publico-series"
+                                            label="Séries"
+                                            model="data.publico_serie_ids"
+                                            :options="$seriesOpcoes"
+                                            :selected="$data['publico_serie_ids'] ?? []"
+                                        />
                                         <div class="evento-custom-modal__field evento-custom-modal__field--full">
-                                            <label for="publico-componentes">Componentes curriculares</label>
-                                            <select id="publico-componentes" wire:model="data.publico_componente_ids" multiple size="4">
-                                                @foreach ($componentesOpcoes as $id => $nome)
-                                                    <option value="{{ $id }}">{{ $nome }}</option>
-                                                @endforeach
-                                            </select>
+                                            <x-evento-multi-select
+                                                id="publico-componentes"
+                                                label="Componentes curriculares"
+                                                model="data.publico_componente_ids"
+                                                :options="$componentesOpcoes"
+                                                :selected="$data['publico_componente_ids'] ?? []"
+                                            />
                                         </div>
                                     </div>
 
@@ -203,7 +200,9 @@
                                         <span>Use os filtros acima e atualize a lista somente quando necessário.</span>
                                     </div>
 
-                                    @php($gruposParticipantes = collect($participantes)->groupBy('escola'))
+                                    @php
+                                        $gruposParticipantes = collect($participantes)->groupBy('escola');
+                                    @endphp
                                     <div class="evento-custom-modal__result-card">
                                         <div class="evento-custom-modal__result-heading">
                                             <div>
@@ -255,45 +254,54 @@
                                     <div class="evento-custom-modal__question">
                                         <strong>Vai precisar de transporte para os alunos? <em>*</em></strong>
                                         <div>
-                                            <button type="button" class="{{ ($data['precisa_transporte_evento'] ?? 'nao') === 'sim' ? 'is-selected' : '' }}" wire:click="definirTransporte('sim')" {{ $somenteTransporte ? 'disabled' : '' }}>Sim</button>
-                                            <button type="button" class="{{ ($data['precisa_transporte_evento'] ?? 'nao') === 'nao' ? 'is-selected' : '' }}" wire:click="definirTransporte('nao')" {{ $somenteTransporte ? 'disabled' : '' }}>Não</button>
+                                            @if ($somenteTransporte)
+                                                <button type="button" class="is-selected" wire:click="definirTransporte('sim')" disabled>Sim</button>
+                                                <button type="button" wire:click="definirTransporte('nao')" disabled>Não</button>
+                                            @elseif (($data['precisa_transporte_evento'] ?? 'nao') === 'sim')
+                                                <button type="button" class="is-selected" wire:click="definirTransporte('sim')">Sim</button>
+                                                <button type="button" wire:click="definirTransporte('nao')">Não</button>
+                                            @else
+                                                <button type="button" wire:click="definirTransporte('sim')">Sim</button>
+                                                <button type="button" class="is-selected" wire:click="definirTransporte('nao')">Não</button>
+                                            @endif
                                         </div>
                                     </div>
 
                                     @if (($data['precisa_transporte_evento'] ?? 'nao') === 'sim')
                                         <div class="evento-custom-modal__transport-filters">
                                             <div class="evento-custom-modal__grid evento-custom-modal__grid--four">
-                                                <div class="evento-custom-modal__field">
-                                                    <label for="transporte-escolas">Escolas</label>
-                                                    <select id="transporte-escolas" wire:model="data.transporte_escola_ids" wire:change="invalidarAlunos" multiple size="4">
-                                                        @foreach ($escolasOpcoes as $id => $nome)
-                                                            <option value="{{ $id }}">{{ $nome }}</option>
-                                                        @endforeach
-                                                    </select>
-                                                </div>
-                                                <div class="evento-custom-modal__field">
-                                                    <label for="transporte-prefixos">Tipo de escola</label>
-                                                    <select id="transporte-prefixos" wire:model="data.transporte_prefixos" wire:change="invalidarAlunos" multiple size="4">
-                                                        <option value="CMEI">CMEI</option>
-                                                        <option value="ESCOLA">Escola</option>
-                                                    </select>
-                                                </div>
-                                                <div class="evento-custom-modal__field">
-                                                    <label for="transporte-series">Séries</label>
-                                                    <select id="transporte-series" wire:model="data.transporte_serie_ids" wire:change="invalidarAlunos" multiple size="4">
-                                                        @foreach ($seriesOpcoes as $id => $nome)
-                                                            <option value="{{ $id }}">{{ $nome }}</option>
-                                                        @endforeach
-                                                    </select>
-                                                </div>
-                                                <div class="evento-custom-modal__field">
-                                                    <label for="transporte-turnos">Turnos</label>
-                                                    <select id="transporte-turnos" wire:model="data.transporte_turnos" wire:change="invalidarAlunos" multiple size="4">
-                                                        @foreach (['manha' => 'Manhã', 'tarde' => 'Tarde', 'noite' => 'Noite', 'integral' => 'Integral'] as $id => $nome)
-                                                            <option value="{{ $id }}">{{ $nome }}</option>
-                                                        @endforeach
-                                                    </select>
-                                                </div>
+                                                <x-evento-multi-select
+                                                    id="transporte-escolas"
+                                                    label="Escolas"
+                                                    model="data.transporte_escola_ids"
+                                                    :options="$escolasOpcoes"
+                                                    :selected="$data['transporte_escola_ids'] ?? []"
+                                                    change-action="invalidarAlunos"
+                                                />
+                                                <x-evento-multi-select
+                                                    id="transporte-prefixos"
+                                                    label="Tipo de escola"
+                                                    model="data.transporte_prefixos"
+                                                    :options="['CMEI' => 'CMEI', 'ESCOLA' => 'Escola']"
+                                                    :selected="$data['transporte_prefixos'] ?? []"
+                                                    change-action="invalidarAlunos"
+                                                />
+                                                <x-evento-multi-select
+                                                    id="transporte-series"
+                                                    label="Séries"
+                                                    model="data.transporte_serie_ids"
+                                                    :options="$seriesOpcoes"
+                                                    :selected="$data['transporte_serie_ids'] ?? []"
+                                                    change-action="invalidarAlunos"
+                                                />
+                                                <x-evento-multi-select
+                                                    id="transporte-turnos"
+                                                    label="Turnos"
+                                                    model="data.transporte_turnos"
+                                                    :options="['manha' => 'Manhã', 'tarde' => 'Tarde', 'noite' => 'Noite', 'integral' => 'Integral']"
+                                                    :selected="$data['transporte_turnos'] ?? []"
+                                                    change-action="invalidarAlunos"
+                                                />
                                             </div>
                                             <div class="evento-custom-modal__action-row">
                                                 <button type="button" class="evento-custom-modal__button evento-custom-modal__button--primary" wire:click="buscarAlunos" wire:loading.attr="disabled" wire:target="buscarAlunos">

@@ -296,6 +296,19 @@ class EventoCalendarioServiceTest extends TestCase
     public function test_modal_personalizado_abre_com_os_campos_do_evento(): void
     {
         [$ator] = $this->atorEscolar('FORM');
+        $modalBlade = file_get_contents(resource_path('views/livewire/home/evento-calendario-modal.blade.php'));
+        $modalCss = file_get_contents(public_path('css/evento-calendario-modal.css'));
+
+        $this->assertIsString($modalBlade);
+        $this->assertIsString($modalCss);
+        $this->assertStringContainsString('class="evento-custom-modal"', $modalBlade);
+        $this->assertStringNotContainsString('<x-filament-actions::modals', $modalBlade);
+        $this->assertStringNotContainsString('@class(', $modalBlade);
+        $this->assertStringNotContainsString('@disabled(', $modalBlade);
+        $this->assertStringNotContainsString('MutationObserver', $modalBlade);
+        $this->assertStringNotContainsString('setInterval', $modalBlade);
+        $this->assertStringContainsString('.evento-custom-modal__backdrop', $modalCss);
+        $this->assertStringContainsString('.evento-custom-modal__footer', $modalCss);
 
         $modal = Livewire::actingAs($ator)
             ->test(EventoCalendarioModal::class)
