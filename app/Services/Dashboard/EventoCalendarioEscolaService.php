@@ -32,6 +32,7 @@ class EventoCalendarioEscolaService
         User $ator,
         string $horaInicioPadrao,
         string $horaFimPadrao,
+        array $alunoExcecoes = [],
     ): array {
         $horaInicioPadrao = $this->hora($horaInicioPadrao, 'hora_inicio');
         $horaFimPadrao = $this->hora($horaFimPadrao, 'hora_fim');
@@ -113,7 +114,7 @@ class EventoCalendarioEscolaService
             ]);
         }
 
-        $estimativas = $this->contarEstudantesPorEscola($normalizadas);
+        $estimativas = $this->contarEstudantesPorEscola($normalizadas, $alunoExcecoes);
 
         foreach ($normalizadas as &$linha) {
             if ($linha['precisa_transporte']) {
@@ -391,7 +392,7 @@ class EventoCalendarioEscolaService
      * @param list<array<string, mixed>> $linhas
      * @return array<int, int>
      */
-    private function contarEstudantesPorEscola(array $linhas): array
+    private function contarEstudantesPorEscola(array $linhas, array $alunoExcecoes = []): array
     {
         $transportes = collect($linhas)->where('precisa_transporte', true)->values();
 
@@ -403,6 +404,10 @@ class EventoCalendarioEscolaService
             ->join('turmas', 'turmas.id', '=', 'alunos.id_turma')
             ->where('alunos.tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
             ->where('alunos.status', Aluno::STATUS_MATRICULADO)
+            ->when(
+                $alunoExcecoes !== [],
+                fn (Builder $query): Builder => $query->whereNotIn('alunos.id', collect($alunoExcecoes)->filter(fn ($id): bool => is_numeric($id))->map(fn ($id): int => (int) $id)->unique()->all()),
+            )
             ->where(function (Builder $selecoes) use ($transportes): void {
                 foreach ($transportes as $linha) {
                     $selecoes->orWhere(function (Builder $escola) use ($linha): void {
