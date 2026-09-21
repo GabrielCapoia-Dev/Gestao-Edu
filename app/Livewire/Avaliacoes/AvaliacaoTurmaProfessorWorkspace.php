@@ -357,7 +357,7 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
 
     private function carregarProgressoNavegacao(): void
     {
-        if (! $this->avaliacao || ! app(AvaliacaoPersistencia::class)->leRelacional()) {
+        if (! $this->avaliacao) {
             return;
         }
 

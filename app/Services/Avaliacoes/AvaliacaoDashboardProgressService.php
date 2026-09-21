@@ -122,40 +122,32 @@ class AvaliacaoDashboardProgressService
             $avaliacaoId => $this->resumoVazio(),
         ])->all();
 
-        if ($avaliacaoIds === [] || $escolaIds === [] || ! app(AvaliacaoPersistencia::class)->leRelacional()) {
+        if ($avaliacaoIds === [] || $escolaIds === []) {
             return $resultado;
         }
 
-        if (app(AvaliacaoDashboardTurmaResumoService::class)->disponivel()) {
+        $resumosDisponiveis = app(AvaliacaoPersistencia::class)->leRelacional()
+            && app(AvaliacaoDashboardTurmaResumoService::class)->disponivel()
+            && DB::table('avaliacao_dashboard_turma_resumos')
+                ->whereIn('avaliacao_id', $avaliacaoIds)
+                ->distinct()
+                ->count('avaliacao_id') === count($avaliacaoIds);
+
+        if ($resumosDisponiveis) {
             return $this->detalhadoPorResumos($resultado, $avaliacaoIds, $escolaIds, $professorIds);
         }
 
-        $alunosElegiveis = DB::table('alunos as aluno_progresso')
-            ->whereIn('aluno_progresso.status', [Aluno::STATUS_MATRICULADO, Aluno::STATUS_PENDENTE])
+        $esperados = $this->queries->esperados($avaliacaoIds)
+            ->whereIn('aln.status', [Aluno::STATUS_MATRICULADO, Aluno::STATUS_PENDENTE])
             ->where(function (Builder $alunos): void {
                 $alunos
-                    ->where('aluno_progresso.status', '!=', Aluno::STATUS_PENDENTE)
-                    ->orWhereNull('aluno_progresso.pendencia_origem_aluno_id')
-                    ->orWhere('aluno_progresso.pendencia_origem_aluno_id', '<=', 0);
-            })
-            ->groupBy('aluno_progresso.id_turma')
-            ->selectRaw('aluno_progresso.id_turma as turma_origem_id, COUNT(*) as alunos_total');
-
-        $esperados = DB::table('avaliacao_turma_ciclos as ciclo_progresso')
-            ->join('turmas as turma_progresso', 'turma_progresso.id', '=', 'ciclo_progresso.turma_avaliativa_id')
-            ->joinSub($alunosElegiveis, 'alunos_progresso', fn ($join) => $join
-                ->on('alunos_progresso.turma_origem_id', '=', 'ciclo_progresso.turma_origem_id'))
-            ->join('avaliacao_pauta as ap_progresso', 'ap_progresso.avaliacao_id', '=', 'ciclo_progresso.avaliacao_id')
-            ->join('pautas as pauta_progresso', 'pauta_progresso.id', '=', 'ap_progresso.pauta_id')
-            ->whereIn('ciclo_progresso.avaliacao_id', $avaliacaoIds)
-            ->whereIn('ciclo_progresso.status', ['aberta', 'reaberta'])
-            ->where('pauta_progresso.status', true)
-            ->where(fn (Builder $pautas) => $pautas
-                ->whereNull('pauta_progresso.serie_id')
-                ->orWhereColumn('pauta_progresso.serie_id', 'turma_progresso.id_serie'));
+                    ->where('aln.status', '!=', Aluno::STATUS_PENDENTE)
+                    ->orWhereNull('aln.pendencia_origem_aluno_id')
+                    ->orWhere('aln.pendencia_origem_aluno_id', '<=', 0);
+            });
 
         if (is_array($escolaIds)) {
-            $esperados->whereIn('turma_progresso.id_escola', $this->ids($escolaIds));
+            $esperados->whereIn('t.id_escola', $this->ids($escolaIds));
         }
 
         if (is_array($professorIds)) {
@@ -164,13 +156,13 @@ class AvaliacaoDashboardProgressService
                 ? $esperados->whereRaw('1 = 0')
                 : $esperados->where(function (Builder $pautas) use ($professorIds): void {
                     $pautas
-                        ->whereNull('pauta_progresso.componente_curricular_id')
+                    ->whereNull('p.componente_curricular_id')
                         ->orWhereExists(function ($vinculos) use ($professorIds): void {
                             $vinculos
                                 ->selectRaw('1')
                                 ->from('turma_componente_professor as tcp_progresso')
-                                ->whereColumn('tcp_progresso.turma_id', 'turma_progresso.id')
-                                ->whereColumn('tcp_progresso.componente_curricular_id', 'pauta_progresso.componente_curricular_id')
+                                ->whereColumn('tcp_progresso.turma_id', 't.id')
+                                ->whereColumn('tcp_progresso.componente_curricular_id', 'p.componente_curricular_id')
                                 ->where('tcp_progresso.tem_professor', true)
                                 ->whereIn('tcp_progresso.professor_id', $professorIds);
                         });
@@ -178,15 +170,9 @@ class AvaliacaoDashboardProgressService
         }
 
         $esperados = $esperados
-            ->groupBy(
-                'ciclo_progresso.avaliacao_id',
-                'turma_progresso.id',
-                'turma_progresso.id_escola',
-                'turma_progresso.id_serie',
-                'alunos_progresso.alunos_total',
-            )
-            ->selectRaw('ciclo_progresso.avaliacao_id, turma_progresso.id as turma_id, turma_progresso.id_escola as escola_id, turma_progresso.id_serie as serie_id')
-            ->selectRaw('alunos_progresso.alunos_total * COUNT(DISTINCT pauta_progresso.id) as total')
+            ->groupBy('at.avaliacao_id', 't.id', 't.id_escola', 't.id_serie', 'p.componente_curricular_id')
+            ->selectRaw('at.avaliacao_id, t.id as turma_id, t.id_escola as escola_id, t.id_serie as serie_id, COALESCE(p.componente_curricular_id, 0) as componente_chave')
+            ->selectRaw('COUNT(DISTINCT aln.id) * COUNT(DISTINCT p.id) as total')
             ->get();
 
         $respondidos = $this->queries->respostas($avaliacaoIds, somenteCompletas: true);
@@ -199,17 +185,22 @@ class AvaliacaoDashboardProgressService
 
         $distinctRespondido = $this->distinctCombinacaoExpr('ar.avaliacao_id', 'ar.turma_id', 'ar.pauta_id', 'ar.aluno_id');
         $respondidos = $respondidos
-            ->groupBy('ar.avaliacao_id', 't.id', 't.id_escola', 't.id_serie')
-            ->selectRaw('ar.avaliacao_id, t.id as turma_id, t.id_escola as escola_id, t.id_serie as serie_id')
+            ->groupBy('ar.avaliacao_id', 't.id', 't.id_escola', 't.id_serie', 'p.componente_curricular_id')
+            ->selectRaw('ar.avaliacao_id, t.id as turma_id, t.id_escola as escola_id, t.id_serie as serie_id, COALESCE(p.componente_curricular_id, 0) as componente_chave')
             ->selectRaw("COUNT(DISTINCT {$distinctRespondido}) as total")
             ->get()
-            ->keyBy(fn (object $item): string => $item->avaliacao_id.':'.$item->turma_id);
+            ->keyBy(fn (object $item): string => $item->avaliacao_id.':'.$item->turma_id.':'.$item->componente_chave);
 
         foreach ($esperados as $esperado) {
             $avaliacaoId = (int) $esperado->avaliacao_id;
             $turmaId = (int) $esperado->turma_id;
             $total = (int) $esperado->total;
-            $preenchidas = min((int) ($respondidos->get($avaliacaoId.':'.$turmaId)?->total ?? 0), $total);
+            $componenteId = (int) $esperado->componente_chave;
+            $preenchidas = min((int) ($respondidos->get($avaliacaoId.':'.$turmaId.':'.$componenteId)?->total ?? 0), $total);
+            $this->acumularResumo($resultado[$avaliacaoId], 'componentes', $componenteId, $preenchidas, $total);
+            $resultado[$avaliacaoId]['componentes_por_turma'][$turmaId][$componenteId] ??= ['preenchidas' => 0, 'total' => 0, 'percentual' => 0];
+            $resultado[$avaliacaoId]['componentes_por_turma'][$turmaId][$componenteId]['preenchidas'] += $preenchidas;
+            $resultado[$avaliacaoId]['componentes_por_turma'][$turmaId][$componenteId]['total'] += $total;
             $this->acumularResumo($resultado[$avaliacaoId], 'turmas', $turmaId, $preenchidas, $total);
             $this->acumularResumo($resultado[$avaliacaoId], 'series', (int) $esperado->serie_id, $preenchidas, $total);
             $this->acumularResumo($resultado[$avaliacaoId], 'escolas', (int) $esperado->escola_id, $preenchidas, $total);
