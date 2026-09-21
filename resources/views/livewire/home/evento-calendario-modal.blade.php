@@ -42,7 +42,7 @@
                         <div class="evento-custom-modal__body">
                             <nav class="evento-custom-modal__steps" aria-label="Etapas do evento">
                                 @foreach ([1 => 'Dados do evento', 2 => 'Convidar participantes', 3 => 'Transporte escolar'] as $numero => $rotulo)
-                                    <div @class(['evento-custom-modal__step', 'is-active' => $etapa === $numero, 'is-complete' => $etapa > $numero])>
+                                    <div class="evento-custom-modal__step{{ $etapa === $numero ? ' is-active' : '' }}{{ $etapa > $numero ? ' is-complete' : '' }}">
                                         <span>{{ $etapa > $numero ? '✓' : sprintf('%02d', $numero) }}</span>
                                         <strong>{{ $rotulo }}</strong>
                                     </div>
@@ -255,8 +255,8 @@
                                     <div class="evento-custom-modal__question">
                                         <strong>Vai precisar de transporte para os alunos? <em>*</em></strong>
                                         <div>
-                                            <button type="button" @class(['is-selected' => ($data['precisa_transporte_evento'] ?? 'nao') === 'sim']) wire:click="definirTransporte('sim')" @disabled($somenteTransporte)>Sim</button>
-                                            <button type="button" @class(['is-selected' => ($data['precisa_transporte_evento'] ?? 'nao') === 'nao']) wire:click="definirTransporte('nao')" @disabled($somenteTransporte)>Não</button>
+                                            <button type="button" class="{{ ($data['precisa_transporte_evento'] ?? 'nao') === 'sim' ? 'is-selected' : '' }}" wire:click="definirTransporte('sim')" {{ $somenteTransporte ? 'disabled' : '' }}>Sim</button>
+                                            <button type="button" class="{{ ($data['precisa_transporte_evento'] ?? 'nao') === 'nao' ? 'is-selected' : '' }}" wire:click="definirTransporte('nao')" {{ $somenteTransporte ? 'disabled' : '' }}>Não</button>
                                         </div>
                                     </div>
 
