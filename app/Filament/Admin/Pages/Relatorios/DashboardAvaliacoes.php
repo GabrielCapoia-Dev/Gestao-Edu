@@ -3113,7 +3113,10 @@ class DashboardAvaliacoes extends Page implements HasForms
         }
 
         if ($this->dashboardResumosEstaoProntos($avaliacaoIds, $this->filtrosDoAcompanhamento())) {
-            return $this->montarAcompanhamentoTurmasPorResumo($avaliacaoIds, $paginar);
+            $porResumo = $this->montarAcompanhamentoTurmasPorResumo($avaliacaoIds, $paginar);
+            if ($porResumo['total'] > 0) {
+                return $porResumo;
+            }
         }
 
         $filtros = $this->filtrosDoAcompanhamento();
@@ -3122,7 +3125,6 @@ class DashboardAvaliacoes extends Page implements HasForms
         $distinctRespondido = $this->distinctCombinacaoExpr('ar.avaliacao_id', 'ar.turma_id', 'ar.pauta_id', 'ar.aluno_id');
 
         $esperadosQuery = (clone $this->basePreenchimentosEsperadosQuery($avaliacaoIds, $filtros))
-            ->join('avaliacoes as av', 'av.id', '=', 'at.avaliacao_id')
             ->leftJoin('escolas as e', 'e.id', '=', 't.id_escola')
             ->leftJoin('series as s', 's.id', '=', 't.id_serie');
 

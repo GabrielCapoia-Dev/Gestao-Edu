@@ -126,17 +126,6 @@ class AvaliacaoDashboardProgressService
             return $resultado;
         }
 
-        $resumosDisponiveis = app(AvaliacaoPersistencia::class)->leRelacional()
-            && app(AvaliacaoDashboardTurmaResumoService::class)->disponivel()
-            && DB::table('avaliacao_dashboard_turma_resumos')
-                ->whereIn('avaliacao_id', $avaliacaoIds)
-                ->distinct()
-                ->count('avaliacao_id') === count($avaliacaoIds);
-
-        if ($resumosDisponiveis) {
-            return $this->detalhadoPorResumos($resultado, $avaliacaoIds, $escolaIds, $professorIds);
-        }
-
         $esperados = $this->queries->esperados($avaliacaoIds)
             ->whereIn('aln.status', [Aluno::STATUS_MATRICULADO, Aluno::STATUS_PENDENTE])
             ->where(function (Builder $alunos): void {
