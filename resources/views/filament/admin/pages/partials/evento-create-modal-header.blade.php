@@ -8,8 +8,11 @@
         modal.querySelectorAll('.fi-modal-content, [data-modal-content]').forEach((elemento) => elemento.scrollTop = 0);
         const sync = () => {
             modal.dataset.eventoStep = String(modal.__eventoStep || 1);
-            const submit = modal.querySelector('.fi-modal-footer .fi-btn-color-primary');
-            if (submit) submit.textContent = modal.__eventoStep === 3 ? 'Criar evento' : 'Próximo';
+            const submit = modal.querySelector('button[type="submit"]');
+            if (submit) {
+                submit.textContent = modal.__eventoStep === 3 ? 'Criar evento' : 'Próximo';
+                submit.style.display = '';
+            }
         };
         sync();
         const observer = new MutationObserver(sync);
@@ -24,12 +27,12 @@
                 return;
             }
 
-            const submit = event.target.closest('.fi-modal-footer .fi-btn-color-primary');
+            const submit = event.target.closest('button[type="submit"]');
             if (! submit || modal.__eventoStep === 3) return;
 
             event.preventDefault();
             event.stopImmediatePropagation();
-            const proximo = [...modal.querySelectorAll('.fi-sc-wizard-footer button')]
+            const proximo = [...modal.querySelectorAll('button')]
                 .find((botao) => (botao.textContent || '').trim().toLowerCase().includes('próximo'));
             if (proximo) {
                 modal.__eventoStep = Math.min(3, modal.__eventoStep + 1);
