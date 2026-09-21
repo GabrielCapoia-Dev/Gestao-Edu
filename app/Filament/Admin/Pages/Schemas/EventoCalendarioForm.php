@@ -459,10 +459,10 @@ class EventoCalendarioForm
                 ->view('filament.admin.pages.fields.evento-transporte-alunos-table')
                 ->viewData(function (Get $get) use ($user): array {
                     $escolas = collect($get('transporte_escola_ids') ?? [])->filter()->values()->all();
-                    $alunos = $escolas === [] ? collect() : Aluno::query()
+                    $alunos = Aluno::query()
                         ->with(['turma.escola:id,nome', 'turma.serie:id,nome'])
                         ->whereHas('turma', function (Builder $query) use ($escolas, $get): void {
-                            $query->whereIn('id_escola', $escolas)
+                            $query->when($escolas !== [], fn (Builder $q) => $q->whereIn('id_escola', $escolas))
                                 ->when($get('transporte_serie_ids') ?? [], fn (Builder $q, array $ids) => $q->whereIn('id_serie', $ids))
                                 ->when($get('transporte_turnos') ?? [], fn (Builder $q, array $turnos) => $q->whereIn('turno', $turnos));
                         })

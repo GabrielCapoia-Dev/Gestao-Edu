@@ -62,4 +62,35 @@
     .evento-create-modal .fi-sc-wizard-footer { display:none; }
     .evento-create-modal .leaflet-container { position:relative; z-index:0; }
     .evento-create-modal .fi-dropdown-panel, .evento-create-modal .fi-select-options, .evento-create-modal [role="listbox"], .evento-create-modal .fi-fo-date-time-picker-panel { z-index:1000; }
+
+    .evento-create-modal .evento-transporte-pergunta {
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        gap:.75rem;
+        text-align:center;
+    }
+    .evento-create-modal .evento-transporte-pergunta > label,
+    .evento-create-modal .evento-transporte-pergunta .fi-fo-field-label {
+        width:100%;
+        justify-content:center;
+        text-align:center;
+    }
+    .evento-create-modal .evento-transporte-pergunta [role="group"] {
+        display:flex;
+        justify-content:center;
+        gap:.75rem;
+        width:100%;
+    }
+    .evento-create-modal .evento-transporte-pergunta [role="group"] > button {
+        min-width:5.5rem;
+        justify-content:center;
+        color:#173b73;
+        font-weight:600;
+        line-height:1.25;
+    }
+    .evento-create-modal .evento-transporte-pergunta [role="group"] > button[aria-pressed="true"],
+    .evento-create-modal .evento-transporte-pergunta [role="group"] > button[data-state="on"] {
+        color:#fff;
+    }
 </style>
