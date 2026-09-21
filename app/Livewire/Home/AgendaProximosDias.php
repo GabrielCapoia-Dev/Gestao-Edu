@@ -20,6 +20,7 @@ use Filament\Schemas\Contracts\HasSchemas;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
 use InvalidArgumentException;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 class AgendaProximosDias extends Component implements HasActions, HasSchemas
@@ -92,6 +93,7 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
             : [...$this->diasExpandidos, $date];
     }
 
+    #[On('evento-calendario-criado')]
     public function recarregar(): void
     {
         $this->erro = null;

@@ -2,7 +2,6 @@
 
 namespace App\Filament\Admin\Pages;
 
-use App\Filament\Admin\Pages\Actions\EventoCalendarioCreateAction;
 use App\Filament\Admin\Pages\Schemas\EventoCalendarioForm;
 use App\Models\Enums\EventoCalendarioStatus;
 use App\Models\Enums\ListaPermissoes;
@@ -44,6 +43,7 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use Livewire\Attributes\On;
 
 class GerenciarEventos extends Page implements HasTable
 {
@@ -74,6 +74,7 @@ class GerenciarEventos extends Page implements HasTable
             'eyebrow' => 'Início',
             'title' => 'Eventos da agenda',
             'description' => 'Acompanhe solicitações, publicações e eventos distribuídos para as escolas.',
+            'mostrarEventoModal' => true,
         ]);
     }
 
@@ -89,8 +90,13 @@ class GerenciarEventos extends Page implements HasTable
                 ->visible(fn (): bool => $user !== null
                     && Gate::forUser($user)->allows('create', ImportacaoEventoCalendario::class))
                 ->url(ImportarEventosCalendario::getUrl()),
-            EventoCalendarioCreateAction::make('criarEvento', $user),
         ];
+    }
+
+    #[On('evento-calendario-criado')]
+    public function atualizarTabelaAposCriacao(): void
+    {
+        $this->resetTable();
     }
 
     public function table(Table $table): Table

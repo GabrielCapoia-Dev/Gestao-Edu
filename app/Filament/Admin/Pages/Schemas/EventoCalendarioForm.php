@@ -53,7 +53,7 @@ class EventoCalendarioForm
     }
 
     /** @return array<int, Component> */
-    public static function components(?User $user): array
+    public static function components(?User $user, string $cancelWireMethod = 'unmountAction'): array
     {
         $somenteTransporte = $user !== null
             && Gate::forUser($user)->allows('requiresTransport', EventoCalendario::class);
@@ -535,7 +535,7 @@ class EventoCalendarioForm
             ->contained(false)
             ->nextAction(fn (Action $action): Action => $action->label('Próximo'))
             ->previousAction(fn (Action $action): Action => $action->label('Voltar'))
-            ->cancelAction(new HtmlString('<button type="button" class="evento-wizard-action evento-wizard-action--secondary" wire:click="unmountAction">Cancelar</button>'))
+            ->cancelAction(new HtmlString('<button type="button" class="evento-wizard-action evento-wizard-action--secondary" wire:click="'.$cancelWireMethod.'">Cancelar</button>'))
             ->submitAction(new HtmlString('<button type="submit" class="evento-wizard-action evento-wizard-action--primary">Criar evento</button>'))
             ->columnSpanFull()];
     }

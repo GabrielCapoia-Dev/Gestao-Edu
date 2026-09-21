@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Dashboard;
 
-use App\Filament\Admin\Pages\GerenciarEventos;
 use App\Filament\Admin\Pages\Schemas\EventoCalendarioForm;
+use App\Livewire\Home\EventoCalendarioModal;
 use App\Models\Aluno;
 use App\Models\Enums\EventoCalendarioHistoricoAcao;
 use App\Models\Enums\EventoCalendarioStatus;
@@ -292,26 +292,17 @@ class EventoCalendarioServiceTest extends TestCase
         $this->assertSame([$turmaCmei->id], $linhas[0]['turmas_ids']);
     }
 
-    public function test_formulario_oculta_link_e_nao_expoe_destinatarios(): void
+    public function test_modal_personalizado_abre_com_o_wizard_de_eventos(): void
     {
         [$ator] = $this->atorEscolar('FORM');
 
         Livewire::actingAs($ator)
-            ->test(GerenciarEventos::class)
-            ->mountAction('criarEvento')
-            ->assertSee('Inserir link?')
-            ->assertSee('Enviar para escolas específicas')
-            ->assertDontSee('Link de ação')
-            ->assertDontSee('Distribuição por escola')
-            ->assertDontSee('Destinatários')
-            ->assertDontSee('Prioridade')
-            ->assertDontSee('Publicado')
-            ->fillForm([
-                'inserir_link' => true,
-                'enviar_escolas_especificas' => true,
-            ])
-            ->assertSee('Link de ação')
-            ->assertSee('Distribuição por escola');
+            ->test(EventoCalendarioModal::class)
+            ->call('abrir')
+            ->assertSee('Planeje um novo evento')
+            ->assertSee('Próximo')
+            ->assertSee('Criar evento')
+            ->assertDontSee('x-filament-actions');
     }
 
     public function test_rejeita_envio_paralelo_para_todos_os_usuarios(): void
