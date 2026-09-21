@@ -138,6 +138,11 @@ class CalendarEventAggregatorTest extends TestCase
         $this->assertIsString($blade);
         $this->assertStringContainsString('<livewire:home.avisos-banner', $blade);
         $this->assertStringContainsString('<livewire:home.agenda-proximos-dias', $blade);
+        $this->assertStringContainsString('<livewire:home.evento-calendario-modal :mostrar-gatilho="false" lazy />', $blade);
+        $agendaBlade = file_get_contents(resource_path('views/livewire/home/agenda-proximos-dias.blade.php'));
+        $this->assertIsString($agendaBlade);
+        $this->assertStringNotContainsString('<livewire:home.evento-calendario-modal', $agendaBlade);
+        $this->assertStringContainsString('$dispatch(\'abrir-evento-calendario\')', $agendaBlade);
         $this->assertStringNotContainsString('<livewire:home.reservas-veiculos-resumo', $blade);
         $dashboardPage = file_get_contents(app_path('Filament/Admin/Pages/Dashboard.php'));
         $this->assertStringContainsString("'actions' => \$this->getCachedHeaderActions()", $dashboardPage);
