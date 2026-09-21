@@ -22,6 +22,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Forms\Components\ViewField;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Grid;
@@ -413,14 +414,22 @@ class EventoCalendarioForm
 
         $transporteStep = Step::make('Transporte escolar')->schema([
             Hidden::make('transporte_excecoes_aluno_ids')->default([])->dehydrated(),
-            ViewField::make('precisa_transporte_evento_controle')
-                ->hiddenLabel()
-                ->dehydrated(false)
-                ->view('filament.admin.pages.fields.evento-transporte-pergunta')
-                ->viewData(fn (Get $get): array => [
-                    'selecionado' => $get('precisa_transporte_evento') ?: 'nao',
-                ])
-                ->columnSpanFull(),
+            ToggleButtons::make('precisa_transporte_evento')
+                ->label('Vai precisar de transporte para os alunos?')
+                ->options(['sim' => 'Sim', 'nao' => 'Não'])
+                ->inline()
+                ->default('nao')
+                ->required()
+                ->live()
+                ->extraAttributes(['class' => 'evento-transporte-pergunta'])
+                ->afterStateUpdated(function (string $state, Set $set): void {
+                    $precisa = $state === 'sim';
+                    $set('enviar_escolas_especificas', $precisa);
+                    $set('precisa_transporte_grupo', $precisa);
+                    if (! $precisa) {
+                        $set('escolas_agendadas', []);
+                    }
+                }),
             Grid::make(['default' => 1, 'md' => 3])
                 ->visible(fn (Get $get): bool => $get('precisa_transporte_evento') === 'sim')
                 ->schema([

@@ -1,4 +1,4 @@
-<div class="evento-create-modal__intro" x-data x-on:transport-option-selected.window="$wire.set('mountedActionsData.0.precisa_transporte_evento', $event.detail.value)" x-init="
+<div class="evento-create-modal__intro" x-data x-init="
     $nextTick(() => {
         const modal = $el.closest('.evento-create-modal');
         if (! modal) return;
