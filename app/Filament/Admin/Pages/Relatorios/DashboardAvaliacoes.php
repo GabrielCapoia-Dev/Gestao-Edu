@@ -3388,7 +3388,6 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         $avaliacoesComResumo = DB::table('avaliacao_dashboard_turma_resumos')
             ->whereIn('avaliacao_id', $avaliacaoIds)
-            ->where('componente_chave', \App\Services\Avaliacoes\AvaliacaoDashboardTurmaResumoService::TOTAL_COMPONENT_KEY)
             ->distinct()
             ->count('avaliacao_id');
 
@@ -3403,7 +3402,18 @@ class DashboardAvaliacoes extends Page implements HasForms
             ->leftJoin('escolas as e', 'e.id', '=', 't.id_escola')
             ->leftJoin('series as s', 's.id', '=', 't.id_serie')
             ->whereIn('resumo.avaliacao_id', $avaliacaoIds)
-            ->where('resumo.componente_chave', \App\Services\Avaliacoes\AvaliacaoDashboardTurmaResumoService::TOTAL_COMPONENT_KEY)
+            ->where(function (QueryBuilder $componentes): void {
+                $componentes
+                    ->where('resumo.componente_chave', \App\Services\Avaliacoes\AvaliacaoDashboardTurmaResumoService::TOTAL_COMPONENT_KEY)
+                    ->orWhereNotExists(function (QueryBuilder $totais): void {
+                        $totais
+                            ->selectRaw('1')
+                            ->from('avaliacao_dashboard_turma_resumos as resumo_total')
+                            ->whereColumn('resumo_total.avaliacao_id', 'resumo.avaliacao_id')
+                            ->whereColumn('resumo_total.turma_id', 'resumo.turma_id')
+                            ->where('resumo_total.componente_chave', \App\Services\Avaliacoes\AvaliacaoDashboardTurmaResumoService::TOTAL_COMPONENT_KEY);
+                    });
+            })
             ->select([
                 'resumo.avaliacao_id',
                 'resumo.turma_id',
