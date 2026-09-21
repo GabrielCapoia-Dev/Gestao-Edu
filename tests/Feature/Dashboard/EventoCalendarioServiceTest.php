@@ -46,7 +46,7 @@ class EventoCalendarioServiceTest extends TestCase
             'id_serie' => $serie->id,
             'id_escola' => $escola->id,
         ]);
-        $this->aluno($turma, 'CGM-1', Aluno::TIPO_VINCULO_PRINCIPAL, Aluno::STATUS_MATRICULADO);
+        $alunoRemovido = $this->aluno($turma, 'CGM-1', Aluno::TIPO_VINCULO_PRINCIPAL, Aluno::STATUS_MATRICULADO);
         $this->aluno($turma, 'CGM-2', Aluno::TIPO_VINCULO_PRINCIPAL, Aluno::STATUS_MATRICULADO);
         $this->aluno($turma, 'CGM-3', Aluno::TIPO_VINCULO_CONTRA_TURNO, Aluno::STATUS_MATRICULADO);
         $this->aluno($turma, 'CGM-4', Aluno::TIPO_VINCULO_PRINCIPAL, Aluno::STATUS_TRANSFERIDO);
@@ -54,6 +54,7 @@ class EventoCalendarioServiceTest extends TestCase
         $evento = app(EventoCalendarioService::class)->criar([
             ...$this->dadosBase(),
             'enviar_escolas_especificas' => true,
+            'transporte_excecoes_aluno_ids' => [$alunoRemovido->id],
             'escolas_agendadas' => [[
                 'escola_id' => $escola->id,
                 'hora_inicio' => '08:00',
@@ -66,7 +67,7 @@ class EventoCalendarioServiceTest extends TestCase
 
         $agendamento = $evento->escolasAgendadas()->with('turmas')->sole();
         $this->assertFalse($evento->enviar_todas_escolas);
-        $this->assertSame(2, $agendamento->quantidade_estimada_transporte);
+        $this->assertSame(1, $agendamento->quantidade_estimada_transporte);
         $this->assertSame([$turma->id], $agendamento->turmas->modelKeys());
         $this->assertFalse($evento->publicoAlvo->todos_usuarios);
         $this->assertSame([$escola->id], $evento->publicoAlvo->escolas()->pluck('escolas.id')->all());
@@ -292,17 +293,34 @@ class EventoCalendarioServiceTest extends TestCase
         $this->assertSame([$turmaCmei->id], $linhas[0]['turmas_ids']);
     }
 
-    public function test_modal_personalizado_abre_com_o_wizard_de_eventos(): void
+    public function test_modal_personalizado_abre_com_os_campos_do_evento(): void
     {
         [$ator] = $this->atorEscolar('FORM');
 
-        Livewire::actingAs($ator)
+        $modal = Livewire::actingAs($ator)
             ->test(EventoCalendarioModal::class)
             ->call('abrir')
             ->assertSee('Planeje um novo evento')
+            ->assertSee('Título')
             ->assertSee('Próximo')
-            ->assertSee('Criar evento')
+            ->assertDontSee('Criar evento')
             ->assertDontSee('x-filament-actions');
+
+        $modal
+            ->set('data.titulo', 'Evento de teste')
+            ->set('data.data_evento', '2026-09-25')
+            ->set('data.hora_inicio', '08:00')
+            ->set('data.hora_fim', '10:00')
+            ->call('avancar')
+            ->assertSet('etapa', 2)
+            ->assertSee('Próximo')
+            ->assertDontSee('Criar evento')
+            ->call('avancar')
+            ->assertSet('etapa', 3)
+            ->assertSee('Criar evento')
+            ->assertDontSee('Próximo');
+
+        $this->assertDatabaseCount('eventos_calendario', 0);
     }
 
     public function test_rejeita_envio_paralelo_para_todos_os_usuarios(): void

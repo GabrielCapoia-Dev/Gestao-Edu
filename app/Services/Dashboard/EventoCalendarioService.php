@@ -248,6 +248,7 @@ class EventoCalendarioService
         }
 
         $enviarEspecificas = Arr::pull($dados, 'enviar_escolas_especificas');
+        $alunoExcecoes = Arr::pull($dados, 'transporte_excecoes_aluno_ids', []);
 
         if ($enviarEspecificas !== null) {
             $dados['enviar_todas_escolas'] = ! filter_var($enviarEspecificas, FILTER_VALIDATE_BOOLEAN);
@@ -275,6 +276,7 @@ class EventoCalendarioService
                 $ator,
                 (string) $horaInicio,
                 (string) $horaFim,
+                is_array($alunoExcecoes) ? $alunoExcecoes : [],
             );
         }
 
