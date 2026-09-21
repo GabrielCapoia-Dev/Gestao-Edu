@@ -359,7 +359,7 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
         $this->progressoAvaliacoesProfessorPronto = true;
     }
 
-    private function carregarProgressoNavegacao(): void
+    private function carregarProgressoNavegacao(?array $escolaIds = null): void
     {
         if (! $this->avaliacao) {
             return;
@@ -368,7 +368,7 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
         $this->progressoNavegacao = app(AvaliacaoDashboardProgressService::class)
             ->detalhadoRapido(
                 [(int) $this->avaliacao],
-                $this->escolasPermitidasIds(),
+                $escolaIds ?? $this->escolasPermitidasIds(),
                 $this->deveFiltrarPorProfessor() ? $this->professorIds : null,
             )[(int) $this->avaliacao] ?? [];
     }
@@ -390,6 +390,7 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
         $this->serieNavegacaoId = null;
         $this->turmasExpandidas = [];
         $this->fecharComponente();
+        $this->carregarProgressoNavegacao([$escolaId]);
     }
 
     public function selecionarSerieNavegacao(int $serieId): void
@@ -416,6 +417,7 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
 
         if ($this->agrupaNavegacaoPorEscola()) {
             $this->escolaNavegacaoId = null;
+            $this->carregarProgressoNavegacao();
         }
     }
 
