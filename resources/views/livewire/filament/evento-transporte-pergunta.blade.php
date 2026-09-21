@@ -6,13 +6,13 @@
             type="button"
             class="evento-transporte-pergunta__button {{ $selecionado === 'sim' ? 'is-active' : '' }}"
             wire:click="selecionar('sim')"
-            x-on:click="Livewire.find($wire.__instance.parent).$set('mountedActionsData.0.precisa_transporte_evento', 'sim')"
+            x-on:click="$dispatch('transport-option-selected', { value: 'sim' })"
         >Sim</button>
         <button
             type="button"
             class="evento-transporte-pergunta__button {{ $selecionado === 'nao' ? 'is-active' : '' }}"
             wire:click="selecionar('nao')"
-            x-on:click="Livewire.find($wire.__instance.parent).$set('mountedActionsData.0.precisa_transporte_evento', 'nao')"
+            x-on:click="$dispatch('transport-option-selected', { value: 'nao' })"
         >Não</button>
     </div>
 </div>
