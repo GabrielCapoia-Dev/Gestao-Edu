@@ -8,12 +8,20 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('eventos_calendario', function (Blueprint $table): void {
-            $table->timestamp('participantes_snapshot_em')->nullable()->after('ultima_importacao_id');
-            $table->timestamp('alunos_snapshot_em')->nullable()->after('participantes_snapshot_em');
-        });
+        if (! Schema::hasColumn('eventos_calendario', 'participantes_snapshot_em')) {
+            Schema::table('eventos_calendario', function (Blueprint $table): void {
+                $table->timestamp('participantes_snapshot_em')->nullable()->after('ultima_importacao_id');
+            });
+        }
 
-        Schema::create('evento_calendario_participantes_snapshot', function (Blueprint $table): void {
+        if (! Schema::hasColumn('eventos_calendario', 'alunos_snapshot_em')) {
+            Schema::table('eventos_calendario', function (Blueprint $table): void {
+                $table->timestamp('alunos_snapshot_em')->nullable()->after('participantes_snapshot_em');
+            });
+        }
+
+        if (! Schema::hasTable('evento_calendario_participantes_snapshot')) {
+            Schema::create('evento_calendario_participantes_snapshot', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('evento_calendario_id')->constrained('eventos_calendario')->cascadeOnDelete();
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
@@ -27,9 +35,11 @@ return new class extends Migration
 
             $table->unique(['evento_calendario_id', 'user_id'], 'uq_evento_participante_snapshot');
             $table->index(['evento_calendario_id', 'escola_id'], 'idx_evento_participante_escola');
-        });
+            });
+        }
 
-        Schema::create('evento_calendario_alunos_snapshot', function (Blueprint $table): void {
+        if (! Schema::hasTable('evento_calendario_alunos_snapshot')) {
+            Schema::create('evento_calendario_alunos_snapshot', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('evento_calendario_id')->constrained('eventos_calendario')->cascadeOnDelete();
             $table->foreignId('evento_calendario_escola_id')->constrained('evento_calendario_escolas')->cascadeOnDelete();
@@ -47,7 +57,8 @@ return new class extends Migration
 
             $table->index(['evento_calendario_id', 'escola_id'], 'idx_evento_aluno_escola');
             $table->index(['evento_calendario_id', 'turma_id'], 'idx_evento_aluno_turma');
-        });
+            });
+        }
     }
 
     public function down(): void
@@ -55,8 +66,16 @@ return new class extends Migration
         Schema::dropIfExists('evento_calendario_alunos_snapshot');
         Schema::dropIfExists('evento_calendario_participantes_snapshot');
 
-        Schema::table('eventos_calendario', function (Blueprint $table): void {
-            $table->dropColumn(['participantes_snapshot_em', 'alunos_snapshot_em']);
-        });
+        if (Schema::hasColumn('eventos_calendario', 'participantes_snapshot_em')) {
+            Schema::table('eventos_calendario', function (Blueprint $table): void {
+                $table->dropColumn('participantes_snapshot_em');
+            });
+        }
+
+        if (Schema::hasColumn('eventos_calendario', 'alunos_snapshot_em')) {
+            Schema::table('eventos_calendario', function (Blueprint $table): void {
+                $table->dropColumn('alunos_snapshot_em');
+            });
+        }
     }
 };
