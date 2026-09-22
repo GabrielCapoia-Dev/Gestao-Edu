@@ -426,12 +426,14 @@ class EventoCalendarioServiceTest extends TestCase
     public function test_modal_personalizado_abre_com_os_campos_do_evento(): void
     {
         [$ator] = $this->atorEscolar('FORM');
+        $formularioEdicao = file_get_contents(app_path('Filament/Admin/Pages/Schemas/EventoCalendarioForm.php'));
         $modalBlade = file_get_contents(resource_path('views/livewire/home/evento-calendario-modal.blade.php'));
         $multiSelectBlade = file_get_contents(resource_path('views/components/evento-multi-select.blade.php'));
         $modalCss = file_get_contents(public_path('css/evento-calendario-modal.css'));
         $mapScript = file_get_contents(public_path('js/evento-local-map.js'));
 
         $this->assertIsString($modalBlade);
+        $this->assertIsString($formularioEdicao);
         $this->assertIsString($multiSelectBlade);
         $this->assertIsString($modalCss);
         $this->assertIsString($mapScript);
@@ -452,6 +454,10 @@ class EventoCalendarioServiceTest extends TestCase
         $this->assertStringContainsString('Coordenadas: ${lat.toFixed(6)}, ${lng.toFixed(6)}', $mapScript);
         $this->assertStringContainsString('.evento-custom-modal__backdrop', $modalCss);
         $this->assertStringContainsString('.evento-custom-modal__footer', $modalCss);
+        $this->assertStringNotContainsString(
+            "\$set('transporte_turnos', self::turnosParaPeriodo",
+            $formularioEdicao,
+        );
 
         $modal = Livewire::actingAs($ator)
             ->test(EventoCalendarioModal::class)
