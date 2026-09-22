@@ -401,7 +401,7 @@ class GerenciarEventos extends Page implements HasTable
                 ->slideOver()
                 ->modalWidth('3xl')
                 ->closeModalByClickingAway(false)
-                ->schema(fn (): array => EventoCalendarioForm::components($user))
+                ->schema(fn (): array => EventoCalendarioForm::components($user, exibirAcoesFinais: false))
                 ->fillForm(fn (EventoCalendario $record): array => EventoCalendarioForm::dadosParaEdicao(
                     $this->listagem()->detalhes($user, (int) $record->getKey()),
                     $record->attributesToArray(),

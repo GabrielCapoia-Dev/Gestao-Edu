@@ -54,7 +54,11 @@ class EventoCalendarioForm
     }
 
     /** @return array<int, Component> */
-    public static function components(?User $user, string $cancelWireMethod = 'unmountAction'): array
+    public static function components(
+        ?User $user,
+        bool $exibirAcoesFinais = true,
+        string $cancelWireMethod = 'unmountAction',
+    ): array
     {
         $somenteTransporte = $user !== null
             && Gate::forUser($user)->allows('requiresTransport', EventoCalendario::class);
@@ -541,17 +545,22 @@ class EventoCalendarioForm
                 ->columnSpanFull(),
         ]);
 
-        return [Wizard::make([
+        $wizard = Wizard::make([
             Step::make('Dados do evento')->schema([$eventoStep]),
             Step::make('Convidar participantes')->schema([$publicoStep]),
             $transporteStep,
         ])
             ->contained(false)
             ->nextAction(fn (Action $action): Action => $action->label('Próximo'))
-            ->previousAction(fn (Action $action): Action => $action->label('Voltar'))
-            ->cancelAction(new HtmlString('<button type="button" class="evento-wizard-action evento-wizard-action--secondary" wire:click="'.$cancelWireMethod.'">Cancelar</button>'))
-            ->submitAction(new HtmlString('<button type="submit" class="evento-wizard-action evento-wizard-action--primary">Criar evento</button>'))
-            ->columnSpanFull()];
+            ->previousAction(fn (Action $action): Action => $action->label('Voltar'));
+
+        if ($exibirAcoesFinais) {
+            $wizard
+                ->cancelAction(new HtmlString('<button type="button" class="evento-wizard-action evento-wizard-action--secondary" wire:click="'.$cancelWireMethod.'">Cancelar</button>'))
+                ->submitAction(new HtmlString('<button type="submit" class="evento-wizard-action evento-wizard-action--primary">Criar evento</button>'));
+        }
+
+        return [$wizard->columnSpanFull()];
     }
 
     public static function dadosParaEdicao(EventoCalendario $evento, array $data): array
