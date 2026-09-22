@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Pages\Schemas;
 
 use App\Models\Enums\EventoCalendarioCor;
+use App\Models\Enums\EventoCalendarioCategoria;
 use App\Models\Enums\EventoCalendarioTransporteEscopo;
 use App\Models\Aluno;
 use App\Models\Escola;
@@ -79,6 +80,7 @@ class EventoCalendarioForm
                         ->columnSpanFull(),
                     TextInput::make('latitude')->hidden()->dehydrated(),
                     TextInput::make('longitude')->hidden()->dehydrated(),
+                    TextInput::make('endereco_mapa')->hidden()->dehydrated(),
                     ViewField::make('mapa_local')
                         ->label('Localização no mapa')
                         ->view('filament.admin.pages.fields.evento-local-map')
@@ -106,7 +108,19 @@ class EventoCalendarioForm
                                 ->required(fn (Get $get): bool => filled($get('link_acao')))
                                 ->maxLength(80),
                         ]),
-                    Hidden::make('categoria')->default('administrativo')->dehydrated(),
+                    Select::make('categoria')
+                        ->label('Categoria')
+                        ->options(collect(EventoCalendarioCategoria::cases())->mapWithKeys(
+                            fn (EventoCalendarioCategoria $categoria): array => [$categoria->value => $categoria->label()],
+                        )->all())
+                        ->required()
+                        ->native(false)
+                        ->live(),
+                    TextInput::make('categoria_detalhe')
+                        ->label('Qual categoria?')
+                        ->required(fn (Get $get): bool => $get('categoria') === EventoCalendarioCategoria::OUTRO->value)
+                        ->visible(fn (Get $get): bool => $get('categoria') === EventoCalendarioCategoria::OUTRO->value)
+                        ->maxLength(160),
                     Grid::make([
                         'default' => 1,
                         'md' => 4,
@@ -553,6 +567,8 @@ class EventoCalendarioForm
             'hora_fim' => $fim,
             'periodo' => self::periodoCorrespondente($inicio, $fim),
             'categoria' => $evento->categoria?->value ?? 'administrativo',
+            'categoria_detalhe' => $evento->categoria_detalhe,
+            'endereco_mapa' => $evento->endereco_mapa,
             'latitude' => $evento->latitude,
             'longitude' => $evento->longitude,
             'enviar_escolas_especificas' => ! $evento->enviar_todas_escolas,

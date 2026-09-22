@@ -123,6 +123,43 @@ class EventoCalendarioServiceTest extends TestCase
         $this->assertTrue($evento->possuiTransporte());
     }
 
+    public function test_persiste_categoria_personalizada_e_endereco_do_mapa_separados_do_local(): void
+    {
+        [$ator] = $this->atorEscolar('ENDERECO');
+
+        $evento = app(EventoCalendarioService::class)->criar([
+            ...$this->dadosBase(),
+            'categoria' => 'outro',
+            'categoria_detalhe' => 'Visita técnica',
+            'local' => 'Centro de Formação Municipal',
+            'endereco_mapa' => 'Rua Araribá, 875, Umuarama, Paraná, Brasil',
+            'latitude' => '-23.7658000',
+            'longitude' => '-53.3250000',
+            'enviar_todas_escolas' => true,
+        ], [], $ator);
+
+        $this->assertSame('outro', $evento->categoria->value);
+        $this->assertSame('Visita técnica', $evento->categoria_detalhe);
+        $this->assertSame('Centro de Formação Municipal', $evento->local);
+        $this->assertSame('Rua Araribá, 875, Umuarama, Paraná, Brasil', $evento->endereco_mapa);
+    }
+
+    public function test_exige_detalhe_quando_categoria_do_evento_for_outro(): void
+    {
+        [$ator] = $this->atorEscolar('CATEGORIA');
+
+        try {
+            app(EventoCalendarioService::class)->criar([
+                ...$this->dadosBase(),
+                'categoria' => 'outro',
+                'enviar_todas_escolas' => true,
+            ], [], $ator);
+            $this->fail('Era esperada uma falha de validação para categoria sem detalhe.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('categoria_detalhe', $exception->errors());
+        }
+    }
+
     public function test_usa_horario_geral_e_rejeita_relacoes_escolares_invalidas(): void
     {
         [$ator, $escolaA] = $this->atorEscolar('A');

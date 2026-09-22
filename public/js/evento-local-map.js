@@ -18,6 +18,7 @@ window.eventoLocalMap = function () {
         localInput() { return this.fieldInput('local'); },
         latitudeInput() { return this.fieldInput('latitude'); },
         longitudeInput() { return this.fieldInput('longitude'); },
+        mapAddressInput() { return this.fieldInput('endereco_mapa'); },
         setField(input, value) {
             if (! input) return;
             input.value = value;
@@ -120,8 +121,7 @@ window.eventoLocalMap = function () {
             } catch (error) { this.message = 'Ponto marcado. Não foi possível obter o endereço.'; }
         },
         setAddress(address) {
-            const input = this.localInput();
-            if (input && ! input.value.trim()) this.setField(input, address);
+            this.setField(this.mapAddressInput(), address);
             this.query = address;
         },
     };

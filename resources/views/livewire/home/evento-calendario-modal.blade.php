@@ -85,8 +85,29 @@
                                         @error('data.local') <small>{{ $message }}</small> @enderror
                                     </div>
 
+                                    <div class="evento-custom-modal__grid evento-custom-modal__grid--two">
+                                        <div class="evento-custom-modal__field">
+                                            <label for="evento-categoria">Categoria <em>*</em></label>
+                                            <select id="evento-categoria" wire:model="data.categoria">
+                                                <option value="">Selecione uma categoria</option>
+                                                @foreach (App\Models\Enums\EventoCalendarioCategoria::cases() as $categoria)
+                                                    <option value="{{ $categoria->value }}">{{ $categoria->label() }}</option>
+                                                @endforeach
+                                            </select>
+                                            @error('data.categoria') <small>{{ $message }}</small> @enderror
+                                        </div>
+                                        @if (($data['categoria'] ?? null) === 'outro')
+                                            <div class="evento-custom-modal__field">
+                                                <label for="evento-categoria-detalhe">Qual categoria? <em>*</em></label>
+                                                <input id="evento-categoria-detalhe" type="text" wire:model="data.categoria_detalhe" maxlength="160" autocomplete="off">
+                                                @error('data.categoria_detalhe') <small>{{ $message }}</small> @enderror
+                                            </div>
+                                        @endif
+                                    </div>
+
                                     <input type="hidden" wire:model="data.latitude">
                                     <input type="hidden" wire:model="data.longitude">
+                                    <input type="hidden" wire:model="data.endereco_mapa">
                                     <div class="evento-custom-modal__map evento-custom-modal__field--full">
                                         @include('filament.admin.pages.fields.evento-local-map')
                                     </div>

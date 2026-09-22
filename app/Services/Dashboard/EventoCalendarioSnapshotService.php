@@ -21,7 +21,18 @@ final class EventoCalendarioSnapshotService
 
         $agora = now();
         $participantes = $this->publico->destinatarios($evento);
-        $linhasParticipantes = $participantes->map(function (User $usuario) use ($evento, $agora): array {
+        $turnos = $evento->publicoRegras()
+            ->get()
+            ->pluck('filtros')
+            ->flatMap(fn ($filtros): array => is_array($filtros) ? ($filtros['turnos'] ?? []) : [])
+            ->filter()
+            ->unique()
+            ->map(fn (string $turno): string => match ($turno) {
+                'manha' => 'Manhã', 'tarde' => 'Tarde', 'noite' => 'Noite', 'integral' => 'Integral', default => $turno,
+            })
+            ->values()
+            ->join(', ');
+        $linhasParticipantes = $participantes->map(function (User $usuario) use ($evento, $agora, $turnos): array {
             $usuario->loadMissing([
                 'escola:id,nome', 'escolas:id,nome', 'servidores.funcoesAtivas:id,nome',
                 'servidores.vinculosAtivos.escola:id,nome', 'servidores.professores.escola:id,nome',
@@ -42,6 +53,7 @@ final class EventoCalendarioSnapshotService
                 'email' => $usuario->email,
                 'escola_nome' => $escolas->pluck('nome')->join(', ') ?: null,
                 'cargo_nome' => $cargos->join(', ') ?: null,
+                'turno' => $turnos ?: null,
                 'created_at' => $agora,
                 'updated_at' => $agora,
             ];
