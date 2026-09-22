@@ -145,14 +145,14 @@ class EventoCalendarioForm
                                 ->placeholder('Preencher automaticamente')
                                 ->helperText('Sugere os horários')
                                 ->live()
-                                ->afterStateUpdated(function (mixed $state, Get $get, Set $set) use ($user): void {
+                                ->afterStateUpdated(function (mixed $state, Get $get, Set $set): void {
                                     $periodo = self::PERIODOS[(string) $state] ?? null;
 
                                     if ($periodo) {
                                         $set('hora_inicio', $periodo['inicio']);
                                         $set('hora_fim', $periodo['fim']);
                                         $set('turnos_filtro', self::turnosParaPeriodo((string) $state));
-                                        self::atualizarDistribuicao($user, $get, $set, $periodo['inicio'], $periodo['fim']);
+                                        $set('transporte_turnos', self::turnosParaPeriodo((string) $state));
                                     }
                                 })
                                 ->native(false),
@@ -160,9 +160,8 @@ class EventoCalendarioForm
                                 ->label('Início')
                                 ->seconds(false)
                                 ->live()
-                                ->afterStateUpdated(function (mixed $state, Get $get, Set $set) use ($user): void {
+                                ->afterStateUpdated(function (mixed $state, Get $get, Set $set): void {
                                     $set('turnos_filtro', self::turnosPorHorario($state, $get('hora_fim')));
-                                    self::atualizarDistribuicao($user, $get, $set);
                                 })
                                 ->required(),
                             TimePicker::make('hora_fim')
@@ -170,9 +169,8 @@ class EventoCalendarioForm
                                 ->seconds(false)
                                 ->after('hora_inicio')
                                 ->live()
-                                ->afterStateUpdated(function (mixed $state, Get $get, Set $set) use ($user): void {
+                                ->afterStateUpdated(function (mixed $state, Get $get, Set $set): void {
                                     $set('turnos_filtro', self::turnosPorHorario($get('hora_inicio'), $state));
-                                    self::atualizarDistribuicao($user, $get, $set);
                                 })
                                 ->required(),
                         ]),
