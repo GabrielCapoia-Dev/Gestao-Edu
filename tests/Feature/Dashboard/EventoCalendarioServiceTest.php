@@ -302,6 +302,51 @@ class EventoCalendarioServiceTest extends TestCase
         ]);
     }
 
+    public function test_edicao_de_evento_publicado_com_transporte_preserva_a_distribuicao_ao_alterar_o_periodo(): void
+    {
+        [$ator, $escola] = $this->atorEscolar('EDICAO-DIA-TODO');
+        $serie = Serie::query()->create(['codigo' => 'SER-EDICAO-DIA-TODO', 'nome' => '2º Ano']);
+        $turma = Turma::query()->create([
+            'codigo' => 'TUR-EDICAO-DIA-TODO',
+            'nome' => 'A',
+            'turno' => 'manha',
+            'id_serie' => $serie->id,
+            'id_escola' => $escola->id,
+        ]);
+        $this->aluno($turma, 'CGM-EDICAO-DIA-TODO', Aluno::TIPO_VINCULO_PRINCIPAL, Aluno::STATUS_MATRICULADO);
+
+        $evento = app(EventoCalendarioService::class)->criar([
+            ...$this->dadosBase(),
+            'enviar_escolas_especificas' => true,
+            'escolas_agendadas' => [[
+                'escola_id' => $escola->id,
+                'precisa_transporte' => true,
+                'escopo_transporte' => EventoCalendarioTransporteEscopo::TURMAS->value,
+                'turmas_ids' => [$turma->id],
+            ]],
+        ], [], $ator);
+        $evento->forceFill([
+            'status' => EventoCalendarioStatus::PUBLICADO,
+            'ativo' => true,
+        ])->save();
+
+        $atualizado = app(EventoCalendarioService::class)->atualizar($evento, [
+            ...$this->dadosBase(),
+            'data_evento' => '2026-07-25',
+            'periodo' => 'dia_todo',
+            'hora_inicio' => '08:00',
+            'hora_fim' => '17:30',
+            'enviar_escolas_especificas' => true,
+            'escolas_agendadas' => app(EventoCalendarioEscolaService::class)->paraFormulario($evento),
+        ], [], $ator);
+
+        $this->assertSame('08:00', $atualizado->data_inicio->format('H:i'));
+        $this->assertSame('17:30', $atualizado->data_fim->format('H:i'));
+        $this->assertSame(EventoCalendarioStatus::PENDENTE_APROVACAO, $atualizado->status);
+        $this->assertFalse($atualizado->ativo);
+        $this->assertSame([$turma->id], $atualizado->escolasAgendadas()->with('turmas')->sole()->turmas->modelKeys());
+    }
+
     public function test_filtros_de_serie_e_turno_geram_escolas_e_transporte_em_lote(): void
     {
         [$ator, $escola] = $this->atorEscolar('GRUPO');
