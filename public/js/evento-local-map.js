@@ -105,7 +105,8 @@ window.eventoLocalMap = function () {
                 this.setField(latitude, lat.toFixed(7));
                 this.setField(longitude, lng.toFixed(7));
             }
-            this.setAddress(label || 'Buscando endereço do ponto...');
+            this.setAddress(label || '');
+            this.message = label ? '' : 'Localizando o endereço do ponto...';
             if (! label && reverse) await this.reverseGeocode(lat, lng);
             if (this.localInput()?.value) this.saveSuggestion(this.localInput().value, lat, lng);
         },
@@ -116,9 +117,19 @@ window.eventoLocalMap = function () {
             try {
                 const response = await fetch(`/admin/eventos-calendario/localizacoes/reverter?latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lng)}`, { headers: { Accept: 'application/json' } });
                 const result = await response.json();
-                if (result.endereco) this.setAddress(result.endereco);
-                else throw new Error('Endereço não encontrado');
-            } catch (error) { this.setAddress(''); this.message = 'Ponto marcado, mas não foi possível identificar o endereço. Tente pesquisar o local.'; }
+                if (result.endereco) { this.setAddress(result.endereco); this.message = ''; return; }
+            } catch (error) { /* A consulta direta abaixo mantém o mapa utilizável se a rota interna falhar. */ }
+
+            try {
+                const url = new URL('https://nominatim.openstreetmap.org/reverse');
+                url.search = new URLSearchParams({ lat, lon: lng, format: 'jsonv2', addressdetails: '1', 'accept-language': 'pt-BR' });
+                const response = await fetch(url, { headers: { Accept: 'application/json' } });
+                const result = await response.json();
+                if (result.display_name) { this.setAddress(result.display_name); this.message = ''; return; }
+            } catch (error) { /* Mensagem abaixo orienta a pesquisa manual. */ }
+
+            this.setAddress('');
+            this.message = 'Ponto marcado, mas não foi possível identificar o endereço. Pesquise o local pelo nome.';
         },
         async requestLocations(query, somenteSalvos = false) {
             const params = new URLSearchParams({ q: query, somente_salvos: somenteSalvos ? '1' : '0' });
