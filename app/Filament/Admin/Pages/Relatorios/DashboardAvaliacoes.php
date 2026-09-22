@@ -218,10 +218,23 @@ class DashboardAvaliacoes extends Page implements HasForms
         }
 
         $resumo = Cache::remember(
-            $this->dashboardCacheKey('resumo-v4'),
+            $this->dashboardCacheKey('resumo-v5'),
             now()->addSeconds($this->dashboardCacheTtl()),
             function (): array {
                 $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas();
+
+                if ($this->dashboardResumosEstaoProntos($avaliacaoIds)) {
+                    $tabelaEscolas = $this->montarTabelaEscolasPorResumo($avaliacaoIds);
+
+                    return [
+                        'tabela_escolas' => $tabelaEscolas,
+                        'totais' => $this->calcularTotaisPreenchimento($avaliacaoIds, $tabelaEscolas),
+                        'turnos' => $this->calcularPreenchimentoPorTurno($avaliacaoIds),
+                        'componentes' => $this->montarPreenchimentoPorComponentes($avaliacaoIds),
+                        'series' => $this->montarPreenchimentoPorSeries($avaliacaoIds),
+                    ];
+                }
+
                 $agregacao = $this->agregacaoDashboard($avaliacaoIds, $this->filtros);
                 $tabelaEscolas = $this->montarTabelaEscolasDaAgregacao($agregacao['escolas']);
 
@@ -274,10 +287,18 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         $this->normalizarFiltros();
         $graficos = Cache::remember(
-            $this->dashboardCacheKey('graficos-v3'),
+            $this->dashboardCacheKey('graficos-v4'),
             now()->addSeconds($this->dashboardCacheTtl()),
             function (): array {
                 $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas();
+
+                if ($this->dashboardResumosEstaoProntos($avaliacaoIds)) {
+                    return [
+                        'componentes' => $this->montarPreenchimentoPorComponentes($avaliacaoIds),
+                        'series' => $this->montarPreenchimentoPorSeries($avaliacaoIds),
+                    ];
+                }
+
                 $agregacao = $this->agregacaoDashboard($avaliacaoIds, $this->filtros);
 
                 return [
@@ -2081,10 +2102,15 @@ class DashboardAvaliacoes extends Page implements HasForms
         }
 
         $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas();
-        $agregacao = $this->agregacaoDashboard($avaliacaoIds, $this->filtros);
-        $tabelaEscolas = $this->montarTabelaEscolasDaAgregacao($agregacao['escolas']);
+        $resumosProntos = $this->dashboardResumosEstaoProntos($avaliacaoIds);
+        $agregacao = null;
+        $tabelaEscolas = $resumosProntos
+            ? $this->montarTabelaEscolasPorResumo($avaliacaoIds)
+            : $this->montarTabelaEscolasDaAgregacao(($agregacao = $this->agregacaoDashboard($avaliacaoIds, $this->filtros))['escolas']);
         $totaisPreenchimento = $this->calcularTotaisPreenchimento($avaliacaoIds, $tabelaEscolas);
-        $turnos = $agregacao['turnos'];
+        $turnos = $resumosProntos
+            ? $this->calcularPreenchimentoPorTurno($avaliacaoIds)
+            : $agregacao['turnos'];
         $acompanhamentoTurmas = $this->montarAcompanhamentoTurmas($avaliacaoIds, paginar: true);
 
         $this->cards = [
@@ -2101,8 +2127,12 @@ class DashboardAvaliacoes extends Page implements HasForms
             'turno_tarde_alunos_total' => $turnos['tarde']['alunos_total'] ?? 0,
         ];
         $this->tabelaEscolas = $tabelaEscolas;
-        $this->preenchimentoPorComponentes = $this->montarLinhasPreenchimentoDaAgregacao($agregacao['componentes']);
-        $this->preenchimentoPorSeries = $this->montarLinhasPreenchimentoDaAgregacao($agregacao['series']);
+        $this->preenchimentoPorComponentes = $resumosProntos
+            ? $this->montarPreenchimentoPorComponentes($avaliacaoIds)
+            : $this->montarLinhasPreenchimentoDaAgregacao($agregacao['componentes']);
+        $this->preenchimentoPorSeries = $resumosProntos
+            ? $this->montarPreenchimentoPorSeries($avaliacaoIds)
+            : $this->montarLinhasPreenchimentoDaAgregacao($agregacao['series']);
         $this->turmasIncompletasPorEscola = $this->montarTurmasIncompletasPorEscola($tabelaEscolas);
         $this->acompanhamentoTurmas = $acompanhamentoTurmas['itens'];
         $this->acompanhamentoTurmasTotal = $acompanhamentoTurmas['total'];
@@ -2132,10 +2162,15 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas();
 
-        $agregacao = $this->agregacaoDashboard($avaliacaoIds, $this->filtros);
-        $tabelaEscolas = $this->montarTabelaEscolasDaAgregacao($agregacao['escolas']);
+        $resumosProntos = $this->dashboardResumosEstaoProntos($avaliacaoIds);
+        $agregacao = null;
+        $tabelaEscolas = $resumosProntos
+            ? $this->montarTabelaEscolasPorResumo($avaliacaoIds)
+            : $this->montarTabelaEscolasDaAgregacao(($agregacao = $this->agregacaoDashboard($avaliacaoIds, $this->filtros))['escolas']);
         $totaisPreenchimento = $this->calcularTotaisPreenchimento($avaliacaoIds, $tabelaEscolas);
-        $turnos = $agregacao['turnos'];
+        $turnos = $resumosProntos
+            ? $this->calcularPreenchimentoPorTurno($avaliacaoIds)
+            : $agregacao['turnos'];
         $acompanhamentoTurmas = $this->montarAcompanhamentoTurmas(
             $avaliacaoIds,
             paginar: ! $incluirAcompanhamentoCompleto
@@ -2156,8 +2191,12 @@ class DashboardAvaliacoes extends Page implements HasForms
                 'turno_tarde_alunos_total' => $turnos['tarde']['alunos_total'] ?? 0,
             ],
             'tabela_escolas' => $tabelaEscolas,
-            'preenchimento_por_componentes' => $this->montarLinhasPreenchimentoDaAgregacao($agregacao['componentes']),
-            'preenchimento_por_series' => $this->montarLinhasPreenchimentoDaAgregacao($agregacao['series']),
+            'preenchimento_por_componentes' => $resumosProntos
+                ? $this->montarPreenchimentoPorComponentes($avaliacaoIds)
+                : $this->montarLinhasPreenchimentoDaAgregacao($agregacao['componentes']),
+            'preenchimento_por_series' => $resumosProntos
+                ? $this->montarPreenchimentoPorSeries($avaliacaoIds)
+                : $this->montarLinhasPreenchimentoDaAgregacao($agregacao['series']),
             'turmas_incompletas_por_escola' => $this->montarTurmasIncompletasPorEscola($tabelaEscolas),
             'acompanhamento_turmas' => $acompanhamentoTurmas['itens'],
             'acompanhamento_turmas_total' => $acompanhamentoTurmas['total'],
@@ -3356,6 +3395,22 @@ class DashboardAvaliacoes extends Page implements HasForms
      */
     private function montarAcompanhamentoTurmasPaginado(array $avaliacaoIds, bool $paginar): array
     {
+        if ($avaliacaoIds === []) {
+            if ($paginar) {
+                $this->normalizarPaginaAcompanhamentoTurmas(0);
+            }
+
+            return ['itens' => [], 'total' => 0];
+        }
+
+        if ($this->dashboardResumosEstaoProntos($avaliacaoIds, $this->filtrosDoAcompanhamento())) {
+            $porResumo = $this->montarAcompanhamentoTurmasPorResumo($avaliacaoIds, $paginar);
+
+            if ($porResumo['total'] > 0) {
+                return $porResumo;
+            }
+        }
+
         return $this->montarAcompanhamentoTurmasPorAgregacao($avaliacaoIds, $paginar);
 
         // Mantido abaixo temporariamente para facilitar a remoção isolada do
@@ -4393,7 +4448,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             'por_pagina' => $secao === 'acompanhamento' ? $this->acompanhamentoTurmasPorPagina : null,
         ];
 
-        $versao = $secao === 'acompanhamento' ? 'v3' : 'v1';
+        $versao = $secao === 'acompanhamento' ? 'v4' : 'v1';
 
         return 'avaliacoes-dashboard:'.$secao.'-'.$versao.':'.hash('sha256', serialize($contexto));
     }

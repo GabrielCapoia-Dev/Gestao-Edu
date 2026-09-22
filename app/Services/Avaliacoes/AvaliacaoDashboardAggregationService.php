@@ -64,23 +64,12 @@ class AvaliacaoDashboardAggregationService
             $filtros,
             $escolaIdsPermitidas,
         );
-        $esperados = $this->agruparPorTurmaComponente($esperadosQuery);
-        $respondidos = $this->agruparPorTurmaComponente($respondidosQuery, respostas: true);
-        $alunosEsperados = $this->agruparPorAluno(
-            $this->aplicarFiltrosEsperados(
-                $this->queries->esperados($avaliacaoIds),
-                $filtros,
-                $escolaIdsPermitidas,
-            ),
-        );
-        $alunosRespondidos = $this->agruparPorAluno(
-            $this->aplicarFiltrosRespondidos(
-                $this->queries->respostas($avaliacaoIds, somenteCompletas: true),
-                $filtros,
-                $escolaIdsPermitidas,
-            ),
-            respostas: true,
-        );
+        $esperadosAgregados = $this->agruparPorTurmaComponenteAluno($esperadosQuery);
+        $respondidosAgregados = $this->agruparPorTurmaComponenteAluno($respondidosQuery, respostas: true);
+        $esperados = $esperadosAgregados['componentes'];
+        $respondidos = $respondidosAgregados['componentes'];
+        $alunosEsperados = $esperadosAgregados['alunos'];
+        $alunosRespondidos = $respondidosAgregados['alunos'];
 
         $turmas = $this->consolidarTurmas($esperados, $respondidos, $alunosEsperados, $alunosRespondidos);
 
@@ -94,14 +83,25 @@ class AvaliacaoDashboardAggregationService
         ];
     }
 
-    private function agruparPorTurmaComponente(QueryBuilder $query, bool $respostas = false): Collection
+    /**
+     * Retorna duas projeções a partir da mesma consulta:
+     * - turma/componente, para percentuais e pautas;
+     * - turma/aluno, para pendências por aluno e turno.
+     *
+     * A consulta agrupa antes de sair do banco. Assim, respostas legadas e
+     * relacionais são deduplicadas pelo COUNT DISTINCT sem materializar cada
+     * combinação aluno x pauta no PHP.
+     *
+     * @return array{componentes: Collection, alunos: Collection}
+     */
+    private function agruparPorTurmaComponenteAluno(QueryBuilder $query, bool $respostas = false): array
     {
         $turmaId = $respostas ? 'ar.turma_id' : 'at.turma_id';
         $avaliacaoId = $respostas ? 'ar.avaliacao_id' : 'at.avaliacao_id';
         $pautaId = $respostas ? 'ar.pauta_id' : 'p.id';
         $alunoId = $respostas ? 'ar.aluno_id' : 'aln.id';
 
-        return $query
+        $projecoes = $query
             ->leftJoin('escolas as e', 'e.id', '=', 't.id_escola')
             ->leftJoin('series as s', 's.id', '=', 't.id_serie')
             ->leftJoin('componentes_curriculares as cc', 'cc.id', '=', 'p.componente_curricular_id')
@@ -117,6 +117,7 @@ class AvaliacaoDashboardAggregationService
                 'av.nome',
                 'p.componente_curricular_id',
                 'cc.nome',
+                $alunoId,
             )
             ->select([
                 $avaliacaoId.' as avaliacao_id',
@@ -130,8 +131,9 @@ class AvaliacaoDashboardAggregationService
                 't.turno',
                 'p.componente_curricular_id as componente_id',
                 'cc.nome as componente_nome',
+                $alunoId.' as aluno_id',
             ])
-            ->selectRaw('COUNT(DISTINCT '.$this->distinctKey($avaliacaoId, $turmaId, $pautaId, $alunoId).') as preenchimentos')
+            ->selectRaw('COUNT(DISTINCT '.$pautaId.') as preenchimentos')
             ->selectRaw('COUNT(DISTINCT '.$pautaId.') as pautas_total')
             ->when(
                 $respostas,
@@ -139,43 +141,56 @@ class AvaliacaoDashboardAggregationService
                 fn (QueryBuilder $query): QueryBuilder => $query->selectRaw('NULL as ultima_resposta_em'),
             )
             ->get()
-            ->mapWithKeys(function (object $item): array {
-                $chave = implode(':', [
-                    (int) $item->avaliacao_id,
-                    (int) $item->turma_id,
-                    (int) ($item->componente_id ?? 0),
-                ]);
+            ->reduce(function (array $projecoes, object $item): array {
+                $avaliacaoId = (int) $item->avaliacao_id;
+                $turmaId = (int) $item->turma_id;
+                $componenteId = (int) ($item->componente_id ?? 0);
+                $alunoId = (int) $item->aluno_id;
+                $chaveComponente = implode(':', [$avaliacaoId, $turmaId, $componenteId]);
+                $chaveAluno = implode(':', [$avaliacaoId, $turmaId, $alunoId]);
 
-                return [$chave => $item];
-            });
-    }
+                $projecoes['componentes'][$chaveComponente] ??= (object) [
+                    'avaliacao_id' => $avaliacaoId,
+                    'turma_id' => $turmaId,
+                    'avaliacao_nome' => (string) ($item->avaliacao_nome ?? '-'),
+                    'escola_id' => (int) $item->escola_id,
+                    'escola_nome' => (string) ($item->escola_nome ?? '-'),
+                    'serie_id' => (int) ($item->serie_id ?? 0),
+                    'serie_nome' => (string) ($item->serie_nome ?? '-'),
+                    'turma_nome' => (string) ($item->turma_nome ?? '-'),
+                    'turno' => (string) ($item->turno ?? '-'),
+                    'componente_id' => $item->componente_id !== null ? $componenteId : null,
+                    'componente_nome' => (string) ($item->componente_nome ?? '-'),
+                    'preenchimentos' => 0,
+                    'pautas_total' => 0,
+                    'ultima_resposta_em' => null,
+                ];
+                $projecoes['componentes'][$chaveComponente]->preenchimentos += (int) $item->preenchimentos;
+                $projecoes['componentes'][$chaveComponente]->pautas_total = max(
+                    (int) $projecoes['componentes'][$chaveComponente]->pautas_total,
+                    (int) $item->pautas_total,
+                );
+                $projecoes['componentes'][$chaveComponente]->ultima_resposta_em = max(
+                    (string) ($projecoes['componentes'][$chaveComponente]->ultima_resposta_em ?? ''),
+                    (string) ($item->ultima_resposta_em ?? ''),
+                ) ?: null;
 
-    private function agruparPorAluno(QueryBuilder $query, bool $respostas = false): Collection
-    {
-        $turmaId = $respostas ? 'ar.turma_id' : 'at.turma_id';
-        $avaliacaoId = $respostas ? 'ar.avaliacao_id' : 'at.avaliacao_id';
-        $pautaId = $respostas ? 'ar.pauta_id' : 'p.id';
-        $alunoId = $respostas ? 'ar.aluno_id' : 'aln.id';
+                $projecoes['alunos'][$chaveAluno] ??= (object) [
+                    'avaliacao_id' => $avaliacaoId,
+                    'turma_id' => $turmaId,
+                    'aluno_id' => $alunoId,
+                    'turno' => (string) ($item->turno ?? '-'),
+                    'preenchimentos' => 0,
+                ];
+                $projecoes['alunos'][$chaveAluno]->preenchimentos += (int) $item->preenchimentos;
 
-        return $query
-            ->groupBy($avaliacaoId, $turmaId, 't.turno', $alunoId)
-            ->select([
-                $avaliacaoId.' as avaliacao_id',
-                $turmaId.' as turma_id',
-                't.turno',
-                $alunoId.' as aluno_id',
-            ])
-            ->selectRaw('COUNT(DISTINCT '.$this->distinctKey($avaliacaoId, $turmaId, $pautaId, $alunoId).') as preenchimentos')
-            ->get()
-            ->mapWithKeys(function (object $item): array {
-                $chave = implode(':', [
-                    (int) $item->avaliacao_id,
-                    (int) $item->turma_id,
-                    (int) $item->aluno_id,
-                ]);
+                return $projecoes;
+            }, ['componentes' => [], 'alunos' => []]);
 
-                return [$chave => $item];
-            });
+        return [
+            'componentes' => collect($projecoes['componentes']),
+            'alunos' => collect($projecoes['alunos']),
+        ];
     }
 
     private function consolidarTurmas(Collection $esperados, Collection $respondidos, Collection $alunosEsperados, Collection $alunosRespondidos): array
@@ -466,15 +481,6 @@ class AvaliacaoDashboardAggregationService
             ->get()
             ->map(fn (object $item): array => (array) $item)
             ->all();
-    }
-
-    private function distinctKey(string ...$columns): string
-    {
-        if (DB::connection()->getDriverName() === 'sqlite') {
-            return implode(" || '|#|' || ", $columns);
-        }
-
-        return 'CONCAT('.implode(", '|#|', ", $columns).')';
     }
 
     /** @return array<string, array<string, int|float>> */
