@@ -54,7 +54,26 @@ final class EventoCalendarioLocalizacaoService
                 ->timeout(5)->get('https://nominatim.openstreetmap.org/reverse', [
                     'lat' => $latitude, 'lon' => $longitude, 'format' => 'jsonv2', 'accept-language' => 'pt-BR',
                 ]);
-            return $response->successful() ? $response->json('display_name') : null;
+            if (! $response->successful()) return null;
+
+            return $this->formatarEndereco($response->json('address'), $response->json('display_name'));
         });
+    }
+
+    /** @param array<string, mixed>|null $endereco */
+    private function formatarEndereco(?array $endereco, ?string $descricao): ?string
+    {
+        if (! is_array($endereco)) return filled($descricao) ? $descricao : null;
+
+        $logradouro = $endereco['road'] ?? $endereco['pedestrian'] ?? $endereco['residential'] ?? null;
+        $bairro = $endereco['suburb'] ?? $endereco['neighbourhood'] ?? $endereco['city_district'] ?? null;
+        $cidade = $endereco['city'] ?? $endereco['town'] ?? $endereco['village'] ?? $endereco['municipality'] ?? null;
+        $estado = $endereco['state'] ?? null;
+        $numero = $endereco['house_number'] ?? null;
+
+        $partes = [filled($logradouro) ? trim($logradouro.(filled($numero) ? ', '.$numero : '')) : null, $bairro, $cidade, $estado];
+        $formatado = collect($partes)->filter()->implode(' · ');
+
+        return $formatado !== '' ? $formatado : (filled($descricao) ? $descricao : null);
     }
 }
