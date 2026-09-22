@@ -89,7 +89,16 @@
                                     <input type="hidden" wire:model="data.longitude">
                                     <div class="evento-custom-modal__field evento-custom-modal__field--full">
                                         <label for="evento-endereco-mapa">Endereço do mapa</label>
-                                        <input id="evento-endereco-mapa" type="text" wire:model="data.endereco_mapa" maxlength="500" placeholder="Marque um ponto no mapa para preencher o endereço" readonly>
+                                        <input
+                                            id="evento-endereco-mapa"
+                                            type="text"
+                                            wire:model="data.endereco_mapa"
+                                            x-data
+                                            x-on:evento-mapa-endereco.window="if ($event.detail.componentId === $el.closest('[wire\\:id]')?.getAttribute('wire:id')) { $el.value = $event.detail.address; $wire.set('data.endereco_mapa', $event.detail.address, false) }"
+                                            maxlength="500"
+                                            placeholder="Marque um ponto no mapa para preencher o endereço"
+                                            readonly
+                                        >
                                         <span>Preenchido automaticamente ao pesquisar ou marcar o local no mapa.</span>
                                         @error('data.endereco_mapa') <small>{{ $message }}</small> @enderror
                                     </div>
