@@ -28,6 +28,7 @@ class EventoCalendarioService
         private readonly EventoTransporteAlocacaoService $alocacoesTransporte,
         private readonly EventoTransporteDisponibilidadeService $disponibilidadeTransporte,
         private readonly EventoCalendarioPublicoService $publicoEventos,
+        private readonly EventoCalendarioSnapshotService $snapshots,
     ) {}
 
     public function criar(
@@ -45,7 +46,7 @@ class EventoCalendarioService
         $publicacaoSolicitada = array_key_exists('ativo', $dados)
             ? filter_var($dados['ativo'], FILTER_VALIDATE_BOOLEAN)
             : $publicarAutomaticamente;
-        [$dados, $agendamentos] = $this->prepararDados($dados, $ator);
+        [$dados, $agendamentos, $alunosExcluidos] = $this->prepararDados($dados, $ator);
         $publico = $this->publicoPadrao($dados, $agendamentos, $ator);
         $possuiTransporte = $this->agendamentosPossuemTransporte($agendamentos);
 
@@ -66,7 +67,7 @@ class EventoCalendarioService
             $ator,
         );
 
-        return DB::transaction(function () use ($dados, $agendamentos, $publico, $ator, $origem, $importacao, $regrasPublico, $excecoesPublico): EventoCalendario {
+        return DB::transaction(function () use ($dados, $agendamentos, $publico, $ator, $origem, $importacao, $regrasPublico, $excecoesPublico, $alunosExcluidos): EventoCalendario {
             $publicoAlvo = $this->publicos->criar($ator, $publico);
             $evento = EventoCalendario::query()->create([
                 ...$dados,
@@ -79,6 +80,7 @@ class EventoCalendarioService
 
             $this->escolas->sincronizar($evento, $agendamentos);
             $this->publicoEventos->sincronizar($evento, $regrasPublico, $excecoesPublico, $ator);
+            $this->snapshots->sincronizar($evento, $alunosExcluidos);
             $this->workflow->registrarCriacao($evento, $ator);
 
             return $evento->refresh()->load('escolasAgendadas');
@@ -111,7 +113,9 @@ class EventoCalendarioService
                 ? filter_var($dados['ativo'], FILTER_VALIDATE_BOOLEAN)
                 : null;
             $this->rejeitarPublicoParalelo($publico ?? [], $dados);
-            [$dados, $agendamentos] = $this->prepararDados($dados, $ator);
+            $regrasPublico = $dados['publico_regras'] ?? [];
+            $excecoesPublico = $dados['publico_excecoes_ids'] ?? [];
+            [$dados, $agendamentos, $alunosExcluidos] = $this->prepararDados($dados, $ator);
             $possuiTransporte = $this->agendamentosPossuemTransporte($agendamentos);
             $dataHorarioAlterado = ! $evento->data_inicio->equalTo($dados['data_inicio'])
                 || ! $evento->data_fim->equalTo($dados['data_fim']);
@@ -158,10 +162,11 @@ class EventoCalendarioService
             $this->escolas->sincronizar($evento, $agendamentos);
             $this->publicoEventos->sincronizar(
                 $evento,
-                $dados['publico_regras'] ?? [],
-                $dados['publico_excecoes_ids'] ?? [],
+                $regrasPublico,
+                $excecoesPublico,
                 $ator,
             );
+            $this->snapshots->sincronizar($evento, $alunosExcluidos);
             $this->workflow->registrarAtualizacao(
                 $evento,
                 $ator,
@@ -174,7 +179,7 @@ class EventoCalendarioService
     }
 
     /**
-     * @return array{0: array<string, mixed>, 1: list<array<string, mixed>>}
+     * @return array{0: array<string, mixed>, 1: list<array<string, mixed>>, 2: list<int|string>}
      */
     private function prepararDados(array $dados, User $ator): array
     {
@@ -321,7 +326,7 @@ class EventoCalendarioService
             throw new ValidationException($validator);
         }
 
-        return [$dados, $agendamentos];
+        return [$dados, $agendamentos, is_array($alunoExcecoes) ? array_values($alunoExcecoes) : []];
     }
 
     /** @param list<array<string, mixed>> $agendamentos */

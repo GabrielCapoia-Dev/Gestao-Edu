@@ -381,17 +381,11 @@ class GerenciarEventos extends Page implements HasTable
                 ->icon('heroicon-o-eye')
                 ->color('gray')
                 ->authorize(fn (EventoCalendario $record): bool => Gate::forUser($user)->allows('view', $record))
-                ->modalHeading(fn (EventoCalendario $record): string => $record->titulo)
-                ->modalContent(fn (EventoCalendario $record): View => view(
-                    'filament.admin.pages.partials.evento-calendario-detalhes',
-                    ['evento' => $this->listagem()->detalhes($user, (int) $record->getKey())],
-                ))
-                ->extraModalFooterActions(fn (EventoCalendario $record): array => $this->acoesDoDetalhe($user, $record))
-                ->slideOver()
-                ->modalWidth('screen')
-                ->extraModalWindowAttributes(['class' => 'gi-event-detail-modal-window'], merge: true)
-                ->modalSubmitAction(false)
-                ->modalCancelActionLabel('Fechar'),
+                ->action(fn (EventoCalendario $record) => $this->dispatch(
+                    'abrir-evento-detalhes',
+                    eventoId: (int) $record->getKey(),
+                    contexto: 'rede',
+                )),
 
             Action::make('relatorio')
                 ->label('Gerar relatório PDF')

@@ -64,4 +64,5 @@
     </div>
 
     <livewire:home.evento-calendario-modal :mostrar-gatilho="false" />
+    <livewire:home.evento-calendario-detalhes-modal />
 </x-filament-panels::page>
