@@ -384,20 +384,27 @@ class EventoCalendarioServiceTest extends TestCase
         $modalBlade = file_get_contents(resource_path('views/livewire/home/evento-calendario-modal.blade.php'));
         $multiSelectBlade = file_get_contents(resource_path('views/components/evento-multi-select.blade.php'));
         $modalCss = file_get_contents(public_path('css/evento-calendario-modal.css'));
+        $mapScript = file_get_contents(public_path('js/evento-local-map.js'));
 
         $this->assertIsString($modalBlade);
         $this->assertIsString($multiSelectBlade);
         $this->assertIsString($modalCss);
+        $this->assertIsString($mapScript);
         $this->assertStringContainsString('class="evento-custom-modal"', $modalBlade);
         $this->assertStringNotContainsString('<x-filament-actions::modals', $modalBlade);
         $this->assertStringNotContainsString('@class(', $modalBlade);
         $this->assertStringNotContainsString('@disabled(', $modalBlade);
         $this->assertStringNotContainsString('MutationObserver', $modalBlade);
         $this->assertStringNotContainsString('setInterval', $modalBlade);
-        $this->assertStringContainsString('x-data="{ selecionados:', $multiSelectBlade);
+        $this->assertStringContainsString('x-data="{ aberto: false, selecionados:', $multiSelectBlade);
         $this->assertStringContainsString('x-model="selecionados"', $multiSelectBlade);
-        $this->assertStringContainsString('wire:model.live=', $multiSelectBlade);
+        $this->assertStringContainsString('x-bind:open="aberto"', $multiSelectBlade);
+        $this->assertStringContainsString('$wire.set(@js($model), selecionados, false)', $multiSelectBlade);
+        $this->assertStringNotContainsString('wire:model.live=', $multiSelectBlade);
         $this->assertStringContainsString("'is-selected'", $multiSelectBlade);
+        $this->assertStringContainsString("this.$root.closest('[wire\\\\:id]')", $mapScript);
+        $this->assertStringContainsString('this.setAddress(label || this.coordinateLabel(lat, lng));', $mapScript);
+        $this->assertStringContainsString('Coordenadas: ${lat.toFixed(6)}, ${lng.toFixed(6)}', $mapScript);
         $this->assertStringContainsString('.evento-custom-modal__backdrop', $modalCss);
         $this->assertStringContainsString('.evento-custom-modal__footer', $modalCss);
 

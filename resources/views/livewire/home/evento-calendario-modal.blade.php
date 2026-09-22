@@ -85,26 +85,6 @@
                                         @error('data.local') <small>{{ $message }}</small> @enderror
                                     </div>
 
-                                    <div class="evento-custom-modal__grid evento-custom-modal__grid--two">
-                                        <div class="evento-custom-modal__field">
-                                            <label for="evento-categoria">Categoria <em>*</em></label>
-                                            <select id="evento-categoria" wire:model="data.categoria">
-                                                <option value="">Selecione uma categoria</option>
-                                                @foreach (App\Models\Enums\EventoCalendarioCategoria::cases() as $categoria)
-                                                    <option value="{{ $categoria->value }}">{{ $categoria->label() }}</option>
-                                                @endforeach
-                                            </select>
-                                            @error('data.categoria') <small>{{ $message }}</small> @enderror
-                                        </div>
-                                        @if (($data['categoria'] ?? null) === 'outro')
-                                            <div class="evento-custom-modal__field">
-                                                <label for="evento-categoria-detalhe">Qual categoria? <em>*</em></label>
-                                                <input id="evento-categoria-detalhe" type="text" wire:model="data.categoria_detalhe" maxlength="160" autocomplete="off">
-                                                @error('data.categoria_detalhe') <small>{{ $message }}</small> @enderror
-                                            </div>
-                                        @endif
-                                    </div>
-
                                     <input type="hidden" wire:model="data.latitude">
                                     <input type="hidden" wire:model="data.longitude">
                                     <input type="hidden" wire:model="data.endereco_mapa">
@@ -112,7 +92,7 @@
                                         @include('filament.admin.pages.fields.evento-local-map')
                                     </div>
 
-                                    <div class="evento-custom-modal__grid evento-custom-modal__grid--three">
+                                    <div class="evento-custom-modal__grid evento-custom-modal__grid--four">
                                         <div class="evento-custom-modal__field">
                                             <label for="evento-cor">Identificação visual <em>*</em></label>
                                             <select id="evento-cor" wire:model="data.cor">
@@ -132,7 +112,25 @@
                                             <input id="evento-texto-botao" type="text" wire:model="data.texto_botao" maxlength="80" placeholder="Ex.: Saiba mais">
                                             @error('data.texto_botao') <small>{{ $message }}</small> @enderror
                                         </div>
+                                        <div class="evento-custom-modal__field">
+                                            <label for="evento-categoria">Categoria <em>*</em></label>
+                                            <select id="evento-categoria" wire:model="data.categoria">
+                                                <option value="">Selecione uma categoria</option>
+                                                @foreach (App\Models\Enums\EventoCalendarioCategoria::cases() as $categoria)
+                                                    <option value="{{ $categoria->value }}">{{ $categoria->label() }}</option>
+                                                @endforeach
+                                            </select>
+                                            @error('data.categoria') <small>{{ $message }}</small> @enderror
+                                        </div>
                                     </div>
+
+                                    @if (($data['categoria'] ?? null) === 'outro')
+                                        <div class="evento-custom-modal__field">
+                                            <label for="evento-categoria-detalhe">Qual categoria? <em>*</em></label>
+                                            <input id="evento-categoria-detalhe" type="text" wire:model="data.categoria_detalhe" maxlength="160" autocomplete="off">
+                                            @error('data.categoria_detalhe') <small>{{ $message }}</small> @enderror
+                                        </div>
+                                    @endif
 
                                     <div class="evento-custom-modal__grid evento-custom-modal__grid--four">
                                         <div class="evento-custom-modal__field">

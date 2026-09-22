@@ -7,8 +7,13 @@ window.eventoLocalMap = function () {
         suggestions: [],
         loading: false,
         message: '',
+        componentRoot() {
+            return this.$root.closest('[wire\\:id]');
+        },
         fieldInput(field) {
-            return [...document.querySelectorAll('input')].find(input => {
+            const root = this.componentRoot();
+
+            return [...(root?.querySelectorAll('input') || [])].find(input => {
                 const name = input.name || '';
                 return name.endsWith(`[${field}]`)
                     || name.endsWith(`.${field}`)
@@ -41,7 +46,9 @@ window.eventoLocalMap = function () {
             this.map.on('click', ({ latlng }) => this.selectPoint(latlng.lat, latlng.lng, true));
             const lat = parseFloat(this.latitudeInput()?.value);
             const lng = parseFloat(this.longitudeInput()?.value);
-            if (Number.isFinite(lat) && Number.isFinite(lng)) this.selectPoint(lat, lng, false);
+            if (Number.isFinite(lat) && Number.isFinite(lng)) {
+                this.selectPoint(lat, lng, false, this.mapAddressInput()?.value || this.coordinateLabel(lat, lng));
+            }
             setTimeout(() => this.map.invalidateSize(), 200);
         },
         async search() {
@@ -107,9 +114,12 @@ window.eventoLocalMap = function () {
                 this.setField(latitude, lat.toFixed(7));
                 this.setField(longitude, lng.toFixed(7));
             }
-            if (label) this.setAddress(label);
-            else if (reverse) await this.reverseGeocode(lat, lng);
+            this.setAddress(label || this.coordinateLabel(lat, lng));
+            if (! label && reverse) await this.reverseGeocode(lat, lng);
             if (this.localInput()?.value) this.saveSuggestion(this.localInput().value, lat, lng);
+        },
+        coordinateLabel(lat, lng) {
+            return `Coordenadas: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
         },
         async reverseGeocode(lat, lng) {
             try {
