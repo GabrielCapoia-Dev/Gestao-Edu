@@ -16,10 +16,14 @@
 
 <div
     class="evento-custom-modal__field evento-custom-modal__multi-select-field"
-    x-data="{ selecionados: @js($selectedValues), opcoes: @js($optionLabels) }"
+    x-data="{ aberto: false, selecionados: @js($selectedValues), opcoes: @js($optionLabels) }"
 >
     <label for="{{ $id }}">{{ $label }}</label>
-    <details class="evento-custom-modal__multi-select">
+    <details
+        class="evento-custom-modal__multi-select"
+        x-bind:open="aberto"
+        x-on:toggle="aberto = $event.target.open"
+    >
         <summary id="{{ $id }}" aria-label="{{ $label }}">
             <span class="evento-custom-modal__multi-select-summary">
                 <span
@@ -39,29 +43,18 @@
         </summary>
         <div class="evento-custom-modal__multi-select-options" role="listbox" aria-label="Opções de {{ $label }}">
             @foreach ($optionCollection as $optionValue => $optionLabel)
-                @if ($changeAction)
-                    <label
-                        class="evento-custom-modal__multi-select-option"
-                        x-bind:class="{ 'is-selected': selecionados.includes(String(@js($optionValue))) }"
+                <label
+                    class="evento-custom-modal__multi-select-option"
+                    x-bind:class="{ 'is-selected': selecionados.includes(String(@js($optionValue))) }"
+                >
+                    <input
+                        type="checkbox"
+                        value="{{ $optionValue }}"
+                        x-model="selecionados"
+                        x-on:change="$nextTick(() => $wire.set(@js($model), selecionados, false))"
                     >
-                        <input
-                            type="checkbox"
-                            value="{{ $optionValue }}"
-                            x-model="selecionados"
-                            wire:model.live="{{ $model }}"
-                            wire:change="{{ $changeAction }}"
-                        >
-                        <span>{{ $optionLabel }}</span>
-                    </label>
-                @else
-                    <label
-                        class="evento-custom-modal__multi-select-option"
-                        x-bind:class="{ 'is-selected': selecionados.includes(String(@js($optionValue))) }"
-                    >
-                        <input type="checkbox" value="{{ $optionValue }}" x-model="selecionados" wire:model.live="{{ $model }}">
-                        <span>{{ $optionLabel }}</span>
-                    </label>
-                @endif
+                    <span>{{ $optionLabel }}</span>
+                </label>
             @endforeach
         </div>
     </details>
