@@ -64,6 +64,21 @@ class GerenciarEventosPageTest extends TestCase
         $this->assertTrue(GerenciarEventos::canAccess());
     }
 
+    public function test_modal_de_novo_evento_fica_fora_do_cabecalho_isolado(): void
+    {
+        $page = file_get_contents(resource_path('views/filament/admin/pages/gerenciar-eventos.blade.php'));
+        $header = file_get_contents(resource_path('views/filament/admin/pages/partials/page-header.blade.php'));
+        $gerenciarEventos = file_get_contents(app_path('Filament/Admin/Pages/GerenciarEventos.php'));
+
+        $this->assertIsString($page);
+        $this->assertIsString($header);
+        $this->assertIsString($gerenciarEventos);
+        $this->assertStringContainsString('<livewire:home.evento-calendario-modal :mostrar-gatilho="false" />', $page);
+        $this->assertStringContainsString('wire:click="$dispatch(\'abrir-evento-calendario\')"', $header);
+        $this->assertStringContainsString("'mostrarEventoGatilho' => true", $gerenciarEventos);
+        $this->assertStringNotContainsString("'mostrarEventoModal' => true", $gerenciarEventos);
+    }
+
     public function test_visao_de_transporte_renderiza_indicadores_e_somente_eventos_do_escopo(): void
     {
         $usuario = $this->usuarioComPermissoes(ListaPermissoes::ListarEventosTransporte);

@@ -62,4 +62,6 @@
             {{ $this->table }}
         </section>
     </div>
+
+    <livewire:home.evento-calendario-modal :mostrar-gatilho="false" />
 </x-filament-panels::page>
