@@ -78,13 +78,20 @@ class EventoCalendarioForm
                         ->maxLength(5000)
                         ->columnSpanFull(),
                     TextInput::make('local')
-                        ->label('Local do evento')
+                        ->label('Nome ou referência do local')
                         ->placeholder('Ex.: Centro de Formação Municipal')
                         ->maxLength(255)
                         ->columnSpanFull(),
                     TextInput::make('latitude')->hidden()->dehydrated(),
                     TextInput::make('longitude')->hidden()->dehydrated(),
-                    TextInput::make('endereco_mapa')->hidden()->dehydrated(),
+                    TextInput::make('endereco_mapa')
+                        ->label('Endereço do mapa')
+                        ->placeholder('Marque um ponto no mapa para preencher o endereço')
+                        ->helperText('Preenchido automaticamente ao pesquisar ou marcar o local no mapa.')
+                        ->readOnly()
+                        ->maxLength(500)
+                        ->dehydrated()
+                        ->columnSpanFull(),
                     ViewField::make('mapa_local')
                         ->label('Localização no mapa')
                         ->view('filament.admin.pages.fields.evento-local-map')

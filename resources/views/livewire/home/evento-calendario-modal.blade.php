@@ -80,14 +80,19 @@
                                     </div>
 
                                     <div class="evento-custom-modal__field evento-custom-modal__field--full">
-                                        <label for="evento-local">Local do evento</label>
+                                        <label for="evento-local">Nome ou referência do local</label>
                                         <input id="evento-local" type="text" wire:model="data.local" maxlength="255" placeholder="Ex.: Centro de Formação Municipal" autocomplete="off">
                                         @error('data.local') <small>{{ $message }}</small> @enderror
                                     </div>
 
                                     <input type="hidden" wire:model="data.latitude">
                                     <input type="hidden" wire:model="data.longitude">
-                                    <input type="hidden" wire:model="data.endereco_mapa">
+                                    <div class="evento-custom-modal__field evento-custom-modal__field--full">
+                                        <label for="evento-endereco-mapa">Endereço do mapa</label>
+                                        <input id="evento-endereco-mapa" type="text" wire:model="data.endereco_mapa" maxlength="500" placeholder="Marque um ponto no mapa para preencher o endereço" readonly>
+                                        <span>Preenchido automaticamente ao pesquisar ou marcar o local no mapa.</span>
+                                        @error('data.endereco_mapa') <small>{{ $message }}</small> @enderror
+                                    </div>
                                     <div class="evento-custom-modal__map evento-custom-modal__field--full">
                                         @include('filament.admin.pages.fields.evento-local-map')
                                     </div>
