@@ -3,8 +3,7 @@
         class="av-livewire-root"
         x-data="{
             async carregarDashboardInicialCompleto() {
-                await $wire.carregarDashboardInicial()
-                await $wire.carregarAcompanhamentoDashboard()
+                await $wire.carregarDashboardInicialCompleto()
             },
             async recarregarDetalhesDashboard() {
                 await $wire.carregarAcompanhamentoDashboard()
@@ -15,7 +14,7 @@
         x-on:dashboard-detalhes-recarregar.window="recarregarDetalhesDashboard()"
     >
     <div class="dav-page">
-        <div class="dav-processing-overlay" wire:loading.flex wire:target="carregarDashboardInicial,carregarResumoDashboard,carregarAcompanhamentoDashboard,atualizarAcompanhamentoTurmas,atualizarDadosRecentes">
+        <div class="dav-processing-overlay" wire:loading.flex wire:target="carregarDashboardInicialCompleto,carregarDashboardInicial,carregarResumoDashboard,carregarAcompanhamentoDashboard,atualizarAcompanhamentoTurmas,atualizarDadosRecentes">
             <div class="dav-processing-card">
                 <div class="dav-processing-spinner"></div>
                 <strong>Processando...</strong>

@@ -24,9 +24,11 @@ use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
 use App\Services\Avaliacoes\AvaliacaoDashboardOnDemandQueryService;
+use App\Services\Avaliacoes\AvaliacaoDashboardAggregationService;
 use App\Services\Avaliacoes\TurmaAvaliacaoAlunoScopeService;
 use Filament\Notifications\Notification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
@@ -371,6 +373,68 @@ class DashboardAvaliacoesPageTest extends TestCase
             ['Turma B'],
             collect($component->instance()->acompanhamentoTurmas)->pluck('turma_nome')->values()->all()
         );
+    }
+
+    public function test_agregacao_calcula_cada_componente_dentro_da_turma(): void
+    {
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer por componente', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo por componente', 'status' => true]);
+        $serie = $this->criarSerie('SER-COMP-IND', 'Infantil 5');
+        $arte = ComponenteCurricular::query()->create(['codigo' => 'COMP-ARTE-IND', 'nome' => 'Arte']);
+        $lingua = ComponenteCurricular::query()->create(['codigo' => 'COMP-LP-IND', 'nome' => 'Lingua Portuguesa']);
+        $escola = $this->criarEscola('Escola componente individual');
+        $turma = $this->criarTurma($escola, $serie, 'Turma A', 'manha');
+        $alunoUm = $this->criarAluno($turma, 'Aluno componente 1', 'CGM-COMP-IND-001');
+        $alunoDois = $this->criarAluno($turma, 'Aluno componente 2', 'CGM-COMP-IND-002');
+
+        $alternativa = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Atende',
+            'tem_observacao' => false,
+            'status' => true,
+        ]);
+        $pautaArte = $this->criarPauta($tipo, $serie, $arte, 'Autorretrato');
+        $pautaLinguaUm = $this->criarPauta($tipo, $serie, $lingua, 'Le palavras');
+        $pautaLinguaDois = $this->criarPauta($tipo, $serie, $lingua, 'Escreve palavras');
+        $pautaArte->alternativas()->attach($alternativa->id);
+        $pautaLinguaUm->alternativas()->attach($alternativa->id);
+        $pautaLinguaDois->alternativas()->attach($alternativa->id);
+
+        $avaliacao = $this->criarAvaliacao('Avaliação por componente', $tipo, $periodo);
+        $avaliacao->series()->sync([$serie->id]);
+        $avaliacao->componentes()->sync([$arte->id, $lingua->id]);
+        $avaliacao->escolas()->sync([$escola->id]);
+        $avaliacao->turmas()->sync([$turma->id]);
+        $avaliacao->pautas()->sync([$pautaArte->id, $pautaLinguaUm->id, $pautaLinguaDois->id]);
+
+        foreach ([$alunoUm, $alunoDois] as $aluno) {
+            $this->registrarResposta($avaliacao, $turma, $aluno, $pautaArte, $alternativa);
+            $this->registrarResposta($avaliacao, $turma, $aluno, $pautaLinguaUm, $alternativa);
+        }
+
+        $dashboard = app(DashboardAvaliacoes::class);
+        $filtros = new \ReflectionMethod($dashboard, 'filtrosPadrao');
+        $filtros = $filtros->invoke($dashboard);
+        $queries = 0;
+        DB::listen(static function () use (&$queries): void {
+            $queries++;
+        });
+
+        $agregado = app(AvaliacaoDashboardAggregationService::class)->consolidar(
+            [$avaliacao->id],
+            [...$filtros, 'avaliacao_id' => $avaliacao->id],
+            [$escola->id],
+        );
+
+        $componentes = collect($agregado['turmas'][0]['componentes'])->keyBy('nome');
+
+        $this->assertSame(2, $componentes->get('Arte')['preenchimentos_esperados']);
+        $this->assertSame(2, $componentes->get('Arte')['preenchimentos_respondidos']);
+        $this->assertSame(100.0, round(($componentes->get('Arte')['preenchimentos_respondidos'] / $componentes->get('Arte')['preenchimentos_esperados']) * 100, 1));
+        $this->assertSame(4, $componentes->get('Lingua Portuguesa')['preenchimentos_esperados']);
+        $this->assertSame(2, $componentes->get('Lingua Portuguesa')['preenchimentos_respondidos']);
+        $this->assertSame(50.0, round(($componentes->get('Lingua Portuguesa')['preenchimentos_respondidos'] / $componentes->get('Lingua Portuguesa')['preenchimentos_esperados']) * 100, 1));
+        $this->assertLessThanOrEqual(12, $queries);
     }
 
     public function test_listagem_de_acompanhamento_tem_paginacao_configuravel(): void
