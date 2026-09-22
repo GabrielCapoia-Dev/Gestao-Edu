@@ -152,7 +152,6 @@ class EventoCalendarioForm
                                         $set('hora_inicio', $periodo['inicio']);
                                         $set('hora_fim', $periodo['fim']);
                                         $set('turnos_filtro', self::turnosParaPeriodo((string) $state));
-                                        $set('transporte_turnos', self::turnosParaPeriodo((string) $state));
                                     }
                                 })
                                 ->native(false),
