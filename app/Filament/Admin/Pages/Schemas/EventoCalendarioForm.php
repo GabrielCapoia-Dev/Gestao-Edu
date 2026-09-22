@@ -90,7 +90,7 @@ class EventoCalendarioForm
                         ->view('filament.admin.pages.fields.evento-local-map')
                         ->dehydrated(false)
                         ->columnSpanFull(),
-                    Grid::make(['default' => 1, 'md' => 3])
+                    Grid::make(['default' => 1, 'md' => 4])
                         ->schema([
                             Select::make('cor')
                                 ->label('Identificação visual')
@@ -111,15 +111,15 @@ class EventoCalendarioForm
                                 ->placeholder('Ex.: Saiba mais')
                                 ->required(fn (Get $get): bool => filled($get('link_acao')))
                                 ->maxLength(80),
+                            Select::make('categoria')
+                                ->label('Categoria')
+                                ->options(collect(EventoCalendarioCategoria::cases())->mapWithKeys(
+                                    fn (EventoCalendarioCategoria $categoria): array => [$categoria->value => $categoria->label()],
+                                )->all())
+                                ->required()
+                                ->native(false)
+                                ->live(),
                         ]),
-                    Select::make('categoria')
-                        ->label('Categoria')
-                        ->options(collect(EventoCalendarioCategoria::cases())->mapWithKeys(
-                            fn (EventoCalendarioCategoria $categoria): array => [$categoria->value => $categoria->label()],
-                        )->all())
-                        ->required()
-                        ->native(false)
-                        ->live(),
                     TextInput::make('categoria_detalhe')
                         ->label('Qual categoria?')
                         ->required(fn (Get $get): bool => $get('categoria') === EventoCalendarioCategoria::OUTRO->value)
