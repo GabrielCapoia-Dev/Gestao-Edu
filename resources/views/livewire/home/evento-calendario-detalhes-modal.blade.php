@@ -32,6 +32,7 @@
 
                 <nav class="evento-detalhes-modal__tabs" role="tablist" aria-label="Detalhes do evento">
                     @foreach (['resumo' => 'Resumo', 'participantes' => 'Participantes', 'escolas' => 'Escolas e turmas', 'alunos' => 'Alunos e transporte'] as $chave => $rotulo)
+                        @continue(! in_array($chave, $this->abasDisponiveis(), true))
                         <button type="button" role="tab" @class(['is-active' => $aba === $chave]) aria-selected="{{ $aba === $chave ? 'true' : 'false' }}" wire:click="selecionarAba('{{ $chave }}')">
                             {{ $rotulo }}
                         </button>
@@ -73,7 +74,7 @@
                                 @else
                                     <section class="evento-detalhes-modal__card">
                                         <h3>Localização</h3>
-                                        <p class="evento-detalhes-modal__empty">Localização não definida.</p>
+                                        <p class="evento-detalhes-modal__empty">{{ $resumo['endereco_mapa'] ?: 'Localização não definida.' }}</p>
                                     </section>
                                 @endif
                             @elseif ($aba === 'participantes')
@@ -87,7 +88,7 @@
                                     <section class="evento-detalhes-modal__card evento-detalhes-modal__table-card">
                                         <div class="evento-detalhes-modal__table-toolbar"><span>{{ $participantes['total'] }} participante(s)</span><label>Por página <select wire:change="alterarPorPaginaParticipantes($event.target.value)">@foreach ([5, 10, 25, 50] as $limite)<option value="{{ $limite }}" @selected($porPaginaParticipantes === $limite)>{{ $limite }}</option>@endforeach</select></label></div>
                                         <div class="evento-detalhes-modal__table-wrap"><table><thead><tr><th>Escola</th><th>Nome</th><th>Cargo</th><th>Turno</th></tr></thead><tbody>@foreach ($participantes['items'] as $pessoa)<tr><td>{{ $pessoa['escola'] }}</td><td>{{ $pessoa['nome'] }}</td><td>{{ $pessoa['cargo'] }}</td><td>{{ $pessoa['turno'] }}</td></tr>@endforeach</tbody></table></div>
-                                        @if (($participantes['ultima_pagina'] ?? 1) > 1)<div class="evento-detalhes-modal__pagination"><button type="button" wire:click="paginaParticipantes({{ max(1, $participantes['pagina'] - 1) }})" @disabled($participantes['pagina'] <= 1)>Anterior</button><span>Página {{ $participantes['pagina'] }} de {{ $participantes['ultima_pagina'] }}</span><button type="button" wire:click="paginaParticipantes({{ min($participantes['ultima_pagina'], $participantes['pagina'] + 1) }})" @disabled($participantes['pagina'] >= $participantes['ultima_pagina'])>Próxima</button></div>@endif
+                                        @if (($participantes['ultima_pagina'] ?? 1) > 1)<div class="evento-detalhes-modal__pagination"><button type="button" wire:click="irParaPaginaParticipantes({{ max(1, $participantes['pagina'] - 1) }})" @disabled($participantes['pagina'] <= 1)>Anterior</button><span>Página {{ $participantes['pagina'] }} de {{ $participantes['ultima_pagina'] }}</span><button type="button" wire:click="irParaPaginaParticipantes({{ min($participantes['ultima_pagina'], $participantes['pagina'] + 1) }})" @disabled($participantes['pagina'] >= $participantes['ultima_pagina'])>Próxima</button></div>@endif
                                     </section>
                                 @endif
                             @elseif ($aba === 'escolas')
@@ -97,7 +98,7 @@
                                     <section class="evento-detalhes-modal__card evento-detalhes-modal__table-card">
                                         <div class="evento-detalhes-modal__table-toolbar"><span>{{ $escolas['total'] }} turma(s)</span><label>Por página <select wire:change="alterarPorPaginaEscolas($event.target.value)">@foreach ([5, 10, 25, 50] as $limite)<option value="{{ $limite }}" @selected($porPaginaEscolas === $limite)>{{ $limite }}</option>@endforeach</select></label></div>
                                         <div class="evento-detalhes-modal__table-wrap"><table><thead><tr><th>Escola</th><th>Série</th><th>Turma</th><th>Turno</th><th class="is-number">Quantidade de alunos</th></tr></thead><tbody>@foreach ($escolas['items'] as $turma)<tr><td>{{ $turma['escola'] }}</td><td>{{ $turma['serie'] }}</td><td>{{ $turma['turma'] }}</td><td>{{ $turma['turno'] }}</td><td class="is-number">{{ $turma['quantidade_alunos'] === null ? '—' : number_format($turma['quantidade_alunos'], 0, ',', '.') }}</td></tr>@endforeach</tbody></table></div>
-                                        @if (($escolas['ultima_pagina'] ?? 1) > 1)<div class="evento-detalhes-modal__pagination"><button type="button" wire:click="paginaEscolas({{ max(1, $escolas['pagina'] - 1) }})" @disabled($escolas['pagina'] <= 1)>Anterior</button><span>Página {{ $escolas['pagina'] }} de {{ $escolas['ultima_pagina'] }}</span><button type="button" wire:click="paginaEscolas({{ min($escolas['ultima_pagina'], $escolas['pagina'] + 1) }})" @disabled($escolas['pagina'] >= $escolas['ultima_pagina'])>Próxima</button></div>@endif
+                                        @if (($escolas['ultima_pagina'] ?? 1) > 1)<div class="evento-detalhes-modal__pagination"><button type="button" wire:click="irParaPaginaEscolas({{ max(1, $escolas['pagina'] - 1) }})" @disabled($escolas['pagina'] <= 1)>Anterior</button><span>Página {{ $escolas['pagina'] }} de {{ $escolas['ultima_pagina'] }}</span><button type="button" wire:click="irParaPaginaEscolas({{ min($escolas['ultima_pagina'], $escolas['pagina'] + 1) }})" @disabled($escolas['pagina'] >= $escolas['ultima_pagina'])>Próxima</button></div>@endif
                                     </section>
                                 @endif
                             @elseif ($aba === 'alunos')

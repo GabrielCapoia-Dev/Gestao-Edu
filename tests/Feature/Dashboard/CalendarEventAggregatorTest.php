@@ -178,6 +178,9 @@ class CalendarEventAggregatorTest extends TestCase
         $this->assertIsString($view);
         $this->assertStringContainsString("@if (\$resumo['latitude'] !== null && \$resumo['longitude'] !== null)", $view);
         $this->assertStringContainsString('Localização não definida.', $view);
+        $this->assertStringContainsString("eventoDetailMap({ latitude:", $view);
+        $this->assertStringContainsString('irParaPaginaParticipantes', $view);
+        $this->assertStringContainsString('irParaPaginaEscolas', $view);
     }
 
     public function test_agregador_aplica_filtros_de_categoria_status_prioridade_e_assunto(): void
