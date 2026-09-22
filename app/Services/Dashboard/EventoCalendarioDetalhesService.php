@@ -171,6 +171,35 @@ final class EventoCalendarioDetalhesService
     {
         $evento = $this->autorizar($user, $eventoId, $contexto);
         $escolasIds = $this->escolasVisiveis($user, $contexto);
+
+        // O snapshot é a fonte histórica do transporte. Consultar as turmas atuais
+        // aqui mistura cadastros posteriores ao evento e faz totais válidos parecerem zero.
+        if ($evento->alunos_snapshot_em) {
+            $query = EventoCalendarioAlunoSnapshot::query()
+                ->where('evento_calendario_id', $eventoId)
+                ->when($escolasIds !== null, fn (Builder $q): Builder => $q->whereIn('escola_id', $escolasIds))
+                ->selectRaw('escola_id, escola_nome, serie_id, serie_nome, turma_id, turma_nome, turno, count(*) as quantidade_alunos')
+                ->groupBy([
+                    'escola_id', 'escola_nome', 'serie_id', 'serie_nome',
+                    'turma_id', 'turma_nome', 'turno',
+                ])
+                ->orderBy('escola_nome')
+                ->orderBy('serie_nome')
+                ->orderBy('turma_nome');
+
+            $total = $query->toBase()->getCountForPagination();
+            $pagina = $this->paginaValida($pagina, $porPagina, $total);
+            $items = $query->forPage($pagina, $porPagina)->get()->map(fn (EventoCalendarioAlunoSnapshot $item): array => [
+                'escola' => $item->escola_nome ?: 'Escola não informada',
+                'serie' => $item->serie_nome ?: 'Não informada',
+                'turma' => $item->turma_nome ?: 'Não informada',
+                'turno' => $this->turno($item->turno),
+                'quantidade_alunos' => (int) $item->quantidade_alunos,
+            ])->all();
+
+            return $this->paginado($items, $total, $pagina, $porPagina);
+        }
+
         $agendamentos = $evento->escolasAgendadas()
             ->when($escolasIds !== null, fn ($q) => $q->whereIn('escola_id', $escolasIds))
             ->with(['escola:id,nome', 'series:id,nome', 'turmas:id,nome,id_escola,id_serie,turno', 'turmas.serie:id,nome'])
@@ -199,15 +228,7 @@ final class EventoCalendarioDetalhesService
             ->with('serie:id,nome')
             ->orderBy('id_serie')->orderBy('nome')->get()->groupBy('id_escola');
 
-        $quantidades = $evento->alunos_snapshot_em
-            ? $evento->alunosSnapshot()
-                ->when($escolasIds !== null, fn ($query) => $query->whereIn('escola_id', $escolasIds))
-                ->selectRaw('turma_id, count(*) as total')
-                ->whereNotNull('turma_id')
-                ->groupBy('turma_id')
-                ->pluck('total', 'turma_id')
-            : collect();
-        $linhas = $agendamentos->flatMap(function ($item) use ($turmasPorEscola, $quantidades): \Illuminate\Support\Collection {
+        $linhas = $agendamentos->flatMap(function ($item) use ($turmasPorEscola): \Illuminate\Support\Collection {
             $turmas = $turmasPorEscola->get($item->escola_id, collect());
             if ($item->escopo_transporte === EventoCalendarioTransporteEscopo::SERIES && $item->series->isNotEmpty()) {
                 $turmas = $turmas->whereIn('id_serie', $item->series->modelKeys());
@@ -220,7 +241,7 @@ final class EventoCalendarioDetalhesService
                 'serie' => $turma->serie?->nome ?? 'Não informada',
                 'turma' => $turma->nome,
                 'turno' => $this->turno($turma->turno),
-                'quantidade_alunos' => $item->precisa_transporte ? (int) ($quantidades[$turma->id] ?? 0) : null,
+                'quantidade_alunos' => null,
             ]);
         })->sortBy(['escola', 'serie', 'turma'])->values();
 

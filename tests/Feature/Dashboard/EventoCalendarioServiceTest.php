@@ -17,6 +17,7 @@ use App\Models\Turma;
 use App\Models\User;
 use App\Services\Dashboard\EventoCalendarioService;
 use App\Services\Dashboard\EventoCalendarioEscolaService;
+use App\Services\Dashboard\EventoCalendarioDetalhesService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -89,6 +90,47 @@ class EventoCalendarioServiceTest extends TestCase
             'status_anterior' => null,
             'status_novo' => EventoCalendarioStatus::PENDENTE_APROVACAO->value,
         ]);
+    }
+
+    public function test_detalhe_de_turmas_usa_quantidades_do_snapshot_historico(): void
+    {
+        [$ator, $escola] = $this->atorEscolar('SNAPSHOT-TURMAS');
+        $serie = Serie::query()->create(['codigo' => 'SER-SNAPSHOT-TURMAS', 'nome' => '4º Ano']);
+        $turmaA = Turma::query()->create([
+            'codigo' => 'TUR-SNAPSHOT-A', 'nome' => 'A', 'turno' => 'manha',
+            'id_serie' => $serie->id, 'id_escola' => $escola->id,
+        ]);
+        $turmaB = Turma::query()->create([
+            'codigo' => 'TUR-SNAPSHOT-B', 'nome' => 'B', 'turno' => 'tarde',
+            'id_serie' => $serie->id, 'id_escola' => $escola->id,
+        ]);
+        $this->aluno($turmaA, 'CGM-SNAPSHOT-1', Aluno::TIPO_VINCULO_PRINCIPAL, Aluno::STATUS_MATRICULADO);
+        $this->aluno($turmaA, 'CGM-SNAPSHOT-2', Aluno::TIPO_VINCULO_PRINCIPAL, Aluno::STATUS_MATRICULADO);
+        $this->aluno($turmaB, 'CGM-SNAPSHOT-3', Aluno::TIPO_VINCULO_PRINCIPAL, Aluno::STATUS_MATRICULADO);
+
+        $evento = app(EventoCalendarioService::class)->criar([
+            ...$this->dadosBase(),
+            'enviar_escolas_especificas' => true,
+            'escolas_agendadas' => [[
+                'escola_id' => $escola->id,
+                'hora_inicio' => '08:00',
+                'hora_fim' => '12:00',
+                'precisa_transporte' => true,
+                'escopo_transporte' => EventoCalendarioTransporteEscopo::TURMAS->value,
+                'turmas_ids' => [$turmaA->id, $turmaB->id],
+            ]],
+        ], [], $ator);
+
+        $linhas = app(EventoCalendarioDetalhesService::class)
+            ->escolas($ator, $evento->id, 'rede', 1, 10);
+
+        $this->assertSame(2, $linhas['total']);
+        $this->assertSame([
+            'A' => 2,
+            'B' => 1,
+        ], collect($linhas['items'])->mapWithKeys(
+            fn (array $linha): array => [$linha['turma'] => $linha['quantidade_alunos']],
+        )->all());
     }
 
     public function test_criador_restrito_rejeita_evento_comum_e_aceita_solicitacao_de_transporte(): void

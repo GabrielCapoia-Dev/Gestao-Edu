@@ -79,6 +79,18 @@ class GerenciarEventosPageTest extends TestCase
         $this->assertStringNotContainsString("'mostrarEventoModal' => true", $gerenciarEventos);
     }
 
+    public function test_edicao_usa_apenas_o_submit_nativo_da_action(): void
+    {
+        $gerenciarEventos = file_get_contents(app_path('Filament/Admin/Pages/GerenciarEventos.php'));
+        $formulario = file_get_contents(app_path('Filament/Admin/Pages/Schemas/EventoCalendarioForm.php'));
+
+        $this->assertIsString($gerenciarEventos);
+        $this->assertIsString($formulario);
+        $this->assertStringContainsString('components($user, exibirAcoesFinais: false)', $gerenciarEventos);
+        $this->assertStringContainsString('if ($exibirAcoesFinais)', $formulario);
+        $this->assertStringContainsString("->submitAction(new HtmlString('<button type=\"submit\"", $formulario);
+    }
+
     public function test_visao_de_transporte_renderiza_indicadores_e_somente_eventos_do_escopo(): void
     {
         $usuario = $this->usuarioComPermissoes(ListaPermissoes::ListarEventosTransporte);

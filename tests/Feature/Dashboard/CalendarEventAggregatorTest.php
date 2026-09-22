@@ -171,6 +171,15 @@ class CalendarEventAggregatorTest extends TestCase
         $this->assertStringContainsString('<livewire:home.agenda-proximos-dias lazy />', $blade);
     }
 
+    public function test_detalhe_de_evento_exibe_estado_neutro_sem_coordenadas(): void
+    {
+        $view = file_get_contents(resource_path('views/livewire/home/evento-calendario-detalhes-modal.blade.php'));
+
+        $this->assertIsString($view);
+        $this->assertStringContainsString("@if (\$resumo['latitude'] !== null && \$resumo['longitude'] !== null)", $view);
+        $this->assertStringContainsString('Localização não definida.', $view);
+    }
+
     public function test_agregador_aplica_filtros_de_categoria_status_prioridade_e_assunto(): void
     {
         $inicio = CarbonImmutable::parse('2026-07-20 00:00:00');

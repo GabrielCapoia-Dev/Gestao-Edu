@@ -70,6 +70,11 @@
                                         @if ($resumo['endereco_mapa'])<p>{{ $resumo['endereco_mapa'] }}</p>@endif
                                         <div class="evento-detalhes-modal__map" x-data="eventoDetailMap({ latitude: @js($resumo['latitude']), longitude: @js($resumo['longitude']), query: @js($resumo['endereco_mapa'] ?: $resumo['local']) })" x-init="init()" data-evento-detail-map></div>
                                     </section>
+                                @else
+                                    <section class="evento-detalhes-modal__card">
+                                        <h3>Localização</h3>
+                                        <p class="evento-detalhes-modal__empty">Localização não definida.</p>
+                                    </section>
                                 @endif
                             @elseif ($aba === 'participantes')
                                 <form class="evento-detalhes-modal__search" wire:submit="pesquisarParticipantes">
