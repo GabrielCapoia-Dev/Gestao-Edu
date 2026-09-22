@@ -7,27 +7,18 @@ use App\Models\EventoCalendario;
 use App\Models\User;
 use App\Services\Dashboard\Calendar\CalendarEventAggregator;
 use App\Services\Dashboard\DashboardUserContextFactory;
-use App\Services\Dashboard\EventoCalendarioListQueryService;
 use App\Services\ProfilePreviewService;
 use App\Support\Dashboard\Calendar\CalendarAggregationResult;
 use App\Support\Dashboard\Calendar\CalendarQueryContext;
 use Carbon\CarbonImmutable;
-use Filament\Actions\Action;
-use Filament\Actions\Concerns\InteractsWithActions;
-use Filament\Actions\Contracts\HasActions;
-use Filament\Schemas\Concerns\InteractsWithSchemas;
-use Filament\Schemas\Contracts\HasSchemas;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
 use InvalidArgumentException;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
-class AgendaProximosDias extends Component implements HasActions, HasSchemas
+class AgendaProximosDias extends Component
 {
-    use InteractsWithActions;
-    use InteractsWithSchemas;
-
     private const ESCOPOS = ['pessoal', 'rede', 'veiculos', 'transporte', 'manutencao', 'pedagogico'];
 
     private const CATEGORIAS_MANUTENCAO = ['manutencao'];
@@ -99,27 +90,6 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
         $this->erro = null;
     }
 
-    public function abrirEventoAction(): Action
-    {
-        return Action::make('abrirEvento')
-            ->label('Abrir evento')
-            ->modalHeading(fn (array $arguments): string => $arguments['titulo'] ?? 'Detalhes do evento')
-            ->modalWidth('6xl')
-            ->extraModalWindowAttributes(['class' => 'gi-event-detail-modal-window'], merge: true)
-            ->modalSubmitAction(false)
-            ->modalCancelActionLabel('Fechar')
-            ->modalContent(function (array $arguments): View {
-                $user = app(ProfilePreviewService::class)->effectiveUser();
-                abort_unless($user && ($arguments['source'] ?? null) === 'manual', 403);
-                $id = (int) explode('@', (string) ($arguments['reference'] ?? ''), 2)[0];
-                abort_unless($id > 0, 404);
-
-                return view('filament.admin.pages.partials.evento-calendario-detalhes', [
-                    'evento' => app(EventoCalendarioListQueryService::class)->detalhes($user, $id),
-                ]);
-            });
-    }
-
     public function render(): View
     {
         $context = $this->makeContext($this->escopoAgenda);
@@ -143,9 +113,14 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
                 ];
 
                 if ($this->podeVisualizarRede($context->user)) {
-                    $resultados['rede'] = $this->filtrarResultadoPor(
+                    $resultadoRede = $this->filtrarResultadoPor(
                         $aggregator->aggregate($this->contextoObrigatorio('rede')),
                         static fn ($evento): bool => ! in_array($evento->categoria, self::CATEGORIAS_MANUTENCAO, true),
+                    );
+                    $idsPessoais = collect($resultadoPessoal->events)->pluck('id')->flip();
+                    $resultados['rede'] = $this->filtrarResultadoPor(
+                        $resultadoRede,
+                        static fn ($evento): bool => ! $idsPessoais->has($evento->id),
                     );
                 }
 

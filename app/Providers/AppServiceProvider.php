@@ -279,6 +279,7 @@ class AppServiceProvider extends ServiceProvider
         $actionLoadingCss = 'css/action-loading.css';
         $geralCss = 'css/geral.css';
         $eventoModalCss = 'css/evento-calendario-modal.css';
+        $eventoDetalhesCss = 'css/evento-detalhes-modal.css';
         $eventoMapJs = 'js/evento-local-map.js';
         $eventoDetailMapJs = 'js/evento-detail-map.js';
 
@@ -290,6 +291,7 @@ class AppServiceProvider extends ServiceProvider
             Js::make('evento-detail-map', asset($eventoDetailMapJs).'?v='.$assetVersion($eventoDetailMapJs)),
             Css::make('geral', asset($geralCss).'?v='.$assetVersion($geralCss)),
             Css::make('evento-calendario-modal', asset($eventoModalCss).'?v='.$assetVersion($eventoModalCss)),
+            Css::make('evento-detalhes-modal', asset($eventoDetalhesCss).'?v='.$assetVersion($eventoDetalhesCss)),
             Css::make('action-loading', asset($actionLoadingCss).'?v='.$assetVersion($actionLoadingCss)),
             Css::make('leaflet-css', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'),
             Js::make('leaflet-js', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'),

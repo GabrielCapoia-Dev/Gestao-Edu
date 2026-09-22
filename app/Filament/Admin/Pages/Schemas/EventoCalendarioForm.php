@@ -571,6 +571,8 @@ class EventoCalendarioForm
             'publico_serie_ids' => data_get($evento->publicoRegras->first()?->filtros, 'serie_ids', []),
             'publico_componente_ids' => data_get($evento->publicoRegras->first()?->filtros, 'componente_ids', []),
             'publico_excecoes_ids' => $evento->publicoExcecoes->pluck('user_id')->map(fn ($id): int => (int) $id)->all(),
+            'transporte_excecoes_aluno_ids' => app(\App\Services\Dashboard\EventoCalendarioSnapshotService::class)
+                ->excecoesParaFormulario($evento),
         ];
     }
 

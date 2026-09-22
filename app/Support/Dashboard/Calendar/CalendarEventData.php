@@ -37,6 +37,9 @@ final readonly class CalendarEventData
         public array $transporteAlocacoes = [],
         public ?string $corDestaque = null,
         public ?string $solicitante = null,
+        public ?int $escolasCount = null,
+        public ?int $turmasCount = null,
+        public ?int $alunosCount = null,
     ) {}
 
     public function precisaTransporte(): bool
@@ -77,6 +80,9 @@ final readonly class CalendarEventData
             'transporte_alocacoes' => $this->transporteAlocacoes,
             'cor_destaque' => $this->corDestaque,
             'solicitante' => $this->solicitante,
+            'escolas_count' => $this->escolasCount,
+            'turmas_count' => $this->turmasCount,
+            'alunos_count' => $this->alunosCount,
         ];
     }
 }

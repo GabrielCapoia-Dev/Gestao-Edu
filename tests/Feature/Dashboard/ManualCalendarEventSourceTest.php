@@ -57,7 +57,7 @@ class ManualCalendarEventSourceTest extends TestCase
         $this->assertSame([$visivel->id], $eventsA->map(
             static fn (CalendarEventData $event): int => (int) $event->reference,
         )->all());
-        $this->assertSame('manual:'.$visivel->id.':all', $eventsA->first()->id);
+        $this->assertSame('manual:'.$visivel->id, $eventsA->first()->id);
         $this->assertNull($eventsA->first()->status);
         $this->assertNull($eventsA->first()->progresso);
         $this->assertNull($source->detail($contextB, (string) $visivel->id));
@@ -178,7 +178,7 @@ class ManualCalendarEventSourceTest extends TestCase
         $this->assertNull($source->detail($contexto, (string) $setorFora->id));
     }
 
-    public function test_evento_especifico_gera_uma_ocorrencia_com_horario_por_escola(): void
+    public function test_evento_especifico_gera_uma_unica_ocorrencia_agregada(): void
     {
         $agora = CarbonImmutable::parse('2026-07-20 10:00:00');
         CarbonImmutable::setTestNow($agora);
@@ -187,6 +187,10 @@ class ManualCalendarEventSourceTest extends TestCase
         $escolaB = $this->criarEscola('Ocorrência B', $setor);
         $admin = User::factory()->create();
         $admin->assignRole(Role::findOrCreate('Admin', 'web'));
+        $admin->givePermissionTo(Permission::findOrCreate(
+            ListaPermissoes::VisualizarAgendaDeTodaARede->label(),
+            'web',
+        ));
         $publico = app(PublicoAlvoService::class)->criar($admin, ['todos_usuarios' => true]);
         $evento = $this->criarEvento($publico->id, 'Evento com horários escolares', $agora->addDay());
         $evento->update(['enviar_todas_escolas' => false]);
@@ -196,18 +200,18 @@ class ManualCalendarEventSourceTest extends TestCase
         ]);
 
         $events = collect(app(ManualCalendarEventSource::class)->events(
-            $this->contexto($admin, $agora, $agora->addDays(6)->endOfDay()),
+            $this->contexto($admin, $agora, $agora->addDays(6)->endOfDay(), redeCompleta: true),
         ));
 
-        $this->assertSame(2, $events->count());
-        $this->assertSame(['08:00', '10:00'], $events->pluck('inicio')->map->format('H:i')->sort()->values()->all());
-        $this->assertSame(
-            [$escolaA->id, $escolaB->id],
-            $events->pluck('escolaId')->sort()->values()->all(),
-        );
+        $this->assertSame(1, $events->count());
+        $this->assertSame('08:00', $events->sole()->inicio->format('H:i'));
+        $this->assertSame('12:00', $events->sole()->fim->format('H:i'));
+        $this->assertSame(2, $events->sole()->escolasCount);
+        $this->assertSame('2 escolas', $events->sole()->escola);
+        $this->assertNull($events->sole()->escolaId);
     }
 
-    public function test_criador_global_visualiza_no_modo_pessoal_evento_destinado_a_escolas(): void
+    public function test_criador_global_nao_entra_no_modo_pessoal_apenas_por_ser_criador(): void
     {
         $agora = CarbonImmutable::parse('2026-07-20 10:00:00');
         CarbonImmutable::setTestNow($agora);
@@ -241,7 +245,7 @@ class ManualCalendarEventSourceTest extends TestCase
             $this->contexto($outroAdmin, $agora, $agora->addDays(4)->endOfDay()),
         ));
 
-        $this->assertContains($evento->id, $doCriador->map(
+        $this->assertNotContains($evento->id, $doCriador->map(
             static fn (CalendarEventData $item): int => (int) str($item->reference)->before('@')->toString(),
         ));
         $this->assertNotContains($evento->id, $doOutroAdmin->map(

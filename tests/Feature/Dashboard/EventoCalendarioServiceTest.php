@@ -76,6 +76,12 @@ class EventoCalendarioServiceTest extends TestCase
         $this->assertSame('normal', $evento->prioridade->value);
         $this->assertNull($evento->assunto);
         $this->assertNull($evento->progresso);
+        $this->assertNotNull($evento->alunos_snapshot_em);
+        $this->assertDatabaseCount('evento_calendario_alunos_snapshot', 1);
+        $this->assertDatabaseMissing('evento_calendario_alunos_snapshot', [
+            'evento_calendario_id' => $evento->id,
+            'aluno_id' => $alunoRemovido->id,
+        ]);
         $this->assertDatabaseHas('evento_calendario_historicos', [
             'evento_calendario_id' => $evento->id,
             'usuario_id' => $ator->id,

@@ -5,7 +5,6 @@ namespace App\Services\Dashboard\Calendar\Sources;
 use App\Contracts\Dashboard\CalendarEventSource;
 use App\Models\Enums\EventoCalendarioCategoria;
 use App\Models\EventoCalendario;
-use App\Models\EventoCalendarioEscola;
 use App\Services\Dashboard\PublicoAlvoService;
 use App\Services\Dashboard\EventoCalendarioPublicoService;
 use App\Support\Dashboard\Calendar\CalendarEventData;
@@ -42,21 +41,13 @@ class ManualCalendarEventSource implements CalendarEventSource
             ->get();
 
         foreach ($eventos as $evento) {
-            if ($evento->enviar_todas_escolas) {
-                yield $this->map($evento);
-
-                continue;
-            }
-
-            foreach ($evento->escolasAgendadas as $agendamento) {
-                yield $this->map($evento, $agendamento);
-            }
+            yield $this->map($evento, $context);
         }
     }
 
     public function detail(CalendarQueryContext $context, string $reference): ?CalendarEventDetailData
     {
-        [$eventoId, $escolaId] = $this->parseReference($reference);
+        $eventoId = $this->parseReference($reference);
 
         if (! $eventoId) {
             return null;
@@ -70,27 +61,17 @@ class ManualCalendarEventSource implements CalendarEventSource
             return null;
         }
 
-        $agendamento = null;
-
-        if (! $evento->enviar_todas_escolas) {
-            $agendamento = $escolaId
-                ? $evento->escolasAgendadas->firstWhere('escola_id', $escolaId)
-                : $evento->escolasAgendadas->first();
-
-            if (! $agendamento) {
-                return null;
-            }
-        }
-
-        $event = $this->map($evento, $agendamento);
+        $event = $this->map($evento, $context);
         $metadata = [
             'Origem' => $evento->origem?->value === 'planilha'
                 ? 'Importado por planilha'
                 : 'Cadastrado manualmente',
         ];
 
-        if ($agendamento?->precisa_transporte) {
-            $metadata['Transporte'] = ($agendamento->quantidade_estimada_transporte ?? 0)
+        $estimativa = $evento->escolasAgendadas->where('precisa_transporte', true)
+            ->sum('quantidade_estimada_transporte');
+        if ($estimativa > 0) {
+            $metadata['Transporte'] = $estimativa
                 .' estudante(s) estimado(s)';
         }
 
@@ -118,42 +99,40 @@ class ManualCalendarEventSource implements CalendarEventSource
                     $this->publicos->aplicarEscopo($legado, $context->user, 'eventos_calendario.publico_alvo_id');
                 });
 
-                // "Para mim" também inclui o que o próprio usuário publicou. Isso
-                // não transforma usuários globais em destinatários de todas as escolas.
-                $visiveis->orWhere(
-                    'eventos_calendario.criado_por_id',
-                    $context->user->getKey(),
-                );
             });
         }
 
-        if (! $context->redeCompleta && ! $context->userContext->escopoGlobal) {
+        if (! $context->redeCompleta) {
+            if ($context->userContext->escolaIds === []) {
+                return $query->whereRaw('1 = 0');
+            }
+
             $query->where(function (Builder $distribuicao) use ($context): void {
                 $distribuicao->where('eventos_calendario.enviar_todas_escolas', true);
 
-                if ($context->userContext->escolaIds !== []) {
-                    $distribuicao->orWhere(function (Builder $especificas) use ($context): void {
-                        $especificas
-                            ->where('eventos_calendario.enviar_todas_escolas', false)
-                            ->whereHas(
-                                'escolasAgendadas',
-                                fn (Builder $escolas): Builder => $escolas->whereIn(
-                                    'evento_calendario_escolas.escola_id',
-                                    $context->userContext->escolaIds,
-                                ),
-                            );
-                    });
-                }
+                $distribuicao->orWhere(function (Builder $especificas) use ($context): void {
+                    $especificas
+                        ->where('eventos_calendario.enviar_todas_escolas', false)
+                        ->whereHas(
+                            'escolasAgendadas',
+                            fn (Builder $escolas): Builder => $escolas->whereIn(
+                                'evento_calendario_escolas.escola_id',
+                                $context->userContext->escolaIds,
+                            ),
+                        );
+                });
             });
 
             // Compatibilidade de leitura para eventos antigos segmentados somente por setor.
-            $query->where(function (Builder $setores) use ($context): void {
-                $setores->whereNull('eventos_calendario.setor_id');
+            if (! $context->userContext->escopoGlobal) {
+                $query->where(function (Builder $setores) use ($context): void {
+                    $setores->whereNull('eventos_calendario.setor_id');
 
-                if ($context->userContext->setorVisivelIds !== []) {
-                    $setores->orWhereIn('eventos_calendario.setor_id', $context->userContext->setorVisivelIds);
-                }
-            });
+                    if ($context->userContext->setorVisivelIds !== []) {
+                        $setores->orWhereIn('eventos_calendario.setor_id', $context->userContext->setorVisivelIds);
+                    }
+                });
+            }
         }
 
         if ($context->escolaId) {
@@ -177,9 +156,18 @@ class ManualCalendarEventSource implements CalendarEventSource
     private function relations(CalendarQueryContext $context): array
     {
         return [
+            'publicoAlvo.escolas' => function ($query) use ($context): void {
+                if (! $context->redeCompleta) {
+                    $context->userContext->escolaIds !== []
+                        ? $query->whereIn('escolas.id', $context->userContext->escolaIds)
+                        : $query->whereRaw('1 = 0');
+                }
+            },
             'escolasAgendadas' => function ($query) use ($context): void {
-                if (! $context->redeCompleta && ! $context->userContext->escopoGlobal) {
-                    $query->whereIn('escola_id', $context->userContext->escolaIds);
+                if (! $context->redeCompleta) {
+                    $context->userContext->escolaIds !== []
+                        ? $query->whereIn('escola_id', $context->userContext->escolaIds)
+                        : $query->whereRaw('1 = 0');
                 }
 
                 if ($context->escolaId) {
@@ -189,6 +177,8 @@ class ManualCalendarEventSource implements CalendarEventSource
                 $query->orderBy('escola_id');
             },
             'escolasAgendadas.escola:id,nome',
+            'escolasAgendadas.series:id,nome',
+            'escolasAgendadas.turmas:id,nome,id_escola,id_serie,turno',
             'alocacoesTransporteAtivas.veiculo:id,placa,identificacao',
             'alocacoesTransporteAtivas.motorista:id,nome',
             'alocacoesTransporteAtivas.turmas:id,nome,id_escola,id_serie',
@@ -198,28 +188,42 @@ class ManualCalendarEventSource implements CalendarEventSource
 
     private function map(
         EventoCalendario $evento,
-        ?EventoCalendarioEscola $agendamento = null,
+        CalendarQueryContext $context,
     ): CalendarEventData {
         $categoria = $evento->categoria;
         $timezone = (string) config('dashboard.calendar.timezone', config('app.timezone'));
-        $inicio = $agendamento
+        $agendamentos = $evento->escolasAgendadas;
+        $primeiro = $agendamentos->sortBy('hora_inicio')->first();
+        $ultimo = $agendamentos->sortByDesc('hora_fim')->first();
+        $inicio = $primeiro
             ? CarbonImmutable::parse(
-                $evento->data_inicio->toDateString().' '.substr((string) $agendamento->hora_inicio, 0, 5),
+                $evento->data_inicio->toDateString().' '.substr((string) $primeiro->hora_inicio, 0, 5),
                 $timezone,
             )
             : $evento->data_inicio->toImmutable();
-        $fim = $agendamento
+        $fim = $ultimo
             ? CarbonImmutable::parse(
-                $evento->data_inicio->toDateString().' '.substr((string) $agendamento->hora_fim, 0, 5),
+                $evento->data_inicio->toDateString().' '.substr((string) $ultimo->hora_fim, 0, 5),
                 $timezone,
             )
             : $evento->data_fim->toImmutable();
-        $suffix = $agendamento ? (string) $agendamento->escola_id : 'all';
+        $escolas = $agendamentos->pluck('escola')->filter();
+        if ($escolas->isEmpty()) {
+            $escolas = $evento->publicoAlvo?->escolas ?? collect();
+        }
+        $escolasCount = $escolas->count();
+        $escolaLabel = $escolasCount === 1
+            ? $escolas->first()?->nome
+            : ($escolasCount > 1
+                ? $escolasCount.($context->redeCompleta ? ' escolas' : ' escolas vinculadas')
+                : null);
+        $transportes = $agendamentos->where('precisa_transporte', true);
+        $turmasCount = $agendamentos->flatMap->turmas->pluck('id')->unique()->count();
 
         return new CalendarEventData(
-            id: $this->key().':'.$evento->getKey().':'.$suffix,
+            id: $this->key().':'.$evento->getKey(),
             source: $this->key(),
-            reference: $evento->getKey().'@'.$suffix,
+            reference: (string) $evento->getKey(),
             titulo: $evento->titulo,
             resumo: filled($evento->descricao) ? Str::limit(strip_tags((string) $evento->descricao), 180) : null,
             inicio: $inicio,
@@ -235,22 +239,22 @@ class ManualCalendarEventSource implements CalendarEventSource
             prioridade: $evento->prioridade,
             progresso: null,
             cor: $evento->cor->value,
-            escolaId: $agendamento ? (int) $agendamento->escola_id : null,
-            escola: $agendamento?->escola?->nome,
+            escolaId: $escolasCount === 1 ? (int) $escolas->first()->getKey() : null,
+            escola: $escolaLabel,
             setorId: null,
             setor: null,
             origem: 'Evento cadastrado',
             actionUrl: $evento->linkAcaoSeguro(),
             actionLabel: $evento->texto_botao ?: ($evento->linkAcaoSeguro() ? 'Acessar' : null),
-            transporteEstimado: $agendamento?->precisa_transporte
-                ? (int) ($agendamento->quantidade_estimada_transporte ?? 0)
+            transporteEstimado: $transportes->isNotEmpty()
+                ? (int) $transportes->sum('quantidade_estimada_transporte')
                 : null,
             local: $evento->local,
-            transporteAlocacoes: $agendamento
+            transporteAlocacoes: $transportes->isNotEmpty()
                 ? $evento->alocacoesTransporteAtivas
-                    ->map(function ($alocacao) use ($agendamento): ?string {
+                    ->map(function ($alocacao) use ($agendamentos): ?string {
                         $turmas = $alocacao->turmas
-                            ->where('id_escola', $agendamento->escola_id)
+                            ->whereIn('id_escola', $agendamentos->pluck('escola_id'))
                             ->map(fn ($turma): string => trim(($turma->serie?->nome ? $turma->serie->nome.' ' : '').$turma->nome))
                             ->join(', ');
 
@@ -262,20 +266,19 @@ class ManualCalendarEventSource implements CalendarEventSource
 
                         return collect([$veiculo, $alocacao->motoristaNomeExibicao(), $turmas])->filter()->implode(' — ');
                     })
-                    ->filter()->values()->all()
+                    ->filter()->unique()->values()->all()
                 : [],
+            escolasCount: $escolasCount,
+            turmasCount: $turmasCount,
+            alunosCount: $transportes->isNotEmpty() ? (int) $transportes->sum('quantidade_estimada_transporte') : null,
         );
     }
 
-    /** @return array{0: int|null, 1: int|null} */
-    private function parseReference(string $reference): array
+    private function parseReference(string $reference): ?int
     {
-        [$evento, $escola] = array_pad(explode('@', $reference, 2), 2, null);
+        [$evento] = explode('@', $reference, 2);
         $eventoId = filter_var($evento, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-        $escolaId = $escola && $escola !== 'all'
-            ? filter_var($escola, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])
-            : null;
 
-        return [$eventoId ? (int) $eventoId : null, $escolaId ? (int) $escolaId : null];
+        return $eventoId ? (int) $eventoId : null;
     }
 }

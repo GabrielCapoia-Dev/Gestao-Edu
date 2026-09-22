@@ -97,9 +97,17 @@
                                         type="button"
                                         class="home-agenda__event-toggle"
                                         title="{{ $event->resumo ?: $event->titulo }}"
-                                        x-on:click="aberto = ! aberto"
-                                        x-bind:aria-expanded="aberto"
-                                        aria-controls="{{ $eventDomId }}"
+                                        @if ($event->source === 'manual')
+                                            wire:click="$dispatch('abrir-evento-detalhes', { eventoId: {{ (int) $event->reference }}, contexto: @js($escopoAgendaAtivo ?? $escopoAgenda) })"
+                                        @else
+                                            x-on:click="aberto = ! aberto"
+                                        @endif
+                                        @if ($event->source !== 'manual')
+                                            x-bind:aria-expanded="aberto"
+                                            aria-controls="{{ $eventDomId }}"
+                                        @else
+                                            aria-label="Abrir detalhes de {{ $event->titulo }}"
+                                        @endif
                                     >
                                         <span class="home-agenda__event-meta">
                                             {{ $event->diaInteiro ? 'Dia inteiro' : $event->inicio->format('H:i') }}
@@ -116,6 +124,12 @@
                                             </span>
                                         @endif
                                         <strong>{{ $event->titulo }}</strong>
+                                        @if ($event->source === 'manual' && $event->escola)
+                                            <span>
+                                                {{ $event->escola }}
+                                                @if ($event->alunosCount !== null) · {{ number_format($event->alunosCount, 0, ',', '.') }} aluno(s)@endif
+                                            </span>
+                                        @endif
                                         @if ($event->local)<span>{{ $event->local }}</span>@endif
                                         @if ($event->statusLabel)<span>{{ $event->statusLabel }}</span>@endif
                                         @if ($event->progresso !== null)
@@ -130,6 +144,7 @@
                                         <span class="home-agenda__event-indicator" aria-hidden="true"></span>
                                     </button>
 
+                                    @if ($event->source !== 'manual')
                                     <div
                                         id="{{ $eventDomId }}"
                                         class="home-agenda__event-detail"
@@ -164,16 +179,8 @@
                                         @if ($event->actionUrl)
                                             <a href="{{ $event->actionUrl }}">{{ $event->actionLabel ?: 'Acessar' }}</a>
                                         @endif
-                                        @if ($event->source === 'manual')
-                                            <button
-                                                type="button"
-                                                class="home-agenda__event-open"
-                                                wire:click="mountAction('abrirEvento', { source: @js($event->source), reference: @js($event->reference), titulo: @js($event->titulo) })"
-                                            >
-                                                Abrir evento
-                                            </button>
-                                        @endif
                                     </div>
+                                    @endif
                                 </article>
                             @empty
                                 <p class="home-agenda__empty">Nenhum item</p>
@@ -197,5 +204,4 @@
         @endif
     </div>
 
-    <x-filament-actions::modals />
 </section>

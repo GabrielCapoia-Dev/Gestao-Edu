@@ -53,6 +53,8 @@ class EventoCalendario extends Model
         'atualizado_por_id',
         'excluido_por_id',
         'ultima_importacao_id',
+        'participantes_snapshot_em',
+        'alunos_snapshot_em',
     ];
 
     protected function casts(): array
@@ -75,6 +77,8 @@ class EventoCalendario extends Model
             'escolas_agendadas_count' => 'integer',
             'escolas_publico_count' => 'integer',
             'total_estudantes_transporte' => 'integer',
+            'participantes_snapshot_em' => 'datetime',
+            'alunos_snapshot_em' => 'datetime',
         ];
     }
 
@@ -106,6 +110,16 @@ class EventoCalendario extends Model
     public function publicoExcecoes(): HasMany
     {
         return $this->hasMany(EventoCalendarioPublicoExcecao::class, 'evento_calendario_id');
+    }
+
+    public function participantesSnapshot(): HasMany
+    {
+        return $this->hasMany(EventoCalendarioParticipanteSnapshot::class, 'evento_calendario_id');
+    }
+
+    public function alunosSnapshot(): HasMany
+    {
+        return $this->hasMany(EventoCalendarioAlunoSnapshot::class, 'evento_calendario_id');
     }
 
     /**
