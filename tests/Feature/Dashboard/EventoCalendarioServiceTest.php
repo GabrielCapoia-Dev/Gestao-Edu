@@ -184,6 +184,10 @@ class EventoCalendarioServiceTest extends TestCase
         $this->assertSame('Visita técnica', $evento->categoria_detalhe);
         $this->assertSame('Centro de Formação Municipal', $evento->local);
         $this->assertSame('Rua Araribá, 875, Umuarama, Paraná, Brasil', $evento->endereco_mapa);
+        $localSalvo = app(\App\Services\Dashboard\EventoCalendarioLocalizacaoService::class)
+            ->buscar('Centro de Formação Municipal', true);
+        $this->assertSame('Rua Araribá, 875, Umuarama, Paraná, Brasil', $localSalvo[0]['label']);
+        $this->assertSame('Centro de Formação Municipal', $localSalvo[0]['referencia']);
     }
 
     public function test_exige_detalhe_quando_categoria_do_evento_for_outro(): void
@@ -452,6 +456,8 @@ class EventoCalendarioServiceTest extends TestCase
         $this->assertStringContainsString("this.$root.closest('[wire\\\\:id]')", $mapScript);
         $this->assertStringContainsString('this.setAddress(label || this.coordinateLabel(lat, lng));', $mapScript);
         $this->assertStringContainsString('Coordenadas: ${lat.toFixed(6)}, ${lng.toFixed(6)}', $mapScript);
+        $this->assertStringContainsString("this.setAddress(label || 'Buscando endereço do ponto...');", $mapScript);
+        $this->assertStringContainsString('searchSavedReference()', $mapScript);
         $this->assertStringContainsString("new CustomEvent('evento-mapa-endereco'", $mapScript);
         $this->assertStringContainsString('Nome ou referência do local', $modalBlade);
         $this->assertStringContainsString('Endereço do mapa', $modalBlade);

@@ -7,6 +7,7 @@ window.eventoLocalMap = function () {
         suggestions: [],
         loading: false,
         message: '',
+        referenceTimer: null,
         componentRoot() {
             return this.$root.closest('[wire\\:id]');
         },
@@ -38,6 +39,10 @@ window.eventoLocalMap = function () {
             while (! window.L) await new Promise(resolve => setTimeout(resolve, 50));
             this.$refs.map.dataset.initialized = 'true';
             this.loadSuggestions();
+            this.localInput()?.addEventListener('input', () => {
+                clearTimeout(this.referenceTimer);
+                this.referenceTimer = setTimeout(() => this.searchSavedReference(), 400);
+            });
             this.map = L.map(this.$refs.map).setView([-23.7658, -53.3250], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
@@ -57,24 +62,7 @@ window.eventoLocalMap = function () {
             this.message = '';
             this.results = [];
             try {
-                const url = new URL('https://nominatim.openstreetmap.org/search');
-                url.search = new URLSearchParams({
-                    q: this.query.trim(),
-                    format: 'jsonv2',
-                    limit: '10',
-                    countrycodes: 'br',
-                    viewbox: '-54.4,-23.2,-52.4,-24.5',
-                    bounded: '0',
-                    dedupe: '1',
-                    addressdetails: '1',
-                    namedetails: '1',
-                    'accept-language': 'pt-BR',
-                });
-                const response = await fetch(url, { headers: { Accept: 'application/json' } });
-                this.results = (await response.json()).sort((left, right) => {
-                    const local = value => /umuarama|alto para[ií]so|perobal|xambr[eê]/i.test(value.display_name || '') ? 0 : 1;
-                    return local(left) - local(right);
-                });
+                this.results = await this.requestLocations(this.query);
                 if (! this.results.length) { this.message = 'Nenhum local encontrado em Umuarama e região.'; return; }
             } catch (error) {
                 this.message = 'Não foi possível pesquisar o local agora.';
@@ -98,7 +86,7 @@ window.eventoLocalMap = function () {
         },
         async selectResult(result) {
             this.results = [];
-            await this.selectPoint(parseFloat(result.lat), parseFloat(result.lon), false, result.display_name || result.label);
+            await this.selectPoint(parseFloat(result.lat), parseFloat(result.lng), false, result.label);
         },
         async selectPoint(lat, lng, reverse = true, label = null) {
             const latitude = this.latitudeInput();
@@ -114,7 +102,7 @@ window.eventoLocalMap = function () {
                 this.setField(latitude, lat.toFixed(7));
                 this.setField(longitude, lng.toFixed(7));
             }
-            this.setAddress(label || this.coordinateLabel(lat, lng));
+            this.setAddress(label || 'Buscando endereço do ponto...');
             if (! label && reverse) await this.reverseGeocode(lat, lng);
             if (this.localInput()?.value) this.saveSuggestion(this.localInput().value, lat, lng);
         },
@@ -123,12 +111,27 @@ window.eventoLocalMap = function () {
         },
         async reverseGeocode(lat, lng) {
             try {
-                const url = new URL('https://nominatim.openstreetmap.org/reverse');
-                url.search = new URLSearchParams({ lat, lon: lng, format: 'jsonv2', 'accept-language': 'pt-BR' });
-                const response = await fetch(url, { headers: { Accept: 'application/json' } });
+                const response = await fetch(`/admin/eventos-calendario/localizacoes/reverter?latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lng)}`, { headers: { Accept: 'application/json' } });
                 const result = await response.json();
-                if (result.display_name) this.setAddress(result.display_name);
-            } catch (error) { this.message = 'Ponto marcado. Não foi possível obter o endereço.'; }
+                if (result.endereco) this.setAddress(result.endereco);
+                else throw new Error('Endereço não encontrado');
+            } catch (error) { this.setAddress(''); this.message = 'Ponto marcado, mas não foi possível identificar o endereço. Tente pesquisar o local.'; }
+        },
+        async requestLocations(query, somenteSalvos = false) {
+            const params = new URLSearchParams({ q: query, somente_salvos: somenteSalvos ? '1' : '0' });
+            const response = await fetch(`/admin/eventos-calendario/localizacoes?${params}`, { headers: { Accept: 'application/json' } });
+            if (! response.ok) throw new Error('Busca indisponível');
+            return (await response.json()).items || [];
+        },
+        async searchSavedReference() {
+            const reference = this.localInput()?.value?.trim() || '';
+            if (reference.length < 2) return;
+            try {
+                const results = await this.requestLocations(reference, true);
+                const normalized = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase().trim();
+                const exact = results.find(result => normalized(result.referencia) === normalized(reference));
+                if (exact) await this.selectResult(exact);
+            } catch (error) { /* O mapa continua disponível para busca manual. */ }
         },
         setAddress(address) {
             this.setField(this.mapAddressInput(), address);
