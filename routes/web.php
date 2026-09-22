@@ -10,6 +10,7 @@ use App\Http\Controllers\BalancoEstoqueRelatorioController;
 use App\Http\Controllers\BalancoInventarioRelatorioController;
 use App\Http\Controllers\CalendarExportController;
 use App\Http\Controllers\EstoqueRelatorioController;
+use App\Http\Controllers\EventoCalendarioLocalizacaoController;
 use App\Http\Controllers\Exports\ExportRequestController;
 use App\Http\Controllers\FeedbackPedidoExportController;
 use App\Http\Controllers\InventarioRelatorioController;
@@ -87,6 +88,11 @@ Route::prefix('admin')
 
         Route::get('/calendario/exportar', CalendarExportController::class)
             ->name('dashboard.calendar.export');
+
+        Route::get('/eventos-calendario/localizacoes', [EventoCalendarioLocalizacaoController::class, 'buscar'])
+            ->middleware('throttle:30,1')->name('eventos-calendario.localizacoes.buscar');
+        Route::get('/eventos-calendario/localizacoes/reverter', [EventoCalendarioLocalizacaoController::class, 'reverter'])
+            ->middleware('throttle:30,1')->name('eventos-calendario.localizacoes.reverter');
 
         Route::post('/exports/{exportRequest}/cancel', [ExportRequestController::class, 'cancel'])
             ->name('exports.cancel')
