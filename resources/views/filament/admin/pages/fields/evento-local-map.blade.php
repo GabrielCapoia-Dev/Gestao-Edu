@@ -10,8 +10,8 @@
             x-model="query"
             @input.debounce.300ms="filterSuggestions()"
             @keydown.enter.prevent="search()"
-            placeholder="Pesquise um endereço ou local"
-            aria-label="Pesquisar local do evento"
+            placeholder="Busque um endereço para posicionar no mapa"
+            aria-label="Buscar endereço no mapa"
         />
         <button type="button" @click="search()" :disabled="loading">
             <span x-text="loading ? 'Pesquisando…' : 'Pesquisar no mapa'"></span>
@@ -19,7 +19,7 @@
     </div>
 
     <div class="evento-local-map__hint">
-        Pesquise um local ou clique no mapa para marcar o ponto do evento. O endereço será preenchido automaticamente.
+        Pesquise um endereço ou clique no mapa para marcar o ponto do evento. O campo “Endereço do mapa” será preenchido automaticamente.
     </div>
     <div x-show="results.length" class="evento-local-map__results" role="listbox" aria-label="Locais encontrados">
         <template x-for="result in results" :key="result.place_id">

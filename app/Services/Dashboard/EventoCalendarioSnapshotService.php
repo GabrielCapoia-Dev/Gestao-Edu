@@ -48,7 +48,10 @@ final class EventoCalendarioSnapshotService
                 'evento_calendario_id' => $evento->getKey(),
                 'user_id' => $usuario->getKey(),
                 'escola_id' => $escolas->count() === 1 ? $escolas->first()->getKey() : null,
-                'escola_ids' => json_encode($escolas->modelKeys(), JSON_THROW_ON_ERROR),
+                'escola_ids' => json_encode(
+                    $escolas->pluck('id')->map(static fn ($id): int => (int) $id)->values()->all(),
+                    JSON_THROW_ON_ERROR,
+                ),
                 'nome' => $usuario->name,
                 'email' => $usuario->email,
                 'escola_nome' => $escolas->pluck('nome')->join(', ') ?: null,
