@@ -133,6 +133,12 @@ window.eventoLocalMap = function () {
         setAddress(address) {
             this.setField(this.mapAddressInput(), address);
             this.query = address;
+            window.dispatchEvent(new CustomEvent('evento-mapa-endereco', {
+                detail: {
+                    componentId: this.componentRoot()?.getAttribute('wire:id'),
+                    address,
+                },
+            }));
         },
     };
 };

@@ -89,6 +89,10 @@ class EventoCalendarioForm
                         ->placeholder('Marque um ponto no mapa para preencher o endereço')
                         ->helperText('Preenchido automaticamente ao pesquisar ou marcar o local no mapa.')
                         ->readOnly()
+                        ->extraInputAttributes([
+                            'x-data' => '',
+                            'x-on:evento-mapa-endereco.window' => "if (\$event.detail.componentId === \$el.closest('[wire\\:id]')?.getAttribute('wire:id')) { \$el.value = \$event.detail.address }",
+                        ])
                         ->maxLength(500)
                         ->dehydrated()
                         ->columnSpanFull(),

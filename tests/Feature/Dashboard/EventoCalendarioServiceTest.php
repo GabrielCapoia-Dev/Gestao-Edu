@@ -452,8 +452,10 @@ class EventoCalendarioServiceTest extends TestCase
         $this->assertStringContainsString("this.$root.closest('[wire\\\\:id]')", $mapScript);
         $this->assertStringContainsString('this.setAddress(label || this.coordinateLabel(lat, lng));', $mapScript);
         $this->assertStringContainsString('Coordenadas: ${lat.toFixed(6)}, ${lng.toFixed(6)}', $mapScript);
+        $this->assertStringContainsString("new CustomEvent('evento-mapa-endereco'", $mapScript);
         $this->assertStringContainsString('Nome ou referência do local', $modalBlade);
         $this->assertStringContainsString('Endereço do mapa', $modalBlade);
+        $this->assertStringContainsString('x-on:evento-mapa-endereco.window', $modalBlade);
         $this->assertStringContainsString('TextInput::make(\'endereco_mapa\')', $formularioEdicao);
         $this->assertStringContainsString('Endereço do mapa', $formularioEdicao);
         $this->assertStringContainsString('.evento-custom-modal__backdrop', $modalCss);
