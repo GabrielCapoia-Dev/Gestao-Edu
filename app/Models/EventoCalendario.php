@@ -32,6 +32,7 @@ class EventoCalendario extends Model
         'titulo',
         'descricao',
         'local',
+        'endereco_mapa',
         'latitude',
         'longitude',
         'categoria',

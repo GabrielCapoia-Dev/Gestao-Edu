@@ -24,7 +24,13 @@ class EventoCalendarioDetalhesModal extends Component
 
     public string $buscaAluno = '';
 
-    public int $limiteParticipantes = 50;
+    public int $paginaParticipantes = 1;
+
+    public int $porPaginaParticipantes = 10;
+
+    public int $paginaEscolas = 1;
+
+    public int $porPaginaEscolas = 10;
 
     public int $limiteAlunos = 50;
 
@@ -36,14 +42,11 @@ class EventoCalendarioDetalhesModal extends Component
     /** @var array<string, mixed> */
     public array $participantes = [];
 
-    /** @var list<array<string, mixed>> */
+    /** @var array<string, mixed> */
     public array $escolas = [];
 
     /** @var array<string, mixed> */
     public array $alunos = [];
-
-    /** @var list<array<string, mixed>> */
-    public array $historico = [];
 
     #[On('abrir-evento-detalhes')]
     public function abrir(int $eventoId, string $contexto = 'pessoal'): void
@@ -67,21 +70,49 @@ class EventoCalendarioDetalhesModal extends Component
     public function fechar(): void
     {
         $this->aberto = false;
-        $this->reset(['eventoId', 'resumo', 'participantes', 'escolas', 'alunos', 'historico', 'erro']);
+        $this->reset(['eventoId', 'resumo', 'participantes', 'escolas', 'alunos', 'erro']);
     }
 
     public function selecionarAba(string $aba): void
     {
-        abort_unless(in_array($aba, ['resumo', 'participantes', 'escolas', 'alunos', 'historico'], true), 422);
+        abort_unless(in_array($aba, ['resumo', 'participantes', 'escolas', 'alunos'], true), 422);
         $this->aba = $aba;
         $this->carregarAba();
     }
 
     public function pesquisarParticipantes(): void
     {
-        $this->limiteParticipantes = 50;
+        $this->paginaParticipantes = 1;
         $this->participantes = [];
         $this->carregarParticipantes();
+    }
+
+    public function alterarPorPaginaParticipantes(int $porPagina): void
+    {
+        abort_unless(in_array($porPagina, [5, 10, 25, 50], true), 422);
+        $this->porPaginaParticipantes = $porPagina;
+        $this->paginaParticipantes = 1;
+        $this->carregarParticipantes();
+    }
+
+    public function paginaParticipantes(int $pagina): void
+    {
+        $this->paginaParticipantes = max(1, $pagina);
+        $this->carregarParticipantes();
+    }
+
+    public function alterarPorPaginaEscolas(int $porPagina): void
+    {
+        abort_unless(in_array($porPagina, [5, 10, 25, 50], true), 422);
+        $this->porPaginaEscolas = $porPagina;
+        $this->paginaEscolas = 1;
+        $this->carregarEscolas();
+    }
+
+    public function paginaEscolas(int $pagina): void
+    {
+        $this->paginaEscolas = max(1, $pagina);
+        $this->carregarEscolas();
     }
 
     public function pesquisarAlunos(): void
@@ -89,12 +120,6 @@ class EventoCalendarioDetalhesModal extends Component
         $this->limiteAlunos = 50;
         $this->alunos = [];
         $this->carregarAlunos();
-    }
-
-    public function maisParticipantes(): void
-    {
-        $this->limiteParticipantes += 50;
-        $this->carregarParticipantes();
     }
 
     public function maisAlunos(): void
@@ -120,9 +145,8 @@ class EventoCalendarioDetalhesModal extends Component
         try {
             match ($this->aba) {
                 'participantes' => $this->carregarParticipantes(),
-                'escolas' => $this->escolas = $this->service()->escolas($this->usuario(), $this->eventoId, $this->contexto),
+                'escolas' => $this->carregarEscolas(),
                 'alunos' => $this->carregarAlunos(),
-                'historico' => $this->historico = $this->service()->historico($this->usuario(), $this->eventoId, $this->contexto),
                 default => null,
             };
         } catch (\Throwable $exception) {
@@ -136,7 +160,14 @@ class EventoCalendarioDetalhesModal extends Component
     private function carregarParticipantes(): void
     {
         $this->participantes = $this->service()->participantes(
-            $this->usuario(), $this->eventoId, $this->contexto, trim($this->buscaParticipante), $this->limiteParticipantes,
+            $this->usuario(), $this->eventoId, $this->contexto, trim($this->buscaParticipante), $this->paginaParticipantes, $this->porPaginaParticipantes,
+        );
+    }
+
+    private function carregarEscolas(): void
+    {
+        $this->escolas = $this->service()->escolas(
+            $this->usuario(), $this->eventoId, $this->contexto, $this->paginaEscolas, $this->porPaginaEscolas,
         );
     }
 

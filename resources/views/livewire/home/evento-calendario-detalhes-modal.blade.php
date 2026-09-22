@@ -18,7 +18,7 @@
                         <div>
                             <span>AGENDA ESCOLAR</span>
                             <h2 id="evento-detalhes-titulo">{{ $resumo['titulo'] ?? 'Detalhes do evento' }}</h2>
-                            <p>{{ $resumo['local'] ?? 'Local não informado' }}</p>
+                            <p>{{ $resumo['local'] ?: ($resumo['endereco_mapa'] ?? 'Local não informado') }}</p>
                         </div>
                     </div>
                     @if ($resumo !== [])
@@ -31,7 +31,7 @@
                 </header>
 
                 <nav class="evento-detalhes-modal__tabs" role="tablist" aria-label="Detalhes do evento">
-                    @foreach (['resumo' => 'Resumo', 'participantes' => 'Participantes', 'escolas' => 'Escolas e turmas', 'alunos' => 'Alunos e transporte', 'historico' => 'Histórico'] as $chave => $rotulo)
+                    @foreach (['resumo' => 'Resumo', 'participantes' => 'Participantes', 'escolas' => 'Escolas e turmas', 'alunos' => 'Alunos e transporte'] as $chave => $rotulo)
                         <button type="button" role="tab" @class(['is-active' => $aba === $chave]) aria-selected="{{ $aba === $chave ? 'true' : 'false' }}" wire:click="selecionarAba('{{ $chave }}')">
                             {{ $rotulo }}
                         </button>
@@ -44,10 +44,6 @@
                     @if ($erro)
                         <div class="evento-detalhes-modal__error" role="alert">{{ $erro }}</div>
                     @elseif ($resumo !== [])
-                        @if (($resumo['snapshot_legado'] ?? false) && $aba !== 'resumo')
-                            <div class="evento-detalhes-modal__legacy">Dados reconstruídos do cadastro atual. Eventos anteriores podem não refletir exatamente a seleção original.</div>
-                        @endif
-
                         <div wire:loading.remove>
                             @if ($aba === 'resumo')
                                 <div class="evento-detalhes-modal__badges">
@@ -63,17 +59,16 @@
                                 <section class="evento-detalhes-modal__card">
                                     <h3>Informações gerais</h3>
                                     <dl class="evento-detalhes-modal__summary">
-                                        <div><dt>Criado por</dt><dd>{{ $resumo['criado_por'] }}</dd></div>
-                                        <div><dt>Criado em</dt><dd>{{ $resumo['criado_em'] }}</dd></div>
                                         <div><dt>Categoria</dt><dd>{{ $resumo['categoria'] }}</dd></div>
                                         <div><dt>Local</dt><dd>{{ $resumo['local'] ?: 'Não informado' }}</dd></div>
+                                        @if ($resumo['endereco_mapa'])<div class="evento-detalhes-modal__summary--full"><dt>Endereço</dt><dd>{{ $resumo['endereco_mapa'] }}</dd></div>@endif
                                     </dl>
                                 </section>
-                                @if ($resumo['local'])
+                                @if ($resumo['latitude'] !== null && $resumo['longitude'] !== null)
                                     <section class="evento-detalhes-modal__card">
                                         <h3>Localização</h3>
-                                        <p data-evento-detail-address>{{ $resumo['local'] }}</p>
-                                        <div class="evento-detalhes-modal__map" x-data="eventoDetailMap({ latitude: @js($resumo['latitude']), longitude: @js($resumo['longitude']), query: @js($resumo['local']) })" x-init="init()" data-evento-detail-map></div>
+                                        @if ($resumo['endereco_mapa'])<p>{{ $resumo['endereco_mapa'] }}</p>@endif
+                                        <div class="evento-detalhes-modal__map" x-data="eventoDetailMap({ latitude: @js($resumo['latitude']), longitude: @js($resumo['longitude']), query: @js($resumo['endereco_mapa'] ?: $resumo['local']) })" x-init="init()" data-evento-detail-map></div>
                                     </section>
                                 @endif
                             @elseif ($aba === 'participantes')
@@ -81,30 +76,25 @@
                                     <input type="search" wire:model="buscaParticipante" placeholder="Buscar participante pelo nome" aria-label="Buscar participante">
                                     <button type="submit">Buscar</button>
                                 </form>
-                                @forelse (collect($participantes['items'] ?? [])->groupBy('escola') as $escola => $pessoas)
-                                    <section class="evento-detalhes-modal__card evento-detalhes-modal__group">
-                                        <header><h3>{{ $escola }}</h3><span>{{ $pessoas->count() }} pessoa(s)</span></header>
-                                        @foreach ($pessoas->groupBy('cargo') as $cargo => $grupo)
-                                            <details><summary>{{ $cargo }} <span>{{ $grupo->count() }}</span></summary>
-                                                <ul>@foreach ($grupo as $pessoa)<li><strong>{{ $pessoa['nome'] }}</strong><small>{{ $pessoa['email'] }}</small></li>@endforeach</ul>
-                                            </details>
-                                        @endforeach
-                                    </section>
-                                @empty
+                                @if (($participantes['items'] ?? []) === [])
                                     <div class="evento-detalhes-modal__empty">Nenhum participante encontrado.</div>
-                                @endforelse
-                                @if (count($participantes['items'] ?? []) < ($participantes['total'] ?? 0))<button class="evento-detalhes-modal__more" wire:click="maisParticipantes">Carregar mais</button>@endif
+                                @else
+                                    <section class="evento-detalhes-modal__card evento-detalhes-modal__table-card">
+                                        <div class="evento-detalhes-modal__table-toolbar"><span>{{ $participantes['total'] }} participante(s)</span><label>Por página <select wire:change="alterarPorPaginaParticipantes($event.target.value)">@foreach ([5, 10, 25, 50] as $limite)<option value="{{ $limite }}" @selected($porPaginaParticipantes === $limite)>{{ $limite }}</option>@endforeach</select></label></div>
+                                        <div class="evento-detalhes-modal__table-wrap"><table><thead><tr><th>Escola</th><th>Nome</th><th>Cargo</th><th>Turno</th></tr></thead><tbody>@foreach ($participantes['items'] as $pessoa)<tr><td>{{ $pessoa['escola'] }}</td><td>{{ $pessoa['nome'] }}</td><td>{{ $pessoa['cargo'] }}</td><td>{{ $pessoa['turno'] }}</td></tr>@endforeach</tbody></table></div>
+                                        @if (($participantes['ultima_pagina'] ?? 1) > 1)<div class="evento-detalhes-modal__pagination"><button type="button" wire:click="paginaParticipantes({{ max(1, $participantes['pagina'] - 1) }})" @disabled($participantes['pagina'] <= 1)>Anterior</button><span>Página {{ $participantes['pagina'] }} de {{ $participantes['ultima_pagina'] }}</span><button type="button" wire:click="paginaParticipantes({{ min($participantes['ultima_pagina'], $participantes['pagina'] + 1) }})" @disabled($participantes['pagina'] >= $participantes['ultima_pagina'])>Próxima</button></div>@endif
+                                    </section>
+                                @endif
                             @elseif ($aba === 'escolas')
-                                @forelse ($escolas as $escola)
-                                    <details class="evento-detalhes-modal__card evento-detalhes-modal__school">
-                                        <summary><span><strong>{{ $escola['nome'] }}</strong><small>{{ $escola['horario'] }}</small></span><span>{{ count($escola['turmas']) }} turma(s)</span></summary>
-                                        @if ($escola['precisa_transporte'])<p class="evento-detalhes-modal__transport-info">Transporte para {{ number_format($escola['estimativa'], 0, ',', '.') }} aluno(s)</p>@endif
-                                        @if ($escola['series'] !== [])<p><b>Séries:</b> {{ implode(', ', $escola['series']) }}</p>@endif
-                                        <div class="evento-detalhes-modal__class-grid">@foreach ($escola['turmas'] as $turma)<span><b>{{ $turma['serie'] }} · {{ $turma['nome'] }}</b><small>{{ ucfirst($turma['turno'] ?? 'Turno não informado') }}</small></span>@endforeach</div>
-                                    </details>
-                                @empty
+                                @if (($escolas['items'] ?? []) === [])
                                     <div class="evento-detalhes-modal__empty">Nenhuma escola vinculada ao seu escopo.</div>
-                                @endforelse
+                                @else
+                                    <section class="evento-detalhes-modal__card evento-detalhes-modal__table-card">
+                                        <div class="evento-detalhes-modal__table-toolbar"><span>{{ $escolas['total'] }} turma(s)</span><label>Por página <select wire:change="alterarPorPaginaEscolas($event.target.value)">@foreach ([5, 10, 25, 50] as $limite)<option value="{{ $limite }}" @selected($porPaginaEscolas === $limite)>{{ $limite }}</option>@endforeach</select></label></div>
+                                        <div class="evento-detalhes-modal__table-wrap"><table><thead><tr><th>Escola</th><th>Série</th><th>Turma</th><th>Turno</th><th class="is-number">Quantidade de alunos</th></tr></thead><tbody>@foreach ($escolas['items'] as $turma)<tr><td>{{ $turma['escola'] }}</td><td>{{ $turma['serie'] }}</td><td>{{ $turma['turma'] }}</td><td>{{ $turma['turno'] }}</td><td class="is-number">{{ $turma['quantidade_alunos'] === null ? '—' : number_format($turma['quantidade_alunos'], 0, ',', '.') }}</td></tr>@endforeach</tbody></table></div>
+                                        @if (($escolas['ultima_pagina'] ?? 1) > 1)<div class="evento-detalhes-modal__pagination"><button type="button" wire:click="paginaEscolas({{ max(1, $escolas['pagina'] - 1) }})" @disabled($escolas['pagina'] <= 1)>Anterior</button><span>Página {{ $escolas['pagina'] }} de {{ $escolas['ultima_pagina'] }}</span><button type="button" wire:click="paginaEscolas({{ min($escolas['ultima_pagina'], $escolas['pagina'] + 1) }})" @disabled($escolas['pagina'] >= $escolas['ultima_pagina'])>Próxima</button></div>@endif
+                                    </section>
+                                @endif
                             @elseif ($aba === 'alunos')
                                 <section class="evento-detalhes-modal__card">
                                     <h3>Situação do transporte</h3>
@@ -132,10 +122,6 @@
                                     <div class="evento-detalhes-modal__empty">Nenhum aluno encontrado para o transporte.</div>
                                 @endforelse
                                 @if (count($alunos['items'] ?? []) < ($alunos['total'] ?? 0))<button class="evento-detalhes-modal__more" wire:click="maisAlunos">Carregar mais</button>@endif
-                            @elseif ($aba === 'historico')
-                                <ol class="evento-detalhes-modal__timeline">
-                                    @forelse ($historico as $item)<li><i></i><div><strong>{{ $item['acao'] }}</strong><span>{{ $item['usuario'] }} · {{ $item['data'] }}</span>@if ($item['motivo'])<p>{{ $item['motivo'] }}</p>@endif</div></li>@empty<li class="evento-detalhes-modal__empty">Ainda não há movimentações registradas.</li>@endforelse
-                                </ol>
                             @endif
                         </div>
                     @endif

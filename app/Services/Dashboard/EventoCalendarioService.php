@@ -296,6 +296,7 @@ class EventoCalendarioService
             'titulo' => ['required', 'string', 'max:160'],
             'descricao' => ['nullable', 'string', 'max:5000'],
             'local' => ['nullable', 'string', 'max:255'],
+            'endereco_mapa' => ['nullable', 'string', 'max:500'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'categoria' => ['required', Rule::enum(EventoCalendarioCategoria::class)],

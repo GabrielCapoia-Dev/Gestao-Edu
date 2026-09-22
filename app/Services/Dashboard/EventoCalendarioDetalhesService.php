@@ -32,7 +32,6 @@ final class EventoCalendarioDetalhesService
         $evento = $this->autorizar($user, $eventoId, $contexto);
         $escolasIds = $this->escolasVisiveis($user, $contexto);
         $evento->load([
-            'criadoPor:id,name',
             'publicoAlvo.escolas:id,nome',
             'escolasAgendadas' => fn ($query) => $query
                 ->when($escolasIds !== null, fn ($q) => $q->whereIn('escola_id', $escolasIds))
@@ -62,6 +61,7 @@ final class EventoCalendarioDetalhesService
             'titulo' => $evento->titulo,
             'descricao' => $evento->descricao,
             'local' => $evento->local,
+            'endereco_mapa' => $evento->endereco_mapa,
             'latitude' => $evento->latitude !== null ? (float) $evento->latitude : null,
             'longitude' => $evento->longitude !== null ? (float) $evento->longitude : null,
             'data' => $evento->data_inicio->format('d/m/Y'),
@@ -72,8 +72,6 @@ final class EventoCalendarioDetalhesService
                 : $evento->categoria?->label(),
             'status' => $evento->status?->value,
             'status_label' => $evento->status?->label() ?? 'Não informado',
-            'criado_por' => $evento->criadoPor?->name ?? 'Usuário não informado',
-            'criado_em' => $evento->created_at?->format('d/m/Y H:i'),
             'possui_transporte' => $evento->escolasAgendadas->contains('precisa_transporte', true),
             'totais' => [
                 'escolas' => $escolasEvento->count(),
@@ -83,12 +81,11 @@ final class EventoCalendarioDetalhesService
                 'participantes' => $participantes,
                 'alunos' => $alunos,
             ],
-            'snapshot_legado' => ! $evento->participantes_snapshot_em || ! $evento->alunos_snapshot_em,
         ];
     }
 
-    /** @return array{items: list<array<string, mixed>>, total: int, legado: bool} */
-    public function participantes(User $user, int $eventoId, string $contexto, string $busca, int $limite): array
+    /** @return array{items: list<array<string, mixed>>, total: int, pagina: int, por_pagina: int, ultima_pagina: int} */
+    public function participantes(User $user, int $eventoId, string $contexto, string $busca, int $pagina, int $porPagina): array
     {
         $evento = $this->autorizar($user, $eventoId, $contexto);
         $escolasIds = $this->escolasVisiveis($user, $contexto);
@@ -100,14 +97,15 @@ final class EventoCalendarioDetalhesService
                 ->orderBy('escola_nome')->orderBy('cargo_nome')->orderBy('nome');
             $this->aplicarEscopoParticipantes($query, $escolasIds);
             $total = (clone $query)->count();
-            $items = $query->limit($limite)->get()->map(fn ($item): array => [
+            $pagina = $this->paginaValida($pagina, $porPagina, $total);
+            $items = $query->forPage($pagina, $porPagina)->get()->map(fn ($item): array => [
                 'nome' => $item->nome,
-                'email' => $item->email,
                 'escola' => $item->escola_nome ?: 'Sem escola',
                 'cargo' => $item->cargo_nome ?: 'Sem cargo',
+                'turno' => $item->turno ?: 'Não informado',
             ])->all();
 
-            return compact('items', 'total') + ['legado' => false];
+            return $this->paginado($items, $total, $pagina, $porPagina);
         }
 
         $items = $this->publico->destinatarios($evento)
@@ -116,14 +114,15 @@ final class EventoCalendarioDetalhesService
             ))
             ->filter(fn (User $u): bool => $busca === '' || str_contains(mb_strtolower($u->name), mb_strtolower($busca)));
         $total = $items->count();
-        $items = $items->take($limite)->map(fn (User $u): array => [
+        $pagina = $this->paginaValida($pagina, $porPagina, $total);
+        $items = $items->forPage($pagina, $porPagina)->map(fn (User $u): array => [
             'nome' => $u->name,
-            'email' => $u->email,
             'escola' => $u->escola?->nome ?? 'Sem escola',
             'cargo' => $u->servidores->flatMap->funcoesAtivas->pluck('nome')->first() ?? 'Sem cargo',
+            'turno' => 'Não informado',
         ])->values()->all();
 
-        return compact('items', 'total') + ['legado' => true];
+        return $this->paginado($items, $total, $pagina, $porPagina);
     }
 
     /** @return array{items: list<array<string, mixed>>, total: int, legado: bool} */
@@ -167,8 +166,8 @@ final class EventoCalendarioDetalhesService
         return compact('items', 'total', 'transporte') + ['legado' => true];
     }
 
-    /** @return list<array<string, mixed>> */
-    public function escolas(User $user, int $eventoId, string $contexto): array
+    /** @return array{items: list<array<string, mixed>>, total: int, pagina: int, por_pagina: int, ultima_pagina: int} */
+    public function escolas(User $user, int $eventoId, string $contexto, int $pagina, int $porPagina): array
     {
         $evento = $this->autorizar($user, $eventoId, $contexto);
         $escolasIds = $this->escolasVisiveis($user, $contexto);
@@ -185,23 +184,30 @@ final class EventoCalendarioDetalhesService
             $turmasPorEscola = Turma::query()->whereIn('id_escola', $escolas->modelKeys())
                 ->with('serie:id,nome')->orderBy('id_serie')->orderBy('nome')->get()->groupBy('id_escola');
 
-            return $escolas->map(fn ($escola): array => [
-                'nome' => $escola->nome,
-                'horario' => $evento->data_inicio->format('H:i').'–'.$evento->data_fim->format('H:i'),
-                'precisa_transporte' => false,
-                'estimativa' => 0,
-                'series' => $turmasPorEscola->get($escola->id, collect())->pluck('serie.nome')->filter()->unique()->values()->all(),
-                'turmas' => $turmasPorEscola->get($escola->id, collect())->map(fn ($turma): array => [
-                    'nome' => $turma->nome, 'serie' => $turma->serie?->nome, 'turno' => $turma->turno,
-                ])->values()->all(),
-            ])->values()->all();
+            $linhas = $escolas->flatMap(fn ($escola) => $turmasPorEscola->get($escola->id, collect())->map(fn ($turma): array => [
+                'escola' => $escola->nome,
+                'serie' => $turma->serie?->nome ?? 'Não informada',
+                'turma' => $turma->nome,
+                'turno' => $this->turno($turma->turno),
+                'quantidade_alunos' => null,
+            ]))->values();
+
+            return $this->paginarColecao($linhas, $pagina, $porPagina);
         }
         $turmasPorEscola = Turma::query()
             ->whereIn('id_escola', $agendamentos->pluck('escola_id'))
             ->with('serie:id,nome')
             ->orderBy('id_serie')->orderBy('nome')->get()->groupBy('id_escola');
 
-        return $agendamentos->map(function ($item) use ($turmasPorEscola): array {
+        $quantidades = $evento->alunos_snapshot_em
+            ? $evento->alunosSnapshot()
+                ->when($escolasIds !== null, fn ($query) => $query->whereIn('escola_id', $escolasIds))
+                ->selectRaw('turma_id, count(*) as total')
+                ->whereNotNull('turma_id')
+                ->groupBy('turma_id')
+                ->pluck('total', 'turma_id')
+            : collect();
+        $linhas = $agendamentos->flatMap(function ($item) use ($turmasPorEscola, $quantidades): \Illuminate\Support\Collection {
             $turmas = $turmasPorEscola->get($item->escola_id, collect());
             if ($item->escopo_transporte === EventoCalendarioTransporteEscopo::SERIES && $item->series->isNotEmpty()) {
                 $turmas = $turmas->whereIn('id_serie', $item->series->modelKeys());
@@ -209,30 +215,16 @@ final class EventoCalendarioDetalhesService
                 $turmas = $turmas->whereIn('id', $item->turmas->modelKeys());
             }
 
-            return [
-                'nome' => $item->escola?->nome ?? 'Escola não informada',
-                'horario' => substr((string) $item->hora_inicio, 0, 5).'–'.substr((string) $item->hora_fim, 0, 5),
-                'precisa_transporte' => (bool) $item->precisa_transporte,
-                'estimativa' => (int) ($item->quantidade_estimada_transporte ?? 0),
-                'series' => $turmas->pluck('serie.nome')->filter()->unique()->values()->all(),
-                'turmas' => $turmas->map(fn ($turma): array => [
-                'nome' => $turma->nome, 'serie' => $turma->serie?->nome, 'turno' => $turma->turno,
-                ])->values()->all(),
-            ];
-        })->values()->all();
-    }
+            return $turmas->map(fn ($turma): array => [
+                'escola' => $item->escola?->nome ?? 'Escola não informada',
+                'serie' => $turma->serie?->nome ?? 'Não informada',
+                'turma' => $turma->nome,
+                'turno' => $this->turno($turma->turno),
+                'quantidade_alunos' => $item->precisa_transporte ? (int) ($quantidades[$turma->id] ?? 0) : null,
+            ]);
+        })->sortBy(['escola', 'serie', 'turma'])->values();
 
-    /** @return list<array<string, mixed>> */
-    public function historico(User $user, int $eventoId, string $contexto): array
-    {
-        $evento = $this->autorizar($user, $eventoId, $contexto);
-
-        return $evento->historicos()->with('usuario:id,name')->limit(100)->get()->map(fn ($item): array => [
-            'acao' => $item->acao?->label() ?? 'Atualização',
-            'usuario' => $item->usuario?->name ?? 'Sistema',
-            'data' => $item->created_at?->format('d/m/Y H:i'),
-            'motivo' => $item->motivo,
-        ])->all();
+        return $this->paginarColecao($linhas, $pagina, $porPagina);
     }
 
     private function autorizar(User $user, int $eventoId, string $contexto): EventoCalendario
@@ -322,5 +314,49 @@ final class EventoCalendarioDetalhesService
             ])->values()->all();
 
         return ['status' => $evento->status?->label() ?? 'Não informado', 'alocacoes' => $alocacoes];
+    }
+
+    /** @param list<array<string, mixed>> $items @return array{items: list<array<string, mixed>>, total: int, pagina: int, por_pagina: int, ultima_pagina: int} */
+    private function paginado(array $items, int $total, int $pagina, int $porPagina): array
+    {
+        return [
+            'items' => $items,
+            'total' => $total,
+            'pagina' => $pagina,
+            'por_pagina' => $porPagina,
+            'ultima_pagina' => max(1, (int) ceil($total / $porPagina)),
+        ];
+    }
+
+    /** @param Collection<int, array<string, mixed>> $items @return array{items: list<array<string, mixed>>, total: int, pagina: int, por_pagina: int, ultima_pagina: int} */
+    private function paginarColecao(Collection $items, int $pagina, int $porPagina): array
+    {
+        $total = $items->count();
+        $pagina = $this->paginaValida($pagina, $porPagina, $total);
+
+        return $this->paginado(
+            $items->forPage($pagina, $porPagina)->values()->all(),
+            $total,
+            $pagina,
+            $porPagina,
+        );
+    }
+
+    private function paginaValida(int $pagina, int $porPagina, int $total): int
+    {
+        $porPagina = in_array($porPagina, [5, 10, 25, 50], true) ? $porPagina : 10;
+
+        return min(max(1, $pagina), max(1, (int) ceil($total / $porPagina)));
+    }
+
+    private function turno(?string $turno): string
+    {
+        return match ($turno) {
+            'manha' => 'Manhã',
+            'tarde' => 'Tarde',
+            'noite' => 'Noite',
+            'integral' => 'Integral',
+            default => 'Não informado',
+        };
     }
 }
