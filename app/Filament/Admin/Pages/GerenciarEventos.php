@@ -74,7 +74,7 @@ class GerenciarEventos extends Page implements HasTable
             'eyebrow' => 'Início',
             'title' => 'Eventos da agenda',
             'description' => 'Acompanhe solicitações, publicações e eventos distribuídos para as escolas.',
-            'mostrarEventoModal' => true,
+            'mostrarEventoGatilho' => true,
         ]);
     }
 

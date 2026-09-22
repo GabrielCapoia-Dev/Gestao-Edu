@@ -4,6 +4,7 @@
     $description ??= '';
     $actions ??= [];
     $mostrarEventoModal ??= false;
+    $mostrarEventoGatilho ??= false;
 @endphp
 
 <div class="gi-page">
@@ -22,13 +23,22 @@
             @endif
         </div>
 
-        @if (filled($actions) || $mostrarEventoModal)
+        @if (filled($actions) || $mostrarEventoModal || $mostrarEventoGatilho)
             <div class="gi-actions gi-page-header__actions">
                 @if (filled($actions))
                     <x-filament::actions :actions="$actions" />
                 @endif
                 @if ($mostrarEventoModal)
                     <livewire:home.evento-calendario-modal />
+                @elseif ($mostrarEventoGatilho)
+                    <button
+                        type="button"
+                        class="evento-custom-modal__trigger"
+                        wire:click="$dispatch('abrir-evento-calendario')"
+                    >
+                        <x-heroicon-o-plus />
+                        <span>Novo evento</span>
+                    </button>
                 @endif
             </div>
         @endif
