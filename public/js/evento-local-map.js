@@ -25,6 +25,9 @@ window.eventoLocalMap = function () {
         latitudeInput() { return this.fieldInput('latitude'); },
         longitudeInput() { return this.fieldInput('longitude'); },
         mapAddressInput() { return this.fieldInput('endereco_mapa'); },
+        addressDisplayInput() {
+            return this.componentRoot()?.querySelector('[data-evento-map-address]') || null;
+        },
         setField(input, value) {
             if (! input) return;
             input.value = value;
@@ -134,6 +137,8 @@ window.eventoLocalMap = function () {
             } catch (error) { /* O mapa continua disponível para busca manual. */ }
         },
         setAddress(address) {
+            const display = this.addressDisplayInput();
+            if (display) display.value = address;
             this.setField(this.mapAddressInput(), address);
             this.query = address;
             window.dispatchEvent(new CustomEvent('evento-mapa-endereco', {

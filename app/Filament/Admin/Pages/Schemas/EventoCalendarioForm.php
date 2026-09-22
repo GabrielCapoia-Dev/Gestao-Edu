@@ -90,6 +90,7 @@ class EventoCalendarioForm
                         ->helperText('Preenchido automaticamente ao pesquisar ou marcar o local no mapa.')
                         ->readOnly()
                         ->extraInputAttributes([
+                            'data-evento-map-address' => '',
                             'x-data' => '',
                             'x-on:evento-mapa-endereco.window' => "if (\$event.detail.componentId === \$el.closest('[wire\\:id]')?.getAttribute('wire:id')) { \$el.value = \$event.detail.address }",
                         ])

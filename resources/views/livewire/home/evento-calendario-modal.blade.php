@@ -93,6 +93,7 @@
                                             id="evento-endereco-mapa"
                                             type="text"
                                             wire:model="data.endereco_mapa"
+                                            data-evento-map-address
                                             x-data
                                             x-on:evento-mapa-endereco.window="if ($event.detail.componentId === $el.closest('[wire\\:id]')?.getAttribute('wire:id')) { $el.value = $event.detail.address; $wire.set('data.endereco_mapa', $event.detail.address, false) }"
                                             maxlength="500"

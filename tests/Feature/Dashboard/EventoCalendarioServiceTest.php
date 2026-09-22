@@ -458,6 +458,8 @@ class EventoCalendarioServiceTest extends TestCase
         $this->assertStringContainsString('Coordenadas: ${lat.toFixed(6)}, ${lng.toFixed(6)}', $mapScript);
         $this->assertStringContainsString("this.setAddress(label || 'Buscando endereço do ponto...');", $mapScript);
         $this->assertStringContainsString('searchSavedReference()', $mapScript);
+        $this->assertStringContainsString('addressDisplayInput()', $mapScript);
+        $this->assertStringContainsString('data-evento-map-address', $modalBlade);
         $this->assertStringContainsString("new CustomEvent('evento-mapa-endereco'", $mapScript);
         $this->assertStringContainsString('Nome ou referência do local', $modalBlade);
         $this->assertStringContainsString('Endereço do mapa', $modalBlade);
