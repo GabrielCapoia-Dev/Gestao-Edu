@@ -104,6 +104,13 @@
                                         class="full-calendar__event color-{{ $event->cor }}"
                                         @style(["--agenda-event-color: {$event->corDestaque}" => filled($event->corDestaque)])
                                         title="{{ $event->resumo ?: $event->titulo }}"
+                                        @if ($event->source === 'manual')
+                                            role="button"
+                                            tabindex="0"
+                                            wire:click="$dispatch('abrir-evento-detalhes', { eventoId: {{ (int) $event->reference }}, contexto: 'rede' })"
+                                            wire:keydown.enter="$dispatch('abrir-evento-detalhes', { eventoId: {{ (int) $event->reference }}, contexto: 'rede' })"
+                                            wire:keydown.space="$dispatch('abrir-evento-detalhes', { eventoId: {{ (int) $event->reference }}, contexto: 'rede' })"
+                                        @endif
                                     >
                                         <span>
                                             {{ $event->diaInteiro ? 'Dia inteiro' : $event->inicio->format('H:i') }}

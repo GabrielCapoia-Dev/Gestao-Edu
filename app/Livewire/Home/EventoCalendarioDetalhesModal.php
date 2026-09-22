@@ -75,7 +75,7 @@ class EventoCalendarioDetalhesModal extends Component
 
     public function selecionarAba(string $aba): void
     {
-        abort_unless(in_array($aba, ['resumo', 'participantes', 'escolas', 'alunos'], true), 422);
+        abort_unless(in_array($aba, $this->abasDisponiveis(), true), 422);
         $this->aba = $aba;
         $this->carregarAba();
     }
@@ -95,7 +95,7 @@ class EventoCalendarioDetalhesModal extends Component
         $this->carregarParticipantes();
     }
 
-    public function paginaParticipantes(int $pagina): void
+    public function irParaPaginaParticipantes(int $pagina): void
     {
         $this->paginaParticipantes = max(1, $pagina);
         $this->carregarParticipantes();
@@ -109,7 +109,7 @@ class EventoCalendarioDetalhesModal extends Component
         $this->carregarEscolas();
     }
 
-    public function paginaEscolas(int $pagina): void
+    public function irParaPaginaEscolas(int $pagina): void
     {
         $this->paginaEscolas = max(1, $pagina);
         $this->carregarEscolas();
@@ -155,6 +155,19 @@ class EventoCalendarioDetalhesModal extends Component
         } finally {
             $this->carregando = false;
         }
+    }
+
+    /** @return list<string> */
+    public function abasDisponiveis(): array
+    {
+        $abas = ['resumo', 'participantes'];
+
+        if ((bool) ($this->resumo['possui_transporte'] ?? false)) {
+            $abas[] = 'escolas';
+            $abas[] = 'alunos';
+        }
+
+        return $abas;
     }
 
     private function carregarParticipantes(): void
