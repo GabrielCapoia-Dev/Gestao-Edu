@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Exports\ExportRequestService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -126,5 +127,44 @@ class ExportQueueRoutingTest extends TestCase
         $this->assertNotNull(
             data_get($exportRequest->refresh()->metadata, 'recovery_dispatch_at')
         );
+    }
+
+    public function test_comando_de_recuperacao_consulta_solicitacoes_em_lotes(): void
+    {
+        Queue::fake();
+
+        $user = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+
+        for ($index = 1; $index <= 101; $index++) {
+            ExportRequest::query()->create([
+                'user_id' => $user->id,
+                'type' => 'pedido_relatorio_geral',
+                'format' => 'pdf',
+                'label' => 'Relatorio recuperado '.$index,
+                'filters' => [],
+                'metadata' => [],
+                'fingerprint' => fake()->uuid(),
+                'status' => ExportRequest::STATUS_QUEUED,
+                'status_message' => 'Aguardando processamento.',
+                'progress_current' => 0,
+                'progress_total' => 100,
+            ]);
+        }
+
+        $selects = 0;
+        DB::listen(function ($query) use (&$selects): void {
+            if (str_starts_with(strtolower(trim($query->sql)), 'select')
+                && str_contains($query->sql, 'export_requests')) {
+                $selects++;
+            }
+        });
+
+        Artisan::call('exports:recover-queued', ['--limit' => 101]);
+
+        Queue::assertPushed(ProcessExportRequestJob::class, 101);
+        $this->assertLessThan(10, $selects);
     }
 }

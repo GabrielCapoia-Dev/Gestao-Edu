@@ -76,7 +76,7 @@ class AvaliacaoParecerSnapshotService
                 ])->save();
             }
 
-            return $documentos->map(fn (AvaliacaoAlunoDocumento $documento) => $documento->refresh());
+            return $documentos;
         });
     }
 

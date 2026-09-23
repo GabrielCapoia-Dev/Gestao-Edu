@@ -26,57 +26,59 @@ class RecoverQueuedExportRequests extends Command
             ->where('payload', 'like', '%ProcessExportRequestJob%')
             ->delete();
 
-        $ids = ExportRequest::query()
+        $candidates = ExportRequest::query()
             ->where('status', ExportRequest::STATUS_QUEUED)
             ->where('format', '<>', 'processo')
-            ->whereNull('session_ended_at')
-            ->orderBy('created_at')
-            ->limit($limit)
-            ->pluck('id');
-
+            ->whereNull('session_ended_at');
         $dispatched = 0;
 
-        foreach ($ids as $id) {
-            $shouldDispatch = DB::transaction(function () use ($id): bool {
-                $exportRequest = ExportRequest::query()
-                    ->whereKey($id)
+        $candidates->orderBy('id')->limit($limit)->chunkById(100, function ($candidateBatch) use (&$dispatched): void {
+            $ids = $candidateBatch->pluck('id');
+            $dispatchIds = DB::transaction(function () use ($ids): array {
+                $requests = ExportRequest::query()
+                    ->whereIn('id', $ids)
                     ->lockForUpdate()
-                    ->first();
+                    ->get()
+                    ->keyBy('id');
+                $dispatchIds = [];
 
-                if (! $exportRequest || $exportRequest->status !== ExportRequest::STATUS_QUEUED) {
-                    return false;
-                }
-
-                if ($exportRequest->format === 'processo' || filled($exportRequest->session_ended_at)) {
-                    return false;
-                }
-
-                $metadata = is_array($exportRequest->metadata) ? $exportRequest->metadata : [];
-                $lastDispatch = $metadata['recovery_dispatch_at'] ?? null;
-
-                if (filled($lastDispatch)) {
-                    try {
-                        if (Carbon::parse((string) $lastDispatch)->gt(now()->subMinutes(5))) {
-                            return false;
-                        }
-                    } catch (\Throwable) {
-                        // Valor legado invalido: permite nova tentativa e corrige o metadata.
+                foreach ($ids as $id) {
+                    $exportRequest = $requests->get($id);
+                    if (! $exportRequest || $exportRequest->status !== ExportRequest::STATUS_QUEUED) {
+                        continue;
                     }
+
+                    if ($exportRequest->format === 'processo' || filled($exportRequest->session_ended_at)) {
+                        continue;
+                    }
+
+                    $metadata = is_array($exportRequest->metadata) ? $exportRequest->metadata : [];
+                    $lastDispatch = $metadata['recovery_dispatch_at'] ?? null;
+
+                    if (filled($lastDispatch)) {
+                        try {
+                            if (Carbon::parse((string) $lastDispatch)->gt(now()->subMinutes(5))) {
+                                continue;
+                            }
+                        } catch (\Throwable) {
+                            // Valor legado invalido: permite nova tentativa e corrige o metadata.
+                        }
+                    }
+
+                    $metadata['recovery_dispatch_at'] = now()->toIso8601String();
+                    $exportRequest->forceFill(['metadata' => $metadata])->save();
+
+                    $dispatchIds[] = (string) $id;
                 }
 
-                $metadata['recovery_dispatch_at'] = now()->toIso8601String();
-                $exportRequest->forceFill(['metadata' => $metadata])->save();
-
-                return true;
+                return $dispatchIds;
             }, 3);
 
-            if (! $shouldDispatch) {
-                continue;
+            foreach ($dispatchIds as $id) {
+                ProcessExportRequestJob::dispatch($id)->afterCommit();
+                $dispatched++;
             }
-
-            ProcessExportRequestJob::dispatch((string) $id);
-            $dispatched++;
-        }
+        });
 
         $this->info("Jobs legados removidos do MySQL: {$legacyDatabaseJobs}");
         $this->info("Exportações reenfileiradas no Redis: {$dispatched}");

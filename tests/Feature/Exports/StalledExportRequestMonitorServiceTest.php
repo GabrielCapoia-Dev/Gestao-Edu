@@ -231,4 +231,46 @@ class StalledExportRequestMonitorServiceTest extends TestCase
         Queue::assertPushed(ProcessExportRequestJob::class, fn (ProcessExportRequestJob $job): bool => $job->exportRequestId === $canceladaAutomaticamente->getKey()
         );
     }
+
+    public function test_processa_lote_sem_select_for_update_por_solicitacao(): void
+    {
+        Queue::fake();
+
+        $user = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+
+        for ($index = 1; $index <= 101; $index++) {
+            ExportRequest::query()->create([
+                'user_id' => $user->id,
+                'type' => 'pedido_relatorio_geral',
+                'format' => 'pdf',
+                'label' => 'Relatorio em lote '.$index,
+                'filters' => [],
+                'metadata' => [],
+                'fingerprint' => fake()->uuid(),
+                'status' => ExportRequest::STATUS_QUEUED,
+                'status_message' => 'Aguardando processamento.',
+                'progress_current' => 0,
+                'progress_total' => 100,
+                'created_at' => now()->subHour(),
+                'updated_at' => now()->subHour(),
+            ]);
+        }
+
+        $selects = 0;
+        DB::listen(function ($query) use (&$selects): void {
+            if (str_starts_with(strtolower(trim($query->sql)), 'select')
+                && str_contains($query->sql, 'export_requests')) {
+                $selects++;
+            }
+        });
+
+        $result = app(StalledExportRequestMonitorService::class)->handle(queuedMinutes: 30, runningMinutes: 45);
+
+        $this->assertSame(101, $result['checked']);
+        $this->assertSame(101, $result['requeued']);
+        $this->assertLessThan(20, $selects);
+    }
 }

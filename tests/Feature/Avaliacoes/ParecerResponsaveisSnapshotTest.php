@@ -25,6 +25,7 @@ use App\Services\Avaliacoes\AvaliacaoParecerSnapshotService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use ReflectionMethod;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
@@ -101,6 +102,29 @@ class ParecerResponsaveisSnapshotTest extends TestCase
         $this->assertNotNull($historico->responsaveis_snapshot_em);
 
         Carbon::setTestNow();
+    }
+
+    public function test_captura_em_lote_nao_recarrega_cada_documento_individualmente(): void
+    {
+        [$escola, $turma, $avaliacao] = $this->criarContextoAvaliacao();
+        $this->criarResponsaveisPrincipais($escola, $turma);
+        $alunos = collect(range(1, 11))->map(
+            fn (int $index): Aluno => $this->criarAluno($turma, 'Aluno lote '.$index, 'CGM-LOTE-'.$index),
+        );
+
+        $documentQueries = 0;
+        DB::listen(function ($query) use (&$documentQueries): void {
+            if (str_starts_with(strtolower(trim($query->sql)), 'select')
+                && str_contains($query->sql, 'avaliacao_aluno_documentos')) {
+                $documentQueries++;
+            }
+        });
+
+        $documentos = app(AvaliacaoParecerSnapshotService::class)
+            ->capturarParaAlunos($avaliacao, $turma, $alunos);
+
+        $this->assertCount(11, $documentos);
+        $this->assertLessThan(8, $documentQueries);
     }
 
     public function test_ambiguidade_de_coordenador_principal_bloqueia_sem_criar_documento(): void

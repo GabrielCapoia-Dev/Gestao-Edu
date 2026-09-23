@@ -20,7 +20,7 @@ class StalledExportRequestMonitorService
         $runningCutoff = now()->subMinutes($runningMinutes);
         $legacyCancellationCutoff = now()->subDays((int) config('exports.expiration_days', 7));
 
-        $ids = ExportRequest::query()
+        $candidates = ExportRequest::query()
             ->where(function ($query) use ($queuedCutoff, $runningCutoff, $legacyCancellationCutoff): void {
                 $query
                     ->where(function ($queued) use ($queuedCutoff): void {
@@ -40,67 +40,75 @@ class StalledExportRequestMonitorService
                             ->whereIn('status_message', $this->automaticCancellationMessages())
                             ->where('finished_at', '>=', $legacyCancellationCutoff);
                     });
-            })
-            ->orderBy('updated_at')
-            ->pluck('id');
-
+            });
         $results = [
-            'checked' => $ids->count(),
+            'checked' => 0,
             'requeued' => 0,
             'failed' => 0,
             'cancelled' => 0,
         ];
 
-        foreach ($ids as $id) {
-            $action = DB::transaction(function () use ($id, $queuedCutoff, $runningCutoff): ?string {
-                /** @var ExportRequest|null $exportRequest */
-                $exportRequest = ExportRequest::query()
-                    ->whereKey($id)
+        $candidates->orderBy('id')->chunkById(100, function ($candidateBatch) use (&$results, $queuedCutoff, $runningCutoff): void {
+            $ids = $candidateBatch->pluck('id');
+            $actions = DB::transaction(function () use ($ids, $queuedCutoff, $runningCutoff): array {
+                $requests = ExportRequest::query()
+                    ->whereIn('id', $ids)
                     ->lockForUpdate()
-                    ->first();
+                    ->get()
+                    ->keyBy('id');
+                $actions = [];
 
-                if (! $exportRequest) {
-                    return null;
+                foreach ($ids as $id) {
+                    $exportRequest = $requests->get($id);
+                    if (! $exportRequest) {
+                        continue;
+                    }
+
+                    if ($this->isAutomaticallyCancelledExport($exportRequest)) {
+                        $action = $this->recoverExport($exportRequest);
+                        $actions[] = $action;
+                        continue;
+                    }
+
+                    if (! $exportRequest->isActive()) {
+                        continue;
+                    }
+
+                    $isStalled = match ($exportRequest->status) {
+                        ExportRequest::STATUS_QUEUED => $exportRequest->updated_at?->lte($queuedCutoff) ?? false,
+                        ExportRequest::STATUS_RUNNING => $exportRequest->updated_at?->lte($runningCutoff) ?? false,
+                        default => false,
+                    };
+
+                    if (! $isStalled) {
+                        continue;
+                    }
+
+                    if ($exportRequest->format !== 'processo') {
+                        $actions[] = $this->recoverExport($exportRequest);
+                        continue;
+                    }
+
+                    $errorMessage = $this->buildErrorMessage($exportRequest);
+
+                    $exportRequest->markCancelled(
+                        message: $this->buildStatusMessage($exportRequest),
+                        errorMessage: $errorMessage,
+                    );
+
+                    $this->logFailedJob($exportRequest, $errorMessage);
+
+                    $actions[] = 'cancelled';
                 }
 
-                if ($this->isAutomaticallyCancelledExport($exportRequest)) {
-                    return $this->recoverExport($exportRequest);
-                }
-
-                if (! $exportRequest->isActive()) {
-                    return null;
-                }
-
-                $isStalled = match ($exportRequest->status) {
-                    ExportRequest::STATUS_QUEUED => $exportRequest->updated_at?->lte($queuedCutoff) ?? false,
-                    ExportRequest::STATUS_RUNNING => $exportRequest->updated_at?->lte($runningCutoff) ?? false,
-                    default => false,
-                };
-
-                if (! $isStalled) {
-                    return null;
-                }
-
-                if ($exportRequest->format !== 'processo') {
-                    return $this->recoverExport($exportRequest);
-                }
-
-                $errorMessage = $this->buildErrorMessage($exportRequest);
-
-                $exportRequest->markCancelled(
-                    message: $this->buildStatusMessage($exportRequest),
-                    errorMessage: $errorMessage,
-                );
-
-                $this->logFailedJob($exportRequest, $errorMessage);
-
-                return 'cancelled';
+                return $actions;
             });
 
-            if ($action !== null) {
+            $results['checked'] += $candidateBatch->count();
+            foreach ($actions as $action) {
                 $results[$action]++;
             }
-        }
+        });
 
         return $results;
     }
