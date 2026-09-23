@@ -8,6 +8,7 @@ window.eventoLocalMap = function () {
         loading: false,
         message: '',
         referenceTimer: null,
+        addressTimer: null,
         componentRoot() {
             return this.$root.closest('[wire\\:id]');
         },
@@ -42,9 +43,15 @@ window.eventoLocalMap = function () {
             while (! window.L) await new Promise(resolve => setTimeout(resolve, 50));
             this.$refs.map.dataset.initialized = 'true';
             this.loadSuggestions();
-            this.localInput()?.addEventListener('input', () => {
-                clearTimeout(this.referenceTimer);
-                this.referenceTimer = setTimeout(() => this.searchSavedReference(), 400);
+            this.componentRoot()?.addEventListener('input', ({ target }) => {
+                if (target === this.localInput()) {
+                    clearTimeout(this.referenceTimer);
+                    this.referenceTimer = setTimeout(() => this.searchSavedReference(), 400);
+                }
+                if (target === this.mapAddressInput()) {
+                    clearTimeout(this.addressTimer);
+                    this.addressTimer = setTimeout(() => this.searchTypedAddress(), 500);
+                }
             });
             this.map = L.map(this.$refs.map).setView([-23.7658, -53.3250], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -55,7 +62,8 @@ window.eventoLocalMap = function () {
             const lat = parseFloat(this.latitudeInput()?.value);
             const lng = parseFloat(this.longitudeInput()?.value);
             if (Number.isFinite(lat) && Number.isFinite(lng)) {
-                this.selectPoint(lat, lng, false, this.mapAddressInput()?.value || this.coordinateLabel(lat, lng));
+                const endereco = this.mapAddressInput()?.value?.trim();
+                this.selectPoint(lat, lng, ! endereco, endereco || null);
             }
             setTimeout(() => this.map.invalidateSize(), 200);
         },
@@ -110,8 +118,25 @@ window.eventoLocalMap = function () {
             if (! label && reverse) await this.reverseGeocode(lat, lng);
             if (this.localInput()?.value) this.saveSuggestion(this.localInput().value, lat, lng);
         },
-        coordinateLabel(lat, lng) {
-            return `Coordenadas: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        async searchTypedAddress() {
+            const endereco = this.mapAddressInput()?.value?.trim() || '';
+            if (endereco.length < 3) return;
+
+            this.loading = true;
+            this.message = '';
+            try {
+                const results = await this.requestLocations(endereco);
+                const result = results.find(item => item.origem === 'salvo') || results[0];
+                if (result) {
+                    await this.selectResult(result);
+                } else {
+                    this.message = 'Nenhum local encontrado para o endereço informado.';
+                }
+            } catch (error) {
+                this.message = 'Não foi possível localizar o endereço agora.';
+            } finally {
+                this.loading = false;
+            }
         },
         async reverseGeocode(lat, lng) {
             try {

@@ -86,9 +86,8 @@ class EventoCalendarioForm
                     TextInput::make('longitude')->hidden()->dehydrated(),
                     TextInput::make('endereco_mapa')
                         ->label('Endereço do mapa')
-                        ->placeholder('Marque um ponto no mapa para preencher o endereço')
-                        ->helperText('Preenchido automaticamente ao pesquisar ou marcar o local no mapa.')
-                        ->readOnly()
+                        ->placeholder('Digite um endereço ou marque um ponto no mapa')
+                        ->helperText('Digite para localizar no mapa ou marque um ponto para preencher automaticamente.')
                         ->extraInputAttributes([
                             'data-evento-map-address' => '',
                             'x-data' => '',
