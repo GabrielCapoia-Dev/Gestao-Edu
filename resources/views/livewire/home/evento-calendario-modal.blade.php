@@ -97,10 +97,9 @@
                                             x-data
                                             x-on:evento-mapa-endereco.window="if ($event.detail.componentId === $el.closest('[wire\\:id]')?.getAttribute('wire:id')) { $el.value = $event.detail.address; $wire.set('data.endereco_mapa', $event.detail.address, false) }"
                                             maxlength="500"
-                                            placeholder="Marque um ponto no mapa para preencher o endereço"
-                                            readonly
+                                            placeholder="Digite um endereço ou marque um ponto no mapa"
                                         >
-                                        <span>Preenchido automaticamente ao pesquisar ou marcar o local no mapa.</span>
+                                        <span>Digite para localizar no mapa ou marque um ponto para preencher automaticamente.</span>
                                         @error('data.endereco_mapa') <small>{{ $message }}</small> @enderror
                                     </div>
                                     <div class="evento-custom-modal__map evento-custom-modal__field--full">

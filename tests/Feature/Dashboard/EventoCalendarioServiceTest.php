@@ -18,7 +18,9 @@ use App\Models\User;
 use App\Services\Dashboard\EventoCalendarioService;
 use App\Services\Dashboard\EventoCalendarioEscolaService;
 use App\Services\Dashboard\EventoCalendarioDetalhesService;
+use App\Services\Dashboard\EventoCalendarioLocalizacaoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
@@ -188,6 +190,27 @@ class EventoCalendarioServiceTest extends TestCase
             ->buscar('Centro de Formação Municipal', true);
         $this->assertSame('Rua Araribá, 875, Umuarama, Paraná, Brasil', $localSalvo[0]['label']);
         $this->assertSame('Centro de Formação Municipal', $localSalvo[0]['referencia']);
+    }
+
+    public function test_reverte_coordenadas_em_endereco_legivel_com_a_api_do_nominatim(): void
+    {
+        Http::fake([
+            'https://nominatim.openstreetmap.org/reverse*' => Http::response([
+                'display_name' => 'Avenida Paraná, 1234, Centro, Umuarama, Paraná, Brasil',
+                'address' => [
+                    'road' => 'Avenida Paraná',
+                    'house_number' => '1234',
+                    'suburb' => 'Centro',
+                    'city' => 'Umuarama',
+                    'state' => 'Paraná',
+                ],
+            ]),
+        ]);
+
+        $endereco = app(EventoCalendarioLocalizacaoService::class)->reverter(-23.700123, -53.200456);
+
+        $this->assertSame('Avenida Paraná, 1234 · Centro · Umuarama · Paraná', $endereco);
+        Http::assertSent(fn ($request): bool => $request->url() === 'https://nominatim.openstreetmap.org/reverse?lat=-23.700123&lon=-53.200456&format=jsonv2&addressdetails=1&zoom=18&layer=address&accept-language=pt-BR');
     }
 
     public function test_exige_detalhe_quando_categoria_do_evento_for_outro(): void
@@ -454,8 +477,9 @@ class EventoCalendarioServiceTest extends TestCase
         $this->assertStringNotContainsString('wire:model.live=', $multiSelectBlade);
         $this->assertStringContainsString("'is-selected'", $multiSelectBlade);
         $this->assertStringContainsString("this.$root.closest('[wire\\\\:id]')", $mapScript);
-        $this->assertStringContainsString('this.setAddress(label || this.coordinateLabel(lat, lng));', $mapScript);
-        $this->assertStringContainsString('Coordenadas: ${lat.toFixed(6)}, ${lng.toFixed(6)}', $mapScript);
+        $this->assertStringContainsString('this.selectPoint(lat, lng, ! endereco, endereco || null);', $mapScript);
+        $this->assertStringContainsString('searchTypedAddress()', $mapScript);
+        $this->assertStringContainsString("this.componentRoot()?.addEventListener('input'", $mapScript);
         $this->assertStringContainsString("this.message = label ? '' : 'Localizando o endereço do ponto...';", $mapScript);
         $this->assertStringContainsString('searchSavedReference()', $mapScript);
         $this->assertStringContainsString('addressDisplayInput()', $mapScript);
@@ -466,6 +490,7 @@ class EventoCalendarioServiceTest extends TestCase
         $this->assertStringContainsString('x-on:evento-mapa-endereco.window', $modalBlade);
         $this->assertStringContainsString('TextInput::make(\'endereco_mapa\')', $formularioEdicao);
         $this->assertStringContainsString('Endereço do mapa', $formularioEdicao);
+        $this->assertStringNotContainsString('->readOnly()', $formularioEdicao);
         $this->assertStringContainsString('.evento-custom-modal__backdrop', $modalCss);
         $this->assertStringContainsString('.evento-custom-modal__footer', $modalCss);
         $this->assertStringNotContainsString(

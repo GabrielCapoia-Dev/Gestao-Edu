@@ -30,11 +30,10 @@ final class EventoCalendarioLocalizacaoService
         if ($somenteSalvos) return $salvos;
 
         $externos = Cache::remember('eventos:geocode:'.sha1(mb_strtolower($termo)), now()->addMinutes(30), function () use ($termo): array {
-            $response = Http::acceptJson()->withUserAgent(config('app.name', 'Gestao Edu').' event location lookup')
-                ->timeout(5)->get('https://nominatim.openstreetmap.org/search', [
-                    'q' => $termo, 'format' => 'jsonv2', 'limit' => 10, 'countrycodes' => 'br',
-                    'addressdetails' => 1, 'namedetails' => 1, 'accept-language' => 'pt-BR',
-                ]);
+            $response = $this->clienteNominatim()->get('https://nominatim.openstreetmap.org/search', [
+                'q' => $termo, 'format' => 'jsonv2', 'limit' => 10, 'countrycodes' => 'br',
+                'addressdetails' => 1, 'namedetails' => 1, 'accept-language' => 'pt-BR',
+            ]);
             if (! $response->successful()) return [];
 
             return collect($response->json())->map(fn (array $item): ?array => isset($item['lat'], $item['lon'], $item['display_name']) ? [
@@ -50,14 +49,24 @@ final class EventoCalendarioLocalizacaoService
         if ($latitude < -90 || $latitude > 90 || $longitude < -180 || $longitude > 180) return null;
 
         return Cache::remember('eventos:reverse-geocode:'.sha1($latitude.':'.$longitude), now()->addDays(7), function () use ($latitude, $longitude): ?string {
-            $response = Http::acceptJson()->withUserAgent(config('app.name', 'Gestao Edu').' event location lookup')
-                ->timeout(5)->get('https://nominatim.openstreetmap.org/reverse', [
-                    'lat' => $latitude, 'lon' => $longitude, 'format' => 'jsonv2', 'accept-language' => 'pt-BR',
-                ]);
+            $response = $this->clienteNominatim()->get('https://nominatim.openstreetmap.org/reverse', [
+                'lat' => $latitude, 'lon' => $longitude, 'format' => 'jsonv2', 'addressdetails' => 1,
+                'zoom' => 18, 'layer' => 'address', 'accept-language' => 'pt-BR',
+            ]);
             if (! $response->successful()) return null;
 
             return $this->formatarEndereco($response->json('address'), $response->json('display_name'));
         });
+    }
+
+    private function clienteNominatim(): \Illuminate\Http\Client\PendingRequest
+    {
+        $contato = config('mail.from.address') ?: 'contato@gestaoedu.local';
+
+        return Http::acceptJson()
+            ->withUserAgent(sprintf('%s/1.0 (%s)', config('app.name', 'Gestao Edu'), $contato))
+            ->timeout(8)
+            ->retry(1, 200, throw: false);
     }
 
     /** @param array<string, mixed>|null $endereco */
