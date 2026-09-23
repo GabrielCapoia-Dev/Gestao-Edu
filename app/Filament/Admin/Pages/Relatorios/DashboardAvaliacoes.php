@@ -161,11 +161,6 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public bool $acompanhamentoCarregado = false;
 
-    /**
-     * @var array<string, array{diretor: string, coordenacao: string, tem_diretor: bool, tem_coordenacao: bool, pode_exportar: bool, motivo_bloqueio: string}>
-     */
-    private array $parecerTurmaElegibilidade = [];
-
     /** @var array<string, array> */
     private array $dashboardAggregations = [];
 
@@ -196,12 +191,11 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public function carregarDashboardInicialCompleto(): void
     {
-        if ($this->dashboardCarregado && $this->acompanhamentoCarregado) {
+        if ($this->dashboardCarregado) {
             return;
         }
 
         $this->carregarResumoDashboard();
-        $this->carregarAcompanhamentoDashboard();
     }
 
     public function carregarResumoDashboard(): void
@@ -556,7 +550,6 @@ class DashboardAvaliacoes extends Page implements HasForms
             $this->workspaceAcompanhamentoLinha = $linhaAtual;
             $this->workspaceAcompanhamentoTemAlteracoes = true;
             $this->workspaceAcompanhamentoKey++;
-            $this->parecerTurmaElegibilidade = [];
 
             Notification::make()
                 ->title('Avaliação da turma concluída.')
@@ -702,7 +695,6 @@ class DashboardAvaliacoes extends Page implements HasForms
             return;
         }
 
-        $this->parecerTurmaElegibilidade = [];
         $this->acompanhamentoLinhasAlteradas = [];
         $this->limparDashboardCache();
         $this->carregarResumoDashboard();
@@ -2068,7 +2060,6 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public function atualizarAcompanhamentoTurmas(): void
     {
-        $this->parecerTurmaElegibilidade = [];
         $this->normalizarFiltros();
         $this->normalizarFiltrosAcompanhamento();
 
@@ -3292,8 +3283,6 @@ class DashboardAvaliacoes extends Page implements HasForms
                     'em_andamento' => 'Em andamento',
                     default => 'Não iniciado',
                 },
-                'parecer_exportavel' => false,
-                'parecer_exportavel_motivo' => 'Verificação disponível ao selecionar a turma.',
                 'ultima_resposta' => ! empty($item['ultima_resposta_em'])
                     ? Carbon::parse($item['ultima_resposta_em'])->format('d/m/Y H:i')
                     : '-',
@@ -3315,11 +3304,6 @@ class DashboardAvaliacoes extends Page implements HasForms
             $itens = $itens->forPage($this->acompanhamentoTurmasPagina, $this->acompanhamentoTurmasPorPagina)->values();
         }
 
-        $turmasDaPagina = Turma::query()
-            ->whereIn('id', $itens->pluck('turma_id')->map(fn ($id): int => (int) $id)->unique()->values()->all())
-            ->get()
-            ->keyBy('id');
-
         $itens = $itens
             ->map(function (array $linha): array {
                 $linha['chave'] = $this->chaveLinhaAcompanhamento($linha);
@@ -3329,10 +3313,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             })
             ->all();
 
-        return [
-            'itens' => $this->aplicarElegibilidadeNasLinhas($itens, $turmasDaPagina),
-            'total' => $total,
-        ];
+        return ['itens' => $itens, 'total' => $total];
     }
 
     /**
@@ -3412,274 +3393,6 @@ class DashboardAvaliacoes extends Page implements HasForms
         }
 
         return $this->montarAcompanhamentoTurmasPorAgregacao($avaliacaoIds, $paginar);
-
-        // Mantido abaixo temporariamente para facilitar a remoção isolada do
-        // caminho legado após a confirmação da projeção consolidada.
-        if ($avaliacaoIds === []) {
-            if ($paginar) {
-                $this->normalizarPaginaAcompanhamentoTurmas(0);
-            }
-
-            return ['itens' => [], 'total' => 0];
-        }
-
-        if ($this->dashboardResumosEstaoProntos($avaliacaoIds, $this->filtrosDoAcompanhamento())) {
-            $porResumo = $this->montarAcompanhamentoTurmasPorResumo($avaliacaoIds, $paginar);
-            if ($porResumo['total'] > 0) {
-                return $porResumo;
-            }
-        }
-
-        $filtros = $this->filtrosDoAcompanhamento();
-        $professoresIds = $filtros['professores_ids'] ?? [];
-        $distinctEsperado = $this->distinctCombinacaoExpr('at.avaliacao_id', 'at.turma_id', 'p.id', 'aln.id');
-        $distinctRespondido = $this->distinctCombinacaoExpr('ar.avaliacao_id', 'ar.turma_id', 'ar.pauta_id', 'ar.aluno_id');
-
-        $esperadosQuery = (clone $this->basePreenchimentosEsperadosQuery($avaliacaoIds, $filtros))
-            ->leftJoin('escolas as e', 'e.id', '=', 't.id_escola')
-            ->leftJoin('series as s', 's.id', '=', 't.id_serie');
-
-        $esperadosQuery
-            ->groupBy(
-                'at.avaliacao_id',
-                'at.turma_id',
-                'av.nome',
-                't.nome',
-                't.turno',
-                'e.id',
-                'e.nome',
-                's.id',
-                's.nome'
-            )
-            ->select(
-                'at.avaliacao_id',
-                'at.turma_id',
-                'av.nome as avaliacao_nome',
-                'e.id as escola_id',
-                't.nome as turma_nome',
-                't.turno',
-                'e.nome as escola_nome',
-                's.id as serie_id',
-                    's.nome as serie_nome',
-                    DB::raw('NULL as ciclo_status'),
-                DB::raw("COUNT(DISTINCT {$distinctEsperado}) as preenchimentos_esperados"),
-                DB::raw('COUNT(DISTINCT p.id) as pautas_total'),
-                DB::raw('COUNT(DISTINCT aln.id) as alunos_total')
-            );
-
-        // O professor limita o par turma/componente atual. A resposta não depende
-        // do professor gravado no payload, que é apenas um snapshot histórico.
-        $filtrosRespostas = [...$filtros, 'professores_ids' => []];
-        $respondidosQuery = clone $this->baseRespostasQuery(
-            $avaliacaoIds,
-            ignorarAlternativas: true,
-            filtros: $filtrosRespostas,
-        );
-
-        if ($professoresIds !== []) {
-            $respondidosQuery
-                ->join('turma_componente_professor as tcp_resposta', function ($join): void {
-                    $join->on('tcp_resposta.turma_id', '=', 't.id')
-                        ->where('tcp_resposta.tem_professor', true)
-                        ->where(function ($join): void {
-                            $join->whereNull('p.componente_curricular_id')
-                                ->orOn('tcp_resposta.componente_curricular_id', '=', 'p.componente_curricular_id');
-                        });
-                })
-                ->whereIn('tcp_resposta.professor_id', $professoresIds);
-        }
-
-        $respondidosQuery
-            ->groupBy('ar.avaliacao_id', 'ar.turma_id')
-            ->select(
-                'ar.avaliacao_id',
-                'ar.turma_id',
-                DB::raw("COUNT(DISTINCT {$distinctRespondido}) as preenchimentos_respondidos"),
-                DB::raw('MAX(ar.respondido_em) as ultima_resposta_em')
-            );
-
-        $acompanhamentoQuery = DB::query()
-            ->fromSub($esperadosQuery, 'esperados')
-            ->leftJoinSub($respondidosQuery, 'respondidos', function ($join): void {
-                $join->on('respondidos.avaliacao_id', '=', 'esperados.avaliacao_id')
-                    ->on('respondidos.turma_id', '=', 'esperados.turma_id');
-            })
-            ->select(
-                'esperados.*',
-                DB::raw('COALESCE(respondidos.preenchimentos_respondidos, 0) as preenchimentos_respondidos'),
-                'respondidos.ultima_resposta_em'
-            );
-
-        $query = DB::query()
-            ->fromSub($acompanhamentoQuery, 'acompanhamento')
-            ->select('acompanhamento.*');
-
-        $statusFiltro = filled($filtros['status_preenchimento'] ?? null)
-            ? (string) $filtros['status_preenchimento']
-            : null;
-
-        // O status operacional é derivado dos agregados. Aplicar o filtro
-        // antes do get evita materializar todas as turmas apenas para depois
-        // descartá-las em PHP.
-        if ($statusFiltro !== null) {
-            match ($statusFiltro) {
-                'concluido' => $query->whereRaw('1 = 0'),
-                'preenchido' => $query
-                    ->where('preenchimentos_esperados', '>', 0)
-                    ->whereColumn('preenchimentos_respondidos', '>=', 'preenchimentos_esperados'),
-                'em_andamento' => $query
-                    ->where('preenchimentos_respondidos', '>', 0)
-                    ->whereColumn('preenchimentos_respondidos', '<', 'preenchimentos_esperados'),
-                'nao_iniciado' => $query->where('preenchimentos_respondidos', '=', 0),
-                default => null,
-            };
-        }
-
-        // Status é calculado em PHP; com esse filtro não paginamos no SQL.
-        $total = 0;
-        if ($paginar && $statusFiltro === null) {
-            $total = (int) DB::query()
-                ->fromSub(clone $query, 'acompanhamento')
-                ->count();
-            $this->normalizarPaginaAcompanhamentoTurmas($total);
-            $query->forPage($this->acompanhamentoTurmasPagina, $this->acompanhamentoTurmasPorPagina);
-        }
-
-        $dados = $query
-            ->orderBy('acompanhamento.escola_nome')
-            ->orderBy('acompanhamento.serie_nome')
-            ->orderBy('acompanhamento.turma_nome')
-            ->get();
-
-        // Ciclos concluídos já não possuem linhas operacionais: sua progressão
-        // vem dos resumos imutáveis do snapshot final.
-        if (DB::getSchemaBuilder()->hasTable('avaliacao_turma_ciclos')) {
-            $historicos = DB::table('avaliacao_turma_ciclos as ciclo')
-                ->join('avaliacoes as av', 'av.id', '=', 'ciclo.avaliacao_id')
-                ->join('turmas as t', 't.id', '=', 'ciclo.turma_avaliativa_id')
-                ->leftJoin('avaliacao_snapshot_eventos as evento', 'evento.id', '=', 'ciclo.snapshot_evento_atual_id')
-                ->leftJoin('escolas as e', 'e.id', '=', 't.id_escola')
-                ->leftJoin('series as s', 's.id', '=', 't.id_serie')
-                ->leftJoin('avaliacao_snapshot_resumos_componentes as resumo', function ($join): void {
-                    $join->on('resumo.ciclo_id', '=', 'ciclo.id')
-                        ->on('resumo.evento_id', '=', 'ciclo.snapshot_evento_atual_id');
-                })
-                ->whereIn('ciclo.avaliacao_id', $avaliacaoIds)
-                ->where('ciclo.status', AvaliacaoTurmaCiclo::STATUS_CONCLUIDA)
-                // Ciclos concluídos também devem respeitar o escopo da escola
-                // da usuária; sem este filtro, snapshots de toda a rede eram
-                // adicionados ao acompanhamento.
-                ->when(
-                    $this->escolasPermitidasIds() !== null,
-                    function (QueryBuilder $query): QueryBuilder {
-                        $this->aplicarEscopoEscolarQuery($query, 't');
-
-                        return $query;
-                    },
-                )
-                ->when($statusFiltro !== null && $statusFiltro !== 'concluido', fn ($q) => $q->whereRaw('1 = 0'))
-                ->when(($filtros['series_ids'] ?? []) !== [], fn ($q) => $q->whereIn('t.id_serie', $filtros['series_ids']))
-                ->when(($filtros['turnos'] ?? []) !== [], fn ($q) => $q->whereIn('t.turno', $filtros['turnos']))
-                ->when(($filtros['escolas_ids'] ?? []) !== [], fn ($q) => $q->whereIn('t.id_escola', $filtros['escolas_ids']))
-                ->groupBy('ciclo.id', 'ciclo.avaliacao_id', 'ciclo.turma_avaliativa_id', 'av.nome', 't.nome', 't.turno', 'e.id', 'e.nome', 's.id', 's.nome', 'evento.total_alunos')
-                ->select([
-                    'ciclo.avaliacao_id', 'ciclo.turma_avaliativa_id as turma_id', 'av.nome as avaliacao_nome',
-                    'e.id as escola_id', 't.nome as turma_nome', 't.turno', 'e.nome as escola_nome',
-                    's.id as serie_id', 's.nome as serie_nome',
-                ])
-                ->selectRaw('ciclo.status as ciclo_status')
-                ->selectRaw('COALESCE(SUM(resumo.respostas_esperadas), 0) as preenchimentos_esperados')
-                ->selectRaw('COALESCE(SUM(resumo.respostas_concluidas), 0) as preenchimentos_respondidos')
-                ->selectRaw('COALESCE(SUM(resumo.respostas_esperadas), 0) as pautas_total')
-                ->selectRaw('COALESCE(evento.total_alunos, 0) as alunos_total')
-                ->selectRaw('MAX(ciclo.concluida_em) as ultima_resposta_em')
-                ->get();
-
-            $dados = $dados->concat($historicos);
-        }
-
-        $turmasDaPagina = Turma::query()
-            ->whereIn('id', $dados->pluck('turma_id')->map(fn ($id): int => (int) $id)->unique()->values()->all())
-            ->get()
-            ->keyBy('id');
-
-        $itens = $dados
-            ->map(function ($item) use ($turmasDaPagina): array {
-                $preenchimentosEsperados = (int) ($item->preenchimentos_esperados ?? 0);
-                $preenchimentosRespondidos = min((int) ($item->preenchimentos_respondidos ?? 0), $preenchimentosEsperados);
-                $preenchimentosPendentes = max($preenchimentosEsperados - $preenchimentosRespondidos, 0);
-                $percentualPreenchimento = $preenchimentosEsperados > 0
-                    ? round(($preenchimentosRespondidos / $preenchimentosEsperados) * 100, 1)
-                    : 0.0;
-                $status = match (true) {
-                    ($item->ciclo_status ?? null) === AvaliacaoTurmaCiclo::STATUS_CONCLUIDA => 'concluido',
-                    $preenchimentosEsperados > 0 && $preenchimentosPendentes === 0 => 'preenchido',
-                    $preenchimentosRespondidos > 0 => 'em_andamento',
-                    default => 'nao_iniciado',
-                };
-                $linha = [
-                    'avaliacao_id' => (int) $item->avaliacao_id,
-                    'turma_id' => (int) $item->turma_id,
-                    'escola_id' => (int) ($item->escola_id ?? 0),
-                    'serie_id' => (int) ($item->serie_id ?? 0),
-                    'componente_id' => 0,
-                    'professor_id' => 0,
-                    'avaliacao_nome' => (string) ($item->avaliacao_nome ?? '-'),
-                    'escola_nome' => (string) ($item->escola_nome ?? '-'),
-                    'serie_nome' => (string) ($item->serie_nome ?? '-'),
-                    'turma_nome' => (string) ($item->turma_nome ?? '-'),
-                    'turno' => (string) ($item->turno ?? '-'),
-                    'componente_nome' => 'Todos os componentes',
-                    'professor_nome' => 'Todos os professores',
-                    'preenchimentos_esperados' => $preenchimentosEsperados,
-                    'preenchimentos_respondidos' => $preenchimentosRespondidos,
-                    'preenchimentos_pendentes' => $preenchimentosPendentes,
-                    'percentual_preenchimento' => $percentualPreenchimento,
-                    'pautas_total' => (int) ($item->pautas_total ?? 0),
-                    'alunos_total' => (int) ($item->alunos_total ?? 0),
-                    'status' => $status,
-                    'status_label' => match ($status) {
-                        'concluido' => 'Concluído',
-                        'preenchido' => 'Preenchido',
-                        'em_andamento' => 'Em andamento',
-                        default => 'Não iniciado',
-                    },
-                    'parecer_exportavel' => false,
-                    'parecer_exportavel_motivo' => 'Verificação disponível ao selecionar a turma.',
-                    'ultima_resposta' => $item->ultima_resposta_em
-                        ? Carbon::parse($item->ultima_resposta_em)->format('d/m/Y H:i')
-                        : '-',
-                ];
-
-                $linha['chave'] = $this->chaveLinhaAcompanhamento($linha);
-                $linha['alterado_recentemente'] = in_array($linha['chave'], $this->acompanhamentoLinhasAlteradas, true);
-
-                return $linha;
-            })
-            ->when(
-                $statusFiltro !== null,
-                fn (Collection $colecao): Collection => $colecao->filter(
-                    fn (array $linha): bool => ($linha['status'] ?? '') === $statusFiltro
-                )->values()
-            )
-            ->values()
-            ->all();
-
-        if ($statusFiltro !== null) {
-            $total = count($itens);
-
-            if ($paginar) {
-                $this->normalizarPaginaAcompanhamentoTurmas($total);
-                $offset = max(($this->acompanhamentoTurmasPagina - 1) * $this->acompanhamentoTurmasPorPagina, 0);
-                $itens = array_slice($itens, $offset, $this->acompanhamentoTurmasPorPagina);
-            }
-        } elseif (! $paginar) {
-            $total = count($itens);
-        }
-
-        $itens = $this->aplicarElegibilidadeNasLinhas($itens, $turmasDaPagina);
-
-        return ['itens' => $itens, 'total' => $total];
     }
 
     private function dashboardResumosEstaoProntos(array $avaliacaoIds, ?array $filtros = null): bool
@@ -3887,12 +3600,8 @@ class DashboardAvaliacoes extends Page implements HasForms
     {
         $filtros = $this->filtrosDoAcompanhamento();
         $dados = $this->queryResumosDeTurmas($avaliacaoIds, $filtros)->get();
-        $turmas = Turma::query()
-            ->whereIn('id', $dados->pluck('turma_id')->map(fn ($id): int => (int) $id)->unique()->values()->all())
-            ->get()
-            ->keyBy('id');
         $itens = $dados
-            ->map(function (object $item) use ($turmas): array {
+            ->map(function (object $item): array {
                 $esperadas = (int) $item->preenchimentos_esperados;
                 $respondidas = min((int) $item->preenchimentos_respondidos, $esperadas);
                 $status = $respondidas >= $esperadas && $esperadas > 0
@@ -3924,8 +3633,6 @@ class DashboardAvaliacoes extends Page implements HasForms
                         'em_andamento' => 'Em andamento',
                         default => 'Não iniciado',
                     },
-                    'parecer_exportavel' => false,
-                    'parecer_exportavel_motivo' => 'Verificação disponível ao selecionar a turma.',
                     'ultima_resposta' => $item->ultima_resposta_em
                         ? Carbon::parse($item->ultima_resposta_em)->format('d/m/Y H:i')
                         : '-',
@@ -3946,54 +3653,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             $itens = $itens->forPage($this->acompanhamentoTurmasPagina, $this->acompanhamentoTurmasPorPagina)->values();
         }
 
-        $itens = collect($this->aplicarElegibilidadeNasLinhas($itens->all(), $turmas))->values();
-
         return ['itens' => $itens->all(), 'total' => $total];
-    }
-
-    /** @param array<int, array<string, int|float|string|bool>> $itens */
-    private function aplicarElegibilidadeNasLinhas(array $itens, Collection $turmas): array
-    {
-        foreach ($itens as &$linha) {
-            $parecerElegibilidade = $this->parecerElegibilidadeDaTurma(
-                (int) ($linha['avaliacao_id'] ?? 0),
-                (int) ($linha['turma_id'] ?? 0),
-                $turmas->get((int) ($linha['turma_id'] ?? 0)),
-            );
-            $linha['parecer_exportavel'] = $parecerElegibilidade['pode_exportar'];
-            $linha['parecer_exportavel_motivo'] = $parecerElegibilidade['motivo_bloqueio'];
-        }
-        unset($linha);
-
-        return $itens;
-    }
-
-    /**
-     * @return array{diretor: string, coordenacao: string, tem_diretor: bool, tem_coordenacao: bool, pode_exportar: bool, motivo_bloqueio: string}
-     */
-    private function parecerElegibilidadeDaTurma(int $avaliacaoId, int $turmaId, ?Turma $turma = null): array
-    {
-        $chave = "{$avaliacaoId}-{$turmaId}";
-
-        if (array_key_exists($chave, $this->parecerTurmaElegibilidade)) {
-            return $this->parecerTurmaElegibilidade[$chave];
-        }
-
-        $turma ??= Turma::query()->find($turmaId);
-
-        if (! $turma) {
-            return $this->parecerTurmaElegibilidade[$chave] = [
-                'diretor' => '',
-                'coordenacao' => '',
-                'tem_diretor' => false,
-                'tem_coordenacao' => false,
-                'pode_exportar' => false,
-                'motivo_bloqueio' => 'A turma não possui vínculo com Diretor(a) ou Coordenador(a).',
-            ];
-        }
-
-        return $this->parecerTurmaElegibilidade[$chave] = app(AvaliacaoDocumentoExportService::class)
-            ->gestoresDaTurma($turma, $avaliacaoId);
     }
 
     private function aplicarFiltrosTurmaQuery(QueryBuilder $query, string $alias = 't', ?array $filtros = null): void

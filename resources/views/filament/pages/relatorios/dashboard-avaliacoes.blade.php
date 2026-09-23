@@ -4,6 +4,7 @@
         x-data="{
             async carregarDashboardInicialCompleto() {
                 await $wire.carregarDashboardInicialCompleto()
+                await $wire.carregarAcompanhamentoDashboard()
             },
             async recarregarDetalhesDashboard() {
                 await $wire.carregarAcompanhamentoDashboard()
@@ -338,8 +339,8 @@
                                             @if ($item['status'] === 'concluido' && $this->podeExportarParecer)
                                                 <button
                                                     type="button"
-                                                    class="dav-link-action{{ ! $item['parecer_exportavel'] ? ' dav-link-action--muted' : '' }}"
-                                                    title="{{ $item['parecer_exportavel'] ? 'Enviar exportação para a fila' : $item['parecer_exportavel_motivo'] }}"
+                                                    class="dav-link-action"
+                                                    title="Responsáveis serão validados ao solicitar a exportação"
                                                     wire:click="exportarParecerTurma({{ $item['avaliacao_id'] }}, {{ $item['turma_id'] }}, {{ $item['escola_id'] }}, {{ $item['serie_id'] }}, {{ $item['componente_id'] }}, {{ $item['professor_id'] }})"
                                                     wire:loading.attr="disabled"
                                                     wire:target="exportarParecerTurma">
