@@ -20,7 +20,8 @@ RUN apt-get update && apt-get install -y \
     libicu-dev \
     && docker-php-ext-install \
     intl pdo pdo_mysql zip mbstring exif pcntl bcmath gd opcache \
-    && pecl install redis swoole \
+    && pecl install redis-6.3.0 \
+    && pecl install swoole-6.2.3 \
     && docker-php-ext-enable redis swoole \
     && apt-get purge -y --auto-remove $PHPIZE_DEPS \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
