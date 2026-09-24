@@ -7,6 +7,7 @@ use App\Filament\Admin\Resources\Pedidos\Tables\PedidosTable;
 use App\Models\Pedido;
 use App\Models\TipoStatus;
 use App\Models\User;
+use App\Services\PessoaScopeService;
 use App\Services\PedidoService;
 use App\Services\ProfilePreviewService;
 use Filament\Actions;
@@ -79,6 +80,21 @@ class ListPedidos extends ListRecords
     protected function getDefaultTableSortDirection(): ?string
     {
         return 'desc';
+    }
+
+    protected function applySortingToTableQuery(Builder $query): Builder
+    {
+        $user = $this->usuarioEfetivo();
+
+        if (
+            app(PessoaScopeService::class)->ehEquipeGestora($user)
+            && (blank($this->activeTab) || $this->activeTab === 'todos')
+        ) {
+            return PedidosTable::ordenarParaEquipeGestora($query->reorder(), $user)
+                ->orderByDesc('updated_at');
+        }
+
+        return parent::applySortingToTableQuery($query);
     }
 
     public function getTabs(): array

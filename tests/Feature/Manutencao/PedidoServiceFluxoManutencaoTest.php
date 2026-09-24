@@ -1614,10 +1614,15 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         $manutencaoRecente->forceFill(['data_solicitacao' => '2026-07-20 10:00:00'])->save();
         $intermediario->forceFill(['data_solicitacao' => '2026-07-10 10:00:00'])->save();
         $concluido->forceFill(['data_solicitacao' => '2026-07-21 10:00:00'])->save();
+        DB::table('pedidos')->where('id', $manutencaoAntiga->id)->update(['updated_at' => '2026-07-01 10:00:00']);
+        DB::table('pedidos')->where('id', $manutencaoRecente->id)->update(['updated_at' => '2026-07-02 10:00:00']);
+        DB::table('pedidos')->where('id', $intermediario->id)->update(['updated_at' => '2026-07-30 10:00:00']);
+        DB::table('pedidos')->where('id', $concluido->id)->update(['updated_at' => '2026-07-31 10:00:00']);
 
         Livewire::actingAs($usuario)
             ->test(ListPedidos::class)
             ->set('activeTab', 'todos')
+            ->set('tableSort', 'updated_at_sort:desc')
             ->assertCanSeeTableRecords([
                 $manutencaoAntiga,
                 $manutencaoRecente,
