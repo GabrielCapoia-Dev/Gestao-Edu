@@ -1601,6 +1601,15 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         $intermediario = $this->pedido(status: 'Em Aberto', setor: $this->educacao, escola: $this->escola);
         $concluido = $this->pedido(status: 'Concluído', setor: $this->educacao, escola: $this->escola);
 
+        $statusManutencaoDuplicado = TipoStatus::query()->create([
+            'nome' => 'Em Manutenção',
+            'cor' => '#f97316',
+            'finaliza_pedido' => false,
+            'cancela_pedido' => false,
+            'ativo' => true,
+        ]);
+        $manutencaoRecente->forceFill(['tipo_status_id' => $statusManutencaoDuplicado->id])->save();
+
         $manutencaoAntiga->forceFill(['data_solicitacao' => '2026-07-18 10:00:00'])->save();
         $manutencaoRecente->forceFill(['data_solicitacao' => '2026-07-20 10:00:00'])->save();
         $intermediario->forceFill(['data_solicitacao' => '2026-07-10 10:00:00'])->save();

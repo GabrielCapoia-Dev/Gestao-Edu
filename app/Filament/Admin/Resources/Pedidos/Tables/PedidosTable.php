@@ -570,18 +570,23 @@ class PedidosTable
             return static::ordenarComConcluidosAoFinal($query);
         }
 
-        $statusManutencaoId = app(PedidoService::class)->statusPorNome('Em Manutenção')?->id;
+        $statusManutencaoIds = TipoStatus::query()
+            ->where('nome', 'like', 'Em Manuten%')
+            ->pluck('id');
 
-        if (! $statusManutencaoId) {
+        if ($statusManutencaoIds->isEmpty()) {
             return static::ordenarComConcluidosAoFinal($query);
         }
 
         return $query
             ->orderByRaw(
-                'CASE WHEN pedidos.tipo_status_id = ? THEN 0 WHEN COALESCE((SELECT finaliza_pedido FROM tipo_status WHERE tipo_status.id = pedidos.tipo_status_id LIMIT 1), 0) = 1 THEN 2 ELSE 1 END',
-                [$statusManutencaoId],
+                'CASE WHEN pedidos.tipo_status_id IN ('.implode(', ', array_fill(0, $statusManutencaoIds->count(), '?')).') THEN 0 WHEN COALESCE((SELECT finaliza_pedido FROM tipo_status WHERE tipo_status.id = pedidos.tipo_status_id LIMIT 1), 0) = 1 THEN 2 ELSE 1 END',
+                $statusManutencaoIds->all(),
             )
-            ->orderByRaw('CASE WHEN pedidos.tipo_status_id = ? THEN pedidos.data_solicitacao END ASC', [$statusManutencaoId]);
+            ->orderByRaw(
+                'CASE WHEN pedidos.tipo_status_id IN ('.implode(', ', array_fill(0, $statusManutencaoIds->count(), '?')).') THEN pedidos.data_solicitacao END ASC',
+                $statusManutencaoIds->all(),
+            );
     }
 
     private static function pedidoConcluido(Pedido $record): bool
