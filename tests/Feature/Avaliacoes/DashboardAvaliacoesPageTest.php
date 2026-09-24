@@ -1218,7 +1218,8 @@ class DashboardAvaliacoesPageTest extends TestCase
         $component = $dados['component'];
         $linha = $dados['linha'];
         Permission::findOrCreate('Concluir Avaliações');
-        $dados['user']->givePermissionTo('Concluir Avaliações');
+        Permission::findOrCreate('Reabrir Avaliações');
+        $dados['user']->givePermissionTo(['Concluir Avaliações', 'Reabrir Avaliações']);
 
         $component
             ->call(
@@ -1237,6 +1238,10 @@ class DashboardAvaliacoesPageTest extends TestCase
             ->assertSet('workspaceAcompanhamentoAberto', true)
             ->assertNoRedirect();
 
+        $linhaAtualizada = collect($component->instance()->acompanhamentoTurmas)->firstWhere('turma_id', $linha['turma_id']);
+        $this->assertSame('concluido', $linhaAtualizada['status']);
+        $this->assertTrue($linhaAtualizada['parecer_exportavel']);
+
         $this->assertDatabaseHas('avaliacao_turma_ciclos', [
             'avaliacao_id' => $linha['avaliacao_id'],
             'turma_avaliativa_id' => $linha['turma_id'],
@@ -1244,6 +1249,15 @@ class DashboardAvaliacoesPageTest extends TestCase
         ]);
         $this->assertDatabaseCount('avaliacao_respostas_operacionais', 0);
         $this->assertDatabaseCount('avaliacao_aluno_snapshots', 1);
+
+        $component->call('abrirWorkspaceAcompanhamento', $linha['avaliacao_id'], $linha['turma_id'], $linha['escola_id'], $linha['serie_id'], $linha['componente_id'], $linha['professor_id'])
+            ->call('reabrirParecerTurma')
+            ->assertNotified('Avaliação reaberta para edição.')
+            ->assertSet('workspaceAcompanhamentoAberto', false);
+
+        $linhaReaberta = collect($component->instance()->acompanhamentoTurmas)->firstWhere('turma_id', $linha['turma_id']);
+        $this->assertSame('preenchido', $linhaReaberta['status']);
+        $this->assertFalse($linhaReaberta['parecer_exportavel']);
     }
 
     public function test_exportar_parecer_no_acompanhamento_bloqueia_quando_falta_gestor_obrigatorio(): void

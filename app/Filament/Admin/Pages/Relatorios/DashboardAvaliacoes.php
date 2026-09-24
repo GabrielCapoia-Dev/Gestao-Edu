@@ -419,6 +419,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             app(AvaliacaoSnapshotService::class)->reabrir($ciclo, Auth::user(), 'Reabertura solicitada pelo acompanhamento.');
             $this->fecharWorkspaceAcompanhamento();
             $this->limparDashboardCache();
+            $this->atualizarAcompanhamentoTurmas();
             Notification::make()->title('Avaliação reaberta para edição.')->success()->send();
         } catch (Throwable $exception) {
             Notification::make()->title('Não foi possível reabrir a avaliação.')->body($exception->getMessage())->danger()->send();
@@ -473,6 +474,8 @@ class DashboardAvaliacoes extends Page implements HasForms
             $this->workspaceAcompanhamentoLinha = $linhaAtual;
             $this->workspaceAcompanhamentoTemAlteracoes = true;
             $this->workspaceAcompanhamentoKey++;
+            $this->limparDashboardCache();
+            $this->atualizarAcompanhamentoTurmas();
 
             Notification::make()
                 ->title('Avaliação da turma concluída.')
