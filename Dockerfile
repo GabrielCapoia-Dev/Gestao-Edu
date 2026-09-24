@@ -20,11 +20,27 @@ RUN apt-get update && apt-get install -y \
     libicu-dev \
     && docker-php-ext-install \
     intl pdo pdo_mysql zip mbstring exif pcntl bcmath gd opcache \
-    && pecl install redis-6.3.0 \
-    && pecl install swoole-6.2.3 \
-    && docker-php-ext-enable redis swoole \
-    && apt-get purge -y --auto-remove $PHPIZE_DEPS \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN pecl install redis-6.3.0 \
+    && docker-php-ext-enable redis
+
+# Install Swoole from its official tagged source to avoid PECL REST metadata
+# lookup failures during clean builds.
+RUN set -eux; \
+    mkdir -p /tmp/swoole-src; \
+    curl -fsSL https://github.com/swoole/swoole-src/archive/refs/tags/v6.2.3.tar.gz \
+        | tar -xz --strip-components=1 -C /tmp/swoole-src; \
+    cd /tmp/swoole-src; \
+    phpize; \
+    ./configure; \
+    make -j"$(nproc)"; \
+    make install; \
+    docker-php-ext-enable swoole; \
+    rm -rf /tmp/swoole-src; \
+    apt-get purge -y --auto-remove $PHPIZE_DEPS; \
+    apt-get clean; \
+    rm -rf /var/lib/apt/lists/*
 
 # ── Node.js 22 ─────────────────────────────────────────────────────────────
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
