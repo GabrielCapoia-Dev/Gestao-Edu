@@ -95,12 +95,12 @@ class ListPedidos extends ListRecords
 
         $tabs = [
             'todos' => Tab::make('Todos')
-                ->modifyQueryUsing(function (Builder $query): Builder {
+                ->modifyQueryUsing(function (Builder $query) use ($user): Builder {
                     $query
                         ->where('is_pedido_adicional', false)
                         ->reorder();
 
-                    return PedidosTable::ordenarComConcluidosAoFinal($query)
+                    return PedidosTable::ordenarParaEquipeGestora($query, $user)
                         ->orderByDesc('updated_at');
                 })
                 ->badge(fn () => (clone $tableQuery)->where('is_pedido_adicional', false)->count())

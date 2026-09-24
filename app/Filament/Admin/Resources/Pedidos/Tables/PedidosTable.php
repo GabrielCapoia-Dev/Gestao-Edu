@@ -17,6 +17,7 @@ use App\Models\TipoManutencaoOpcao;
 use App\Models\TipoStatus;
 use App\Models\User;
 use App\Services\Exports\ExportRequestService;
+use App\Services\PessoaScopeService;
 use App\Services\PedidoService;
 use App\Services\SetorPedidoAccessService;
 use App\Support\PedidoImageUpload;
@@ -56,7 +57,7 @@ class PedidosTable
         $service = app(PedidoService::class);
 
         return $table
-            ->modifyQueryUsing(fn (Builder $query): Builder => static::ordenarComConcluidosAoFinal(
+            ->modifyQueryUsing(fn (Builder $query): Builder => static::ordenarParaEquipeGestora(
                 $query->with([
                     'pedidoPrincipal.tipoManutencao',
                     'pedidoPrincipal.tipoStatus',
@@ -76,7 +77,8 @@ class PedidosTable
                     'comentarioGestorUsuario',
                     'ultimoFeedback.itens.problema',
                     'feedbackItens.feedback.itens.problema',
-                ])->withCount(['pedidosAdicionais', 'problemas'])
+                ])->withCount(['pedidosAdicionais', 'problemas']),
+                $user,
             ))
             ->paginated([10, 25, 50, 100])
             ->defaultPaginationPageOption(10)
@@ -560,6 +562,26 @@ class PedidosTable
                 ->limit(1),
             'asc',
         );
+    }
+
+    public static function ordenarParaEquipeGestora(Builder $query, ?User $user): Builder
+    {
+        if (! app(PessoaScopeService::class)->ehEquipeGestora($user)) {
+            return static::ordenarComConcluidosAoFinal($query);
+        }
+
+        $statusManutencaoId = app(PedidoService::class)->statusPorNome('Em Manutenção')?->id;
+
+        if (! $statusManutencaoId) {
+            return static::ordenarComConcluidosAoFinal($query);
+        }
+
+        return $query
+            ->orderByRaw(
+                'CASE WHEN pedidos.tipo_status_id = ? THEN 0 WHEN COALESCE((SELECT finaliza_pedido FROM tipo_status WHERE tipo_status.id = pedidos.tipo_status_id LIMIT 1), 0) = 1 THEN 2 ELSE 1 END',
+                [$statusManutencaoId],
+            )
+            ->orderByRaw('CASE WHEN pedidos.tipo_status_id = ? THEN pedidos.data_solicitacao END ASC', [$statusManutencaoId]);
     }
 
     private static function pedidoConcluido(Pedido $record): bool

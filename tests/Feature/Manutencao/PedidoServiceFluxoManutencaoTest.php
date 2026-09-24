@@ -7,6 +7,7 @@ use App\Filament\Admin\Resources\Pedidos\Pages\ListPedidos;
 use App\Filament\Admin\Resources\Pedidos\PedidoResource;
 use App\Filament\Admin\Resources\Pedidos\RelationManagers\PedidosAdicionaisRelationManager;
 use App\Models\EmpresaContratada;
+use App\Models\FuncaoAdministrativa;
 use App\Models\Enums\NivelEmergenciaPedido;
 use App\Models\Enums\ResultadoFeedbackPedido;
 use App\Models\Enums\TipoArquivoPedido;
@@ -16,6 +17,8 @@ use App\Models\PedidoArquivo;
 use App\Models\Role;
 use App\Models\Setor;
 use App\Models\SetorAcesso;
+use App\Models\Servidor;
+use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\TipoManutencao;
 use App\Models\TipoManutencaoOpcao;
 use App\Models\TipoStatus;
@@ -1567,6 +1570,51 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             ->assertSee('Descrição do pedido')
             ->assertSee('Pedido de teste')
             ->assertSee('Sem comentário');
+    }
+
+    public function test_listagem_da_equipe_gestora_prioriza_manutencao_mais_antiga_e_deixa_concluidos_no_final(): void
+    {
+        $usuario = $this->usuarioComPermissoes([
+            'Listar Pedidos',
+            'Visualizar Pedidos por Status',
+        ]);
+        $servidor = Servidor::query()->create([
+            'user_id' => $usuario->id,
+            'nome' => $usuario->name,
+            'email' => $usuario->email,
+            'status' => Servidor::STATUS_ATIVO,
+        ]);
+        ServidorFuncaoAdministrativa::query()->create([
+            'servidor_id' => $servidor->id,
+            'funcao_administrativa_id' => FuncaoAdministrativa::direcaoPadrao()->id,
+            'id_escola' => $this->escola->id,
+            'setor_id' => $this->escola->setor_id,
+            'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+            'origem' => 'teste',
+            'portaria' => 'PORT-ORD-2026',
+            'principal' => true,
+            'data_inicio' => now()->toDateString(),
+        ]);
+
+        $manutencaoAntiga = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
+        $manutencaoRecente = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
+        $intermediario = $this->pedido(status: 'Em Aberto', setor: $this->educacao, escola: $this->escola);
+        $concluido = $this->pedido(status: 'Concluído', setor: $this->educacao, escola: $this->escola);
+
+        $manutencaoAntiga->forceFill(['data_solicitacao' => '2026-07-18 10:00:00'])->save();
+        $manutencaoRecente->forceFill(['data_solicitacao' => '2026-07-20 10:00:00'])->save();
+        $intermediario->forceFill(['data_solicitacao' => '2026-07-10 10:00:00'])->save();
+        $concluido->forceFill(['data_solicitacao' => '2026-07-21 10:00:00'])->save();
+
+        Livewire::actingAs($usuario)
+            ->test(ListPedidos::class)
+            ->set('activeTab', 'todos')
+            ->assertCanSeeTableRecords([
+                $manutencaoAntiga,
+                $manutencaoRecente,
+                $intermediario,
+                $concluido,
+            ], inOrder: true);
     }
 
     public function test_aba_adicionais_aparece_depois_de_em_manutencao(): void
