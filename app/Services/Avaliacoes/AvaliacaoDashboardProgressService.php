@@ -104,6 +104,190 @@ class AvaliacaoDashboardProgressService
     }
 
     /**
+     * Calcula somente os totais gerais e por turma usados no acompanhamento
+     * operacional, sem construir os agrupamentos do dashboard por dimensão.
+     *
+     * @param  list<int>  $avaliacaoIds
+     * @param  list<int>|null  $escolaIds  Null representa escopo global.
+     * @param  list<int>|null  $professorIds
+     * @return array<int, array{preenchidas: int, total: int, turmas: array<int, array{preenchidas: int, total: int}>}>
+     */
+    public function operacionalRapido(
+        array $avaliacaoIds,
+        ?array $escolaIds,
+        ?array $professorIds = null,
+        array $filtros = [],
+    ): array {
+        $avaliacaoIds = $this->ids($avaliacaoIds);
+        $resultado = collect($avaliacaoIds)->mapWithKeys(fn (int $id): array => [
+            $id => ['preenchidas' => 0, 'total' => 0, 'turmas' => []],
+        ])->all();
+
+        if ($avaliacaoIds === [] || $escolaIds === []) {
+            return $resultado;
+        }
+
+        $alunosElegiveis = $this->queries->alunosElegiveis($avaliacaoIds);
+        if (is_array($escolaIds)) {
+            $alunosElegiveis->whereIn('t.id_escola', $this->ids($escolaIds));
+        }
+        $this->aplicarFiltrosTurmaAcompanhamento($alunosElegiveis, $filtros, 't');
+        $alunosPorTurma = $alunosElegiveis
+            ->groupBy('at.avaliacao_id', 't.id')
+            ->selectRaw('at.avaliacao_id, t.id as turma_id, COUNT(DISTINCT aln.id) as total_alunos')
+            ->get()
+            ->keyBy(fn (object $item): string => $item->avaliacao_id.':'.$item->turma_id);
+
+        $pautasAplicaveis = $this->queries->pautasAplicaveis($avaliacaoIds);
+        if (is_array($escolaIds)) {
+            $pautasAplicaveis->whereIn('t.id_escola', $this->ids($escolaIds));
+        }
+        $this->aplicarFiltrosAcompanhamento($pautasAplicaveis, $filtros);
+
+        if (is_array($professorIds)) {
+            $professorIds = $this->ids($professorIds);
+            $professorIds === []
+                ? $pautasAplicaveis->whereRaw('1 = 0')
+                : $pautasAplicaveis->where(function (Builder $pautas) use ($professorIds): void {
+                    $pautas
+                        ->whereNull('p.componente_curricular_id')
+                        ->orWhereExists(function ($vinculos) use ($professorIds): void {
+                            $vinculos
+                                ->selectRaw('1')
+                                ->from('turma_componente_professor as tcp_operacional_esperado')
+                                ->whereColumn('tcp_operacional_esperado.turma_id', 't.id')
+                                ->whereColumn('tcp_operacional_esperado.componente_curricular_id', 'p.componente_curricular_id')
+                                ->where('tcp_operacional_esperado.tem_professor', true)
+                                ->whereIn('tcp_operacional_esperado.professor_id', $professorIds);
+                        });
+                });
+        }
+
+        $esperados = $pautasAplicaveis
+            ->groupBy('at.avaliacao_id', 't.id', 'p.componente_curricular_id')
+            ->selectRaw('at.avaliacao_id, t.id as turma_id, COALESCE(p.componente_curricular_id, 0) as componente_chave, COUNT(DISTINCT p.id) as total_pautas')
+            ->get();
+
+        $esperados = $esperados->map(function (object $item) use ($alunosPorTurma): object {
+            $alunos = (int) ($alunosPorTurma->get($item->avaliacao_id.':'.$item->turma_id)?->total_alunos ?? 0);
+            $item->total = $alunos * (int) $item->total_pautas;
+
+            return $item;
+        })->filter(fn (object $item): bool => $item->total > 0)
+            ->keyBy(fn (object $item): string => $item->avaliacao_id.':'.$item->turma_id.':'.$item->componente_chave);
+
+        $respondidos = $this->queries->respostas($avaliacaoIds, somenteCompletas: true);
+        if (is_array($escolaIds)) {
+            $respondidos->whereIn('t.id_escola', $this->ids($escolaIds));
+        }
+        if (is_array($professorIds)) {
+            $this->aplicarEscopoProfessor($respondidos, $professorIds, 'tcp_operacional_respondido');
+        }
+        $this->aplicarFiltrosAcompanhamento($respondidos, $filtros, respostas: true);
+
+        // A consulta já agrupa por avaliação e turma. Contar a chave composta
+        // nativamente evita concatenar strings para cada resposta no MySQL.
+        $distinctRespondido = DB::connection()->getDriverName() === 'sqlite'
+            ? "CAST(ar.pauta_id AS TEXT) || ':' || CAST(ar.aluno_id AS TEXT)"
+            : 'ar.pauta_id, ar.aluno_id';
+        $respondidos = $respondidos
+            ->groupBy('ar.avaliacao_id', 't.id', 'p.componente_curricular_id')
+            ->selectRaw('ar.avaliacao_id, t.id as turma_id, COALESCE(p.componente_curricular_id, 0) as componente_chave')
+            ->selectRaw("COUNT(DISTINCT {$distinctRespondido}) as total")
+            ->get()
+            ->keyBy(fn (object $item): string => $item->avaliacao_id.':'.$item->turma_id.':'.$item->componente_chave);
+
+        foreach ($esperados as $chave => $esperado) {
+            $avaliacaoId = (int) $esperado->avaliacao_id;
+            $turmaId = (int) $esperado->turma_id;
+            $total = (int) $esperado->total;
+            $preenchidas = min((int) ($respondidos->get($chave)?->total ?? 0), $total);
+            $resultado[$avaliacaoId]['turmas'][$turmaId] ??= ['preenchidas' => 0, 'total' => 0];
+            $resultado[$avaliacaoId]['turmas'][$turmaId]['preenchidas'] += $preenchidas;
+            $resultado[$avaliacaoId]['turmas'][$turmaId]['total'] += $total;
+            $resultado[$avaliacaoId]['preenchidas'] += $preenchidas;
+            $resultado[$avaliacaoId]['total'] += $total;
+        }
+
+        $historicos = DB::table('avaliacao_snapshot_resumos_componentes as resumo_historico')
+            ->join('avaliacao_turma_ciclos as ciclo_historico', 'ciclo_historico.id', '=', 'resumo_historico.ciclo_id')
+            ->join('turmas as turma_historica', 'turma_historica.id', '=', 'ciclo_historico.turma_avaliativa_id')
+            ->whereIn('ciclo_historico.avaliacao_id', $avaliacaoIds)
+            ->where('ciclo_historico.status', 'concluida')
+            ->whereColumn('ciclo_historico.snapshot_evento_atual_id', 'resumo_historico.evento_id');
+
+        if (is_array($escolaIds)) {
+            $historicos->whereIn('turma_historica.id_escola', $this->ids($escolaIds));
+        }
+        if (is_array($professorIds)) {
+            $professorIds === []
+                ? $historicos->whereRaw('1 = 0')
+                : $historicos->where(function (Builder $componentes) use ($professorIds): void {
+                    $componentes
+                        ->whereNull('resumo_historico.componente_curricular_id')
+                        ->orWhereExists(function ($vinculos) use ($professorIds): void {
+                            $vinculos
+                                ->selectRaw('1')
+                                ->from('turma_componente_professor as tcp_operacional_historico')
+                                ->whereColumn('tcp_operacional_historico.turma_id', 'turma_historica.id')
+                                ->whereColumn('tcp_operacional_historico.componente_curricular_id', 'resumo_historico.componente_curricular_id')
+                                ->where('tcp_operacional_historico.tem_professor', true)
+                                ->whereIn('tcp_operacional_historico.professor_id', $professorIds);
+                        });
+                });
+        }
+
+        foreach ([
+            'series_ids' => 'turma_historica.id_serie',
+            'turnos' => 'turma_historica.turno',
+            'escolas_ids' => 'turma_historica.id_escola',
+            'componentes_ids' => 'resumo_historico.componente_curricular_id',
+        ] as $filtro => $coluna) {
+            if (($filtros[$filtro] ?? []) !== []) {
+                $historicos->whereIn($coluna, $filtros[$filtro]);
+            }
+        }
+
+        $filtraComponentes = ($filtros['componentes_ids'] ?? []) !== [];
+        $historicos = $historicos
+            ->groupBy('ciclo_historico.avaliacao_id', 'turma_historica.id', 'resumo_historico.componente_curricular_id')
+            ->selectRaw('ciclo_historico.avaliacao_id, turma_historica.id as turma_id, COALESCE(resumo_historico.componente_curricular_id, 0) as componente_chave')
+            ->selectRaw('SUM(resumo_historico.respostas_esperadas) as total, SUM(resumo_historico.respostas_concluidas) as preenchidas')
+            ->get();
+
+        foreach ($historicos as $historico) {
+            $componenteId = (int) $historico->componente_chave;
+            $incluiTotal = (! $filtraComponentes && $componenteId === AvaliacaoDashboardTurmaResumoService::TOTAL_COMPONENT_KEY)
+                || ($filtraComponentes && $componenteId !== AvaliacaoDashboardTurmaResumoService::TOTAL_COMPONENT_KEY);
+
+            if (! $incluiTotal) {
+                continue;
+            }
+
+            $avaliacaoId = (int) $historico->avaliacao_id;
+            $turmaId = (int) $historico->turma_id;
+            $total = (int) $historico->total;
+            $preenchidas = min((int) $historico->preenchidas, $total);
+            $resultado[$avaliacaoId]['turmas'][$turmaId] ??= ['preenchidas' => 0, 'total' => 0];
+            $resultado[$avaliacaoId]['turmas'][$turmaId]['preenchidas'] += $preenchidas;
+            $resultado[$avaliacaoId]['turmas'][$turmaId]['total'] += $total;
+            $resultado[$avaliacaoId]['preenchidas'] += $preenchidas;
+            $resultado[$avaliacaoId]['total'] += $total;
+        }
+
+        foreach ($resultado as &$resumo) {
+            foreach ($resumo['turmas'] as &$turma) {
+                $turma['preenchidas'] = min($turma['preenchidas'], $turma['total']);
+            }
+            unset($turma);
+            $resumo['preenchidas'] = min($resumo['preenchidas'], $resumo['total']);
+        }
+        unset($resumo);
+
+        return $resultado;
+    }
+
+    /**
      * Retorna os mesmos totais do progresso, agregados sem materializar a
      * matriz aluno x pauta. Disponível para a navegação operacional.
      *
@@ -116,6 +300,7 @@ class AvaliacaoDashboardProgressService
         array $avaliacaoIds,
         ?array $escolaIds,
         ?array $professorIds = null,
+        array $filtros = [],
     ): array {
         $avaliacaoIds = $this->ids($avaliacaoIds);
         $resultado = collect($avaliacaoIds)->mapWithKeys(fn (int $avaliacaoId): array => [
@@ -158,6 +343,8 @@ class AvaliacaoDashboardProgressService
                 });
         }
 
+        $this->aplicarFiltrosAcompanhamento($esperados, $filtros);
+
         $esperados = $esperados
             ->groupBy('at.avaliacao_id', 't.id', 't.id_escola', 't.id_serie', 'p.componente_curricular_id')
             ->selectRaw('at.avaliacao_id, t.id as turma_id, t.id_escola as escola_id, t.id_serie as serie_id, COALESCE(p.componente_curricular_id, 0) as componente_chave')
@@ -171,6 +358,8 @@ class AvaliacaoDashboardProgressService
         if (is_array($professorIds)) {
             $this->aplicarEscopoProfessor($respondidos, $professorIds, 'tcp_progresso_detalhado');
         }
+
+        $this->aplicarFiltrosAcompanhamento($respondidos, $filtros, respostas: true);
 
         $distinctRespondido = $this->distinctCombinacaoExpr('ar.avaliacao_id', 'ar.turma_id', 'ar.pauta_id', 'ar.aluno_id');
         $respondidos = $respondidos
@@ -225,6 +414,17 @@ class AvaliacaoDashboardProgressService
                 });
         }
 
+        foreach ([
+            'series_ids' => 'turma_historica.id_serie',
+            'turnos' => 'turma_historica.turno',
+            'escolas_ids' => 'turma_historica.id_escola',
+            'componentes_ids' => 'resumo_historico.componente_curricular_id',
+        ] as $filtro => $coluna) {
+            if (($filtros[$filtro] ?? []) !== []) {
+                $historicos->whereIn($coluna, $filtros[$filtro]);
+            }
+        }
+
         foreach ($historicos
             ->groupBy('ciclo_historico.avaliacao_id', 'turma_historica.id', 'turma_historica.id_escola', 'turma_historica.id_serie', 'resumo_historico.componente_curricular_id')
             ->selectRaw('ciclo_historico.avaliacao_id, turma_historica.id as turma_id, turma_historica.id_escola as escola_id, turma_historica.id_serie as serie_id, COALESCE(resumo_historico.componente_curricular_id, 0) as componente_chave')
@@ -245,7 +445,10 @@ class AvaliacaoDashboardProgressService
                 $resultado[$avaliacaoId]['componentes_por_turma'][$turmaId][$componenteId]['preenchidas'] += $preenchidas;
                 $resultado[$avaliacaoId]['componentes_por_turma'][$turmaId][$componenteId]['total'] += $total;
             }
-            if ($componenteId === AvaliacaoDashboardTurmaResumoService::TOTAL_COMPONENT_KEY) {
+            $filtraComponentes = ($filtros['componentes_ids'] ?? []) !== [];
+
+            if ((! $filtraComponentes && $componenteId === AvaliacaoDashboardTurmaResumoService::TOTAL_COMPONENT_KEY)
+                || ($filtraComponentes && $componenteId !== AvaliacaoDashboardTurmaResumoService::TOTAL_COMPONENT_KEY)) {
                 $this->acumularResumo($resultado[$avaliacaoId], 'turmas', $turmaId, $preenchidas, $total);
                 $this->acumularResumo($resultado[$avaliacaoId], 'series', (int) $historico->serie_id, $preenchidas, $total);
                 $this->acumularResumo($resultado[$avaliacaoId], 'escolas', (int) $historico->escola_id, $preenchidas, $total);
@@ -255,6 +458,38 @@ class AvaliacaoDashboardProgressService
         }
 
         return $this->finalizarResumos($resultado);
+    }
+
+    private function aplicarFiltrosAcompanhamento(Builder $query, array $filtros, bool $respostas = false): void
+    {
+        foreach ([
+            'series_ids' => 't.id_serie',
+            'turnos' => 't.turno',
+            'escolas_ids' => 't.id_escola',
+            'componentes_ids' => 'p.componente_curricular_id',
+            'pautas_ids' => 'p.id',
+        ] as $filtro => $coluna) {
+            if (($filtros[$filtro] ?? []) !== []) {
+                $query->whereIn($coluna, $filtros[$filtro]);
+            }
+        }
+
+        if ($respostas && ($filtros['alternativas_ids'] ?? []) !== []) {
+            $query->whereIn('ar.alternativa_id', $filtros['alternativas_ids']);
+        }
+    }
+
+    private function aplicarFiltrosTurmaAcompanhamento(Builder $query, array $filtros, string $alias): void
+    {
+        foreach ([
+            'series_ids' => 'id_serie',
+            'turnos' => 'turno',
+            'escolas_ids' => 'id_escola',
+        ] as $filtro => $coluna) {
+            if (($filtros[$filtro] ?? []) !== []) {
+                $query->whereIn($alias.'.'.$coluna, $filtros[$filtro]);
+            }
+        }
     }
 
     private function detalhadoPorResumos(array $resultado, array $avaliacaoIds, ?array $escolaIds, ?array $professorIds): array

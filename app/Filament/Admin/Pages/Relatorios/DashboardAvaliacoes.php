@@ -16,6 +16,7 @@ use App\Models\Turma;
 use App\Models\User;
 use App\Services\Avaliacoes\AvaliacaoDashboardAggregationService;
 use App\Services\Avaliacoes\AvaliacaoDashboardOnDemandQueryService;
+use App\Services\Avaliacoes\AvaliacaoDashboardProgressService;
 use App\Services\Avaliacoes\AvaliacaoDocumentoExportService;
 use App\Services\Avaliacoes\AvaliacaoMigracaoLazyService;
 use App\Services\Avaliacoes\AvaliacaoPersistencia;
@@ -195,80 +196,17 @@ class DashboardAvaliacoes extends Page implements HasForms
             return;
         }
 
-        $this->carregarResumoDashboard();
+        $this->carregarAcompanhamentoDashboard();
+        $this->dashboardCarregado = true;
+        $this->resumoCarregado = true;
+        $this->acompanhamentoCarregado = true;
     }
 
     public function carregarResumoDashboard(): void
     {
-        $this->dashboardCarregado = false;
-        $this->normalizarFiltros();
-        $this->normalizarFiltrosAcompanhamento();
-
-        if (! $this->avaliacaoSelecionada()) {
-            $this->aplicarDashboardData($this->dashboardVazio());
-            $this->dashboardCarregado = true;
-
-            return;
-        }
-
-        $resumo = Cache::remember(
-            $this->dashboardCacheKey('resumo-v5'),
-            now()->addSeconds($this->dashboardCacheTtl()),
-            function (): array {
-                $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas();
-
-                if ($this->dashboardResumosEstaoProntos($avaliacaoIds)) {
-                    $tabelaEscolas = $this->montarTabelaEscolasPorResumo($avaliacaoIds);
-
-                    return [
-                        'tabela_escolas' => $tabelaEscolas,
-                        'totais' => $this->calcularTotaisPreenchimento($avaliacaoIds, $tabelaEscolas),
-                        'turnos' => $this->calcularPreenchimentoPorTurno($avaliacaoIds),
-                        'componentes' => $this->montarPreenchimentoPorComponentes($avaliacaoIds),
-                        'series' => $this->montarPreenchimentoPorSeries($avaliacaoIds),
-                    ];
-                }
-
-                $agregacao = $this->agregacaoDashboard($avaliacaoIds, $this->filtros);
-                $tabelaEscolas = $this->montarTabelaEscolasDaAgregacao($agregacao['escolas']);
-
-                return [
-                    'tabela_escolas' => $tabelaEscolas,
-                    'totais' => $this->calcularTotaisPreenchimento($avaliacaoIds, $tabelaEscolas),
-                    'turnos' => $agregacao['turnos'],
-                    'componentes' => $this->montarLinhasPreenchimentoDaAgregacao($agregacao['componentes']),
-                    'series' => $this->montarLinhasPreenchimentoDaAgregacao($agregacao['series']),
-                ];
-            }
-        );
-        $tabelaEscolas = $resumo['tabela_escolas'];
-        $totais = $resumo['totais'];
-        $turnos = $resumo['turnos'];
-
-        $this->cards = [
-            ...$totais,
-            'percentual_turno_manha' => $turnos['manha']['percentual_preenchimento'] ?? 0.0,
-            'turno_manha_respondidas' => $turnos['manha']['respondidas'] ?? 0,
-            'turno_manha_esperadas' => $turnos['manha']['esperadas'] ?? 0,
-            'turno_manha_alunos_pendentes' => $turnos['manha']['alunos_pendentes'] ?? 0,
-            'turno_manha_alunos_total' => $turnos['manha']['alunos_total'] ?? 0,
-            'percentual_turno_tarde' => $turnos['tarde']['percentual_preenchimento'] ?? 0.0,
-            'turno_tarde_respondidas' => $turnos['tarde']['respondidas'] ?? 0,
-            'turno_tarde_esperadas' => $turnos['tarde']['esperadas'] ?? 0,
-            'turno_tarde_alunos_pendentes' => $turnos['tarde']['alunos_pendentes'] ?? 0,
-            'turno_tarde_alunos_total' => $turnos['tarde']['alunos_total'] ?? 0,
-        ];
-        $this->tabelaEscolas = $tabelaEscolas;
-        $this->turmasIncompletasPorEscola = $this->montarTurmasIncompletasPorEscola($tabelaEscolas);
-        $this->preenchimentoPorComponentes = $resumo['componentes'];
-        $this->preenchimentoPorSeries = $resumo['series'];
-        $this->acompanhamentoTurmas = [];
-        $this->acompanhamentoTurmasTotal = 0;
-        $this->resumoCarregado = true;
-        $this->graficosCarregados = true;
-        $this->acompanhamentoCarregado = false;
-        $this->filtrosAplicados = $this->filtrosAplicadosFormatados();
+        $this->carregarAcompanhamentoDashboard();
         $this->dashboardCarregado = true;
+        $this->resumoCarregado = true;
     }
 
     public function carregarGraficosDashboard(): void
@@ -308,17 +246,7 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public function carregarAcompanhamentoDashboard(): void
     {
-        $acompanhamento = Cache::remember(
-            $this->dashboardCacheKey('acompanhamento'),
-            now()->addSeconds($this->dashboardCacheTtl()),
-            function (): array {
-                $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas();
-
-                return $this->montarAcompanhamentoTurmas($avaliacaoIds, paginar: true);
-            }
-        );
-        $this->acompanhamentoTurmas = $acompanhamento['itens'];
-        $this->acompanhamentoTurmasTotal = $acompanhamento['total'];
+        $this->atualizarAcompanhamentoTurmas();
         $this->acompanhamentoCarregado = true;
     }
 
@@ -332,8 +260,8 @@ class DashboardAvaliacoes extends Page implements HasForms
             $this->filtrosAcompanhamento = $this->filtrosAcompanhamentoPadrao();
         }
 
-        $this->carregarResumoDashboard();
-        $this->dispatch('dashboard-detalhes-recarregar');
+        $this->atualizarAcompanhamentoTurmas();
+        $this->dashboardCarregado = true;
     }
 
     public function limparFiltros(): void
@@ -342,8 +270,8 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->filtrosAcompanhamento = $this->filtrosAcompanhamentoPadrao();
         $this->resetarPaginacoesDashboard();
         $this->fecharWorkspaceAcompanhamento();
-        $this->carregarResumoDashboard();
-        $this->dispatch('dashboard-detalhes-recarregar');
+        $this->atualizarAcompanhamentoTurmas();
+        $this->dashboardCarregado = true;
     }
 
     public function updatedFiltrosAcompanhamento(): void
@@ -445,15 +373,9 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public function fecharWorkspaceAcompanhamento(): void
     {
-        $deveRecarregarAcompanhamento = $this->workspaceAcompanhamentoTemAlteracoes;
-
         $this->workspaceAcompanhamentoAberto = false;
         $this->workspaceAcompanhamentoLinha = null;
         $this->workspaceAcompanhamentoTemAlteracoes = false;
-
-        if ($deveRecarregarAcompanhamento) {
-            $this->dispatch('dashboard-acompanhamento-recarregar');
-        }
     }
 
     public function getPodeConcluirParecerWorkspaceProperty(): bool
@@ -497,7 +419,6 @@ class DashboardAvaliacoes extends Page implements HasForms
             app(AvaliacaoSnapshotService::class)->reabrir($ciclo, Auth::user(), 'Reabertura solicitada pelo acompanhamento.');
             $this->fecharWorkspaceAcompanhamento();
             $this->limparDashboardCache();
-            $this->dispatch('dashboard-acompanhamento-recarregar');
             Notification::make()->title('Avaliação reaberta para edição.')->success()->send();
         } catch (Throwable $exception) {
             Notification::make()->title('Não foi possível reabrir a avaliação.')->body($exception->getMessage())->danger()->send();
@@ -547,6 +468,8 @@ class DashboardAvaliacoes extends Page implements HasForms
             );
             app(AvaliacaoSnapshotService::class)->concluir($ciclo, $user);
 
+            $linhaAtual['status'] = 'concluido';
+            $linhaAtual['status_label'] = 'Concluído';
             $this->workspaceAcompanhamentoLinha = $linhaAtual;
             $this->workspaceAcompanhamentoTemAlteracoes = true;
             $this->workspaceAcompanhamentoKey++;
@@ -697,10 +620,10 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         $this->acompanhamentoLinhasAlteradas = [];
         $this->limparDashboardCache();
-        $this->carregarResumoDashboard();
+        $this->atualizarAcompanhamentoTurmas();
+        $this->dashboardCarregado = true;
         $this->ultimaAtualizacaoIncremental = now()->format('d/m/Y H:i:s');
         $this->ultimaAtualizacao = $this->ultimaAtualizacaoIncremental;
-        $this->dispatch('dashboard-detalhes-recarregar');
 
         if ($silencioso) {
             return;
@@ -708,7 +631,7 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         Notification::make()
             ->title('Dados atuais carregados.')
-            ->body('Gráficos e acompanhamento estão sendo atualizados em etapas.')
+            ->body('O percentual geral e a listagem de turmas foram atualizados.')
             ->success()
             ->send();
     }
@@ -901,7 +824,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             'actions' => $this->getCachedHeaderActions(),
             'eyebrow' => 'Relatórios Pedagógicos',
             'title' => 'Acompanhamento de Pareceres',
-            'description' => 'Acompanhe o preenchimento dos pareceres por escola, turma, componente e professor. Use Atualizar para recalcular com os dados atuais. Atualizado em '.$quando,
+            'description' => 'Consulte o percentual geral de preenchimento e o status das turmas no seu escopo. Atualizado em '.$quando,
         ]);
     }
 
@@ -917,20 +840,6 @@ class DashboardAvaliacoes extends Page implements HasForms
                     : 'Recalcula os indicadores diretamente com os dados atuais')
                 ->visible(fn (): bool => $this->avaliacaoSelecionada())
                 ->action(fn () => $this->atualizarDadosRecentes()),
-
-            Action::make('exportarPdf')
-                ->label('Exportar PDF')
-                ->icon('heroicon-o-document-text')
-                ->color('gray')
-                ->visible(fn (): bool => $this->podeExportar)
-                ->action(fn (): mixed => $this->exportarPdf()),
-
-            Action::make('exportarXlsx')
-                ->label('Exportar XLSX')
-                ->icon('heroicon-o-table-cells')
-                ->color('primary')
-                ->visible(fn (): bool => $this->podeExportar)
-                ->action(fn (): mixed => $this->exportarXlsx()),
         ];
     }
 
@@ -2066,15 +1975,174 @@ class DashboardAvaliacoes extends Page implements HasForms
         if (! $this->avaliacaoSelecionada()) {
             $this->acompanhamentoTurmas = [];
             $this->acompanhamentoTurmasTotal = 0;
+            $this->cards = [
+                'preenchimentos_esperados' => 0,
+                'preenchimentos_respondidos' => 0,
+                'preenchimentos_pendentes' => 0,
+                'percentual_preenchimento_geral' => 0.0,
+                'turmas_completas' => 0,
+                'turmas_total' => 0,
+                'turno_manha_alunos_pendentes' => 0,
+                'turno_manha_alunos_total' => 0,
+                'turno_tarde_alunos_pendentes' => 0,
+                'turno_tarde_alunos_total' => 0,
+            ];
+            $this->dashboardCarregado = true;
 
             return;
         }
 
         $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas();
-        $acompanhamentoTurmas = $this->montarAcompanhamentoTurmas($avaliacaoIds, paginar: true);
+        $acompanhamentoTurmas = Cache::remember(
+            $this->dashboardCacheKey('acompanhamento'),
+            now()->addSeconds($this->dashboardCacheTtl()),
+            fn (): array => $this->montarAcompanhamentoOperacional($avaliacaoIds),
+        );
+        $itens = collect($acompanhamentoTurmas['itens']);
+        $this->acompanhamentoTurmasTotal = $itens->count();
+        $this->normalizarPaginaAcompanhamentoTurmas($this->acompanhamentoTurmasTotal);
+        $this->acompanhamentoTurmas = $itens
+            ->forPage($this->acompanhamentoTurmasPagina, $this->acompanhamentoTurmasPorPagina)
+            ->values()
+            ->all();
+        $esperadas = (int) $acompanhamentoTurmas['preenchimentos_esperados'];
+        $respondidas = min((int) $acompanhamentoTurmas['preenchimentos_respondidos'], $esperadas);
 
-        $this->acompanhamentoTurmas = $acompanhamentoTurmas['itens'];
-        $this->acompanhamentoTurmasTotal = $acompanhamentoTurmas['total'];
+        $this->cards = [
+            'preenchimentos_esperados' => $esperadas,
+            'preenchimentos_respondidos' => $respondidas,
+            'preenchimentos_pendentes' => max($esperadas - $respondidas, 0),
+            'percentual_preenchimento_geral' => $esperadas > 0 ? round(($respondidas / $esperadas) * 100, 1) : 0.0,
+            'turmas_completas' => (int) ($acompanhamentoTurmas['turmas_completas'] ?? 0),
+            'turmas_total' => (int) ($acompanhamentoTurmas['turmas_total'] ?? 0),
+            'turno_manha_alunos_pendentes' => (int) ($acompanhamentoTurmas['turnos']['manha']['alunos_pendentes'] ?? 0),
+            'turno_manha_alunos_total' => (int) ($acompanhamentoTurmas['turnos']['manha']['alunos_total'] ?? 0),
+            'turno_tarde_alunos_pendentes' => (int) ($acompanhamentoTurmas['turnos']['tarde']['alunos_pendentes'] ?? 0),
+            'turno_tarde_alunos_total' => (int) ($acompanhamentoTurmas['turnos']['tarde']['alunos_total'] ?? 0),
+        ];
+        $this->dashboardCarregado = true;
+        $this->resumoCarregado = true;
+        $this->acompanhamentoCarregado = true;
+    }
+
+    /**
+     * Consolida o necessário para o fluxo operacional: totais da avaliação e
+     * um status por turma, sem construir as dimensões de gráficos do dashboard.
+     *
+     * @param list<int> $avaliacaoIds
+     * @return array{itens: list<array<string, int|float|string>>, preenchimentos_esperados: int, preenchimentos_respondidos: int}
+     */
+    private function montarAcompanhamentoOperacional(array $avaliacaoIds): array
+    {
+        if ($avaliacaoIds === []) {
+            return ['itens' => [], 'preenchimentos_esperados' => 0, 'preenchimentos_respondidos' => 0];
+        }
+
+        $filtros = $this->filtrosDoAcompanhamento();
+        $statusFiltro = $filtros['status_preenchimento'] ?? null;
+        $filtros['status_preenchimento'] = null;
+        $escolasPermitidas = $this->escolasPermitidasIds();
+        $professoresIds = $filtros['professores_ids'] ?? [];
+        $professoresIds = $professoresIds === [] ? null : $professoresIds;
+        $progressoPorAvaliacao = app(AvaliacaoDashboardProgressService::class)->operacionalRapido(
+            $avaliacaoIds,
+            $escolasPermitidas,
+            $professoresIds,
+            $filtros,
+        );
+        $progresso = $progressoPorAvaliacao[$avaliacaoIds[0]] ?? [
+            'preenchidas' => 0,
+            'total' => 0,
+            'turmas' => [],
+        ];
+
+        $turmasQuery = Turma::query()
+            ->whereHas('avaliacoes', fn (EloquentBuilder $query) => $query->whereIn('avaliacoes.id', $avaliacaoIds))
+            ->with(['escola:id,nome', 'serie:id,nome']);
+
+        $this->aplicarEscopoEscolarEloquent($turmasQuery);
+        $turmasQuery
+            ->when(($filtros['series_ids'] ?? []) !== [], fn (EloquentBuilder $query) => $query->whereIn('id_serie', $filtros['series_ids']))
+            ->when(($filtros['turnos'] ?? []) !== [], fn (EloquentBuilder $query) => $query->whereIn('turno', $filtros['turnos']))
+            ->when(($filtros['escolas_ids'] ?? []) !== [], fn (EloquentBuilder $query) => $query->whereIn('id_escola', $filtros['escolas_ids']))
+            ->when(($filtros['componentes_ids'] ?? []) !== [], fn (EloquentBuilder $query) => $query->whereHas(
+                'componentes',
+                fn (EloquentBuilder $componentes) => $componentes->whereIn('componentes_curriculares.id', $filtros['componentes_ids'])
+            ))
+            ->when(is_array($professoresIds), fn (EloquentBuilder $query) => $query->whereHas(
+                'componentes',
+                fn (EloquentBuilder $componentes) => $componentes
+                    ->whereIn('turma_componente_professor.professor_id', $professoresIds)
+                    ->where('turma_componente_professor.tem_professor', true)
+            ));
+
+        $turmas = $turmasQuery->orderBy('id_escola')->orderBy('id_serie')->orderBy('nome')->get();
+        $ciclosConcluidos = DB::table('avaliacao_turma_ciclos')
+            ->whereIn('avaliacao_id', $avaliacaoIds)
+            ->whereIn('turma_avaliativa_id', $turmas->pluck('id'))
+            ->where('status', AvaliacaoTurmaCiclo::STATUS_CONCLUIDA)
+            ->pluck('turma_avaliativa_id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+
+        $itens = $turmas
+            ->map(function (Turma $turma) use ($progresso, $ciclosConcluidos): array {
+                $resumo = $progresso['turmas'][(int) $turma->id] ?? ['preenchidas' => 0, 'total' => 0];
+                $esperadas = max((int) ($resumo['total'] ?? 0), 0);
+                $respondidas = min(max((int) ($resumo['preenchidas'] ?? 0), 0), $esperadas);
+                $status = in_array((int) $turma->id, $ciclosConcluidos, true)
+                    ? 'concluido'
+                    : match (true) {
+                        $esperadas > 0 && $respondidas >= $esperadas => 'preenchido',
+                        $respondidas > 0 => 'em_andamento',
+                        default => 'nao_iniciado',
+                    };
+
+                return [
+                    'avaliacao_id' => (int) $this->filtros['avaliacao_id'],
+                    'turma_id' => (int) $turma->id,
+                    'escola_id' => (int) $turma->id_escola,
+                    'serie_id' => (int) $turma->id_serie,
+                    'componente_id' => 0,
+                    'professor_id' => 0,
+                    'avaliacao_nome' => (string) ($this->avaliacoesOptions[$this->filtros['avaliacao_id']] ?? '-'),
+                    'escola_nome' => (string) ($turma->escola?->nome ?? '-'),
+                    'serie_nome' => (string) ($turma->serie?->nome ?? '-'),
+                    'turma_nome' => (string) $turma->nome,
+                    'turno' => (string) $turma->turno,
+                    'preenchimentos_esperados' => $esperadas,
+                    'preenchimentos_respondidos' => $respondidas,
+                    'preenchimentos_pendentes' => max($esperadas - $respondidas, 0),
+                    'percentual_preenchimento' => $esperadas > 0 ? round(($respondidas / $esperadas) * 100, 1) : 0.0,
+                    'status' => $status,
+                    'status_label' => match ($status) {
+                        'concluido' => 'Concluído',
+                        'preenchido' => 'Preenchido',
+                        'em_andamento' => 'Em andamento',
+                        default => 'Não iniciado',
+                    },
+                    'ultima_resposta' => '-',
+                ];
+            })
+            ->values();
+
+        $turmasCompletas = collect($progresso['turmas'])
+            ->filter(fn (array $resumo): bool => (int) ($resumo['total'] ?? 0) > 0
+                && (int) ($resumo['preenchidas'] ?? 0) >= (int) $resumo['total'])
+            ->count();
+        $turnos = $this->calcularPreenchimentoPorTurno($avaliacaoIds, $filtros);
+        $itens = $itens->filter(fn (array $item): bool => $statusFiltro === null
+            || $item['status'] === $statusFiltro)
+            ->values();
+
+        return [
+            'itens' => $itens->all(),
+            'preenchimentos_esperados' => (int) ($progresso['total'] ?? 0),
+            'preenchimentos_respondidos' => (int) ($progresso['preenchidas'] ?? 0),
+            'turmas_completas' => $turmasCompletas,
+            'turmas_total' => count($progresso['turmas']),
+            'turnos' => $turnos,
+        ];
     }
 
     /**
@@ -2771,7 +2839,7 @@ class DashboardAvaliacoes extends Page implements HasForms
         ];
     }
 
-    private function calcularPreenchimentoPorTurno(array $avaliacaoIds): array
+    private function calcularPreenchimentoPorTurno(array $avaliacaoIds, ?array $filtros = null): array
     {
         $resultado = [
             'manha' => [
@@ -2794,8 +2862,10 @@ class DashboardAvaliacoes extends Page implements HasForms
             return $resultado;
         }
 
+        $filtrosAtivos = $filtros ?? $this->filtros;
+
         if ($this->dashboardResumosEstaoProntos($avaliacaoIds)) {
-            $resumos = $this->queryResumosDeTurmas($avaliacaoIds, $this->filtros)->get();
+            $resumos = $this->queryResumosDeTurmas($avaliacaoIds, $filtrosAtivos)->get();
 
             foreach ($resumos->groupBy('turno') as $turno => $linhas) {
                 if (! array_key_exists($turno, $resultado)) {
@@ -2822,21 +2892,21 @@ class DashboardAvaliacoes extends Page implements HasForms
         $distinctEsperado = $this->distinctCombinacaoExpr('at.avaliacao_id', 'at.turma_id', 'p.id', 'aln.id');
         $distinctRespondido = $this->distinctCombinacaoExpr('ar.avaliacao_id', 'ar.turma_id', 'ar.pauta_id', 'ar.aluno_id');
 
-        $esperadas = (clone $this->basePreenchimentosEsperadosQuery($avaliacaoIds))
+        $esperadas = (clone $this->basePreenchimentosEsperadosQuery($avaliacaoIds, $filtrosAtivos))
             ->whereIn('t.turno', array_keys($resultado))
             ->groupBy('t.turno')
             ->select('t.turno', DB::raw("COUNT(DISTINCT {$distinctEsperado}) as total"))
             ->get()
             ->keyBy('turno');
 
-        $respondidas = (clone $this->baseRespostasQuery($avaliacaoIds, ignorarAlternativas: true))
+        $respondidas = (clone $this->baseRespostasQuery($avaliacaoIds, ignorarAlternativas: true, filtros: $filtrosAtivos))
             ->whereIn('t.turno', array_keys($resultado))
             ->groupBy('t.turno')
             ->select('t.turno', DB::raw("COUNT(DISTINCT {$distinctRespondido}) as total"))
             ->get()
             ->keyBy('turno');
 
-        $esperadasPorAluno = (clone $this->basePreenchimentosEsperadosQuery($avaliacaoIds))
+        $esperadasPorAluno = (clone $this->basePreenchimentosEsperadosQuery($avaliacaoIds, $filtrosAtivos))
             ->whereIn('t.turno', array_keys($resultado))
             ->groupBy('t.turno', 'aln.id')
                 ->select(
@@ -2847,7 +2917,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             ->get()
             ->groupBy('turno');
 
-        $respondidasPorAluno = (clone $this->baseRespostasQuery($avaliacaoIds, ignorarAlternativas: true))
+        $respondidasPorAluno = (clone $this->baseRespostasQuery($avaliacaoIds, ignorarAlternativas: true, filtros: $filtrosAtivos))
             ->whereIn('t.turno', array_keys($resultado))
             ->groupBy('t.turno', 'ar.aluno_id')
             ->select(
@@ -4101,14 +4171,13 @@ class DashboardAvaliacoes extends Page implements HasForms
     private function dashboardCacheKey(string $secao): string
     {
         $contexto = [
-            'usuario' => Auth::id(),
+            'usuario' => $secao === 'acompanhamento' ? null : Auth::id(),
             'filtros' => $this->filtros,
             'filtros_acompanhamento' => $secao === 'acompanhamento' ? $this->filtrosAcompanhamento : [],
-            'pagina' => $secao === 'acompanhamento' ? $this->acompanhamentoTurmasPagina : null,
-            'por_pagina' => $secao === 'acompanhamento' ? $this->acompanhamentoTurmasPorPagina : null,
+            'escolas_permitidas' => $secao === 'acompanhamento' ? $this->escolasPermitidasIds() : null,
         ];
 
-        $versao = $secao === 'acompanhamento' ? 'v4' : 'v1';
+        $versao = $secao === 'acompanhamento' ? 'v8' : 'v1';
 
         return 'avaliacoes-dashboard:'.$secao.'-'.$versao.':'.hash('sha256', serialize($contexto));
     }

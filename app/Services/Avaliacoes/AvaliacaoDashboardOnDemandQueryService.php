@@ -52,6 +52,47 @@ class AvaliacaoDashboardOnDemandQueryService
     }
 
     /**
+     * Alunos elegíveis sem cruzá-los com todas as pautas da turma.
+     * Consumidores podem agregar esta consulta por avaliação/turma e multiplicar
+     * pelo total de pautas aplicáveis, evitando materializar a matriz completa.
+     *
+     * @param  list<int>  $avaliacaoIds
+     */
+    public function alunosElegiveis(array $avaliacaoIds): QueryBuilder
+    {
+        $query = DB::query()
+            ->fromSub($this->escoposAvaliativosQuery($this->ids($avaliacaoIds)), 'at')
+            ->join('turmas as t', 't.id', '=', 'at.turma_id')
+            ->join('alunos as aln', 'aln.id_turma', '=', 'at.turma_origem_id')
+            ->join('avaliacoes as av', 'av.id', '=', 'at.avaliacao_id');
+
+        $this->aplicarElegibilidadeAluno($query);
+
+        return $query;
+    }
+
+    /**
+     * Pautas ativas aplicáveis por avaliação/turma/componente, sem cruzamento
+     * com os alunos elegíveis.
+     *
+     * @param  list<int>  $avaliacaoIds
+     */
+    public function pautasAplicaveis(array $avaliacaoIds): QueryBuilder
+    {
+        return DB::query()
+            ->fromSub($this->escoposAvaliativosQuery($this->ids($avaliacaoIds)), 'at')
+            ->join('turmas as t', 't.id', '=', 'at.turma_id')
+            ->join('avaliacao_pauta as ap', 'ap.avaliacao_id', '=', 'at.avaliacao_id')
+            ->join('pautas as p', 'p.id', '=', 'ap.pauta_id')
+            ->where('p.status', true)
+            ->where(function (QueryBuilder $pautas): void {
+                $pautas
+                    ->whereNull('p.serie_id')
+                    ->orWhereColumn('p.serie_id', 't.id_serie');
+            });
+    }
+
+    /**
      * Respostas canônicas extraídas do payload dos documentos.
      *
      * O documento é filtrado por avaliação antes da expansão do JSON. A turma
@@ -64,7 +105,11 @@ class AvaliacaoDashboardOnDemandQueryService
      *
      * @param  list<int>  $avaliacaoIds
      */
-    public function respostas(array $avaliacaoIds, bool $somenteCompletas = false): QueryBuilder
+    public function respostas(
+        array $avaliacaoIds,
+        bool $somenteCompletas = false,
+        bool $incluirRespostasLegadas = true,
+    ): QueryBuilder
     {
         $avaliacaoIds = $this->ids($avaliacaoIds);
         $respostasLegadas = null;
@@ -87,16 +132,18 @@ class AvaliacaoDashboardOnDemandQueryService
             // turmas ainda não inicializadas continuam sendo a fonte válida
             // das respostas. O UNION mantém ambos os formatos disponíveis e
             // os consumidores consolidam por aluno/pauta, evitando duplicidade.
-            $respostasLegadas = $this->normalizarRespostasQuery(
-                $avaliacaoIds,
-                match (DB::connection()->getDriverName()) {
-                    'mysql' => $this->respostasExpandidasMysqlQuery($avaliacaoIds),
-                    'sqlite' => $this->respostasExpandidasSqliteQuery($avaliacaoIds),
-                    default => throw new RuntimeException(
-                        'Driver de banco não suportado para leitura sob demanda das avaliações.'
-                    ),
-                },
-            );
+            if ($incluirRespostasLegadas) {
+                $respostasLegadas = $this->normalizarRespostasQuery(
+                    $avaliacaoIds,
+                    match (DB::connection()->getDriverName()) {
+                        'mysql' => $this->respostasExpandidasMysqlQuery($avaliacaoIds),
+                        'sqlite' => $this->respostasExpandidasSqliteQuery($avaliacaoIds),
+                        default => throw new RuntimeException(
+                            'Driver de banco não suportado para leitura sob demanda das avaliações.'
+                        ),
+                    },
+                );
+            }
         } else {
             $respostasExpandidas = match (DB::connection()->getDriverName()) {
                 'mysql' => $this->respostasExpandidasMysqlQuery($avaliacaoIds),

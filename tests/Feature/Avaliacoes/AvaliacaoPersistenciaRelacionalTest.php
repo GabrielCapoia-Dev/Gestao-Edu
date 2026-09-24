@@ -125,6 +125,8 @@ class AvaliacaoPersistenciaRelacionalTest extends TestCase
 
         $this->assertStringNotContainsStringIgnoringCase('json_table', $sql);
         $this->assertStringNotContainsStringIgnoringCase('json_each', $sql);
+        $this->assertStringNotContainsString('avaliacao_aluno_documentos', $sql);
+        $this->assertStringContainsString('avaliacao_respostas_operacionais', $sql);
         $this->assertSame(1, app(AvaliacaoDashboardOnDemandQueryService::class)
             ->respostas([$cenario['avaliacao']->id], true)->count());
     }

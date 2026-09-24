@@ -309,9 +309,15 @@ class DashboardAvaliacoesPageTest extends TestCase
         $component->set('filtros.avaliacao_id', $avaliacao->id);
         $component
             ->assertSee('Preenchimento geral')
-            ->assertSee('por escola')
-            ->assertSee('Preenchimento por componente')
-            ->assertSee('Preenchimento por s');
+            ->assertSee('Turmas completas')
+            ->assertSee('Alunos pendentes — manhã')
+            ->assertSee('Alunos pendentes — tarde')
+            ->assertDontSee('Selecione a avaliação para consultar o percentual geral')
+            ->assertDontSee('Selecione uma avaliação', false)
+            ->assertSee('Turmas da avaliação')
+            ->assertDontSee('Preenchimento por componente')
+            ->assertDontSee('Por série')
+            ->assertDontSee('Pontos de atenção');
 
         $cards = $component->instance()->cards;
 
@@ -319,43 +325,16 @@ class DashboardAvaliacoesPageTest extends TestCase
         $this->assertSame(5, $cards['preenchimentos_respondidos']);
         $this->assertSame(5, $cards['preenchimentos_pendentes']);
         $this->assertEquals(50.0, $cards['percentual_preenchimento_geral']);
-        $this->assertEquals(50.0, $cards['percentual_alunos_sem_resposta_pautas']);
-        $this->assertEquals(0.0, $cards['percentual_turmas_preenchidas']);
-        $this->assertSame(2, $cards['turmas_incompletas']);
-        $this->assertEquals(0.0, $cards['percentual_escolas_preenchidas']);
-        $this->assertEquals(83.3, $cards['percentual_turno_manha']);
-        $this->assertEquals(0.0, $cards['percentual_turno_tarde']);
+        $linhas = collect($component->instance()->acompanhamentoTurmas)->keyBy('turma_nome');
+        $this->assertSame('em_andamento', $linhas->get('Turma A')['status']);
+        $this->assertSame('nao_iniciado', $linhas->get('Turma B')['status']);
+        $this->assertArrayNotHasKey('percentual_turmas_preenchidas', $cards);
+        $this->assertSame(0, $cards['turmas_completas']);
+        $this->assertSame(2, $cards['turmas_total']);
         $this->assertSame(1, $cards['turno_manha_alunos_pendentes']);
         $this->assertSame(3, $cards['turno_manha_alunos_total']);
         $this->assertSame(2, $cards['turno_tarde_alunos_pendentes']);
         $this->assertSame(2, $cards['turno_tarde_alunos_total']);
-
-        $componentes = collect($component->instance()->preenchimentoPorComponentes)->keyBy('nome');
-
-        $this->assertSame(10, $componentes->get('Lingua Portuguesa')['preenchimentos_esperados']);
-        $this->assertSame(5, $componentes->get('Lingua Portuguesa')['preenchimentos_respondidos']);
-        $this->assertSame(5, $componentes->get('Lingua Portuguesa')['preenchimentos_pendentes']);
-        $this->assertEquals(50.0, $componentes->get('Lingua Portuguesa')['percentual_preenchimento']);
-
-        $series = collect($component->instance()->preenchimentoPorSeries)->keyBy('nome');
-
-        $this->assertSame(10, $series->get('1o Ano')['preenchimentos_esperados']);
-        $this->assertSame(5, $series->get('1o Ano')['preenchimentos_respondidos']);
-        $this->assertSame(5, $series->get('1o Ano')['preenchimentos_pendentes']);
-        $this->assertEquals(50.0, $series->get('1o Ano')['percentual_preenchimento']);
-
-        $graficoEscolas = collect($component->instance()->turmasIncompletasPorEscola)->keyBy('nome');
-
-        $this->assertSame(1, $graficoEscolas->get('Escola Manha')['total']);
-        $this->assertSame(1, $graficoEscolas->get('Escola Tarde')['total']);
-        $this->assertEquals(100.0, $graficoEscolas->get('Escola Tarde')['percentual']);
-
-        $tabelaEscolas = collect($component->instance()->tabelaEscolas)->keyBy('nome');
-
-        $this->assertSame(1, $tabelaEscolas->get('Escola Manha')['turmas_incompletas']);
-        $this->assertSame(0, $tabelaEscolas->get('Escola Manha')['turmas_preenchidas']);
-        $this->assertSame(1, $tabelaEscolas->get('Escola Tarde')['turmas_incompletas']);
-        $this->assertSame(0, $tabelaEscolas->get('Escola Tarde')['turmas_preenchidas']);
 
         $component->set('filtrosAcompanhamento.turno', 'manha');
         $this->assertSame(
@@ -628,14 +607,15 @@ class DashboardAvaliacoesPageTest extends TestCase
         $this->assertFalse($component->instance()->dashboardCarregado);
         $this->assertSame(0, $component->instance()->cards['preenchimentos_esperados']);
 
-        $component->call('carregarDashboardInicial');
+        $component->call('carregarDashboardInicialCompleto');
 
         $this->assertTrue($component->instance()->dashboardCarregado);
         $this->assertSame(2, $component->instance()->cards['preenchimentos_esperados']);
         $this->assertSame(
-            ['Escola Norte', 'Escola Sul'],
-            collect($component->instance()->tabelaEscolas)->pluck('nome')->sort()->values()->all()
+            ['Turma Norte', 'Turma Sul'],
+            collect($component->instance()->acompanhamentoTurmas)->pluck('turma_nome')->sort()->values()->all()
         );
+        $this->assertSame([], $component->instance()->tabelaEscolas);
         $this->assertArrayHasKey($escolaNorte->id, $component->instance()->escolasOptions);
         $this->assertArrayHasKey($escolaSul->id, $component->instance()->escolasOptions);
     }
@@ -710,7 +690,6 @@ class DashboardAvaliacoesPageTest extends TestCase
         $dashboard->atualizarDadosRecentes(silencioso: true);
 
         $this->assertSame(1, $dashboard->cards['preenchimentos_respondidos']);
-        $dashboard->carregarGraficosDashboard();
         $dashboard->carregarAcompanhamentoDashboard();
         $this->assertSame(1, collect($dashboard->acompanhamentoTurmas)->first()['preenchimentos_respondidos']);
         $this->assertDatabaseCount('avaliacao_dashboard_fatos', 0);

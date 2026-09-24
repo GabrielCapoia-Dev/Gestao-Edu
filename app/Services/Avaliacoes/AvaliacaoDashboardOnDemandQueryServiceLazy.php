@@ -38,7 +38,11 @@ class AvaliacaoDashboardOnDemandQueryServiceLazy extends AvaliacaoDashboardOnDem
         return parent::esperados($avaliacaoIds);
     }
 
-    public function respostas(array $avaliacaoIds, bool $somenteCompletas = false): QueryBuilder
+    public function respostas(
+        array $avaliacaoIds,
+        bool $somenteCompletas = false,
+        bool $incluirRespostasLegadas = true,
+    ): QueryBuilder
     {
         $avaliacaoIds = $this->ids($avaliacaoIds);
         $this->garantirEstrutura($avaliacaoIds);
@@ -49,6 +53,10 @@ class AvaliacaoDashboardOnDemandQueryServiceLazy extends AvaliacaoDashboardOnDem
                 ->whereRaw('1 = 0');
         }
 
+        if (! $incluirRespostasLegadas) {
+            return parent::respostas($avaliacaoIds, $somenteCompletas, incluirRespostasLegadas: false);
+        }
+
         $possuiLegadoPendente = DB::table('avaliacao_turma_ciclos')
             ->whereIn('avaliacao_id', $avaliacaoIds)
             ->where('status', AvaliacaoTurmaCiclo::STATUS_ABERTA)
@@ -57,7 +65,11 @@ class AvaliacaoDashboardOnDemandQueryServiceLazy extends AvaliacaoDashboardOnDem
 
         // Caminho normal depois que as turmas já passaram pelo primeiro acesso.
         if (! $possuiLegadoPendente) {
-            return parent::respostas($avaliacaoIds, $somenteCompletas);
+            return parent::respostas(
+                $avaliacaoIds,
+                $somenteCompletas,
+                incluirRespostasLegadas: false,
+            );
         }
 
         $possuiRelacional = DB::table('avaliacao_turma_ciclos')

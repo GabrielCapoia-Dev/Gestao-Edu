@@ -4,15 +4,9 @@
         x-data="{
             async carregarDashboardInicialCompleto() {
                 await $wire.carregarDashboardInicialCompleto()
-                await $wire.carregarAcompanhamentoDashboard()
-            },
-            async recarregarDetalhesDashboard() {
-                await $wire.carregarAcompanhamentoDashboard()
             },
         }"
         x-init="carregarDashboardInicialCompleto()"
-        x-on:dashboard-acompanhamento-recarregar.window="$wire.atualizarAcompanhamentoTurmas()"
-        x-on:dashboard-detalhes-recarregar.window="recarregarDetalhesDashboard()"
     >
     <div class="dav-page">
         <div class="dav-processing-overlay" wire:loading.flex wire:target="carregarDashboardInicialCompleto,carregarDashboardInicial,carregarResumoDashboard,carregarAcompanhamentoDashboard,atualizarAcompanhamentoTurmas,atualizarDadosRecentes">
@@ -25,20 +19,14 @@
 
         @if (! $this->avaliacaoSelecionada())
             <section class="dav-empty-state">
-                <h3>Selecione uma avaliação para carregar os indicadores.</h3>
-                <p>Acesse este acompanhamento a partir de uma avaliação para carregar os indicadores.</p>
+                <h3>Nenhuma avaliação selecionada.</h3>
+                <p>Abra o acompanhamento a partir da avaliação desejada para carregar os indicadores e as turmas autorizadas.</p>
             </section>
         @else
             @php
                 $preenchimentosEsperados = max((int) ($cards['preenchimentos_esperados'] ?? 0), 0);
                 $preenchimentosRespondidos = max((int) ($cards['preenchimentos_respondidos'] ?? 0), 0);
-                $preenchimentosPendentes = max((int) ($cards['preenchimentos_pendentes'] ?? 0), 0);
                 $percentualPreenchimentoGeral = (float) ($cards['percentual_preenchimento_geral'] ?? 0);
-                $percentualTurmas = (float) ($cards['percentual_turmas_preenchidas'] ?? 0);
-                $alunosPendentesManha = (int) ($cards['turno_manha_alunos_pendentes'] ?? 0);
-                $alunosTotalManha = (int) ($cards['turno_manha_alunos_total'] ?? 0);
-                $alunosPendentesTarde = (int) ($cards['turno_tarde_alunos_pendentes'] ?? 0);
-                $alunosTotalTarde = (int) ($cards['turno_tarde_alunos_total'] ?? 0);
                 $acompanhamentoUltimaPagina = max((int) ceil(($acompanhamentoTurmasTotal ?? 0) / max((int) $acompanhamentoTurmasPorPagina, 1)), 1);
                 $acompanhamentoInicio = ($acompanhamentoTurmasTotal ?? 0) > 0
                     ? (((int) $acompanhamentoTurmasPagina - 1) * (int) $acompanhamentoTurmasPorPagina) + 1
@@ -57,92 +45,7 @@
                 </section>
             @else
 
-            <section class="dav-panel dav-panel--legacy">
-                <div class="dav-panel-head">
-                    <div>
-                        <h3>Filtros do dashboard</h3>
-                        <p>Refine o acompanhamento geral sem duplicar os filtros específicos da listagem por turma.</p>
-                    </div>
-
-                    <button type="button" class="dav-action" wire:click="limparFiltros">
-                        Limpar filtros
-                    </button>
-                </div>
-
-                <div class="dav-filters-grid">
-                    <label class="dav-field">
-                        <span>Avaliação</span>
-                            <select wire:model.live.debounce.300ms="filtros.avaliacao_id">
-                            <option value="">Selecione uma avaliação</option>
-                            @foreach ($this->avaliacoesOptions as $id => $label)
-                                <option value="{{ $id }}">{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-
-                    <label class="dav-field">
-                        <span>Período</span>
-                        <select wire:model.live.debounce.300ms="filtros.periodo_id" @disabled(! $avaliacaoSelecionada)>
-                            <option value="">Todos</option>
-                            @foreach ($this->periodosOptions as $id => $label)
-                                <option value="{{ $id }}">{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-
-                    <label class="dav-field">
-                        <span>Tipo</span>
-                        <select wire:model.live.debounce.300ms="filtros.tipo_id" @disabled(! $avaliacaoSelecionada)>
-                            <option value="">Todos</option>
-                            @foreach ($this->tiposOptions as $id => $label)
-                                <option value="{{ $id }}">{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-
-                    <label class="dav-field">
-                        <span>Status</span>
-                        <select wire:model.live.debounce.300ms="filtros.status" @disabled(! $avaliacaoSelecionada)>
-                            @foreach ($this->statusOptions as $id => $label)
-                                <option value="{{ $id }}">{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-
-                    <label class="dav-field">
-                        <span>Professores</span>
-                        <select wire:model.live.debounce.300ms="filtros.professores_ids" multiple @disabled(! $avaliacaoSelecionada)>
-                            @foreach ($this->professoresOptions as $id => $label)
-                                <option value="{{ $id }}">{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-
-                    <label class="dav-field">
-                        <span>Pautas</span>
-                        <select wire:model.live.debounce.300ms="filtros.pautas_ids" multiple @disabled(! $avaliacaoSelecionada)>
-                            @foreach ($this->pautasOptions as $id => $label)
-                                <option value="{{ $id }}">{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-
-                    <label class="dav-field">
-                        <span>Alternativas</span>
-                        <select wire:model.live.debounce.300ms="filtros.alternativas_ids" multiple @disabled(! $avaliacaoSelecionada)>
-                            @foreach ($this->alternativasOptions as $id => $label)
-                                <option value="{{ $id }}">{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-                </div>
-
-                @if ($avisoHistorico = $this->avisoFiltrosHistoricos())
-                    <div class="av-note av-note--warning">{{ $avisoHistorico }}</div>
-                @endif
-            </section>
-
-            <section class="dav-kpi-grid">
+            <section class="dav-kpi-grid dav-kpi-grid--overview">
                 <article class="dav-kpi dav-kpi--blue">
                     <span class="dav-kpi-label">Preenchimento geral</span>
                     <strong>{{ number_format($percentualPreenchimentoGeral, 1, ',', '.') }}%</strong>
@@ -151,103 +54,28 @@
                 </article>
                 <article class="dav-kpi dav-kpi--green">
                     <span class="dav-kpi-label">Turmas completas</span>
-                    <strong>{{ $cards['turmas_preenchidas'] ?? 0 }}</strong>
-                    <small>{{ $cards['turmas_preenchidas'] ?? 0 }} de {{ $cards['turmas_esperadas'] ?? 0 }} turmas concluídas</small>
-                    <div class="dav-mini-track"><div class="dav-mini-fill dav-mini-fill--green" style="width: {{ min($percentualTurmas, 100) }}%;"></div></div>
+                    <strong>{{ (int) ($cards['turmas_completas'] ?? 0) }}</strong>
+                    <small>de {{ (int) ($cards['turmas_total'] ?? 0) }} turmas no escopo</small>
+                    <div class="dav-mini-track"><div class="dav-mini-fill dav-mini-fill--green" style="width: {{ ($cards['turmas_total'] ?? 0) > 0 ? min(((int) ($cards['turmas_completas'] ?? 0) / (int) $cards['turmas_total']) * 100, 100) : 0 }}%;"></div></div>
                 </article>
                 <article class="dav-kpi">
-                    <span class="dav-kpi-label">Alunos pendentes - manhã</span>
-                    <strong>{{ $alunosPendentesManha }}</strong>
-                    <small>{{ $alunosTotalManha }} alunos no turno</small>
-                    <div class="dav-mini-track"><div class="dav-mini-fill" style="width: {{ $alunosTotalManha > 0 ? min(($alunosPendentesManha / $alunosTotalManha) * 100, 100) : 0 }}%;"></div></div>
+                    <span class="dav-kpi-label">Alunos pendentes — manhã</span>
+                    <strong>{{ (int) ($cards['turno_manha_alunos_pendentes'] ?? 0) }}</strong>
+                    <small>{{ (int) ($cards['turno_manha_alunos_total'] ?? 0) }} alunos no turno</small>
                 </article>
                 <article class="dav-kpi">
-                    <span class="dav-kpi-label">Alunos pendentes - tarde</span>
-                    <strong>{{ $alunosPendentesTarde }}</strong>
-                    <small>{{ $alunosTotalTarde }} alunos no turno</small>
-                    <div class="dav-mini-track"><div class="dav-mini-fill" style="width: {{ $alunosTotalTarde > 0 ? min(($alunosPendentesTarde / $alunosTotalTarde) * 100, 100) : 0 }}%;"></div></div>
+                    <span class="dav-kpi-label">Alunos pendentes — tarde</span>
+                    <strong>{{ (int) ($cards['turno_tarde_alunos_pendentes'] ?? 0) }}</strong>
+                    <small>{{ (int) ($cards['turno_tarde_alunos_total'] ?? 0) }} alunos no turno</small>
                 </article>
-            </section>
-
-            <section class="dav-analytics">
-                <header class="dav-analytics__header">
-                    <div>
-                        <span class="dav-kicker">ANÁLISE DO PREENCHIMENTO</span>
-                        <h2>Visão rápida do andamento</h2>
-                        <p>Os indicadores abaixo mostram onde estão as respostas pendentes.</p>
-                    </div>
-                    <div class="dav-analytics__headline">
-                        <strong>{{ number_format($percentualPreenchimentoGeral, 1, ',', '.') }}%</strong>
-                        <span>preenchimento geral</span>
-                    </div>
-                </header>
-
-                <div class="dav-analytics__grid">
-                    <article class="dav-analytics-card dav-analytics-card--wide">
-                        <header class="dav-analytics-card__header">
-                            <div><h3>Por componente</h3><p>Ranking dos componentes curriculares.</p></div>
-                            <span class="dav-analytics-card__unit">respostas</span>
-                        </header>
-                        <div class="dav-ranking dav-ranking--limited">
-                            @forelse ($preenchimentoPorComponentes as $item)
-                                @php $percentual = min(max((float) $item['percentual_preenchimento'], 0), 100); @endphp
-                                <div class="dav-ranking__item">
-                                    <div class="dav-ranking__label"><span>{{ $item['nome'] }}</span><strong>{{ number_format($percentual, 1, ',', '.') }}%</strong></div>
-                                    <div class="dav-ranking__track"><i style="width: {{ $percentual }}%"></i></div>
-                                    <small>{{ $item['preenchimentos_respondidos'] }} de {{ $item['preenchimentos_esperados'] }}</small>
-                                </div>
-                            @empty
-                                <p class="dav-empty">Nenhum componente encontrado.</p>
-                            @endforelse
-                        </div>
-                    </article>
-
-                    <article class="dav-analytics-card dav-analytics-card--wide">
-                        <header class="dav-analytics-card__header">
-                            <div><h3>Por série</h3><p>Acompanhamento por etapa de ensino.</p></div>
-                            <span class="dav-analytics-card__unit">pendências</span>
-                        </header>
-                        <div class="dav-ranking">
-                            @forelse ($preenchimentoPorSeries as $item)
-                                @php $percentual = min(max((float) $item['percentual_preenchimento'], 0), 100); @endphp
-                                <div class="dav-ranking__item">
-                                    <div class="dav-ranking__label"><span>{{ $item['nome'] }}</span><strong>{{ number_format($percentual, 1, ',', '.') }}%</strong></div>
-                                    <div class="dav-ranking__track"><i style="width: {{ $percentual }}%"></i></div>
-                                    <small>{{ $item['preenchimentos_pendentes'] }} preenchimentos pendentes</small>
-                                </div>
-                            @empty
-                                <p class="dav-empty">Nenhuma série encontrada.</p>
-                            @endforelse
-                        </div>
-                    </article>
-
-                    @if ($this->podeVerPendenciaPorEscola)
-                        <article class="dav-analytics-card dav-analytics-card--risk">
-                            <header class="dav-analytics-card__header">
-                                <div><h3>Pontos de atenção</h3><p>Escolas com maior volume de turmas incompletas.</p></div>
-                                <span class="dav-risk-icon">!</span>
-                            </header>
-                            <div class="dav-risk-list">
-                                @forelse ($turmasIncompletasPorEscola as $item)
-                                    <div class="dav-risk-list__item">
-                                        <div><strong>{{ $item['nome'] }}</strong><small>{{ $item['total'] }} turmas incompletas</small></div>
-                                        <b>{{ number_format((float) $item['percentual'], 1, ',', '.') }}%</b>
-                                    </div>
-                                @empty
-                                    <p class="dav-empty">Nenhuma turma incompleta no recorte atual.</p>
-                                @endforelse
-                            </div>
-                        </article>
-                    @endif
-                </div>
             </section>
 
             <section class="dav-card">
                 <header class="dav-card-header--split">
                     <div>
-                        <h3>Acompanhamento de Pareceres</h3>
+                        <h3>Turmas da avaliação</h3>
                         <p>
-                            Andamento por escola, série, turma, componente e professor.
+                            Consulte o status e as ações disponíveis para cada turma.
                             @if ($ultimaAtualizacaoIncremental ?? false)
                                 <span class="dav-refresh-meta">Última verificação: {{ $ultimaAtualizacaoIncremental }}</span>
                             @elseif ($ultimaAtualizacao ?? false)
@@ -257,17 +85,6 @@
                     </div>
 
                     <div class="dav-card-header-actions">
-                        <button
-                            type="button"
-                            class="dav-action dav-action--refresh"
-                            wire:click="atualizarDadosRecentes"
-                            wire:loading.attr="disabled"
-                            wire:target="atualizarDadosRecentes"
-                            title="Recalcula os indicadores diretamente com os dados atuais, sem recarregar a página">
-                            <span wire:loading.remove wire:target="atualizarDadosRecentes">Atualizar</span>
-                            <span wire:loading wire:target="atualizarDadosRecentes">Verificando...</span>
-                        </button>
-
                         <label class="dav-page-size">
                             <span>Itens por página</span>
                             <select wire:model.live="acompanhamentoTurmasPorPagina" aria-label="Itens por página em acompanhamento de pareceres">
@@ -290,10 +107,7 @@
                                 <th>Escola</th>
                                 <th>Série</th>
                                 <th>Turma</th>
-                                <th class="text-right">Respondidos</th>
-                                <th class="text-right">% preenchimento</th>
                                 <th>Status</th>
-                                <th>Última resposta</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -307,21 +121,12 @@
                                     };
                                     $linhaAlterada = ! empty($item['alterado_recentemente']);
                                 @endphp
-                                <tr class="{{ $linhaAlterada ? 'dav-row-changed' : '' }}{{ $item['status'] === 'concluido' ? ' dav-row-completed' : '' }}" @if($linhaAlterada) title="Valor atualizado nesta verificação" @endif>
+                            <tr class="{{ $linhaAlterada ? 'dav-row-changed' : '' }}{{ $item['status'] === 'concluido' ? ' dav-row-completed' : '' }}" @if($linhaAlterada) title="Status atualizado nesta verificação" @endif>
                                     <td>{{ $item['escola_nome'] }}</td>
                                     <td>{{ $item['serie_nome'] }}</td>
                                     <td>
                                         <strong>{{ $item['turma_nome'] }}</strong>
                                         <small>{{ ucfirst((string) $item['turno']) }}</small>
-                                    </td>
-                                    <td class="text-right{{ $linhaAlterada ? ' dav-cell-changed' : '' }}">
-                                        {{ (int) ($item['preenchimentos_respondidos'] ?? 0) }}/{{ (int) ($item['preenchimentos_esperados'] ?? 0) }}
-                                    </td>
-                                    <td class="text-right{{ $linhaAlterada ? ' dav-cell-changed' : '' }}">
-                                        {{ number_format((float) $item['percentual_preenchimento'], 1, ',', '.') }}%
-                                        @if ($linhaAlterada)
-                                            <span class="dav-changed-dot" aria-hidden="true"></span>
-                                        @endif
                                     </td>
                                     <td>
                                         <div class="dav-status-actions">
@@ -349,11 +154,10 @@
                                             @endif
                                         </div>
                                     </td>
-                                    <td>{{ $item['ultima_resposta'] ?? '-' }}</td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="dav-empty">Nenhuma turma encontrada para os filtros atuais.</td>
+                                    <td colspan="4" class="dav-empty">Nenhuma turma encontrada para os filtros atuais.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -817,6 +621,10 @@
             display: grid;
             gap: 0.7rem;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        }
+
+        .dav-kpi-grid--overview {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
         }
 
         .dav-kpi {
@@ -1672,6 +1480,10 @@
 
             .dav-kpi-grid {
                 grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+
+            .dav-kpi-grid--overview {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
 
             .dav-chart-grid--three {
