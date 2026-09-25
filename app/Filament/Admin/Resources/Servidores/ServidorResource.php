@@ -172,7 +172,7 @@ class ServidorResource extends Resource
                 }, 'solicitacoes_pendentes_count');
             })
             ->paginated([5, 10, 25, 50, 100])
-            ->defaultPaginationPageOption(10)
+            ->defaultPaginationPageOption(5)
             ->checkIfRecordIsSelectableUsing(fn (Servidor $record): bool => static::pessoaPodeSerSelecionada($record))
             ->searchable(static::camposBuscaTabela())
             ->searchPlaceholder(static::placeholderBuscaTabela())

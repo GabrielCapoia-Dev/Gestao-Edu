@@ -4,14 +4,13 @@ namespace App\Filament\Admin\Resources\Servidores\Pages;
 
 use App\Filament\Admin\Resources\Servidores\ServidorResource;
 use App\Filament\Admin\Resources\Users\UserResource;
+use App\Livewire\Pessoas\ServidoresTable;
 use App\Models\Servidor;
 use App\Models\User;
-use App\Services\Exports\ExportRequestService;
 use App\Services\PessoaUsuarioService;
 use Filament\Actions\Action;
-use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ManageRecords;
-use Filament\Schemas\Components\EmbeddedTable;
+use Filament\Schemas\Components\Livewire as LivewireComponent;
 use Filament\Schemas\Components\RenderHook;
 use Filament\Schemas\Schema;
 use Filament\View\PanelsRenderHook;
@@ -53,7 +52,8 @@ class ManageServidores extends ManageRecords
         return $schema
             ->components([
                 RenderHook::make(PanelsRenderHook::RESOURCE_PAGES_LIST_RECORDS_TABLE_BEFORE),
-                EmbeddedTable::make(),
+                LivewireComponent::make(ServidoresTable::class)
+                    ->key('servidores-tabela-principal'),
                 RenderHook::make(PanelsRenderHook::RESOURCE_PAGES_LIST_RECORDS_TABLE_AFTER),
             ]);
     }
@@ -61,73 +61,6 @@ class ManageServidores extends ManageRecords
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('exportar_servidores_filtrados_xlsx')
-                ->label('Exportar XLSX')
-                ->icon('heroicon-o-document-arrow-down')
-                ->color('info')
-                ->visible(fn (): bool => Gate::allows('viewAny', Servidor::class))
-                ->requiresConfirmation()
-                ->modalHeading('Exportar servidores filtrados em XLSX')
-                ->modalDescription('A planilha será gerada em segundo plano com os servidores que atendem aos filtros atuais e ao seu escopo de acesso.')
-                ->modalSubmitActionLabel('Enviar para a fila')
-                ->action(function (): void {
-                    /** @var User|null $user */
-                    $user = auth()->user();
-
-                    if (! $user || ! Gate::forUser($user)->allows('viewAny', Servidor::class)) {
-                        return;
-                    }
-
-                    $query = $this->getFilteredTableQuery();
-                    $model = $query->getModel();
-                    $ids = $query
-                        ->pluck($model->qualifyColumn($model->getKeyName()))
-                        ->map(static fn (mixed $id): int => (int) $id)
-                        ->filter()
-                        ->unique()
-                        ->values()
-                        ->all();
-
-                    if ($ids === []) {
-                        Notification::make()
-                            ->title('Nenhum servidor encontrado para exportação')
-                            ->warning()
-                            ->send();
-
-                        return;
-                    }
-
-                    try {
-                        $request = app(ExportRequestService::class)->queue(
-                            user: $user,
-                            type: 'servidores_filtrados',
-                            format: 'xlsx',
-                            filters: ['ids' => $ids],
-                            label: 'XLSX de servidores filtrados',
-                            metadata: [
-                                'source' => 'servidores.filtered_header_action',
-                                'records_count' => count($ids),
-                            ],
-                        );
-
-                        Notification::make()
-                            ->title($request->wasRecentlyCreated
-                                ? 'Exportação enviada para a fila'
-                                : 'Exportação já está em andamento')
-                            ->body('Acompanhe o progresso pelo ícone de downloads no topo.')
-                            ->success()
-                            ->send();
-                    } catch (\Throwable $exception) {
-                        report($exception);
-
-                        Notification::make()
-                            ->title('Não foi possível iniciar a exportação')
-                            ->body('Tente novamente em alguns instantes.')
-                            ->danger()
-                            ->send();
-                    }
-                }),
-
             Action::make('solicitacoes_acesso')
                 ->label(function (): string {
                     $user = auth()->user();

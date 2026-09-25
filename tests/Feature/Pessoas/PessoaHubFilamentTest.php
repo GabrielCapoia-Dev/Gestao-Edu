@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\Servidores\Pages\ManageServidores;
 use App\Filament\Admin\Resources\Servidores\Schemas\ServidorEquipeGestoraForm;
 use App\Filament\Admin\Resources\Servidores\ServidorResource;
 use App\Livewire\Pessoas\PessoaForm;
+use App\Livewire\Pessoas\ServidoresTable;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\FuncaoAdministrativa;
@@ -80,7 +81,7 @@ class PessoaHubFilamentTest extends TestCase
         $semProfessor = $this->criarServidor('Sem registro professor', $escola, $setor);
 
         Livewire::actingAs($usuario)
-            ->test(ManageServidores::class)
+            ->test(ServidoresTable::class)
             ->assertCanSeeTableRecords([$comProfessor, $semProfessor]);
     }
 
@@ -88,7 +89,7 @@ class PessoaHubFilamentTest extends TestCase
     {
         $usuario = $this->usuarioComPermissaoListar();
         $table = Livewire::actingAs($usuario)
-            ->test(ManageServidores::class)
+            ->test(ServidoresTable::class)
             ->instance()
             ->getTable();
 
@@ -244,7 +245,7 @@ class PessoaHubFilamentTest extends TestCase
         }
 
         $componente = Livewire::actingAs($usuario)
-            ->test(ManageServidores::class)
+            ->test(ServidoresTable::class)
             ->assertTableFilterExists('cargo')
             ->assertTableFilterExists('quantidade_matriculas')
             ->assertTableFilterExists('turno_matricula')
@@ -276,38 +277,38 @@ class PessoaHubFilamentTest extends TestCase
         ], $filtroCargo->getOptions());
 
         Livewire::actingAs($usuario)
-            ->test(ManageServidores::class)
+            ->test(ServidoresTable::class)
             ->filterTable('quantidade_matriculas', 'duas')
             ->assertCanSeeTableRecords([$gestora])
             ->assertCanNotSeeTableRecords([$professor, $manutencao, $tresMatriculas, $semCargo]);
 
         Livewire::actingAs($usuario)
-            ->test(ManageServidores::class)
+            ->test(ServidoresTable::class)
             ->filterTable('quantidade_matriculas', 'tres_ou_mais')
             ->assertCanSeeTableRecords([$tresMatriculas])
             ->assertCanNotSeeTableRecords([$professor, $gestora, $manutencao, $semCargo]);
 
         Livewire::actingAs($usuario)
-            ->test(ManageServidores::class)
+            ->test(ServidoresTable::class)
             ->filterTable('cargo', [ServidorResource::CARGO_PROFESSOR])
             ->assertCanSeeTableRecords([$professor])
             ->assertCanNotSeeTableRecords([$gestora, $manutencao, $semCargo]);
 
         Livewire::actingAs($usuario)
-            ->test(ManageServidores::class)
+            ->test(ServidoresTable::class)
             ->filterTable('cargo', [ServidorEquipeGestoraForm::CARGO_DIRETOR])
             ->assertCanSeeTableRecords([$gestora])
             ->assertCanNotSeeTableRecords([$professor, $manutencao, $semCargo]);
 
         Livewire::actingAs($usuario)
-            ->test(ManageServidores::class)
+            ->test(ServidoresTable::class)
             ->filterTable('cargo', [ServidorResource::CARGO_MANUTENCAO])
             ->filterTable('turno_matricula', ['integral'])
             ->assertCanSeeTableRecords([$manutencao])
             ->assertCanNotSeeTableRecords([$professor, $gestora, $semCargo]);
 
         Livewire::actingAs($usuario)
-            ->test(ManageServidores::class)
+            ->test(ServidoresTable::class)
             ->searchTable('FILTRO-MAN')
             ->assertCanSeeTableRecords([$manutencao])
             ->assertCanNotSeeTableRecords([$professor, $gestora, $semCargo]);
@@ -436,28 +437,28 @@ class PessoaHubFilamentTest extends TestCase
         $restrito->givePermissionTo($this->garantirPermissao('Listar Pessoas'));
 
         Livewire::actingAs($restrito)
-            ->test(ManageServidores::class)
+            ->test(ServidoresTable::class)
             ->assertTableFilterHidden('nivel_acesso')
             ->filterTable('quantidade_matriculas', 'uma')
             ->assertCanSeeTableRecords([$pessoa]);
 
         Livewire::actingAs($restrito)
-            ->test(ManageServidores::class)
+            ->test(ServidoresTable::class)
             ->filterTable('quantidade_matriculas', 'duas')
             ->assertCanNotSeeTableRecords([$pessoa]);
 
         Livewire::actingAs($restrito)
-            ->test(ManageServidores::class)
+            ->test(ServidoresTable::class)
             ->searchTable('MATRICULA-VISIVEL')
             ->assertCanSeeTableRecords([$pessoa]);
 
         Livewire::actingAs($restrito)
-            ->test(ManageServidores::class)
+            ->test(ServidoresTable::class)
             ->searchTable('MATRICULA-OCULTA')
             ->assertCanNotSeeTableRecords([$pessoa]);
 
         Livewire::actingAs($restrito)
-            ->test(ManageServidores::class)
+            ->test(ServidoresTable::class)
             ->searchTable('Nível Reservado da Pessoa')
             ->assertCanNotSeeTableRecords([$pessoa]);
 
@@ -545,7 +546,7 @@ class PessoaHubFilamentTest extends TestCase
         ]);
 
         Livewire::actingAs($usuario)
-            ->test(ManageServidores::class)
+            ->test(ServidoresTable::class)
             ->mountTableAction('edit', $servidor)
             ->assertSeeLivewire(PessoaForm::class)
             ->assertDontSee('email_approved')
@@ -822,7 +823,7 @@ class PessoaHubFilamentTest extends TestCase
         $usuario = $this->usuarioComPermissaoListar();
 
         Livewire::actingAs($usuario)
-            ->test(ManageServidores::class)
+            ->test(ServidoresTable::class)
             ->assertTableActionDoesNotExist('gerenciarAcesso');
     }
 
@@ -982,7 +983,7 @@ class PessoaHubFilamentTest extends TestCase
         $this->assertSame(['Matematica'], $grupos[0]['turmas'][0]['componentes']);
 
         Livewire::actingAs($usuario)
-            ->test(ManageServidores::class)
+            ->test(ServidoresTable::class)
             ->mountTableAction('view', $servidor)
             ->assertHasNoErrors()
             ->assertSee('Ficha funcional')
