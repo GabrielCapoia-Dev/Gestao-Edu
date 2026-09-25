@@ -15,6 +15,8 @@ class PedidoNotificationRecipientService
     /** @var array<int, Collection<int, User>> */
     private array $destinatariosPorEscola = [];
 
+    private bool $destinatariosIndexados = false;
+
     public function podeReceber(User $user, Pedido $pedido): bool
     {
         if (
@@ -50,19 +52,43 @@ class PedidoNotificationRecipientService
             return $this->destinatariosPorEscola[$escolaId];
         }
 
-        try {
-            return $this->destinatariosPorEscola[$escolaId] = User::permission(self::PERMISSAO_LISTAR_PEDIDOS)
-                ->get()
-                ->filter(fn (User $user): bool => $this->podeReceber($user, $pedido))
-                ->values();
-        } catch (PermissionDoesNotExist) {
-            return $this->destinatariosPorEscola[$escolaId] = collect();
+        if (! $this->destinatariosIndexados) {
+            $this->indexarDestinatarios();
         }
+
+        return $this->destinatariosPorEscola[$escolaId] ?? collect();
     }
 
     public function podeAcessarCentral(User $user): bool
     {
         return $user->hasPermissionTo(self::PERMISSAO_LISTAR_PEDIDOS)
             && $user->idsEscolasVinculadas() !== [];
+    }
+
+    private function indexarDestinatarios(): void
+    {
+        $this->destinatariosIndexados = true;
+
+        try {
+            $usuarios = User::query()
+                ->permission(self::PERMISSAO_LISTAR_PEDIDOS)
+                ->canAuthenticate()
+                ->get();
+        } catch (PermissionDoesNotExist) {
+            return;
+        }
+
+        foreach ($usuarios as $user) {
+            foreach ($user->idsEscolasVinculadas() as $escolaId) {
+                $escolaId = (int) $escolaId;
+
+                if ($escolaId <= 0) {
+                    continue;
+                }
+
+                $this->destinatariosPorEscola[$escolaId] ??= collect();
+                $this->destinatariosPorEscola[$escolaId]->push($user);
+            }
+        }
     }
 }

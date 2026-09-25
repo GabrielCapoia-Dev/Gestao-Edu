@@ -136,7 +136,7 @@ Variaveis principais:
 
 - `K6_BASE_URL`: URL alvo. Padrao: `https://edu.hubdetestes.online`.
 - `K6_USERS_FILE`: caminho do CSV dentro do container. Padrao: `/scripts/data/users.local.csv`.
-- `K6_PROFILE`: `smoke`, `conservative`, `medium`, `large`, `xlarge` ou `target300`.
+- `K6_PROFILE`: `smoke`, `target10`, `conservative`, `medium`, `large`, `xlarge` ou `target300`. `target10` mantém 10 VUs por 4 minutos após rampa de 1 minuto.
 - `K6_NAV_PATHS`: override global das telas no formato `nome:/rota;nome:/rota`.
 - `K6_PROFILE_PATHS`: override por perfil no formato `school=dashboard:/admin/dashboard,alunos:/admin/alunos;staff=dashboard:/admin/dashboard,usuarios:/admin/usuarios`.
 - `K6_INCLUDE_HEARTBEAT`: `true` para simular o POST de presenca.

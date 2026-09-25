@@ -289,6 +289,30 @@ function defaultProfilePages() {
       { name: 'relatorios', path: '/admin/relatorios-dashboard' },
     ]),
 
+    gestora: common.concat([
+      { name: 'pedidos', path: '/admin/pedidos' },
+      { name: 'alunos', path: '/admin/alunos' },
+      { name: 'turmas', path: '/admin/turmas' },
+      { name: 'servidores', path: '/admin/servidores' },
+      { name: 'relatorios', path: '/admin/relatorios-dashboard' },
+    ]),
+
+    assessoria: common.concat([
+      { name: 'avisos', path: '/admin/avisos' },
+      { name: 'eventos', path: '/admin/eventos-calendario' },
+      { name: 'reservas', path: '/admin/reservas-veiculos' },
+      { name: 'relatorios', path: '/admin/relatorios-dashboard' },
+      { name: 'servidores', path: '/admin/servidores' },
+      { name: 'locais_trabalho', path: '/admin/locais-de-trabalho' },
+      { name: 'lotacoes', path: '/admin/lotacoes' },
+      { name: 'alunos', path: '/admin/alunos' },
+      { name: 'turmas', path: '/admin/turmas' },
+      { name: 'avaliacoes', path: '/admin/avaliacoes-gestao' },
+      { name: 'acompanhamento', path: '/admin/dashboard-avaliacoes' },
+      { name: 'pautas', path: '/admin/avaliacoes-pautas' },
+      { name: 'alternativas', path: '/admin/avaliacoes-alternativas' },
+    ]),
+
     school: common.concat([
       { name: 'alunos', path: '/admin/alunos' },
       { name: 'turmas', path: '/admin/turmas' },
@@ -323,6 +347,18 @@ function profileOptions(profile) {
       stages: [
         { duration: '1m', target: 5 },
         { duration: '3m', target: 20 },
+        { duration: '1m', target: 0 },
+      ],
+      thresholds: commonThresholds,
+      userAgent: 'GestaoEduK6/1.0',
+    };
+  }
+
+  if (profile === 'target10') {
+    return {
+      stages: [
+        { duration: '1m', target: 10 },
+        { duration: '4m', target: 10 },
         { duration: '1m', target: 0 },
       ],
       thresholds: commonThresholds,

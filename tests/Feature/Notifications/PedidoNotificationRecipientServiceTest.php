@@ -72,18 +72,26 @@ class PedidoNotificationRecipientServiceTest extends TestCase
         $this->assertFalse($vinculado->hasPermissionTo('Visualizar Notificações'));
     }
 
-    public function test_reutiliza_destinatarios_calculados_para_pedidos_da_mesma_escola(): void
+    public function test_indexa_destinatarios_de_varias_escolas_em_uma_unica_leitura(): void
     {
         [$escola, $setor] = $this->criarEscola('Escola Cache de Destinatários');
+        [$outraEscola, $outroSetor] = $this->criarEscola('Outra Escola Cache de Destinatários');
         $vinculado = $this->criarUsuarioVinculado($escola, $setor, 'Usuário em Cache');
+        $outroVinculado = $this->criarUsuarioVinculado($outraEscola, $outroSetor, 'Outro Usuário em Cache');
         $vinculado->givePermissionTo(PedidoNotificationRecipientService::PERMISSAO_LISTAR_PEDIDOS);
+        $outroVinculado->givePermissionTo(PedidoNotificationRecipientService::PERMISSAO_LISTAR_PEDIDOS);
 
         $service = app(PedidoNotificationRecipientService::class);
         $pedido = new Pedido(['escola_id' => $escola->id]);
+        $outroPedido = new Pedido(['escola_id' => $outraEscola->id]);
 
         DB::enableQueryLog();
         $this->assertSame([$vinculado->id], $service->destinatarios($pedido)->pluck('id')->all());
         $this->assertNotEmpty(DB::getQueryLog());
+
+        DB::flushQueryLog();
+        $this->assertSame([$outroVinculado->id], $service->destinatarios($outroPedido)->pluck('id')->all());
+        $this->assertSame([], DB::getQueryLog());
 
         DB::flushQueryLog();
         $this->assertSame([$vinculado->id], $service->destinatarios($pedido)->pluck('id')->all());

@@ -24,7 +24,7 @@ class NotificarPedidosAtrasados extends Command
         $pedidosAtrasados = Pedido::query()
             ->whereNull('data_entrega')
             ->whereNotNull('data_prevista')
-            ->whereDate('data_prevista', '<', $hoje)
+            ->where('data_prevista', '<', $hoje->toDateString())
             ->get()
             ->filter(fn (Pedido $pedido): bool => $this->deveNotificarAtraso($pedido, $hoje));
 
