@@ -7,6 +7,7 @@ use App\Models\Escola;
 use App\Models\ReservaVeiculo;
 use App\Models\User;
 use App\Models\VeiculoTransporte;
+use App\Services\PessoaScopeService;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -18,12 +19,14 @@ use Illuminate\Validation\ValidationException;
 
 class ReservaVeiculoService
 {
+    public function __construct(private readonly PessoaScopeService $scope) {}
+
     public function query(User $ator): Builder
     {
         Gate::forUser($ator)->authorize('viewAny', ReservaVeiculo::class);
         ReservaVeiculo::concluirExpiradas();
 
-        return ReservaVeiculo::query()
+        $query = ReservaVeiculo::query()
             ->with([
                 'veiculo:id,placa,identificacao,ativo',
                 'usuario:id,name,email',
@@ -32,6 +35,8 @@ class ReservaVeiculoService
                 'canceladoPor:id,name',
             ])
             ->orderByDesc('data_inicio');
+
+        return $this->aplicarEscopoEscolas($query, $ator);
     }
 
     /** @return Collection<int, ReservaVeiculo> */
@@ -53,7 +58,7 @@ class ReservaVeiculoService
                 ->findOrFail($dados['veiculo_transporte_id']);
 
             $this->validarDisponibilidade($veiculo->id, $periodos);
-            [$escolaId, $localNome, $escolaIds] = $this->resolverLocal($dados);
+            [$escolaId, $localNome, $escolaIds] = $this->resolverLocal($dados, $ator);
             $grupo = count($periodos) > 1 ? (string) Str::uuid() : null;
 
             return collect($periodos)->map(function (array $periodo) use ($escolaId, $localNome, $escolaIds, $ator, $dados, $veiculo, $grupo): ReservaVeiculo {
@@ -107,7 +112,7 @@ class ReservaVeiculoService
             }
 
             $this->validarDisponibilidade($veiculo->id, $periodo, $reserva->id);
-            [$escolaId, $localNome, $escolaIds] = $this->resolverLocal($dados);
+            [$escolaId, $localNome, $escolaIds] = $this->resolverLocal($dados, $ator);
 
             $reserva->fill([
                 'veiculo_transporte_id' => $veiculo->id,
@@ -203,13 +208,14 @@ class ReservaVeiculoService
         Gate::forUser($ator)->authorize('viewAny', ReservaVeiculo::class);
         ReservaVeiculo::concluirExpiradas();
 
-        return ReservaVeiculo::query()
+        $query = ReservaVeiculo::query()
             ->ativas()
             ->where('data_fim', '>=', now())
             ->with(['veiculo:id,placa,identificacao', 'usuario:id,name', 'escola:id,nome'])
             ->orderBy('data_inicio')
-            ->limit(max(1, min($limite, 12)))
-            ->get();
+            ->limit(max(1, min($limite, 12)));
+
+        return $this->aplicarEscopoEscolas($query, $ator)->get();
     }
 
     /** @return array<string, mixed> */
@@ -398,7 +404,7 @@ class ReservaVeiculoService
     }
 
     /** @return array{0: int|null, 1: string, 2: list<int>} */
-    private function resolverLocal(array $dados): array
+    private function resolverLocal(array $dados, User $ator): array
     {
         if ($dados['tipo_local'] === 'escola') {
             $escolaIds = array_values(array_unique(array_map('intval', $dados['escola_ids'] ?? (($dados['escola_id'] ?? null) ? [$dados['escola_id']] : []))));
@@ -407,6 +413,13 @@ class ReservaVeiculoService
             if ($escolas->count() !== count($escolaIds)) {
                 throw ValidationException::withMessages([
                     'escola_id' => 'A escola ou o CMEI selecionado não está ativo.',
+                ]);
+            }
+
+            $permitidas = $this->scope->escolaIdsDosVinculos($ator);
+            if (! $this->scope->hasGlobalAccess($ator) && array_diff($escolaIds, $permitidas) !== []) {
+                throw ValidationException::withMessages([
+                    'escola_ids' => 'Selecione apenas escolas pertencentes ao seu contexto de acesso.',
                 ]);
             }
 
@@ -425,5 +438,22 @@ class ReservaVeiculoService
             $veiculo->identificacao,
             $veiculo->placa,
         ])->filter()->implode(' — ');
+    }
+
+    private function aplicarEscopoEscolas(Builder $query, User $ator): Builder
+    {
+        if ($this->scope->hasGlobalAccess($ator)) {
+            return $query;
+        }
+
+        $ids = $this->scope->escolaIdsDosVinculos($ator);
+        if ($ids === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(function (Builder $reservas) use ($ids): void {
+            $reservas->whereIn('escola_id', $ids)
+                ->orWhereHas('escolas', fn (Builder $escolas): Builder => $escolas->whereKey($ids));
+        });
     }
 }

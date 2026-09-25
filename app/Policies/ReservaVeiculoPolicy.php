@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Models\Enums\ListaPermissoes;
 use App\Models\ReservaVeiculo;
 use App\Models\User;
+use App\Services\PessoaScopeService;
 
 class ReservaVeiculoPolicy
 {
@@ -15,7 +16,7 @@ class ReservaVeiculoPolicy
 
     public function view(User $user, ReservaVeiculo $reserva): bool
     {
-        return $this->viewAny($user);
+        return $this->viewAny($user) && $this->noEscopoEscolar($user, $reserva);
     }
 
     public function create(User $user): bool
@@ -27,6 +28,7 @@ class ReservaVeiculoPolicy
     {
         return $reserva->pertenceAo($user)
             && $reserva->aindaPodeSerAlterada()
+            && $this->noEscopoEscolar($user, $reserva)
             && $user->hasPermissionTo(ListaPermissoes::EditarReservasVeiculos->label());
     }
 
@@ -34,6 +36,7 @@ class ReservaVeiculoPolicy
     {
         return $reserva->pertenceAo($user)
             && $reserva->aindaPodeSerAlterada()
+            && $this->noEscopoEscolar($user, $reserva)
             && $user->hasPermissionTo(ListaPermissoes::CancelarReservasVeiculos->label());
     }
 
@@ -45,5 +48,26 @@ class ReservaVeiculoPolicy
     public function deleteAny(User $user): bool
     {
         return false;
+    }
+
+    private function noEscopoEscolar(User $user, ReservaVeiculo $reserva): bool
+    {
+        $scope = app(PessoaScopeService::class);
+        if ($scope->hasGlobalAccess($user)) {
+            return true;
+        }
+
+        $ids = $scope->escolaIdsDosVinculos($user);
+        if ($ids === []) {
+            return false;
+        }
+
+        $reserva->loadMissing('escolas');
+        $escolaIds = $reserva->escolas->modelKeys();
+        if ($reserva->escola_id) {
+            $escolaIds[] = (int) $reserva->escola_id;
+        }
+
+        return $escolaIds !== [] && array_diff($escolaIds, $ids) === [];
     }
 }

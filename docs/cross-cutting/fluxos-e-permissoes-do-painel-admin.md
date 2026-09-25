@@ -206,7 +206,7 @@ Observações:
 
 - Quem possui somente `Criar Eventos: Transporte` precisa selecionar escolas e solicitar transporte; o serviço rejeita eventos comuns.
 - O nível `Transporte` analisa, publica, desativa e rejeita solicitações de transporte sem acesso aos cadastros pedagógicos.
-- O nível `Assessoria Pedagógica` possui leitura pedagógica de rede e cria solicitações de transporte, mas não publica nem aloca veículos.
+- O nível `Assessoria Pedagógica` possui leitura pedagógica de rede, opera avisos e eventos próprios dentro das escolas assessoradas e cria/edita/cancela reservas nessas escolas, mas não administra frota nem aloca transporte de eventos.
 
 ### Pedagógico -> Reserva de veículos
 
@@ -220,7 +220,7 @@ Policies: `ReservaVeiculoPolicy` e `VeiculoTransportePolicy` (registradas em `Ap
 
 Observações:
 
-- O preset `Assessoria Pedagógica` recebe essas permissões.
+- O preset `Assessoria Pedagógica` recebe as permissões de reserva, mas não `Gerenciar Frota de Veículos`; o escopo das escolas é validado no backend.
 - A gestão de reservas é acessada pelos botões da página inicial e não é registrada no menu lateral.
 - Reservas para vários dias geram uma reserva por dia do intervalo, sempre no mesmo horário, com limite de 31 dias.
 - Reservas destinadas a uma escola ou CMEI aparecem na agenda da unidade.

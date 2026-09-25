@@ -5,10 +5,13 @@ namespace App\Services\Dashboard;
 use App\Models\Enums\ListaPermissoes;
 use App\Models\EventoCalendario;
 use App\Models\User;
+use App\Services\PessoaScopeService;
 use Illuminate\Database\Eloquent\Builder;
 
 class EventoCalendarioAccessService
 {
+    public function __construct(private readonly PessoaScopeService $scope) {}
+
     public function podeListar(User $user): bool
     {
         return $this->podeListarGeral($user)
@@ -38,13 +41,13 @@ class EventoCalendarioAccessService
         }
 
         if ($this->podeListarGeral($user)) {
-            return $query;
+            return $this->aplicarEscopoAssessoria($user, $query);
         }
 
         $listarTransporte = $this->podeListarTransporte($user);
         $listarProprios = $this->podeListarProprios($user);
 
-        return $query->where(function (Builder $eventos) use ($user, $listarTransporte, $listarProprios): void {
+        $query = $query->where(function (Builder $eventos) use ($user, $listarTransporte, $listarProprios): void {
             if ($listarTransporte) {
                 $eventos->whereHas(
                     'escolasAgendadas',
@@ -57,11 +60,27 @@ class EventoCalendarioAccessService
                 $eventos->{$metodo}('eventos_calendario.criado_por_id', $user->getKey());
             }
         });
+
+        return $this->aplicarEscopoAssessoria($user, $query);
     }
 
     public function podeVisualizar(User $user, EventoCalendario $evento): bool
     {
         if (! $this->podeListar($user)) {
+            return false;
+        }
+
+        if ($this->scope->ehAssessoriaPedagogica($user)
+            && ! $this->podeListarGeral($user)
+            && (int) $evento->criado_por_id !== (int) $user->getKey()) {
+            return false;
+        }
+
+        if ($this->scope->ehAssessoriaPedagogica($user)
+            && $this->podeListarGeral($user)
+            && ! $evento->escolasAgendadas()
+                ->whereIn('escola_id', $this->scope->escolaIdsDosVinculos($user))
+                ->exists()) {
             return false;
         }
 
@@ -74,5 +93,25 @@ class EventoCalendarioAccessService
         }
 
         return $this->podeListarTransporte($user) && $evento->possuiTransporte();
+    }
+
+    private function aplicarEscopoAssessoria(User $user, Builder $query): Builder
+    {
+        if (! $this->scope->ehAssessoriaPedagogica($user)) {
+            return $query;
+        }
+
+        // Sem permissão ampla vinda de outro papel, a Assessoria opera
+        // exclusivamente os eventos que criou. Eventos de escopo "todas as
+        // escolas" podem não ter linhas em escolas_agendadas.
+        if (! $this->podeListarGeral($user)) {
+            return $query->where('eventos_calendario.criado_por_id', $user->getKey());
+        }
+
+        $ids = $this->scope->escolaIdsDosVinculos($user);
+
+        return $ids === []
+            ? $query->whereRaw('1 = 0')
+            : $query->whereHas('escolasAgendadas', fn (Builder $escolas): Builder => $escolas->whereIn('escola_id', $ids));
     }
 }

@@ -94,6 +94,7 @@ class PessoaScopeService
                 'funcaoAdministrativa',
                 'setor:id,nome,contexto,exige_vinculo_escola',
                 'escola:id,nome,setor_id',
+                'escolasAssessoradas:id,nome,setor_id,ativo',
             ])
             ->get();
     }
@@ -107,6 +108,12 @@ class PessoaScopeService
         $userId = (int) $user->getKey();
 
         return $this->equipesGestoras[$userId] ??= $this->temVinculoGestorEmQualquerPessoa($user);
+    }
+
+    public function ehAssessoriaPedagogica(?User $user): bool
+    {
+        return $this->vinculosAtivos($user)
+            ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehAssessoriaPedagogica());
     }
 
     public function usaEscopoPorVinculos(?User $user): bool
@@ -185,6 +192,18 @@ class PessoaScopeService
             ->values()
             ->all();
 
+        $escolasAssessoradas = $vinculos
+            ->filter(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehAssessoriaPedagogica())
+            ->flatMap(fn ($vinculo) => $vinculo->escolasAssessoradas)
+            ->filter(fn ($escola): bool => (bool) $escola->ativo)
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $escolasVinculo = array_values(array_unique([...$escolasVinculo, ...$escolasAssessoradas]));
+
         $vinculosGestores = $vinculos
             ->filter(fn ($vinculo): bool => $vinculo->funcaoAdministrativa?->tipoEquipeGestora() !== null);
         $escolasGestoras = $vinculosGestores
@@ -258,6 +277,12 @@ class PessoaScopeService
             return $query;
         }
 
+        // A Assessoria Pedagógica consulta servidores da rede inteira; os
+        // vínculos escolares continuam restritos nos demais domínios.
+        if ($this->ehAssessoriaPedagogica($user)) {
+            return $query;
+        }
+
         $escolaIds = $this->escolaIdsDosVinculos($user);
 
         if ($escolaIds !== []) {
@@ -292,6 +317,10 @@ class PessoaScopeService
         }
 
         if ($this->hasGlobalAccess($user)) {
+            return true;
+        }
+
+        if ($this->ehAssessoriaPedagogica($user)) {
             return true;
         }
 

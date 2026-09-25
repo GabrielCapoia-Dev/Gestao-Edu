@@ -130,17 +130,22 @@ class CriarPermissoesCommandTest extends TestCase
         $this->assertTrue($assessoria->hasPermissionTo(ListaPermissoes::CriarReservasVeiculos->label()));
         $this->assertTrue($assessoria->hasPermissionTo(ListaPermissoes::EditarReservasVeiculos->label()));
         $this->assertTrue($assessoria->hasPermissionTo(ListaPermissoes::CancelarReservasVeiculos->label()));
-        $this->assertTrue($assessoria->hasPermissionTo(ListaPermissoes::GerenciarFrotaVeiculos->label()));
+        $this->assertFalse($assessoria->hasPermissionTo(ListaPermissoes::GerenciarFrotaVeiculos->label()));
         $this->assertTrue($assessoria->hasPermissionTo(ListaPermissoes::EditarEventos->label()));
         $this->assertTrue($assessoria->hasPermissionTo(ListaPermissoes::PublicarEventos->label()));
         $this->assertTrue($assessoria->hasPermissionTo(ListaPermissoes::DesativarEventos->label()));
         $this->assertTrue($transporte->hasPermissionTo(ListaPermissoes::VisualizarAgendaDeTodaARede->label()));
-        $this->assertTrue($assessoria->hasPermissionTo(ListaPermissoes::VisualizarAgendaDeTodaARede->label()));
+        $this->assertFalse($assessoria->hasPermissionTo(ListaPermissoes::VisualizarAgendaDeTodaARede->label()));
         $this->assertFalse($assessoria->hasPermissionTo(ListaPermissoes::EditarAlunos->label()));
         $this->assertFalse($assessoria->hasPermissionTo(ListaPermissoes::ResponderAvaliacoes->label()));
         $this->assertFalse($assessoria->hasPermissionTo(ListaPermissoes::PublicarEventosTransporte->label()));
         $this->assertFalse($assessoria->hasPermissionTo(ListaPermissoes::DesativarEventosTransporte->label()));
         $this->assertFalse($assessoria->hasPermissionTo(ListaPermissoes::GerenciarTransporteDeEventos->label()));
+        $this->assertTrue($assessoria->hasPermissionTo(ListaPermissoes::ListarAvisos->label()));
+        $this->assertTrue($assessoria->hasPermissionTo(ListaPermissoes::CriarAvisos->label()));
+        $this->assertTrue($assessoria->hasPermissionTo(ListaPermissoes::PublicarAvisos->label()));
+        $this->assertTrue($assessoria->hasPermissionTo(ListaPermissoes::VisualizarUsuariosOnline->label()));
+        $this->assertFalse($assessoria->hasPermissionTo(ListaPermissoes::AcessarEscopoGlobalDeSetores->label()));
     }
 
     public function test_it_creates_transport_role_function_and_exact_permissions(): void
@@ -184,6 +189,8 @@ class CriarPermissoesCommandTest extends TestCase
         $this->assertTrue($role->hasPermissionTo(ListaPermissoes::ListarMeusEventos->label()));
         $this->assertFalse($role->hasPermissionTo(ListaPermissoes::EditarAlunos->label()));
         $this->assertFalse($role->hasPermissionTo(ListaPermissoes::PublicarEventosTransporte->label()));
+        $this->assertFalse($role->hasPermissionTo(ListaPermissoes::GerenciarFrotaVeiculos->label()));
+        $this->assertFalse($role->hasPermissionTo(ListaPermissoes::AcessarEscopoGlobalDeSetores->label()));
         $this->assertDatabaseHas('funcao_administrativa_role', [
             'funcao_administrativa_id' => $funcao->id,
             'role_id' => $role->id,
@@ -293,7 +300,7 @@ class CriarPermissoesCommandTest extends TestCase
         $this->assertTrue(Role::findByName('Equipe Gestora', 'web')->hasPermissionTo($permission));
         $this->assertTrue(Role::findByName('Manutenção', 'web')->hasPermissionTo($permission));
         $this->assertTrue(Role::findByName('Transporte', 'web')->hasPermissionTo($permission));
-        $this->assertTrue(Role::findByName('Assessoria Pedagógica', 'web')->hasPermissionTo($permission));
+        $this->assertFalse(Role::findByName('Assessoria Pedagógica', 'web')->hasPermissionTo($permission));
         $this->assertContains($permission, EquipeGestoraPermissionPreset::all());
     }
 
