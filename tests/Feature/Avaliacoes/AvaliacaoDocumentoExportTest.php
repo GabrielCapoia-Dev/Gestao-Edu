@@ -447,6 +447,39 @@ class AvaliacaoDocumentoExportTest extends TestCase
         $this->assertSame(Aluno::TIPO_VINCULO_CONTRA_TURNO, $alunosSrm->first()->tipo_vinculo);
     }
 
+    public function test_exportacao_de_turma_integral_aceita_alunos_de_contra_turno(): void
+    {
+        $escola = $this->criarEscola('Escola Integral Exportacao');
+        $serie = $this->criarSerie('SER-2-INT-EXPORT', '2º Ano - Integral');
+        $turma = Turma::query()->create([
+            'codigo' => 'TUR-2-INT-EXPORT',
+            'nome' => 'A',
+            'turno' => 'integral',
+            'id_serie' => $serie->id,
+            'id_escola' => $escola->id,
+        ]);
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno Integral Contra Turno',
+            'cgm' => 'CGM-INT-EXPORT-001',
+            'data_nascimento' => '2018-01-01',
+            'id_turma' => $turma->id,
+            'tipo_vinculo' => Aluno::TIPO_VINCULO_CONTRA_TURNO,
+            'status' => Aluno::STATUS_MATRICULADO,
+        ]);
+
+        $metodo = new ReflectionMethod(AvaliacaoDocumentoExportService::class, 'alunosDaTurma');
+        $metodo->setAccessible(true);
+
+        $alunos = $metodo->invoke(
+            new AvaliacaoDocumentoExportService(),
+            $turma,
+            'turma',
+            [],
+        );
+
+        $this->assertSame([$aluno->id], $alunos->pluck('id')->all());
+    }
+
     public function test_resolve_diretor_e_coordenador_por_funcoes_do_servidor_para_o_documento(): void
     {
         $escola = $this->criarEscola('Escola Servidor Documento');

@@ -6,8 +6,10 @@ use App\Exceptions\ResponsaveisParecerInvalidosException;
 use App\Models\Aluno;
 use App\Models\Alternativa;
 use App\Models\Avaliacao;
+use App\Models\AvaliacaoAlunoSnapshot;
 use App\Models\AvaliacaoExportacao;
 use App\Models\AvaliacaoAlunoDocumento;
+use App\Models\AvaliacaoTurmaCiclo;
 use App\Models\Pauta;
 use App\Models\Professor;
 use App\Models\Turma;
@@ -399,7 +401,7 @@ class AvaliacaoDocumentoExportService
 
         DB::transaction(function () use ($avaliacao, $turmas, $escopo, $params): void {
             foreach ($turmas as $turma) {
-                $alunos = $this->alunosDaTurma($turma, $escopo, $params);
+                $alunos = $this->alunosDaTurma($turma, $escopo, $params, $avaliacao);
 
                 if ($alunos->isEmpty() || $this->pautasDaTurma($avaliacao, $turma)->isEmpty()) {
                     continue;
@@ -424,7 +426,7 @@ class AvaliacaoDocumentoExportService
         $this->precarregarProfessoresPorTurmaComponente($turmas);
 
         foreach ($turmas as $turma) {
-            $alunos = $this->alunosDaTurma($turma, $escopo, $params);
+            $alunos = $this->alunosDaTurma($turma, $escopo, $params, $avaliacao);
 
             if ($alunos->isEmpty()) {
                 continue;
@@ -463,8 +465,24 @@ class AvaliacaoDocumentoExportService
      * @param  array<string, mixed>  $params
      * @return Collection<int, Aluno>
      */
-    private function alunosDaTurma(Turma $turma, string $escopo, array $params): Collection
+    private function alunosDaTurma(
+        Turma $turma,
+        string $escopo,
+        array $params,
+        ?Avaliacao $avaliacao = null,
+    ): Collection
     {
+        $alunosDoSnapshot = $this->alunosDoSnapshotCongelado(
+            $turma,
+            $escopo,
+            $params,
+            $avaliacao,
+        );
+
+        if ($alunosDoSnapshot !== null) {
+            return $alunosDoSnapshot;
+        }
+
         $escopos = app(TurmaAvaliacaoAlunoScopeService::class)
             ->escoposPorTurma(collect([$turma]));
         $escopoTurma = $escopos[(int) $turma->id] ?? [
@@ -474,7 +492,6 @@ class AvaliacaoDocumentoExportService
 
         $query = Aluno::query()
             ->where('id_turma', $escopoTurma['turma_origem_id'])
-            ->where('tipo_vinculo', $escopoTurma['tipo_vinculo'])
             ->orderBy('nome');
 
         if ($escopoTurma['tipo_vinculo'] === Aluno::TIPO_VINCULO_CONTRA_TURNO) {
@@ -488,6 +505,69 @@ class AvaliacaoDocumentoExportService
         }
 
         return $query->get(['id', 'nome', 'cgm', 'id_turma', 'status', 'tipo_vinculo', 'data_matricula', 'status_alterado_em']);
+    }
+
+    /**
+     * Em uma avaliação concluída, o roster congelado é a fonte histórica do
+     * parecer. A turma atual pode ter alunos transferidos/remanejados ou
+     * vínculos de contra turno diferentes do vínculo de compatibilidade
+     * retornado pelo escopo.
+     *
+     * @param  array<string, mixed>  $params
+     * @return Collection<int, Aluno>|null
+     */
+    private function alunosDoSnapshotCongelado(
+        Turma $turma,
+        string $escopo,
+        array $params,
+        ?Avaliacao $avaliacao,
+    ): ?Collection {
+        if ($avaliacao === null || ! app(AvaliacaoPersistencia::class)->leRelacional()) {
+            return null;
+        }
+
+        $ciclo = AvaliacaoTurmaCiclo::query()
+            ->where('avaliacao_id', (int) $avaliacao->id)
+            ->where('turma_avaliativa_id', (int) $turma->id)
+            ->first(['status', 'snapshot_evento_atual_id']);
+
+        if ($ciclo?->status !== AvaliacaoTurmaCiclo::STATUS_CONCLUIDA
+            || ! $ciclo->snapshot_evento_atual_id) {
+            return null;
+        }
+
+        $alunoIds = AvaliacaoAlunoSnapshot::query()
+            ->where('evento_id', (string) $ciclo->snapshot_evento_atual_id)
+            ->where('tipo', 'conclusao')
+            ->orderBy('aluno_id')
+            ->pluck('aluno_id')
+            ->map(fn ($id): int => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($alunoIds->isEmpty()) {
+            return collect();
+        }
+
+        $query = Aluno::query()
+            ->whereIn('id', $alunoIds->all())
+            ->orderBy('nome');
+
+        if ($escopo === 'aluno') {
+            $query->whereKey((int) ($params['aluno_id'] ?? 0));
+        }
+
+        return $query->get([
+            'id',
+            'nome',
+            'cgm',
+            'id_turma',
+            'status',
+            'tipo_vinculo',
+            'data_matricula',
+            'status_alterado_em',
+        ]);
     }
 
     /**
@@ -912,7 +992,7 @@ class AvaliacaoDocumentoExportService
 
         return $turmas
             ->map(function (Turma $turma) use ($avaliacao, $escopo, $params, $reader): ?array {
-                $alunos = $this->alunosDaTurma($turma, $escopo, $params);
+                $alunos = $this->alunosDaTurma($turma, $escopo, $params, $avaliacao);
                 $pautas = $this->pautasDaTurma($avaliacao, $turma);
 
                 if ($alunos->isEmpty() || $pautas->isEmpty()) {
@@ -1209,7 +1289,7 @@ class AvaliacaoDocumentoExportService
                     return collect();
                 }
 
-                return $this->alunosDaTurma($turma, $escopo, $params);
+                return $this->alunosDaTurma($turma, $escopo, $params, $avaliacao);
             })
             ->values();
     }
