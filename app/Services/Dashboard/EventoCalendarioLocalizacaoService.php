@@ -1,10 +1,10 @@
 <?php
 
-namespace AppServicesDashboard;
+namespace App\Services\Dashboard;
 
-use AppModelsEventoCalendario;
-use IlluminateSupportFacadesCache;
-use IlluminateSupportFacadesHttp;
+use App\Models\EventoCalendario;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 
 final class EventoCalendarioLocalizacaoService
 {

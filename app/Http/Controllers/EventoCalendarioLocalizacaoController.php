@@ -1,12 +1,12 @@
 <?php
 
-namespace AppHttpControllers;
+namespace App\Http\Controllers;
 
-use AppModelsEventoCalendario;
-use AppServicesDashboardEventoCalendarioLocalizacaoService;
-use IlluminateHttpJsonResponse;
-use IlluminateHttpRequest;
-use IlluminateSupportFacadesGate;
+use App\Models\EventoCalendario;
+use App\Services\Dashboard\EventoCalendarioLocalizacaoService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 final class EventoCalendarioLocalizacaoController extends Controller
 {
