@@ -103,6 +103,8 @@ class PessoaForm extends Component
 
     public ?string $matriculaOperacional = null;
 
+    public ?string $turnoOperacional = null;
+
     /** @var list<int|string> */
     public array $escolaIdsAssessoria = [];
 
@@ -820,6 +822,7 @@ class PessoaForm extends Component
         $this->cargo = ServidorResource::CARGO_PROFESSOR;
         $this->matriculaMotorista = null;
         $this->matriculaOperacional = null;
+        $this->turnoOperacional = null;
         $this->escolaIdsAssessoria = [];
         $key = $this->novaChave('m');
         $this->matriculas = [
@@ -859,6 +862,9 @@ class PessoaForm extends Component
             : null;
         $this->matriculaOperacional = filled($dados['matricula_operacional'] ?? null)
             ? (string) $dados['matricula_operacional']
+            : null;
+        $this->turnoOperacional = filled($dados['turno_operacional'] ?? null)
+            ? (string) $dados['turno_operacional']
             : null;
         $this->escolaIdsAssessoria = collect($dados['escola_ids_assessoria'] ?? [])
             ->filter(fn (mixed $id): bool => filled($id))
@@ -1116,10 +1122,14 @@ class PessoaForm extends Component
         ];
 
         if ($this->cargo === ServidorResource::CARGO_MOTORISTA
-            || $this->cargo === ServidorResource::CARGO_TRANSPORTE
-            || $this->cargo === ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA) {
+            || $this->cargo === ServidorResource::CARGO_TRANSPORTE) {
             $rules += [
                 'matriculaOperacional' => ['nullable', 'string', 'max:255'],
+            ];
+        } elseif ($this->cargo === ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA) {
+            $rules += [
+                'matriculaOperacional' => ['required', 'string', 'max:255'],
+                'turnoOperacional' => ['required', Rule::in(array_keys(PessoaMatricula::turnosOptions()))],
             ];
         } else {
             $rules += [
@@ -1184,6 +1194,7 @@ class PessoaForm extends Component
             'setorObrasId' => 'setor de Obras',
             'matriculaMotorista' => 'matrícula',
             'matriculaOperacional' => 'matrícula',
+            'turnoOperacional' => 'turno da matrícula',
             'escolaIdsAssessoria' => 'escolas assessoradas',
             'escolaIdsAssessoria.*' => 'escola assessorada',
             'lotacaoId' => 'lotação',
@@ -1192,7 +1203,6 @@ class PessoaForm extends Component
         $cargosSemMatriculas = [
             ServidorResource::CARGO_MOTORISTA,
             ServidorResource::CARGO_TRANSPORTE,
-            ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA,
         ];
 
         if (! in_array($this->cargo, $cargosSemMatriculas, true)) {
@@ -1374,6 +1384,7 @@ class PessoaForm extends Component
             || filled($this->portaria)
             || $this->turmaIds !== []
             || filled($this->matriculaOperacional)
+            || filled($this->turnoOperacional)
         ) {
             throw ValidationException::withMessages([
                 'formulario' => 'O formulário contém alterações estruturais não permitidas para este perfil.',
@@ -1596,6 +1607,7 @@ class PessoaForm extends Component
             'cargo' => $this->cargo,
             'matricula_motorista' => $this->matriculaMotorista,
             'matricula_operacional' => $this->matriculaOperacional,
+            'turno_operacional' => $this->turnoOperacional,
             'escola_ids_assessoria' => collect($this->escolaIdsAssessoria)
                 ->filter(fn (mixed $id): bool => filled($id))
                 ->map(fn (mixed $id): int => (int) $id)

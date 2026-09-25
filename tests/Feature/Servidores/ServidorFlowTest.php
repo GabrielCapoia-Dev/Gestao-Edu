@@ -139,8 +139,16 @@ class ServidorFlowTest extends TestCase
         ], [
             'assessoria_pedagogica' => [
                 'matricula' => 'ASS-001',
+                'turno' => 'integral',
                 'escola_ids' => [$escolaA->id, $escolaB->id],
             ],
+        ]);
+
+        $this->assertDatabaseHas('professor_matriculas', [
+            'servidor_id' => $assessor->id,
+            'matricula' => 'ASS-001',
+            'turno' => 'integral',
+            'carga_horaria' => 40,
         ]);
 
         $vinculo = $assessor->vinculosAtivos()
@@ -202,14 +210,22 @@ class ServidorFlowTest extends TestCase
         $assessor = $servico->criarServidorComFuncoes($dados, [
             'assessoria_pedagogica' => [
                 'matricula' => 'ASS-002',
+                'turno' => 'manha',
                 'escola_ids' => [$escolaAnterior->id],
             ],
         ]);
         $servico->atualizarServidorComFuncoes($assessor, $dados, [
             'assessoria_pedagogica' => [
                 'matricula' => 'ASS-002',
+                'turno' => 'tarde',
                 'escola_ids' => [$escolaAtual->id, $escolaAtual->id],
             ],
+        ]);
+
+        $this->assertDatabaseHas('professor_matriculas', [
+            'servidor_id' => $assessor->id,
+            'matricula' => 'ASS-002',
+            'turno' => 'tarde',
         ]);
 
         $vinculos = $assessor->vinculosAtivos()

@@ -11,7 +11,7 @@
         </header>
 
         <div class="pe-person-form__grid pe-person-form__grid--2">
-            <label class="pe-person-form__field pe-person-form__span-2">
+            <label class="pe-person-form__field">
                 <span>Matrícula</span>
                 <input
                     type="text"
@@ -22,6 +22,22 @@
                 >
                 @error('matriculaOperacional')
                     <small id="pessoa-form-matricula-assessoria-error" class="is-error">{{ $message }}</small>
+                @enderror
+            </label>
+
+            <label class="pe-person-form__field">
+                <span>Turno <b aria-hidden="true">*</b></span>
+                <select
+                    wire:model.blur="turnoOperacional"
+                    @error('turnoOperacional') aria-invalid="true" aria-describedby="pessoa-form-turno-assessoria-error" @enderror
+                >
+                    <option value="">Selecione o turno</option>
+                    @foreach ($turnosOptions as $value => $label)
+                        <option value="{{ $value }}">{{ $label }}</option>
+                    @endforeach
+                </select>
+                @error('turnoOperacional')
+                    <small id="pessoa-form-turno-assessoria-error" class="is-error">{{ $message }}</small>
                 @enderror
             </label>
 

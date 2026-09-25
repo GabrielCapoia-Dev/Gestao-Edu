@@ -1877,6 +1877,7 @@ class ServidorResource extends Resource
 
             return [$data, ['assessoria_pedagogica' => [
                 'matricula' => $data['matricula'],
+                'turno' => $data['turno_operacional'] ?? null,
                 'escola_ids' => collect($data['escola_ids_assessoria'] ?? [])
                     ->filter(fn (mixed $id): bool => filled($id))
                     ->map(fn (mixed $id): int => (int) $id)

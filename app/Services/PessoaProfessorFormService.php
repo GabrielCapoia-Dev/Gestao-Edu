@@ -102,6 +102,9 @@ class PessoaProfessorFormService
             return array_merge($dados, [
                 'cargo' => ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA,
                 'matricula_operacional' => $vinculoAssessoriaPedagogica->matricula ?? $pessoa->matricula,
+                'turno_operacional' => $pessoa->matriculas
+                    ->firstWhere('matricula', $vinculoAssessoriaPedagogica->matricula ?? $pessoa->matricula)
+                    ?->turno,
                 'escola_ids_assessoria' => $vinculoAssessoriaPedagogica->escolasAssessoradas
                     ->pluck('id')
                     ->map(fn (mixed $id): int => (int) $id)
@@ -252,6 +255,13 @@ class PessoaProfessorFormService
                         || $vinculo->funcaoAdministrativa?->ehAssessoriaPedagogica()
                     ))
                     ?->matricula ?? $pessoa->matricula)
+                : null,
+            'turno_operacional' => $ehAssessoriaPedagogicaNoEscopo
+                ? $pessoa->matriculas
+                    ->firstWhere('matricula', $pessoa->vinculosAtivos
+                        ->first(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehAssessoriaPedagogica())
+                        ?->matricula ?? $pessoa->matricula)
+                    ?->turno
                 : null,
             'escola_ids_assessoria' => $ehAssessoriaPedagogicaNoEscopo
                 ? $pessoa->vinculosAtivos
