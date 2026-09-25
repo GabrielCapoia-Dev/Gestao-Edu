@@ -220,10 +220,16 @@ class ServidorResource extends Resource
 
                         TextColumn::make('escolas_resumo')
                             ->label('Escolas')
-                            ->visible(fn (Servidor $record): bool => static::exibeEscolaNaListagem($record))
-                            ->description('Escolas', position: 'above')
-                            ->getStateUsing(fn (Servidor $record): string => static::escolasLabel($record))
-                            ->icon('heroicon-o-building-library')
+                            ->description(
+                                fn (Servidor $record): ?string => static::exibeEscolaNaListagem($record) ? 'Escolas' : null,
+                                position: 'above',
+                            )
+                            ->getStateUsing(fn (Servidor $record): ?string => static::exibeEscolaNaListagem($record)
+                                ? static::escolasLabel($record)
+                                : null)
+                            ->icon(fn (Servidor $record): ?string => static::exibeEscolaNaListagem($record)
+                                ? 'heroicon-o-building-library'
+                                : null)
                             ->copyable()
                             ->copyMessage('Escolas copiadas')
                             ->tooltip('Clique para copiar as escolas')
