@@ -1203,6 +1203,7 @@ class PessoaForm extends Component
         $cargosSemMatriculas = [
             ServidorResource::CARGO_MOTORISTA,
             ServidorResource::CARGO_TRANSPORTE,
+            ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA,
         ];
 
         if (! in_array($this->cargo, $cargosSemMatriculas, true)) {

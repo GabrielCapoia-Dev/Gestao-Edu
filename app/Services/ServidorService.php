@@ -492,7 +492,7 @@ class ServidorService
             ]);
 
             if ($tipo === 'assessoria_pedagogica') {
-                $this->sincronizarMatriculaOperacional($pessoa, $matricula, $turno);
+                $this->sincronizarMatriculaAssessoria($pessoa, $matricula, $turno);
                 $this->sincronizarEscolasAssessoria($vinculo, $escolaIds);
             }
 
@@ -553,7 +553,7 @@ class ServidorService
             ])->save();
 
             if ($tipo === 'assessoria_pedagogica') {
-                $this->sincronizarMatriculaOperacional($servidor, $matricula, $turno, $matriculaAnterior);
+                $this->sincronizarMatriculaAssessoria($servidor, $matricula, $turno, $matriculaAnterior);
                 $this->sincronizarEscolasAssessoria($vinculo, $escolaIds);
             }
 
@@ -563,7 +563,7 @@ class ServidorService
         });
     }
 
-    private function sincronizarMatriculaOperacional(
+    private function sincronizarMatriculaAssessoria(
         Servidor $pessoa,
         mixed $matricula,
         mixed $turno,
@@ -571,6 +571,14 @@ class ServidorService
     ): void {
         $matricula = filled($matricula) ? trim((string) $matricula) : null;
         $turno = filled($turno) ? (string) $turno : null;
+
+        if (! filled($matricula)) {
+            throw ValidationException::withMessages([
+                'matricula_operacional' => 'Informe a matrícula da Assessoria Pedagógica.',
+            ]);
+        }
+
+        PessoaMatricula::assertTurnoValido((string) $turno);
 
         $registro = PessoaMatricula::query()
             ->where('servidor_id', $pessoa->getKey())
