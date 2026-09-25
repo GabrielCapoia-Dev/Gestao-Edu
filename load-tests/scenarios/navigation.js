@@ -294,7 +294,6 @@ function defaultProfilePages() {
       { name: 'alunos', path: '/admin/alunos' },
       { name: 'turmas', path: '/admin/turmas' },
       { name: 'servidores', path: '/admin/servidores' },
-      { name: 'relatorios', path: '/admin/relatorios-dashboard' },
     ]),
 
     assessoria: common.concat([
