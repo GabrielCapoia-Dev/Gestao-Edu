@@ -8,6 +8,7 @@ use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
 use App\Services\Avaliacoes\AvaliacaoDashboardProgressService;
 use App\Services\Avaliacoes\AvaliacaoPersistencia;
+use App\Services\PessoaScopeService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -375,7 +376,10 @@ class AvaliacaoTurmaProfessorWorkspace extends AvaliacaoTurmaWorkspace
 
     public function agrupaNavegacaoPorEscola(): bool
     {
-        return Auth::user()?->hasRole('Admin') ?? false;
+        $user = Auth::user();
+
+        return $user?->hasRole('Admin')
+            || app(PessoaScopeService::class)->ehAssessoriaPedagogica($user);
     }
 
     public function selecionarEscolaNavegacao(int $escolaId): void

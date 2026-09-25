@@ -11,9 +11,12 @@ use App\Models\Avaliacao;
 use App\Models\AvaliacaoAlunoDocumento;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
+use App\Models\FuncaoAdministrativa;
 use App\Models\Pauta;
 use App\Models\PeriodoAvaliacao;
 use App\Models\Professor;
+use App\Models\Servidor;
+use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\Serie;
 use App\Models\TipoAvaliacao;
 use App\Models\Turma;
@@ -328,6 +331,75 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->assertSee('Selecione um aluno para avaliar')
             ->assertSee('Pauta do primeiro ano')
             ->assertSee('Aluno Turma B');
+    }
+
+    public function test_assessoria_visualiza_apenas_escolas_vinculadas_e_nao_pode_responder_avaliacoes(): void
+    {
+        Permission::findOrCreate('Listar Avaliações');
+        Permission::findOrCreate('Responder Avaliações');
+
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Assessoria', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Período Assessoria', 'status' => true]);
+        $escolaA = $this->criarEscola('Escola Assessoria A');
+        $escolaB = $this->criarEscola('Escola Assessoria B');
+        $escolaFora = $this->criarEscola('Escola Fora Assessoria');
+        $serie = $this->criarSerie('SER-ASS', '1º Ano');
+        $turmas = collect([
+            $this->criarTurma($escolaA, $serie, 'Turma Assessoria A'),
+            $this->criarTurma($escolaB, $serie, 'Turma Assessoria B'),
+            $this->criarTurma($escolaFora, $serie, 'Turma Assessoria Fora'),
+        ]);
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-ASS',
+            'nome' => 'Língua Portuguesa',
+        ]);
+        $alternativa = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Atende',
+            'tem_observacao' => false,
+            'status' => true,
+        ]);
+        $pauta = Pauta::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'texto' => 'Pauta Assessoria',
+            'serie_id' => $serie->id,
+            'componente_curricular_id' => $componente->id,
+            'status' => true,
+        ]);
+        $pauta->alternativas()->attach($alternativa->id);
+        $avaliacao = $this->criarAvaliacao('Avaliação da Assessoria', $tipo, $periodo);
+        $avaliacao->pautas()->attach($pauta->id);
+        $avaliacao->turmas()->sync($turmas->pluck('id'));
+        $this->sincronizarEscopoAvaliacao($avaliacao, [$serie->id], [$componente->id], [$escolaA->id, $escolaB->id, $escolaFora->id]);
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo('Listar Avaliações');
+        $servidor = Servidor::query()->create([
+            'user_id' => $usuario->id,
+            'nome' => 'Assessora Pedagógica',
+            'status' => Servidor::STATUS_ATIVO,
+        ]);
+        $vinculo = ServidorFuncaoAdministrativa::query()->create([
+            'servidor_id' => $servidor->id,
+            'funcao_administrativa_id' => FuncaoAdministrativa::assessoriaPedagogicaPadrao()->id,
+            'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+            'origem' => 'pessoas',
+        ]);
+        $vinculo->escolasAssessoradas()->sync([$escolaA->id, $escolaB->id]);
+
+        $workspace = Livewire::actingAs($usuario)
+            ->test(AvaliacaoTurmaProfessorWorkspace::class, [
+                ...$this->workspaceProfessorParams(false),
+                'avaliacaoId' => $avaliacao->id,
+            ]);
+
+        $this->assertTrue($workspace->instance()->agrupaNavegacaoPorEscola());
+        $this->assertFalse($workspace->instance()->podeResponder());
+        $this->assertCount(2, $workspace->instance()->escolasNavegacao);
+        $this->assertFalse($usuario->can('respond', Avaliacao::class));
     }
 
     public function test_professor_visualiza_apenas_avaliacoes_e_turmas_das_escolas_e_turmas_vinculadas(): void

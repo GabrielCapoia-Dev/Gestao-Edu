@@ -54,10 +54,8 @@ class AvaliacaoRespostaAutosaveController extends Controller
         $user = $request->user();
         // EnsurePasswordIsChanged ja validou canAuthenticate nesta mesma
         // requisicao. O contexto ainda confere a permissao e o vinculo exatos.
+        Gate::forUser($user)->authorize('respond', Avaliacao::class);
         $contexto = $contextos->resolver($dados, $user, acessoOperacionalValidado: true);
-        if (! $contexto) {
-            Gate::forUser($user)->authorize('respond', Avaliacao::class);
-        }
         $avaliacao = $contexto['avaliacao'] ?? Avaliacao::query()->find((int) $dados['avaliacao_id']);
         $this->validarModeloExistente($avaliacao, 'avaliacao_id');
         abort_unless($avaliacao->estaAbertaParaPreenchimento(), 403);
