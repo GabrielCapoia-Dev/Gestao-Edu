@@ -142,6 +142,7 @@ class ServidorResource extends Resource
                         'matriculas:id,servidor_id,matricula,turno',
                         'vinculosAtivos.funcaoAdministrativa:id,codigo,nome,direcao_escolar,coordenacao_pedagogica,secretaria_escolar',
                         'vinculosAtivos.escola:id,nome',
+                        'vinculosAtivos.escolasAssessoradas:id,nome',
                     ]);
 
                 $user = Auth::user();
@@ -203,7 +204,7 @@ class ServidorResource extends Resource
                     'default' => 1,
                     'sm' => 2,
                     'lg' => 3,
-                    'xl' => 4,
+                    'xl' => 5,
                 ])
                     ->schema([
                         TextColumn::make('cargo_label')

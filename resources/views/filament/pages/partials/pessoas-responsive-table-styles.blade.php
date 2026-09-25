@@ -31,8 +31,8 @@
 
     .pe-pessoas-page .fi-ta-content {
         display: grid;
-        gap: 0.65rem;
-        padding: 0.65rem;
+        gap: 0.5rem;
+        padding: 0.5rem;
     }
 
     .pe-pessoas-page .fi-ta-content-header {
@@ -79,19 +79,30 @@
 
     .pe-pessoas-page .fi-ta-record-content {
         display: grid;
-        gap: 0.65rem;
+        gap: 0.3rem;
         width: 100%;
-        padding: 0.75rem;
+        padding: 0.5rem 0.65rem;
     }
 
     .pe-pessoas-page .fi-ta-record-content-ctn > .fi-ta-actions {
         justify-content: flex-end;
-        padding: 0.6rem 0.75rem;
+        min-height: 0;
+        padding: 0.4rem 0.55rem;
         border-top: 1px solid var(--pessoa-card-border);
     }
 
     .pe-pessoas-page .pessoa-card-main-grid {
-        gap: 0.65rem 0.85rem;
+        align-items: start;
+        gap: 0.25rem 0.55rem;
+    }
+
+    .pe-pessoas-page .pessoa-card-field .fi-ta-text-description {
+        margin-bottom: 0.1rem;
+    }
+
+    .pe-pessoas-page .pessoa-card-field .fi-ta-text-item,
+    .pe-pessoas-page .pessoa-card-field .fi-badge {
+        line-height: 1.25;
     }
 
     .pe-pessoas-page .pessoa-card-name .fi-ta-text-item,
@@ -165,6 +176,7 @@
     .pe-pessoas-page .pessoa-card-field--matriculas .fi-ta-text-item {
         color: var(--gray-950);
         font-weight: var(--font-weight-medium);
+        line-height: 1.3;
     }
 
     .dark .pe-pessoas-page .pessoa-card-field--email .fi-ta-text-item,
@@ -180,8 +192,8 @@
         }
 
         .pe-pessoas-page .fi-ta-record-content {
-            gap: 0.5rem;
-            padding: 0.65rem;
+            gap: 0.4rem;
+            padding: 0.55rem 0.65rem;
         }
 
         .pe-pessoas-page .fi-ta-record-content-ctn > .fi-ta-actions {
