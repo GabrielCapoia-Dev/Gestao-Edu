@@ -221,13 +221,13 @@ class ServidorResource extends Resource
                         TextColumn::make('escolas_resumo')
                             ->label('Escolas')
                             ->description(
-                                fn (Servidor $record): ?string => static::exibeEscolaNaListagem($record) ? 'Escolas' : null,
+                                fn (?Servidor $record): ?string => $record && static::exibeEscolaNaListagem($record) ? 'Escolas' : null,
                                 position: 'above',
                             )
-                            ->getStateUsing(fn (Servidor $record): ?string => static::exibeEscolaNaListagem($record)
+                            ->getStateUsing(fn (?Servidor $record): ?string => $record && static::exibeEscolaNaListagem($record)
                                 ? static::escolasLabel($record)
                                 : null)
-                            ->icon(fn (Servidor $record): ?string => static::exibeEscolaNaListagem($record)
+                            ->icon(fn (?Servidor $record): ?string => $record && static::exibeEscolaNaListagem($record)
                                 ? 'heroicon-o-building-library'
                                 : null)
                             ->copyable()
