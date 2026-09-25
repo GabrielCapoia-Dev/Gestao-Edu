@@ -220,6 +220,7 @@ class ServidorResource extends Resource
 
                         TextColumn::make('escolas_resumo')
                             ->label('Escolas')
+                            ->visible(fn (Servidor $record): bool => static::exibeEscolaNaListagem($record))
                             ->description('Escolas', position: 'above')
                             ->getStateUsing(fn (Servidor $record): string => static::escolasLabel($record))
                             ->icon('heroicon-o-building-library')
@@ -927,6 +928,14 @@ class ServidorResource extends Resource
                 || $vinculo->funcaoAdministrativa?->coordenacao_pedagogica
                 || $vinculo->funcaoAdministrativa?->secretaria_escolar
             ));
+    }
+
+    public static function exibeEscolaNaListagem(Servidor $record): bool
+    {
+        $record->loadMissing(['professores', 'vinculosAtivos.funcaoAdministrativa']);
+
+        return static::ehEquipeGestora($record)
+            || $record->professores->where('ativo', true)->isNotEmpty();
     }
 
     public static function ehManutencao(Servidor $record): bool

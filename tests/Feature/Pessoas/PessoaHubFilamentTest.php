@@ -349,6 +349,44 @@ class PessoaHubFilamentTest extends TestCase
         }
     }
 
+    public function test_listagem_de_servidores_exibe_escola_somente_para_professor_equipe_gestora(): void
+    {
+        $setor = $this->criarSetor('Setor visibilidade de escola');
+        $escola = $this->criarEscola('Escola visibilidade', $setor);
+        $assessoria = $this->criarServidor('Assessoria sem escola própria', $escola, $setor);
+        $professor = $this->criarServidor('Professor com escola', $escola, $setor);
+        $gestora = $this->criarServidor('Gestora com escola', $escola, $setor);
+
+        Professor::query()->create([
+            'servidor_id' => $professor->id,
+            'id_escola' => $escola->id,
+            'matricula' => 'PROF-VIS-ESCOLA',
+            'turno' => 'manha',
+            'nome' => $professor->nome,
+            'email' => 'professor.vis.escola@edu.umuarama.pr.gov.br',
+            'ativo' => true,
+        ]);
+
+        foreach ([
+            [$assessoria, FuncaoAdministrativa::assessoriaPedagogicaPadrao()],
+            [$gestora, FuncaoAdministrativa::direcaoPadrao()],
+        ] as [$servidor, $funcao]) {
+            ServidorFuncaoAdministrativa::query()->create([
+                'servidor_id' => $servidor->id,
+                'funcao_administrativa_id' => $funcao->id,
+                'id_escola' => $funcao->ehAssessoriaPedagogica() ? null : $escola->id,
+                'setor_id' => $funcao->ehAssessoriaPedagogica() ? null : $setor->id,
+                'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+                'origem' => 'teste',
+                'data_inicio' => now()->toDateString(),
+            ]);
+        }
+
+        $this->assertFalse(ServidorResource::exibeEscolaNaListagem($assessoria));
+        $this->assertTrue(ServidorResource::exibeEscolaNaListagem($professor));
+        $this->assertTrue(ServidorResource::exibeEscolaNaListagem($gestora));
+    }
+
     public function test_busca_e_contagem_de_matriculas_respeitam_escopo_escolar_e_permissao_de_usuario(): void
     {
         $setorA = $this->criarSetor('Setor escopo A');
