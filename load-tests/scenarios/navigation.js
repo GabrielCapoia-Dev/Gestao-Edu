@@ -303,7 +303,7 @@ function defaultProfilePages() {
       { name: 'reservas', path: '/admin/reservas-veiculos' },
       { name: 'relatorios', path: '/admin/relatorios-dashboard' },
       { name: 'servidores', path: '/admin/servidores' },
-      { name: 'locais_trabalho', path: '/admin/locais-de-trabalho' },
+      { name: 'locais_trabalho', path: '/admin/escolas' },
       { name: 'lotacoes', path: '/admin/lotacoes' },
       { name: 'alunos', path: '/admin/alunos' },
       { name: 'turmas', path: '/admin/turmas' },

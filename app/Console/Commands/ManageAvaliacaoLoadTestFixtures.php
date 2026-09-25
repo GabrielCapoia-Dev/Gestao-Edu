@@ -299,6 +299,14 @@ class ManageAvaliacaoLoadTestFixtures extends Command
             ->join('avaliacao_turma as at', function ($join) use ($evaluationId): void {
                 $join->on('at.turma_id', '=', 't.id')->where('at.avaliacao_id', $evaluationId);
             })
+            ->join('avaliacao_turma_ciclos as ciclo', function ($join) use ($evaluationId): void {
+                $join->on('ciclo.avaliacao_id', '=', 'at.avaliacao_id')
+                    ->on('ciclo.turma_avaliativa_id', '=', 't.id')
+                    ->whereIn('ciclo.status', [
+                        \App\Models\AvaliacaoTurmaCiclo::STATUS_ABERTA,
+                        \App\Models\AvaliacaoTurmaCiclo::STATUS_REABERTA,
+                    ]);
+            })
             ->join('avaliacao_pauta as avp', 'avp.avaliacao_id', '=', 'at.avaliacao_id')
             ->join('pautas as pa', function ($join): void {
                 $join->on('pa.id', '=', 'avp.pauta_id')
