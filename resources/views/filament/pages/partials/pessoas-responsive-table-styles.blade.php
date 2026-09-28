@@ -277,22 +277,21 @@
     .pe-pessoas-page .servidores-lw__table tbody tr:hover { background: color-mix(in srgb, var(--primary-50) 72%, white); }
     .pe-pessoas-page .servidores-lw__table td strong { color: var(--gray-950); display: block; font-size: .82rem; }
     .pe-pessoas-page .servidores-lw__table td small { color: var(--gray-500); display: block; font-size: .7rem; margin-top: .15rem; }
-    .pe-pessoas-page .servidores-lw__copy { align-items: center; background: transparent; border: 0; border-radius: .25rem; color: inherit; cursor: copy; display: flex; flex-wrap: wrap; gap: .3rem; max-width: 100%; min-width: 0; padding: .1rem; position: relative; text-align: left; white-space: normal; overflow-wrap: anywhere; width: 100%; }
-    .pe-pessoas-page .servidores-lw__copy::after { background: var(--gray-950); border: 1px solid rgba(255,255,255,.12); border-radius: .45rem; box-shadow: 0 5px 14px rgba(15,23,42,.2); color: #fff; content: attr(data-tooltip); font-size: .7rem; font-weight: 600; left: 50%; max-width: min(16rem, calc(100vw - 2rem)); opacity: 0; padding: .4rem .65rem; pointer-events: none; position: absolute; top: calc(100% + .4rem); transform: translate(-50%, .15rem); visibility: hidden; white-space: nowrap; z-index: 30; }
-    .pe-pessoas-page .servidores-lw__copy:hover::after, .pe-pessoas-page .servidores-lw__copy:focus-visible::after { opacity: 1; transform: translate(-50%, 0); visibility: visible; }
+    .pe-pessoas-page .servidores-lw__copy { align-items: center; appearance: none; background: transparent; border: 0; border-radius: .2rem; color: inherit; cursor: copy; display: flex; flex-wrap: wrap; gap: .3rem; max-width: 100%; min-width: 0; padding: .1rem; text-align: left; white-space: normal; overflow-wrap: anywhere; width: 100%; }
     .pe-pessoas-page .servidores-lw__copy-feedback { align-items: center; border: 1px solid transparent; border-radius: .7rem; box-shadow: 0 8px 24px rgba(15,23,42,.16); display: inline-flex; font-size: .82rem; font-weight: 650; gap: .5rem; padding: .65rem .9rem; position: fixed; right: 1.25rem; top: 5.5rem; z-index: 80; }
     .pe-pessoas-page .servidores-lw__copy-feedback svg { height: 1.1rem; width: 1.1rem; }
     .pe-pessoas-page .servidores-lw__copy-feedback--success { background: var(--success-50); border-color: color-mix(in srgb, var(--success-700) 24%, white); color: var(--success-700); }
     .pe-pessoas-page .servidores-lw__copy-feedback--error { background: var(--danger-50); border-color: color-mix(in srgb, var(--danger-700) 24%, white); color: var(--danger-700); }
-    .pe-pessoas-page .servidores-lw__copy:hover { color: var(--primary-700); text-decoration: underline; text-decoration-style: dotted; text-underline-offset: .15em; }
-    .pe-pessoas-page .servidores-lw__copy:focus-visible { outline: 2px solid var(--primary-500); outline-offset: 2px; }
+    .pe-pessoas-page .servidores-lw__copy:hover { color: var(--primary-700); }
+    .pe-pessoas-page .servidores-lw__copy:focus-visible { outline: 1px solid var(--primary-400); outline-offset: 1px; }
+    .pe-pessoas-page .servidores-lw__copy--identity { display: block; }
     .pe-pessoas-page .servidores-lw__copy strong { display: block; width: 100%; }
     .pe-pessoas-page .servidores-lw__copy small { display: block; width: 100%; }
     .pe-pessoas-page .servidores-lw__copy svg { flex: 0 0 .85rem; height: .85rem; opacity: .45; width: .85rem; }
     .pe-pessoas-page .servidores-lw__copy:hover svg { opacity: 1; }
     .pe-pessoas-page .servidores-lw__copy-label { min-width: 0; overflow-wrap: anywhere; }
     .pe-pessoas-page .servidores-lw__check-col { text-align: center !important; width: 2.6rem; }
-    .pe-pessoas-page .servidores-lw__actions-col { text-align: right !important; white-space: nowrap; width: 5.5rem; }
+    .pe-pessoas-page .servidores-lw__actions-col { box-sizing: border-box; text-align: center !important; white-space: nowrap; width: 8rem; }
     .pe-pessoas-page .servidores-lw__email { overflow-wrap: anywhere; }
     .pe-pessoas-page .servidores-lw__badge { border-radius: 999px; display: inline-flex; font-size: .68rem; font-weight: 600; padding: .2rem .45rem; }
     .pe-pessoas-page .servidores-lw__badge--blue { background: var(--primary-50); color: var(--primary-700); }
@@ -300,10 +299,12 @@
     .pe-pessoas-page .servidores-lw__badge--gray { background: var(--gray-100); color: var(--gray-600); }
     .pe-pessoas-page .servidores-lw__badge--amber { background: var(--warning-50); color: var(--warning-700); }
     .pe-pessoas-page .servidores-lw__badge--red { background: var(--danger-50); color: var(--danger-700); }
-    .pe-pessoas-page .servidores-lw__action { align-items: center; background: transparent; border: 1px solid transparent; border-radius: .4rem; color: var(--gray-500); cursor: pointer; display: inline-flex; margin-left: .15rem; padding: .35rem; }
+    .pe-pessoas-page .servidores-lw__action-group { align-items: center; display: inline-flex; gap: .2rem; justify-content: center; max-width: 100%; }
+    .pe-pessoas-page .servidores-lw__action { align-items: center; background: transparent; border: 1px solid transparent; border-radius: .4rem; box-sizing: border-box; color: var(--gray-500); cursor: pointer; display: inline-flex; height: 2rem; justify-content: center; margin: 0; padding: .3rem; width: 2rem; }
     .pe-pessoas-page .servidores-lw__action:hover { background: var(--gray-100); color: var(--primary-600); }
     .pe-pessoas-page .servidores-lw__row-menu { display: inline-block; position: relative; }
     .pe-pessoas-page .servidores-lw__row-menu summary { list-style: none; }
+    .pe-pessoas-page .servidores-lw__row-menu summary::-webkit-details-marker { display: none; }
     .pe-pessoas-page .servidores-lw__row-menu-panel { background: var(--pessoa-card-surface); border: 1px solid var(--pessoa-card-border); border-radius: .55rem; box-shadow: var(--pessoa-card-shadow); display: grid; min-width: 11rem; padding: .3rem; position: absolute; right: 0; top: 2rem; z-index: 5; }
     .pe-pessoas-page .servidores-lw__row-menu-panel button { background: transparent; border: 0; border-radius: .35rem; color: var(--gray-700); cursor: pointer; font-size: .75rem; padding: .45rem .55rem; text-align: left; white-space: nowrap; }
     .pe-pessoas-page .servidores-lw__row-menu-panel button:hover { background: var(--gray-100); color: var(--primary-600); }

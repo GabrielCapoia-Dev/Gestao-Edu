@@ -91,7 +91,16 @@ class PessoaHubFilamentTest extends TestCase
         $usuario = $this->usuarioComPermissaoListar();
         $setor = $this->criarSetor('Setor da tabela Livewire');
         $escola = $this->criarEscola('Escola da tabela Livewire', $setor);
-        $servidor = $this->criarServidor('Pessoa da tabela Livewire', $escola, $setor);
+        $servidor = $this->criarServidor('Pessoa da tabela Livewire', $escola, $setor, $usuario->id);
+        Professor::query()->create([
+            'servidor_id' => $servidor->id,
+            'id_escola' => $escola->id,
+            'matricula' => 'TABELA-LIVEWIRE-001',
+            'turno' => 'manha',
+            'nome' => $servidor->nome,
+            'email' => $servidor->email,
+            'ativo' => true,
+        ]);
 
         Livewire::actingAs($usuario)
             ->test(ServidoresTable::class)
@@ -103,6 +112,9 @@ class PessoaHubFilamentTest extends TestCase
             ->assertSee('Copiado!')
             ->assertSee('copyFallback')
             ->assertSee('servidores-lw__copy-feedback')
+            ->assertSeeHtml('data-copy="Pessoa da tabela Livewire"')
+            ->assertSeeHtml('data-copy="CPF não informado"')
+            ->assertSeeHtml('servidores-lw__action-group')
             ->assertSee('5')
             ->set('search', 'Pessoa da tabela Livewire')
             ->assertSee((string) $servidor->nome);
