@@ -317,28 +317,28 @@
     .pe-pessoas-page .servidores-lw__pagination button:disabled { cursor: not-allowed; opacity: .45; }
     .pe-pessoas-page .servidores-lw__pagination-ellipsis { padding: 0 .25rem; }
     .pe-pessoas-page .servidores-lw__pagination svg { height: 1rem !important; max-height: 1rem; max-width: 1rem; width: 1rem !important; }
+    .pe-pessoas-page .servidores-lw__mobile-cards { display: none; }
     @media (max-width: 70rem) { .pe-pessoas-page .servidores-lw__filter-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .pe-pessoas-page .servidores-lw__table th, .pe-pessoas-page .servidores-lw__table td { padding-left: .35rem; padding-right: .35rem; } }
     @media (max-width: 48rem) {
         .pe-pessoas-page .servidores-lw__toolbar, .pe-pessoas-page .servidores-lw__table-header { align-items: stretch; flex-direction: column; }
         .pe-pessoas-page .servidores-lw__search { flex: 0 1 auto; width: 100%; }
         .pe-pessoas-page .servidores-lw__toolbar-actions { justify-content: space-between; }
         .pe-pessoas-page .servidores-lw__filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .pe-pessoas-page .servidores-lw__table-wrap { background: transparent; border: 0; border-radius: 0; }
-        .pe-pessoas-page .servidores-lw__table, .pe-pessoas-page .servidores-lw__table tbody { display: block !important; width: 100%; }
-        .pe-pessoas-page .servidores-lw__table thead { display: none; }
-        .pe-pessoas-page .servidores-lw__table tbody { display: grid !important; gap: .7rem; }
-        .pe-pessoas-page .servidores-lw__table tbody tr { background: var(--pessoa-card-surface); border: 1px solid var(--pessoa-card-border); border-radius: .8rem; box-shadow: 0 2px 8px rgba(15, 23, 42, .05); display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; min-width: 0; overflow: hidden; }
-        .pe-pessoas-page .servidores-lw__table tbody tr:nth-child(even) { background: color-mix(in srgb, var(--gray-50) 55%, white); }
-        .pe-pessoas-page .servidores-lw__table tbody tr:hover { background: color-mix(in srgb, var(--primary-50) 58%, white); }
-        .pe-pessoas-page .servidores-lw__table tbody tr > td[data-label] { display: flex !important; grid-column: auto !important; min-width: 0; width: auto !important; }
-        .pe-pessoas-page .servidores-lw__table tbody td { border-top: 1px solid var(--gray-100); flex-direction: column; justify-content: center; min-width: 0; padding: .65rem .75rem; }
-        .pe-pessoas-page .servidores-lw__table tbody td[data-label]::before { color: var(--gray-500); content: attr(data-label); font-size: .64rem; font-weight: 700; letter-spacing: .03em; margin-bottom: .25rem; text-transform: uppercase; }
-        .pe-pessoas-page .servidores-lw__table tbody tr > td.servidores-lw__check-col, .pe-pessoas-page .servidores-lw__table tbody tr > td.servidores-lw__actions-col { grid-column: 1 / -1 !important; width: 100% !important; }
-        .pe-pessoas-page .servidores-lw__table .servidores-lw__check-col { align-items: flex-start; border-top: 0; border-bottom: 1px solid var(--gray-100); min-height: 2.3rem; padding: .45rem .75rem; text-align: left !important; width: 100%; }
-        .pe-pessoas-page .servidores-lw__table .servidores-lw__actions-col { align-items: center; flex-direction: row; justify-content: space-between; text-align: left !important; width: 100%; }
-        .pe-pessoas-page .servidores-lw__table .servidores-lw__action-group { margin-left: auto; }
-        .pe-pessoas-page .servidores-lw__table tbody td[data-label="Pessoa / CPF"] { align-items: flex-start; }
-        .pe-pessoas-page .servidores-lw__table .servidores-lw__empty { grid-column: 1 / -1; }
+        .pe-pessoas-page .servidores-lw__desktop-table { display: none !important; }
+        .pe-pessoas-page .servidores-lw__mobile-cards { display: grid !important; gap: .7rem; min-width: 0; }
+        .pe-pessoas-page .servidores-lw__mobile-card { background: var(--pessoa-card-surface); border: 1px solid var(--pessoa-card-border); border-radius: .8rem; box-shadow: 0 2px 8px rgba(15, 23, 42, .05); min-width: 0; overflow: hidden; }
+        .pe-pessoas-page .servidores-lw__mobile-select { align-items: center; border-bottom: 1px solid var(--gray-100); display: flex; min-height: 2.5rem; padding: .45rem .75rem; }
+        .pe-pessoas-page .servidores-lw__mobile-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; }
+        .pe-pessoas-page .servidores-lw__mobile-field { border-bottom: 1px solid var(--gray-100); border-right: 1px solid var(--gray-100); min-width: 0; overflow-wrap: anywhere; padding: .65rem .75rem; }
+        .pe-pessoas-page .servidores-lw__mobile-field:nth-child(even) { border-right: 0; }
+        .pe-pessoas-page .servidores-lw__mobile-label { color: var(--gray-500); display: block; font-size: .64rem; font-weight: 700; letter-spacing: .03em; margin-bottom: .25rem; text-transform: uppercase; }
+        .pe-pessoas-page .servidores-lw__mobile-field .servidores-lw__copy { align-items: flex-start; }
+        .pe-pessoas-page .servidores-lw__mobile-field .servidores-lw__copy--identity { display: block; }
+        .pe-pessoas-page .servidores-lw__mobile-field .servidores-lw__copy strong { color: var(--gray-950); font-size: .8rem; }
+        .pe-pessoas-page .servidores-lw__mobile-field .servidores-lw__copy small { color: var(--gray-500); font-size: .68rem; }
+        .pe-pessoas-page .servidores-lw__mobile-actions { align-items: center; display: flex; justify-content: space-between; min-height: 3.3rem; padding: .45rem .75rem; }
+        .pe-pessoas-page .servidores-lw__mobile-actions .servidores-lw__action-group { margin-left: auto; }
+        .pe-pessoas-page .servidores-lw__mobile-cards > .servidores-lw__empty { background: var(--pessoa-card-surface); border: 1px solid var(--pessoa-card-border); border-radius: .8rem; }
     }
     @media (max-width: 32rem) {
         .pe-pessoas-page .servidores-lw__filter-grid { grid-template-columns: 1fr; }
@@ -347,7 +347,6 @@
         .pe-pessoas-page .servidores-lw__button { justify-content: center; }
         .pe-pessoas-page .servidores-lw__footer { align-items: stretch; flex-direction: column; }
         .pe-pessoas-page .servidores-lw__pagination { justify-content: center; margin-left: 0; }
-        .pe-pessoas-page .servidores-lw__table tbody tr { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-        .pe-pessoas-page .servidores-lw__table tbody tr > td.servidores-lw__check-col, .pe-pessoas-page .servidores-lw__table tbody tr > td.servidores-lw__actions-col { grid-column: 1 / -1 !important; width: 100% !important; }
+        .pe-pessoas-page .servidores-lw__mobile-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 </style>

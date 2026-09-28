@@ -180,6 +180,25 @@ class PessoaHubFilamentTest extends TestCase
             ->assertSee('Exportar selecionados');
     }
 
+    public function test_layout_mobile_de_servidores_usa_cards_html_com_grade_de_duas_colunas(): void
+    {
+        $view = file_get_contents(resource_path('views/livewire/pessoas/servidores-table.blade.php'));
+        $styles = file_get_contents(resource_path('views/filament/pages/partials/pessoas-responsive-table-styles.blade.php'));
+        $actions = file_get_contents(resource_path('views/livewire/pessoas/partials/servidor-table-actions.blade.php'));
+
+        $this->assertIsString($view);
+        $this->assertIsString($styles);
+        $this->assertIsString($actions);
+        $this->assertStringContainsString('servidores-lw__desktop-table', $view);
+        $this->assertStringContainsString('class="servidores-lw__mobile-cards"', $view);
+        $this->assertStringContainsString('class="servidores-lw__mobile-card"', $view);
+        $this->assertStringContainsString('class="servidores-lw__mobile-fields"', $view);
+        $this->assertStringContainsString('servidor-mobile-card-{{ $servidor->id }}', $view);
+        $this->assertStringContainsString('grid-template-columns: repeat(2, minmax(0, 1fr));', $styles);
+        $this->assertStringContainsString('Gate::allows(\'view\', $servidor)', $actions);
+        $this->assertStringContainsString('Gate::allows(\'update\', $servidor)', $actions);
+    }
+
     public function test_dropdown_de_acoes_fica_acima_da_busca_e_dos_cabecalhos(): void
     {
         $view = file_get_contents(resource_path('views/livewire/pessoas/servidores-table.blade.php'));
