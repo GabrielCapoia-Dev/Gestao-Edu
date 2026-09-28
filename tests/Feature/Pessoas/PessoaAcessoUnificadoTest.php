@@ -240,7 +240,7 @@ class PessoaAcessoUnificadoTest extends TestCase
                 (string) $pessoaSemAcesso->getKey(),
                 (string) $pessoaComAcesso->getKey(),
             ])
-            ->assertStatus(404);
+            ->assertForbidden();
 
         $this->assertNull($pessoaSemAcesso->fresh()->user_id);
         $this->assertSame($contaExistente->id, $pessoaComAcesso->fresh()->user_id);
@@ -265,7 +265,7 @@ class PessoaAcessoUnificadoTest extends TestCase
                 (string) $pessoa->getKey(),
                 'registro-inexistente',
             ])
-            ->assertSet('mountedActions', null);
+            ->assertSet('mountedActions', []);
     }
 
     public function test_vincula_solicitacao_de_acesso_a_pessoa_existente_com_mesmo_email(): void

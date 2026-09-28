@@ -118,7 +118,8 @@ class PessoaHubFilamentTest extends TestCase
             'email' => $professor->email,
             'ativo' => true,
         ]);
-        $this->assertTrue(Gate::forUser($usuario)->allows('viewAny', Servidor::class));
+        $this->assertTrue($usuario->fresh()->isOperationallyActive());
+        $this->assertTrue(Gate::forUser($usuario->fresh())->allows('viewAny', Servidor::class));
         $naoProfessor = $this->criarServidor('Pessoa fora do filtro professor', $escola, $setor);
 
         $componente = Livewire::actingAs($usuario)
