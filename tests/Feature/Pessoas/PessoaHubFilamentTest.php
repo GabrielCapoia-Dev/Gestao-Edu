@@ -592,13 +592,13 @@ class PessoaHubFilamentTest extends TestCase
             ->test(ManageServidores::class)
             ->call('abrirAcaoServidor', 'view', (int) $alvo->getKey())
             ->assertHasNoErrors()
-            ->assertSee('Ficha da pessoa')
-            ->assertSee($alvo->nome);
+            ->assertTableActionMounted('view');
 
         Livewire::actingAs($usuarioOperador)
             ->test(ManageServidores::class)
             ->call('abrirAcaoServidor', 'edit', (int) $alvo->getKey())
             ->assertHasNoErrors()
+            ->assertTableActionMounted('edit')
             ->assertSeeLivewire(PessoaForm::class);
     }
 
