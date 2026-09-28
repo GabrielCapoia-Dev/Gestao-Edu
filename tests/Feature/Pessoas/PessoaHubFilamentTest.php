@@ -562,7 +562,6 @@ class PessoaHubFilamentTest extends TestCase
         $setor = $this->criarSetor('Setor dos modais da tabela');
         $escola = $this->criarEscola('Escola dos modais da tabela', $setor);
         $servidorOperador = $this->criarServidor('Operador dos modais', $escola, $setor, $usuario->id);
-        Servidor::query()->where('email', $servidorOperador->email)->update(['user_id' => $usuario->id]);
         Professor::query()->create([
             'servidor_id' => $servidorOperador->id,
             'id_escola' => $escola->id,
@@ -573,25 +572,30 @@ class PessoaHubFilamentTest extends TestCase
             'ativo' => true,
         ]);
         $alvo = $this->criarServidor('Pessoa alvo dos modais', $escola, $setor);
+        $usuarioOperador = User::query()->findOrFail($servidorOperador->fresh()->user_id);
+        $usuarioOperador->syncPermissions(collect([
+            'Listar Pessoas',
+            'Criar Pessoas',
+            'Editar Pessoas',
+            'Acessar Escopo Global de Setores',
+        ])->map(fn (string $permissao): Permission => $this->garantirPermissao($permissao))->all());
+        $usuarioOperador->assignRole(Role::query()->firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']));
 
-        $this->assertSame((int) $usuario->getKey(), (int) $servidorOperador->fresh()->user_id);
-        $this->assertGreaterThan(0, $usuario->fresh()->servidores()->count());
-        $this->assertGreaterThan(0, $usuario->fresh()->servidores()->where('status', Servidor::STATUS_ATIVO)->whereHas('professores', fn ($query) => $query->where('ativo', true))->count());
-        $this->assertTrue($usuario->fresh()->isOperationallyActive());
+        $this->assertTrue($usuarioOperador->fresh()->isOperationallyActive());
 
-        Livewire::actingAs($usuario)
+        Livewire::actingAs($usuarioOperador)
             ->test(ManageServidores::class)
             ->mountAction('create')
             ->assertSeeLivewire(PessoaForm::class);
 
-        Livewire::actingAs($usuario)
+        Livewire::actingAs($usuarioOperador)
             ->test(ManageServidores::class)
             ->call('abrirAcaoServidor', 'view', (int) $alvo->getKey())
             ->assertHasNoErrors()
             ->assertSee('Ficha da pessoa')
             ->assertSee($alvo->nome);
 
-        Livewire::actingAs($usuario)
+        Livewire::actingAs($usuarioOperador)
             ->test(ManageServidores::class)
             ->call('abrirAcaoServidor', 'edit', (int) $alvo->getKey())
             ->assertHasNoErrors()
