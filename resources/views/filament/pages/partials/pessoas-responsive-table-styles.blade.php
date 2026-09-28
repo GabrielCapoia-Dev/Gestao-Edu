@@ -346,7 +346,7 @@
         .pe-pessoas-page .servidores-lw__button { justify-content: center; }
         .pe-pessoas-page .servidores-lw__footer { align-items: stretch; flex-direction: column; }
         .pe-pessoas-page .servidores-lw__pagination { justify-content: center; margin-left: 0; }
-        .pe-pessoas-page .servidores-lw__table tbody tr { grid-template-columns: minmax(0, 1fr); }
-        .pe-pessoas-page .servidores-lw__table .servidores-lw__check-col, .pe-pessoas-page .servidores-lw__table .servidores-lw__actions-col { grid-column: 1; }
+        .pe-pessoas-page .servidores-lw__table tbody tr { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .pe-pessoas-page .servidores-lw__table .servidores-lw__check-col, .pe-pessoas-page .servidores-lw__table .servidores-lw__actions-col { grid-column: 1 / -1; }
     }
 </style>
