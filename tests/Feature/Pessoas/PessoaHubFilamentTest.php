@@ -23,10 +23,7 @@ use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
 use App\Services\ServidorService;
 use Filament\Actions\Action;
-use Filament\Actions\ActionGroup;
 use Filament\Schemas\Components\View;
-use Filament\Tables\Columns\Layout\Grid;
-use Filament\Tables\Enums\RecordActionsPosition;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
@@ -82,57 +79,54 @@ class PessoaHubFilamentTest extends TestCase
 
         Livewire::actingAs($usuario)
             ->test(ServidoresTable::class)
-            ->assertCanSeeTableRecords([$comProfessor, $semProfessor]);
+            ->assertSee($comProfessor->nome)
+            ->assertSee($semProfessor->nome);
+    }
+
+    public function test_componente_livewire_de_servidores_renderiza_filtros_colunas_e_paginacao_proprios(): void
+    {
+        $usuario = $this->usuarioComPermissaoListar();
+        $setor = $this->criarSetor('Setor da tabela Livewire');
+        $escola = $this->criarEscola('Escola da tabela Livewire', $setor);
+        $servidor = $this->criarServidor('Pessoa da tabela Livewire', $escola, $setor);
+
+        Livewire::actingAs($usuario)
+            ->test(ServidoresTable::class)
+            ->assertSee('Pessoa da tabela Livewire')
+            ->assertSee('Filtros avançados')
+            ->assertSee('Selecionar página')
+            ->assertSee('Colunas')
+            ->assertSee('5')
+            ->set('search', 'Pessoa da tabela Livewire')
+            ->assertSee((string) $servidor->nome);
     }
 
     public function test_lista_usa_layout_responsivo_e_menu_unico_de_acoes(): void
     {
         $usuario = $this->usuarioComPermissaoListar();
-        $table = Livewire::actingAs($usuario)
-            ->test(ServidoresTable::class)
-            ->instance()
-            ->getTable();
+        $componente = Livewire::actingAs($usuario)->test(ServidoresTable::class);
 
-        $this->assertTrue($table->hasColumnsLayout());
-        $this->assertTrue(collect($table->getColumnsLayout())->contains(
-            fn ($column): bool => $column instanceof Grid,
-        ));
-        $this->assertSame(RecordActionsPosition::AfterContent, $table->getRecordActionsPosition());
-
-        $actions = $table->getRecordActions();
-        $this->assertCount(1, $actions);
-        $this->assertInstanceOf(ActionGroup::class, $actions[0]);
-        $this->assertSame('Ações', $actions[0]->getLabel());
-        $this->assertSame('bottom-end', $actions[0]->getDropdownPlacement());
-        $this->assertSame(6, $actions[0]->getDropdownOffset());
-        $this->assertTrue($actions[0]->hasDropdownTeleport());
-
-        $niveisDeAcesso = $table->getColumn('user.roles.name');
-        $this->assertTrue($niveisDeAcesso->canWrap());
-        $this->assertSame(2, $niveisDeAcesso->getColumnSpan('xl'));
-
-        foreach (['nome', 'cargo_label', 'escolas_resumo', 'vinculos_resumo', 'email', 'status', 'acesso_ao_sistema', 'user.roles.name', 'updated_at'] as $coluna) {
-            $this->assertTrue($table->getColumn($coluna)->isCopyable('valor'), "A coluna {$coluna} deve permitir cópia ao clicar.");
-        }
+        $this->assertStringContainsString(
+            'servidores-lw__table',
+            file_get_contents(resource_path('views/livewire/pessoas/servidores-table.blade.php')),
+        );
+        $componente
+            ->assertSee('Selecionar página')
+            ->assertSee('Colunas')
+            ->assertSee('Visualizar')
+            ->assertSee('Editar')
+            ->assertSee('Ações em massa');
     }
 
     public function test_dropdown_de_acoes_fica_acima_da_busca_e_dos_cabecalhos(): void
     {
-        $styles = file_get_contents(
-            resource_path('views/filament/pages/partials/pessoas-responsive-table-styles.blade.php'),
-        );
+        $view = file_get_contents(resource_path('views/livewire/pessoas/servidores-table.blade.php'));
+        $styles = file_get_contents(resource_path('views/filament/pages/partials/pessoas-responsive-table-styles.blade.php'));
 
+        $this->assertIsString($view);
         $this->assertIsString($styles);
-        $this->assertStringContainsString(
-            'body:has(.pe-pessoas-page) .fi-dropdown-panel:not(.fi-select-dropdown-portal)',
-            $styles,
-        );
-        $this->assertStringContainsString('z-index: 2200 !important;', $styles);
-        $this->assertStringNotContainsString('z-index: 80 !important;', $styles);
-        $this->assertStringNotContainsString(
-            'body:has(.pe-pessoas-page) .fi-dropdown-panel {',
-            $styles,
-        );
+        $this->assertStringContainsString('servidores-lw__row-menu', $view);
+        $this->assertStringContainsString('z-index: 5;', $styles);
     }
 
     public function test_lista_exibe_os_nomes_das_escolas_da_pessoa(): void

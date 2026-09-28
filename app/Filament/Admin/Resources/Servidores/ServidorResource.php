@@ -222,13 +222,13 @@ class ServidorResource extends Resource
                         TextColumn::make('escolas_resumo')
                             ->label('Escolas')
                             ->description(
-                                fn (?Servidor $record): ?string => $record && static::exibeEscolaNaListagem($record) ? 'Escolas' : null,
+                                fn (?Servidor $record): ?string => $record instanceof Servidor && static::exibeEscolaNaListagem($record) ? 'Escolas' : null,
                                 position: 'above',
                             )
-                            ->getStateUsing(fn (?Servidor $record): ?string => $record && static::exibeEscolaNaListagem($record)
+                            ->getStateUsing(fn (?Servidor $record): ?string => $record instanceof Servidor && static::exibeEscolaNaListagem($record)
                                 ? static::escolasLabel($record)
                                 : null)
-                            ->icon(fn (?Servidor $record): ?string => $record && static::exibeEscolaNaListagem($record)
+                            ->icon(fn (?Servidor $record): ?string => $record instanceof Servidor && static::exibeEscolaNaListagem($record)
                                 ? 'heroicon-o-building-library'
                                 : null)
                             ->copyable()
@@ -1144,7 +1144,7 @@ class ServidorResource extends Resource
         return 'Buscar por '.collect($itens)->join(', ', ' ou ');
     }
 
-    private static function aplicarFiltroQuantidadeMatriculas(Builder $query, mixed $quantidade): Builder
+    public static function aplicarFiltroQuantidadeMatriculas(Builder $query, mixed $quantidade): Builder
     {
         if (! in_array($quantidade, ['uma_ou_mais', 'uma', 'duas', 'tres_ou_mais', 'sem'], true)) {
             return $query;
@@ -1193,7 +1193,7 @@ class ServidorResource extends Resource
     }
 
     /** @param list<string> $turnos */
-    private static function aplicarFiltroTurnosMatriculas(Builder $query, array $turnos): Builder
+    public static function aplicarFiltroTurnosMatriculas(Builder $query, array $turnos): Builder
     {
         return $query->whereHas('matriculas', function (Builder $matriculas) use ($turnos): Builder {
             $matriculas->whereIn('turno', $turnos);
@@ -1221,7 +1221,7 @@ class ServidorResource extends Resource
     }
 
     /** @param list<string> $cargos */
-    private static function aplicarFiltroCargos(Builder $query, array $cargos): Builder
+    public static function aplicarFiltroCargos(Builder $query, array $cargos): Builder
     {
         return $query->where(function (Builder $pessoas) use ($cargos): void {
             foreach (array_values($cargos) as $index => $cargo) {

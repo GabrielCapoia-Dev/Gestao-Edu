@@ -233,6 +233,11 @@ class ServidorFlowTest extends TestCase
             ->get();
 
         $this->assertCount(1, $vinculos);
+        $this->assertDatabaseHas('professor_matriculas', [
+            'servidor_id' => $assessor->id,
+            'matricula' => 'ASS-002',
+            'turno' => 'tarde',
+        ]);
         $this->assertSame([$escolaAtual->id], $vinculos->first()->escolasAssessoradas()->pluck('escolas.id')->all());
         $this->assertDatabaseMissing('assessoria_pedagogica_escola', [
             'servidor_funcao_administrativa_id' => $vinculos->first()->id,

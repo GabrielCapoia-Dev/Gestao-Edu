@@ -37,6 +37,42 @@ class ManageServidores extends ManageRecords
         $this->unmountAction(false);
     }
 
+    #[On('servidor-acao')]
+    public function abrirAcaoServidor(string $action, int $id): void
+    {
+        abort_unless(in_array($action, [
+            'view', 'edit', 'criar_acesso', 'gerenciar_acesso', 'redefinir_senha',
+            'excluir_acesso', 'analisar_solicitacoes_professor', 'alterar_status', 'delete', 'restore',
+        ], true), 404);
+
+        $record = ServidorResource::getEloquentQuery()->findOrFail($id);
+
+        $this->mountTableAction($action, $record);
+    }
+
+    #[On('servidores-acao-massa')]
+    public function abrirAcaoEmMassa(string $action, array $ids): void
+    {
+        abort_unless(in_array($action, [
+            'alterar_status_em_massa', 'criar_acessos_em_massa', 'verificacao_acesso_em_massa',
+            'redefinir_senha_em_massa', 'niveis_em_massa', 'permissoes_em_massa',
+            'excluir_acessos_em_massa', 'delete', 'restore',
+        ], true), 404);
+
+        $records = ServidorResource::getEloquentQuery()
+            ->with('user:id')
+            ->whereKey($ids)
+            ->get()
+            ->filter(fn (Servidor $record): bool => ServidorResource::pessoaPodeSerSelecionada($record))
+            ->values();
+
+        if ($records->isEmpty()) {
+            return;
+        }
+
+        $this->mountTableBulkAction($action, $records->all());
+    }
+
     public function getHeader(): ?View
     {
         return view('filament.admin.pages.partials.page-header', [
