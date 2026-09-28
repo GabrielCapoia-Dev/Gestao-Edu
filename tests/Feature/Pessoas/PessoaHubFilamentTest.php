@@ -101,10 +101,46 @@ class PessoaHubFilamentTest extends TestCase
             ->assertSee((string) $servidor->nome);
     }
 
+    public function test_filtros_multiplos_filament_aplicam_e_limpam_selecao(): void
+    {
+        $usuario = $this->usuarioComPermissaoListar();
+        $setor = $this->criarSetor('Setor filtros multiple');
+        $escola = $this->criarEscola('Escola filtros multiple', $setor);
+        $professor = $this->criarServidor('Pessoa filtrada como professor', $escola, $setor);
+        Professor::query()->create([
+            'servidor_id' => $professor->id,
+            'id_escola' => $escola->id,
+            'matricula' => 'FILTRO-001',
+            'turno' => 'manha',
+            'nome' => $professor->nome,
+            'email' => $professor->email,
+            'ativo' => true,
+        ]);
+        $naoProfessor = $this->criarServidor('Pessoa fora do filtro professor', $escola, $setor);
+
+        $componente = Livewire::actingAs($usuario)
+            ->test(ServidoresTable::class)
+            ->set('filtrosFormData.cargo', [ServidorResource::CARGO_PROFESSOR])
+            ->call('aplicarFiltros')
+            ->assertSee($professor->nome)
+            ->assertDontSee($naoProfessor->nome)
+            ->call('limparFiltros')
+            ->assertSee($professor->nome)
+            ->assertSee($naoProfessor->nome);
+
+        $this->assertSame([], $componente->get('cargo'));
+        $this->assertSame([], $componente->get('filtrosFormData.cargo'));
+    }
+
     public function test_lista_usa_layout_responsivo_e_menu_unico_de_acoes(): void
     {
         $usuario = $this->usuarioComPermissaoListar();
-        $componente = Livewire::actingAs($usuario)->test(ServidoresTable::class);
+        $setor = $this->criarSetor('Setor das ações da listagem');
+        $escola = $this->criarEscola('Escola das ações da listagem', $setor);
+        $servidor = $this->criarServidor('Pessoa das ações da listagem', $escola, $setor);
+        $componente = Livewire::actingAs($usuario)
+            ->test(ServidoresTable::class)
+            ->call('alternarSelecionado', $servidor->id);
 
         $this->assertStringContainsString(
             'servidores-lw__table',
@@ -115,7 +151,8 @@ class PessoaHubFilamentTest extends TestCase
             ->assertSee('Colunas')
             ->assertSee('Visualizar')
             ->assertSee('Editar')
-            ->assertSee('Ações em massa');
+            ->assertSee('Ações em massa')
+            ->assertSee('Exportar selecionados');
     }
 
     public function test_dropdown_de_acoes_fica_acima_da_busca_e_dos_cabecalhos(): void

@@ -255,7 +255,10 @@
     .pe-pessoas-page .servidores-lw__filters summary span:first-child { align-items: center; display: inline-flex; gap: .4rem; }
     .pe-pessoas-page .servidores-lw__filter-count { background: var(--primary-50); border-radius: 999px; color: var(--primary-700); font-size: .7rem; padding: .15rem .45rem; }
     .pe-pessoas-page .servidores-lw__filter-grid { border-top: 1px solid var(--pessoa-card-border); display: grid; gap: .75rem; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 1rem; }
-    .pe-pessoas-page .servidores-lw__filter-grid select[multiple] { min-height: 4.3rem; }
+    .pe-pessoas-page .servidores-lw__filter-grid--filament { display: block; }
+    .pe-pessoas-page .servidores-lw__filter-grid--filament > .fi-sc { width: 100%; }
+    .pe-pessoas-page .servidores-lw__filter-grid--filament .fi-fo-field-wrp,
+    .pe-pessoas-page .servidores-lw__filter-grid--filament .fi-input-wrp { min-width: 0; }
     .pe-pessoas-page .servidores-lw__checkbox-label { align-items: center !important; display: flex !important; align-self: end; }
     .pe-pessoas-page .servidores-lw__filter-actions { align-items: center; border-top: 1px solid var(--pessoa-card-border); display: flex; gap: .5rem; justify-content: flex-end; padding: .65rem 1rem; }
     .pe-pessoas-page .servidores-lw__selection-summary { align-items: center; display: flex; flex-wrap: wrap; gap: .65rem; }
@@ -265,20 +268,22 @@
     .pe-pessoas-page .servidores-lw__columns-menu { background: var(--pessoa-card-surface); border: 1px solid var(--pessoa-card-border); border-radius: .6rem; box-shadow: var(--pessoa-card-shadow); display: grid; gap: .45rem; min-width: 12rem; padding: .7rem; position: absolute; right: 0; top: 1.5rem; z-index: 3; }
     .pe-pessoas-page .servidores-lw__columns-menu label { align-items: center; display: flex; font-size: .75rem; gap: .4rem; white-space: nowrap; }
     .pe-pessoas-page .servidores-lw__bulkbar { background: var(--primary-50); border: 1px solid var(--primary-100); border-radius: .65rem; justify-content: flex-start; padding: .6rem .8rem; }
-    .pe-pessoas-page .servidores-lw__table-wrap { border: 1px solid var(--pessoa-card-border); border-radius: .75rem; background: var(--pessoa-card-surface); max-width: 100%; overflow: hidden; }
+    .pe-pessoas-page .servidores-lw__table-wrap { border: 1px solid var(--pessoa-card-border); border-radius: .75rem; background: var(--pessoa-card-surface); max-width: 100%; overflow: visible; }
     .pe-pessoas-page .servidores-lw__table { border-collapse: separate; border-spacing: 0; min-width: 0; table-layout: fixed; width: 100%; }
     .pe-pessoas-page .servidores-lw__table th { background: var(--gray-50); color: var(--gray-500); font-size: .68rem; font-weight: 700; letter-spacing: .02em; padding: .65rem .5rem; text-align: left; text-transform: uppercase; white-space: nowrap; }
     .pe-pessoas-page .servidores-lw__table th button { align-items: center; background: transparent; border: 0; color: inherit; cursor: pointer; display: inline-flex; font: inherit; gap: .25rem; padding: 0; text-transform: inherit; }
     .pe-pessoas-page .servidores-lw__table td { border-top: 1px solid var(--gray-100); color: var(--gray-700); font-size: .76rem; line-height: 1.35; padding: .6rem .5rem; vertical-align: middle; overflow-wrap: anywhere; word-break: normal; }
     .pe-pessoas-page .servidores-lw__table tbody tr:nth-child(even) { background: color-mix(in srgb, var(--gray-50) 72%, white); }
     .pe-pessoas-page .servidores-lw__table tbody tr:hover { background: color-mix(in srgb, var(--primary-50) 72%, white); }
-    .pe-pessoas-page .servidores-lw__table td[data-copy] { cursor: copy; }
-    .pe-pessoas-page .servidores-lw__table td[data-copy]:hover { box-shadow: inset 0 0 0 1px var(--primary-200); }
     .pe-pessoas-page .servidores-lw__table td strong { color: var(--gray-950); display: block; font-size: .82rem; }
     .pe-pessoas-page .servidores-lw__table td small { color: var(--gray-500); display: block; font-size: .7rem; margin-top: .15rem; }
-    .pe-pessoas-page .servidores-lw__copy { align-items: center; background: transparent; border: 0; border-radius: .25rem; color: inherit; cursor: copy; display: inline-flex; gap: .3rem; max-width: 100%; padding: 0; text-align: left; }
+    .pe-pessoas-page .servidores-lw__copy { align-items: center; background: transparent; border: 0; border-radius: .25rem; color: inherit; cursor: copy; display: flex; flex-wrap: wrap; gap: .3rem; max-width: 100%; min-width: 0; padding: .1rem; position: relative; text-align: left; white-space: normal; overflow-wrap: anywhere; width: 100%; }
+    .pe-pessoas-page .servidores-lw__copy::after { background: var(--gray-950); border-radius: .35rem; color: #fff; content: attr(data-tooltip); font-size: .68rem; font-weight: 600; left: 50%; opacity: 0; padding: .35rem .5rem; pointer-events: none; position: absolute; top: calc(100% + .35rem); transform: translate(-50%, -.15rem); transition: opacity .12s ease, transform .12s ease; white-space: nowrap; z-index: 20; }
+    .pe-pessoas-page .servidores-lw__copy:hover::after, .pe-pessoas-page .servidores-lw__copy:focus-visible::after { opacity: 1; transform: translate(-50%, 0); }
     .pe-pessoas-page .servidores-lw__copy:hover { color: var(--primary-700); text-decoration: underline; text-decoration-style: dotted; text-underline-offset: .15em; }
     .pe-pessoas-page .servidores-lw__copy:focus-visible { outline: 2px solid var(--primary-500); outline-offset: 2px; }
+    .pe-pessoas-page .servidores-lw__copy strong { display: block; width: 100%; }
+    .pe-pessoas-page .servidores-lw__copy small { display: block; width: 100%; }
     .pe-pessoas-page .servidores-lw__copy svg { flex: 0 0 .85rem; height: .85rem; opacity: .45; width: .85rem; }
     .pe-pessoas-page .servidores-lw__copy:hover svg { opacity: 1; }
     .pe-pessoas-page .servidores-lw__copy-label { min-width: 0; overflow-wrap: anywhere; }

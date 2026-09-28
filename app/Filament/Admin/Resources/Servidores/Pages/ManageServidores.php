@@ -14,6 +14,7 @@ use Filament\Schemas\Components\Livewire as LivewireComponent;
 use Filament\Schemas\Components\RenderHook;
 use Filament\Schemas\Schema;
 use Filament\View\PanelsRenderHook;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\On;
@@ -61,18 +62,44 @@ class ManageServidores extends ManageRecords
             'excluir_acessos_em_massa', 'delete', 'restore',
         ], true), 404);
 
+        abort_unless(array_key_exists($action, ServidoresTable::acoesEmMassaPermitidas()), 403);
+
+        $recebidos = collect($ids)->unique()->values();
+        $ids = $recebidos
+            ->map(fn (mixed $id): int|false => filter_var($id, FILTER_VALIDATE_INT))
+            ->filter(fn (int|false $id): bool => $id !== false && $id > 0)
+            ->unique()
+            ->values();
+
+        if ($ids->count() !== $recebidos->count()) {
+            return;
+        }
+
+        $ids = $ids->all();
         $records = ServidorResource::getEloquentQuery()
+            ->withTrashed()
             ->with('user:id')
             ->whereKey($ids)
             ->get()
             ->filter(fn (Servidor $record): bool => ServidorResource::pessoaPodeSerSelecionada($record))
             ->values();
 
-        if ($records->isEmpty()) {
+        if ($records->isEmpty() || $records->count() !== count($ids)) {
             return;
         }
 
-        $this->mountTableBulkAction($action, $records->all());
+        $this->mountTableBulkAction(
+            $action,
+            $records->map(fn (Servidor $record): string => (string) $record->getKey())->all(),
+        );
+    }
+
+    public function getSelectedTableRecordsQuery(bool $shouldFetchSelectedRecords = true, ?int $chunkSize = null): Builder
+    {
+        return ServidorResource::getEloquentQuery()
+            ->withTrashed()
+            ->with(['user:id,name,email,deleted_at', 'user.roles:id,name'])
+            ->whereKey($this->selectedTableRecords);
     }
 
     public function getHeader(): ?View

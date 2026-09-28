@@ -11,15 +11,22 @@ use App\Models\Servidor;
 use App\Models\User;
 use App\Services\Exports\ExportRequestService;
 use App\Services\ProfessorComponenteSolicitacaoService;
+use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-class ServidoresTable extends Component
+class ServidoresTable extends Component implements HasForms
 {
+    use InteractsWithForms;
     use WithPagination;
 
     public string $search = '';
@@ -37,6 +44,7 @@ class ServidoresTable extends Component
     public int $perPage = 5;
     public array $selecionados = [];
     public string $acaoEmMassa = '';
+    public array $filtrosFormData = [];
 
     public array $colunasVisiveis = [
         'identidade' => true,
@@ -83,6 +91,94 @@ class ServidoresTable extends Component
         } else {
             $this->colunasVisiveis['acesso'] = false;
         }
+
+        $this->filtrosForm->fill($this->estadoInicialDosFiltros());
+    }
+
+    protected function getForms(): array
+    {
+        return ['filtrosForm'];
+    }
+
+    public function filtrosForm(Schema $schema): Schema
+    {
+        $campos = [
+            Select::make('cargo')
+                ->label('Cargo')
+                ->options($this->opcoesCargos)
+                ->multiple()
+                ->native(false)
+                ->searchable()
+                ->preload(),
+            Select::make('quantidadeMatriculas')
+                ->label('Quantidade de matrículas')
+                ->options([
+                    'uma' => 'Uma matrícula',
+                    'duas' => 'Duas matrículas',
+                    'tres_ou_mais' => 'Três ou mais',
+                    'sem' => 'Sem matrícula',
+                ])
+                ->placeholder('Todas'),
+            Select::make('turnoMatricula')
+                ->label('Turno da matrícula')
+                ->options($this->opcoesTurnos)
+                ->multiple()
+                ->native(false)
+                ->searchable()
+                ->preload(),
+            Select::make('status')
+                ->label('Status')
+                ->options($this->opcoesStatus)
+                ->multiple()
+                ->native(false)
+                ->searchable()
+                ->preload(),
+            Select::make('escola')
+                ->label('Escola')
+                ->options($this->opcoesEscolas)
+                ->multiple()
+                ->native(false)
+                ->searchable()
+                ->preload(),
+        ];
+
+        if (Gate::allows('viewAny', User::class)) {
+            $campos[] = Select::make('nivelAcesso')
+                ->label('Nível de acesso')
+                ->options($this->opcoesNiveis)
+                ->multiple()
+                ->native(false)
+                ->searchable()
+                ->preload();
+        }
+
+        $campos[] = Select::make('arquivados')
+            ->label('Arquivados')
+            ->options([
+                'sem' => 'Sem arquivados',
+                'com' => 'Com arquivados',
+                'somente' => 'Somente arquivados',
+            ]);
+
+        if (Gate::allows('viewAny', ProfessorComponenteSolicitacao::class)) {
+            $campos[] = Select::make('solicitacoesPendentes')
+                ->label('Solicitações de vínculo')
+                ->options([
+                    'sim' => 'Com solicitações',
+                    'nao' => 'Sem solicitações',
+                ])
+                ->placeholder('Todas');
+        }
+
+        $campos[] = Checkbox::make('emailDuplicado')
+            ->label('E-mail duplicado')
+            ->columnSpan(1);
+
+        return $schema
+            ->components([
+                Grid::make(4)->schema($campos),
+            ])
+            ->statePath('filtrosFormData');
     }
 
     public static function canView(): bool
@@ -112,6 +208,16 @@ class ServidoresTable extends Component
 
     public function aplicarFiltros(): void
     {
+        $filtros = $this->filtrosForm->getState();
+        $this->cargo = $filtros['cargo'] ?? [];
+        $this->quantidadeMatriculas = $filtros['quantidadeMatriculas'] ?? null;
+        $this->turnoMatricula = $filtros['turnoMatricula'] ?? [];
+        $this->status = $filtros['status'] ?? [];
+        $this->escola = $filtros['escola'] ?? [];
+        $this->nivelAcesso = Gate::allows('viewAny', User::class) ? ($filtros['nivelAcesso'] ?? []) : [];
+        $this->arquivados = $filtros['arquivados'] ?? 'sem';
+        $this->solicitacoesPendentes = $filtros['solicitacoesPendentes'] ?? null;
+        $this->emailDuplicado = (bool) ($filtros['emailDuplicado'] ?? false);
         $this->selecionados = [];
         $this->resetPage('servidoresPage');
     }
@@ -128,6 +234,7 @@ class ServidoresTable extends Component
         $this->nivelAcesso = [];
         $this->solicitacoesPendentes = null;
         $this->emailDuplicado = false;
+        $this->filtrosForm->fill($this->estadoInicialDosFiltros());
         $this->selecionados = [];
         $this->resetPage('servidoresPage');
     }
@@ -196,18 +303,7 @@ class ServidoresTable extends Component
     {
         $ids = collect($this->selecionados)->map(fn (mixed $id): int => (int) $id)->filter()->unique()->values()->all();
 
-        if ($ids === [] || ! in_array($this->acaoEmMassa, [
-            'exportar_selecionados',
-            'alterar_status_em_massa',
-            'criar_acessos_em_massa',
-            'verificacao_acesso_em_massa',
-            'redefinir_senha_em_massa',
-            'niveis_em_massa',
-            'permissoes_em_massa',
-            'excluir_acessos_em_massa',
-            'delete',
-            'restore',
-        ], true)) {
+        if ($ids === [] || ! array_key_exists($this->acaoEmMassa, $this->acoesEmMassaDisponiveis())) {
             return;
         }
 
@@ -218,6 +314,47 @@ class ServidoresTable extends Component
 
         $this->dispatch('servidores-acao-massa', action: $this->acaoEmMassa, ids: $ids);
         $this->acaoEmMassa = '';
+    }
+
+    /** @return array<string, string> */
+    public function acoesEmMassaDisponiveis(): array
+    {
+        return self::acoesEmMassaPermitidas();
+    }
+
+    /** @return array<string, string> */
+    public static function acoesEmMassaPermitidas(): array
+    {
+        $acoes = [];
+
+        if (Gate::allows('viewAny', Servidor::class)) {
+            $acoes['exportar_selecionados'] = 'Exportar selecionados';
+        }
+
+        if (ServidorResource::usuarioPodeGerenciarEstrutura()) {
+            $acoes['alterar_status_em_massa'] = 'Alterar status';
+        }
+
+        if (Gate::allows('viewAny', User::class)) {
+            if (Gate::allows('resetPasswordAny', User::class)) {
+                $acoes['redefinir_senha_em_massa'] = 'Redefinir senhas';
+            }
+
+            if (Gate::allows('applyPermissionsAny', User::class)) {
+                $acoes['niveis_em_massa'] = 'Alterar níveis de acesso';
+                $acoes['permissoes_em_massa'] = 'Alterar permissões';
+            }
+        }
+
+        if (Gate::allows('deleteAny', Servidor::class)) {
+            $acoes['delete'] = 'Arquivar selecionados';
+        }
+
+        if (Gate::allows('restoreAny', Servidor::class)) {
+            $acoes['restore'] = 'Restaurar selecionados';
+        }
+
+        return $acoes;
     }
 
     public function exportarFiltrados(): void
@@ -398,6 +535,22 @@ class ServidoresTable extends Component
         $ordenarDirecao = $this->ordenarDirecao === 'asc' ? 'asc' : 'desc';
 
         return $query->orderBy($ordenarPor, $ordenarDirecao)->orderBy('servidores.id');
+    }
+
+    /** @return array<string, mixed> */
+    private function estadoInicialDosFiltros(): array
+    {
+        return [
+            'cargo' => $this->cargo,
+            'quantidadeMatriculas' => $this->quantidadeMatriculas,
+            'turnoMatricula' => $this->turnoMatricula,
+            'status' => $this->status,
+            'escola' => $this->escola,
+            'nivelAcesso' => Gate::allows('viewAny', User::class) ? $this->nivelAcesso : [],
+            'arquivados' => $this->arquivados,
+            'solicitacoesPendentes' => $this->solicitacoesPendentes,
+            'emailDuplicado' => $this->emailDuplicado,
+        ];
     }
 
     private function aplicarFiltroCargo(Builder $query): void

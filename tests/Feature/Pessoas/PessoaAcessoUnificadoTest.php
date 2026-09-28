@@ -90,17 +90,17 @@ class PessoaAcessoUnificadoTest extends TestCase
             ->test(ManageServidores::class)
             ->assertTableActionVisible('gerenciar_acesso', $pessoa)
             ->assertTableActionVisible('redefinir_senha', $pessoa)
-            ->assertTableActionVisible('excluir_acesso', $pessoa)
-            ->assertTableBulkActionVisible('criar_acessos_em_massa')
-            ->assertTableBulkActionVisible('verificacao_acesso_em_massa')
+            ->assertTableActionHidden('excluir_acesso', $pessoa)
+            ->assertTableBulkActionHidden('criar_acessos_em_massa')
+            ->assertTableBulkActionHidden('verificacao_acesso_em_massa')
             ->assertTableBulkActionVisible('redefinir_senha_em_massa')
             ->assertTableBulkActionVisible('niveis_em_massa')
             ->assertTableBulkActionVisible('permissoes_em_massa')
-            ->assertTableBulkActionVisible('excluir_acessos_em_massa');
+            ->assertTableBulkActionHidden('excluir_acessos_em_massa');
 
         $component = Livewire::actingAs($this->admin)
             ->test(ManageServidores::class)
-            ->mountTableBulkAction('niveis_em_massa', [$pessoa]);
+            ->mountTableBulkAction('niveis_em_massa', [(string) $pessoa->getKey()]);
 
         $rolesSelect = $component->instance()
             ->getMountedTableBulkActionForm()
@@ -177,7 +177,7 @@ class PessoaAcessoUnificadoTest extends TestCase
         $this->assertFalse(UserResource::shouldRegisterNavigation());
     }
 
-    public function test_cria_acessos_em_massa_e_ignora_pessoa_que_ja_possui_conta(): void
+    public function test_bloqueia_criacao_de_acessos_em_massa_quando_a_acao_esta_desabilitada(): void
     {
         $pessoaSemAcesso = Servidor::query()->create([
             'nome' => 'Pessoa sem acesso em massa',
@@ -195,28 +195,40 @@ class PessoaAcessoUnificadoTest extends TestCase
             'status' => Servidor::STATUS_ATIVO,
         ]);
 
+        $this->assertNull($pessoaSemAcesso->fresh()->user_id);
+
         Livewire::actingAs($this->admin)
             ->test(ManageServidores::class)
-            ->mountTableBulkAction('criar_acessos_em_massa', [$pessoaSemAcesso, $pessoaComAcesso])
-            ->setTableBulkActionData([
-                'senha' => 'Senha@1234',
-                'email_approved' => true,
+            ->call('abrirAcaoEmMassa', 'criar_acessos_em_massa', [
+                (string) $pessoaSemAcesso->getKey(),
+                (string) $pessoaComAcesso->getKey(),
             ])
-            ->callMountedTableBulkAction()
-            ->assertHasNoTableBulkActionErrors();
+            ->assertForbidden();
 
-        $contaCriada = $pessoaSemAcesso->fresh()->user;
-
-        $this->assertNotNull($contaCriada);
-        $this->assertTrue((bool) $contaCriada->email_approved);
-        $this->assertTrue($contaCriada->must_change_password);
-        $this->assertTrue(Hash::check('Senha@1234', $contaCriada->password));
+        $this->assertNull($pessoaSemAcesso->fresh()->user_id);
         $this->assertSame($contaExistente->id, $pessoaComAcesso->fresh()->user_id);
         $this->assertFalse((bool) $contaExistente->fresh()->email_approved);
-        $this->assertSame(2, User::query()->whereIn('email', [
+        $this->assertSame(1, User::query()->whereIn('email', [
             'sem.acesso.massa@edu.umuarama.pr.gov.br',
             'com.acesso.massa@edu.umuarama.pr.gov.br',
         ])->count());
+    }
+
+    public function test_acao_em_massa_nao_monta_com_selecao_parcialmente_invalida(): void
+    {
+        $pessoa = Servidor::query()->create([
+            'nome' => 'Pessoa válida da seleção',
+            'email' => 'pessoa.valida.selecao@edu.umuarama.pr.gov.br',
+            'status' => Servidor::STATUS_ATIVO,
+        ]);
+
+        Livewire::actingAs($this->admin)
+            ->test(ManageServidores::class)
+            ->call('abrirAcaoEmMassa', 'niveis_em_massa', [
+                (string) $pessoa->getKey(),
+                'registro-inexistente',
+            ])
+            ->assertSet('mountedActions', []);
     }
 
     public function test_vincula_solicitacao_de_acesso_a_pessoa_existente_com_mesmo_email(): void

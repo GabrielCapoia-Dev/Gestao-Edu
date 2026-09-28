@@ -1,4 +1,55 @@
-<div class="servidores-lw" wire:key="servidores-livewire-table" x-data="{ copiedCell: null }" x-on:click="const cell = $event.target.closest('[data-copy]'); if (cell) navigator.clipboard.writeText(cell.dataset.copy).then(() => { copiedCell = cell; window.setTimeout(() => { if (copiedCell === cell) copiedCell = null }, 2500) })">
+<div class="servidores-lw" wire:key="servidores-livewire-table" x-data="{
+    copyTimer: null,
+    activeCopyElement: null,
+    async copyCell(element) {
+        const text = element.dataset.copy ?? '';
+        try {
+            if (window.isSecureContext && navigator.clipboard?.writeText) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                } catch (error) {
+                    await this.copyFallback(text);
+                }
+            } else {
+                await this.copyFallback(text);
+            }
+
+            window.clearTimeout(this.copyTimer);
+            if (this.activeCopyElement && this.activeCopyElement !== element) {
+                this.activeCopyElement.dataset.tooltip = 'Clique para Copiar';
+            }
+            this.activeCopyElement = element;
+            element.dataset.tooltip = 'Copiado!';
+            this.copyTimer = window.setTimeout(() => {
+                element.dataset.tooltip = 'Clique para Copiar';
+                this.activeCopyElement = null;
+            }, 2500);
+        } catch (error) {
+            window.clearTimeout(this.copyTimer);
+            if (this.activeCopyElement) {
+                this.activeCopyElement.dataset.tooltip = 'Clique para Copiar';
+            }
+            this.activeCopyElement = null;
+            element.dataset.tooltip = 'Não foi possível copiar';
+            this.copyTimer = window.setTimeout(() => {
+                element.dataset.tooltip = 'Clique para Copiar';
+            }, 2500);
+        }
+    },
+    async copyFallback(text) {
+        const input = document.createElement('textarea');
+        input.value = text;
+        input.setAttribute('readonly', '');
+        input.style.position = 'fixed';
+        input.style.opacity = '0';
+        document.body.appendChild(input);
+        input.focus();
+        input.select();
+        const copied = document.execCommand('copy');
+        input.remove();
+        if (!copied) throw new Error('clipboard_unavailable');
+    }
+}">
     <div class="servidores-lw__toolbar">
         <div class="servidores-lw__search">
             <label for="servidores-busca">Buscar servidores</label>
@@ -29,72 +80,8 @@
             <span><x-filament::icon icon="heroicon-o-adjustments-horizontal" /> Filtros avançados</span>
             <span class="servidores-lw__filter-count">{{ collect([$cargo, $quantidadeMatriculas, $turnoMatricula, $status, $escola, $nivelAcesso, $emailDuplicado])->flatten()->filter()->count() }}</span>
         </summary>
-        <div class="servidores-lw__filter-grid">
-            <label>Cargo
-                <select wire:model="cargo" multiple>
-                    @foreach ($opcoesCargos as $valor => $label)
-                        <option value="{{ $valor }}">{{ $label }}</option>
-                    @endforeach
-                </select>
-            </label>
-            <label>Quantidade de matrículas
-                <select wire:model="quantidadeMatriculas">
-                    <option value="">Todas</option>
-                    <option value="uma">Uma matrícula</option>
-                    <option value="duas">Duas matrículas</option>
-                    <option value="tres_ou_mais">Três ou mais</option>
-                    <option value="sem">Sem matrícula</option>
-                </select>
-            </label>
-            <label>Turno da matrícula
-                <select wire:model="turnoMatricula" multiple>
-                    @foreach ($opcoesTurnos as $valor => $label)
-                        <option value="{{ $valor }}">{{ $label }}</option>
-                    @endforeach
-                </select>
-            </label>
-            <label>Status
-                <select wire:model="status" multiple>
-                    @foreach ($opcoesStatus as $valor => $label)
-                        <option value="{{ $valor }}">{{ $label }}</option>
-                    @endforeach
-                </select>
-            </label>
-            <label>Escola
-                <select wire:model="escola" multiple>
-                    @foreach ($opcoesEscolas as $valor => $label)
-                        <option value="{{ $valor }}">{{ $label }}</option>
-                    @endforeach
-                </select>
-            </label>
-            @if (Gate::allows('viewAny', \App\Models\User::class))
-                <label>Nível de acesso
-                    <select wire:model="nivelAcesso" multiple>
-                        @foreach ($opcoesNiveis as $valor => $label)
-                            <option value="{{ $valor }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </label>
-            @endif
-            <label>Arquivados
-                <select wire:model="arquivados">
-                    <option value="sem">Sem arquivados</option>
-                    <option value="com">Com arquivados</option>
-                    <option value="somente">Somente arquivados</option>
-                </select>
-            </label>
-            @if (Gate::allows('viewAny', \App\Models\ProfessorComponenteSolicitacao::class))
-                <label>Solicitações de vínculo
-                    <select wire:model="solicitacoesPendentes">
-                        <option value="">Todas</option>
-                        <option value="sim">Com solicitações</option>
-                        <option value="nao">Sem solicitações</option>
-                    </select>
-                </label>
-            @endif
-            <label class="servidores-lw__checkbox-label">
-                <input type="checkbox" wire:model="emailDuplicado" /> E-mail duplicado
-            </label>
+        <div class="servidores-lw__filter-grid servidores-lw__filter-grid--filament">
+            {{ $this->filtrosForm }}
         </div>
         <div class="servidores-lw__filter-actions">
             <button type="button" class="servidores-lw__button servidores-lw__button--primary" wire:click="aplicarFiltros">Aplicar filtros</button>
@@ -129,16 +116,9 @@
         <div class="servidores-lw__bulkbar">
             <select wire:model="acaoEmMassa">
                 <option value="">Ações em massa</option>
-                <option value="exportar_selecionados">Exportar selecionados</option>
-                <option value="alterar_status_em_massa">Alterar status</option>
-                <option value="criar_acessos_em_massa">Criar acessos</option>
-                <option value="verificacao_acesso_em_massa">Verificar acessos</option>
-                <option value="redefinir_senha_em_massa">Redefinir senhas</option>
-                <option value="niveis_em_massa">Alterar níveis de acesso</option>
-                <option value="permissoes_em_massa">Alterar permissões</option>
-                <option value="excluir_acessos_em_massa">Excluir acessos</option>
-                <option value="delete">Arquivar selecionados</option>
-                <option value="restore">Restaurar selecionados</option>
+                @foreach ($this->acoesEmMassaDisponiveis() as $acao => $label)
+                    <option value="{{ $acao }}">{{ $label }}</option>
+                @endforeach
             </select>
             <button type="button" class="servidores-lw__button servidores-lw__button--primary" wire:click="executarAcaoEmMassa">Executar</button>
         </div>
@@ -165,16 +145,16 @@
                     <tr wire:key="servidor-row-{{ $servidor->id }}">
                         <td class="servidores-lw__check-col"><input type="checkbox" wire:click="alternarSelecionado({{ $servidor->id }})" @disabled(! \App\Filament\Admin\Resources\Servidores\ServidorResource::pessoaPodeSerSelecionada($servidor)) @checked(in_array($servidor->id, $selecionados, true)) /></td>
                         @if ($colunasVisiveis['identidade'])
-                            <td data-label="Pessoa / CPF" data-copy="{{ $servidor->nome }}&#10;{{ $servidor->cpf ? \App\Filament\Admin\Resources\Servidores\ServidorResource::formatarCpf($servidor->cpf) : 'CPF não informado' }}" :title="copiedCell === $el ? 'Copiado' : 'Clique para Copiar'" title="Clique para Copiar"><strong>{{ $servidor->nome }}</strong><small>{{ $servidor->cpf ? \App\Filament\Admin\Resources\Servidores\ServidorResource::formatarCpf($servidor->cpf) : 'CPF não informado' }}</small></td>
+                            <td data-label="Pessoa / CPF"><button type="button" class="servidores-lw__copy" data-copy="{{ $servidor->nome }}&#10;{{ $servidor->cpf ? \App\Filament\Admin\Resources\Servidores\ServidorResource::formatarCpf($servidor->cpf) : 'CPF não informado' }}" data-tooltip="Clique para Copiar" aria-label="Clique para copiar nome e CPF" x-on:click.stop="copyCell($el)"><strong>{{ $servidor->nome }}</strong><small>{{ $servidor->cpf ? \App\Filament\Admin\Resources\Servidores\ServidorResource::formatarCpf($servidor->cpf) : 'CPF não informado' }}</small></button></td>
                         @endif
-                        @if ($colunasVisiveis['cargo']) <td data-label="Cargo" data-copy="{{ \App\Filament\Admin\Resources\Servidores\ServidorResource::cargoLabel($servidor) }}" :title="copiedCell === $el ? 'Copiado' : 'Clique para Copiar'" title="Clique para Copiar"><span class="servidores-lw__badge servidores-lw__badge--blue">{{ \App\Filament\Admin\Resources\Servidores\ServidorResource::cargoLabel($servidor) }}</span></td> @endif
-                        @if ($colunasVisiveis['escola']) <td data-label="Escola" data-copy="{{ \App\Filament\Admin\Resources\Servidores\ServidorResource::exibeEscolaNaListagem($servidor) ? \App\Filament\Admin\Resources\Servidores\ServidorResource::escolasLabel($servidor) : '—' }}" :title="copiedCell === $el ? 'Copiado' : 'Clique para Copiar'" title="Clique para Copiar">{{ \App\Filament\Admin\Resources\Servidores\ServidorResource::exibeEscolaNaListagem($servidor) ? \App\Filament\Admin\Resources\Servidores\ServidorResource::escolasLabel($servidor) : '—' }}</td> @endif
-                        @if ($colunasVisiveis['matricula']) <td data-label="Matrícula" data-copy="{{ $this->matriculasLabel($servidor) }}" :title="copiedCell === $el ? 'Copiado' : 'Clique para Copiar'" title="Clique para Copiar">{{ $this->matriculasLabel($servidor) }}</td> @endif
-                        @if ($colunasVisiveis['email']) <td class="servidores-lw__email" data-label="E-mail" data-copy="{{ $servidor->user?->email ?: $servidor->email ?: '—' }}" :title="copiedCell === $el ? 'Copiado' : 'Clique para Copiar'" title="Clique para Copiar">{{ $servidor->user?->email ?: $servidor->email ?: '—' }}</td> @endif
-                        @if ($colunasVisiveis['status']) <td data-label="Status" data-copy="{{ $this->statusLabel($servidor) }}" :title="copiedCell === $el ? 'Copiado' : 'Clique para Copiar'" title="Clique para Copiar"><span class="servidores-lw__badge servidores-lw__badge--{{ $this->statusColor($servidor) }}">{{ $this->statusLabel($servidor) }}</span></td> @endif
-                        @if ($colunasVisiveis['acesso'] && Gate::allows('viewAny', \App\Models\User::class)) <td data-label="Acesso" data-copy="{{ $servidor->user?->roles?->pluck('name')->join(', ') ?: '—' }}" :title="copiedCell === $el ? 'Copiado' : 'Clique para Copiar'" title="Clique para Copiar">{{ $servidor->user?->roles?->pluck('name')->join(', ') ?: '—' }}</td> @endif
-                        @if ($colunasVisiveis['atualizado']) <td data-label="Atualizado em" data-copy="{{ optional($servidor->updated_at)->format('d/m/Y H:i') }}" :title="copiedCell === $el ? 'Copiado' : 'Clique para Copiar'" title="Clique para Copiar">{{ optional($servidor->updated_at)->format('d/m/Y H:i') }}</td> @endif
-                        <td class="servidores-lw__actions-col" data-label="Ações"><button type="button" class="servidores-lw__action" wire:click="abrirAcao('view', {{ $servidor->id }})" title="Visualizar"><x-filament::icon icon="heroicon-o-eye" /></button><button type="button" class="servidores-lw__action" wire:click="abrirAcao('edit', {{ $servidor->id }})" title="Editar"><x-filament::icon icon="heroicon-o-pencil-square" /></button><details class="servidores-lw__row-menu"><summary class="servidores-lw__action" title="Mais ações"><x-filament::icon icon="heroicon-m-ellipsis-vertical" /></summary><div class="servidores-lw__row-menu-panel"><button type="button" wire:click="abrirAcao('alterar_status', {{ $servidor->id }})">Alterar status</button><button type="button" wire:click="abrirAcao('criar_acesso', {{ $servidor->id }})">Criar acesso</button><button type="button" wire:click="abrirAcao('gerenciar_acesso', {{ $servidor->id }})">Gerenciar acesso</button><button type="button" wire:click="abrirAcao('redefinir_senha', {{ $servidor->id }})">Redefinir senha</button><button type="button" wire:click="abrirAcao('excluir_acesso', {{ $servidor->id }})">Excluir acesso</button><button type="button" wire:click="abrirAcao('analisar_solicitacoes_professor', {{ $servidor->id }})">Solicitações</button><button type="button" wire:click="abrirAcao('delete', {{ $servidor->id }})">Arquivar</button><button type="button" wire:click="abrirAcao('restore', {{ $servidor->id }})">Restaurar</button></div></details></td>
+                        @if ($colunasVisiveis['cargo']) <td data-label="Cargo"><button type="button" class="servidores-lw__copy" data-copy="{{ \App\Filament\Admin\Resources\Servidores\ServidorResource::cargoLabel($servidor) }}" data-tooltip="Clique para Copiar" x-on:click.stop="copyCell($el)"><span class="servidores-lw__badge servidores-lw__badge--blue">{{ \App\Filament\Admin\Resources\Servidores\ServidorResource::cargoLabel($servidor) }}</span></button></td> @endif
+                        @if ($colunasVisiveis['escola']) <td data-label="Escola"><button type="button" class="servidores-lw__copy" data-copy="{{ \App\Filament\Admin\Resources\Servidores\ServidorResource::exibeEscolaNaListagem($servidor) ? \App\Filament\Admin\Resources\Servidores\ServidorResource::escolasLabel($servidor) : '—' }}" data-tooltip="Clique para Copiar" x-on:click.stop="copyCell($el)">{{ \App\Filament\Admin\Resources\Servidores\ServidorResource::exibeEscolaNaListagem($servidor) ? \App\Filament\Admin\Resources\Servidores\ServidorResource::escolasLabel($servidor) : '—' }}</button></td> @endif
+                        @if ($colunasVisiveis['matricula']) <td data-label="Matrícula"><button type="button" class="servidores-lw__copy" data-copy="{{ $this->matriculasLabel($servidor) }}" data-tooltip="Clique para Copiar" x-on:click.stop="copyCell($el)">{{ $this->matriculasLabel($servidor) }}</button></td> @endif
+                        @if ($colunasVisiveis['email']) <td class="servidores-lw__email" data-label="E-mail"><button type="button" class="servidores-lw__copy" data-copy="{{ $servidor->user?->email ?: $servidor->email ?: '—' }}" data-tooltip="Clique para Copiar" x-on:click.stop="copyCell($el)">{{ $servidor->user?->email ?: $servidor->email ?: '—' }}</button></td> @endif
+                        @if ($colunasVisiveis['status']) <td data-label="Status"><button type="button" class="servidores-lw__copy" data-copy="{{ $this->statusLabel($servidor) }}" data-tooltip="Clique para Copiar" x-on:click.stop="copyCell($el)"><span class="servidores-lw__badge servidores-lw__badge--{{ $this->statusColor($servidor) }}">{{ $this->statusLabel($servidor) }}</span></button></td> @endif
+                        @if ($colunasVisiveis['acesso'] && Gate::allows('viewAny', \App\Models\User::class)) <td data-label="Acesso"><button type="button" class="servidores-lw__copy" data-copy="{{ $servidor->user?->roles?->pluck('name')->join(', ') ?: '—' }}" data-tooltip="Clique para Copiar" x-on:click.stop="copyCell($el)">{{ $servidor->user?->roles?->pluck('name')->join(', ') ?: '—' }}</button></td> @endif
+                        @if ($colunasVisiveis['atualizado']) <td data-label="Atualizado em"><button type="button" class="servidores-lw__copy" data-copy="{{ optional($servidor->updated_at)->format('d/m/Y H:i') }}" data-tooltip="Clique para Copiar" x-on:click.stop="copyCell($el)">{{ optional($servidor->updated_at)->format('d/m/Y H:i') }}</button></td> @endif
+                        <td class="servidores-lw__actions-col" data-label="Ações">@if (Gate::allows('view', $servidor))<button type="button" class="servidores-lw__action" wire:click="abrirAcao('view', {{ $servidor->id }})" title="Visualizar"><x-filament::icon icon="heroicon-o-eye" /></button>@endif @if (Gate::allows('update', $servidor))<button type="button" class="servidores-lw__action" wire:click="abrirAcao('edit', {{ $servidor->id }})" title="Editar"><x-filament::icon icon="heroicon-o-pencil-square" /></button>@endif<details class="servidores-lw__row-menu"><summary class="servidores-lw__action" title="Mais ações"><x-filament::icon icon="heroicon-m-ellipsis-vertical" /></summary><div class="servidores-lw__row-menu-panel">@if (\App\Filament\Admin\Resources\Servidores\ServidorResource::usuarioPodeGerenciarEstrutura($servidor))<button type="button" wire:click="abrirAcao('alterar_status', {{ $servidor->id }})">Alterar status</button>@endif @if ($servidor->user && Gate::allows('viewAny', \App\Models\User::class) && Gate::allows('applyPermissions', $servidor->user))<button type="button" wire:click="abrirAcao('gerenciar_acesso', {{ $servidor->id }})">Gerenciar acesso</button>@endif @if ($servidor->user && Gate::allows('resetPassword', $servidor->user))<button type="button" wire:click="abrirAcao('redefinir_senha', {{ $servidor->id }})">Redefinir senha</button>@endif @if (Gate::allows('delete', $servidor))<button type="button" wire:click="abrirAcao('delete', {{ $servidor->id }})">Arquivar</button>@endif @if ($servidor->trashed() && Gate::allows('restore', $servidor))<button type="button" wire:click="abrirAcao('restore', {{ $servidor->id }})">Restaurar</button>@endif @if ($servidor->solicitacoes_pendentes_count > 0)<button type="button" wire:click="abrirAcao('analisar_solicitacoes_professor', {{ $servidor->id }})">Solicitações</button>@endif</div></details></td>
                     </tr>
                 @empty
                     <tr><td colspan="12" class="servidores-lw__empty">Nenhum servidor encontrado com os filtros informados.</td></tr>
