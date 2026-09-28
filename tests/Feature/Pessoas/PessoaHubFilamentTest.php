@@ -106,10 +106,9 @@ class PessoaHubFilamentTest extends TestCase
     {
         $usuario = $this->usuarioComPermissaoListar();
         $this->assertTrue($usuario->hasPermissionTo('Listar Pessoas'));
-        $this->assertTrue(Gate::forUser($usuario)->allows('viewAny', Servidor::class));
         $setor = $this->criarSetor('Setor filtros multiple');
         $escola = $this->criarEscola('Escola filtros multiple', $setor);
-        $professor = $this->criarServidor('Pessoa filtrada como professor', $escola, $setor);
+        $professor = $this->criarServidor('Pessoa filtrada como professor', $escola, $setor, $usuario->id);
         Professor::query()->create([
             'servidor_id' => $professor->id,
             'id_escola' => $escola->id,
@@ -119,6 +118,7 @@ class PessoaHubFilamentTest extends TestCase
             'email' => $professor->email,
             'ativo' => true,
         ]);
+        $this->assertTrue(Gate::forUser($usuario)->allows('viewAny', Servidor::class));
         $naoProfessor = $this->criarServidor('Pessoa fora do filtro professor', $escola, $setor);
 
         $componente = Livewire::actingAs($usuario)

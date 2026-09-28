@@ -5,10 +5,13 @@ namespace Tests\Feature\Pessoas;
 use App\Filament\Admin\Resources\Servidores\Pages\ManageServidores;
 use App\Filament\Admin\Resources\Users\UserResource;
 use App\Models\FuncaoAdministrativa;
+use App\Models\Escola;
 use App\Models\Permission;
+use App\Models\Professor;
 use App\Models\Role;
 use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
+use App\Models\Setor;
 use App\Models\User;
 use App\Services\PessoaUsuarioService;
 use App\Services\UserService;
@@ -37,6 +40,40 @@ class PessoaAcessoUnificadoTest extends TestCase
         FuncaoAdministrativa::professorPadrao()->rolesPadrao()->syncWithoutDetaching([$roleProfessor->id]);
         $this->admin = User::factory()->create(['email_approved' => true]);
         $this->admin->assignRole(Role::query()->where('name', 'Admin')->firstOrFail());
+
+        $setor = Setor::query()->create([
+            'nome' => 'Setor dos testes de acesso',
+            'ativo' => true,
+            'status' => 'Ativo',
+            'is_default_root' => true,
+            'contexto' => 'escolar',
+            'exige_vinculo_escola' => true,
+        ]);
+        $escola = Escola::query()->create([
+            'codigo' => 'ACST0001',
+            'nome' => 'Escola dos testes de acesso',
+            'setor_id' => $setor->id,
+            'email' => 'escola.acesso.teste@edu.umuarama.pr.gov.br',
+            'telefone' => '(44) 99999-0000',
+            'ativo' => true,
+        ]);
+        $servidor = Servidor::query()->create([
+            'user_id' => $this->admin->id,
+            'nome' => 'Administrador de teste',
+            'email' => $this->admin->email,
+            'status' => Servidor::STATUS_ATIVO,
+            'id_escola' => $escola->id,
+            'setor_id' => $setor->id,
+        ]);
+        Professor::query()->create([
+            'servidor_id' => $servidor->id,
+            'id_escola' => $escola->id,
+            'matricula' => 'ACESSO-TESTE-1',
+            'turno' => 'manha',
+            'nome' => $servidor->nome,
+            'email' => $servidor->email,
+            'ativo' => true,
+        ]);
     }
 
     public function test_niveis_adicionais_nao_removem_cargo_ou_permissoes_diretas(): void
