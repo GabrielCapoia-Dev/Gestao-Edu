@@ -199,6 +199,38 @@ class PessoaHubFilamentTest extends TestCase
         $this->assertStringContainsString('Gate::allows(\'update\', $servidor)', $actions);
     }
 
+    public function test_selecionar_todos_filtrados_completa_selecao_validando_escopo_e_limpeza(): void
+    {
+        $usuario = $this->usuarioComPermissaoListar();
+        $this->actingAs($usuario);
+        $setor = $this->criarSetor('Setor seleção em massa filtrada');
+        $escola = $this->criarEscola('Escola seleção em massa filtrada', $setor);
+        $selecionaveis = collect(range(1, 6))
+            ->map(fn (int $numero): Servidor => $this->criarServidor("Pessoa selecionável {$numero}", $escola, $setor));
+        $naoSelecionavel = $this->criarServidor('Pessoa logada não selecionável', $escola, $setor, $usuario->id);
+        $idsEsperados = $selecionaveis->map(fn (Servidor $servidor): int => (int) $servidor->getKey())->all();
+        $tabela = app(ServidoresTable::class);
+        $tabela->selecionados = [$idsEsperados[0], (int) $naoSelecionavel->getKey()];
+
+        $tabela->selecionarTodosFiltrados();
+
+        $this->assertEqualsCanonicalizing($idsEsperados, $tabela->selecionados);
+
+        $tabela->limparSelecao();
+
+        $this->assertSame([], $tabela->selecionados);
+    }
+
+    public function test_tabela_exibe_controles_para_selecionar_todos_filtrados_e_limpar_selecao(): void
+    {
+        $view = file_get_contents(resource_path('views/livewire/pessoas/servidores-table.blade.php'));
+
+        $this->assertIsString($view);
+        $this->assertStringContainsString('wire:click="selecionarTodosFiltrados"', $view);
+        $this->assertStringContainsString('Selecionar todos os {{ number_format($servidores->total(), 0, \',\', \'.\') }}', $view);
+        $this->assertStringContainsString('Desselecionar todos', $view);
+    }
+
     public function test_dropdown_de_acoes_fica_acima_da_busca_e_dos_cabecalhos(): void
     {
         $view = file_get_contents(resource_path('views/livewire/pessoas/servidores-table.blade.php'));

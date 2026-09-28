@@ -262,6 +262,11 @@
     .pe-pessoas-page .servidores-lw__checkbox-label { align-items: center !important; display: flex !important; align-self: end; }
     .pe-pessoas-page .servidores-lw__filter-actions { align-items: center; border-top: 1px solid var(--pessoa-card-border); display: flex; gap: .5rem; justify-content: flex-end; padding: .65rem 1rem; }
     .pe-pessoas-page .servidores-lw__selection-summary { align-items: center; display: flex; flex-wrap: wrap; gap: .65rem; }
+    .pe-pessoas-page .servidores-lw__selection-actions { align-items: center; display: flex; flex-wrap: wrap; gap: .35rem .75rem; }
+    .pe-pessoas-page .servidores-lw__selection-action { background: transparent; border: 0; color: var(--primary-600); cursor: pointer; font-size: .78rem; font-weight: 600; padding: .25rem 0; }
+    .pe-pessoas-page .servidores-lw__selection-action:hover { color: var(--primary-800); text-decoration: underline; }
+    .pe-pessoas-page .servidores-lw__selection-action--clear { color: var(--danger-600); }
+    .pe-pessoas-page .servidores-lw__selection-action--clear:hover { color: var(--danger-700); }
     .pe-pessoas-page .servidores-lw__select-page { align-items: center; display: inline-flex; font-size: .78rem; gap: .4rem; }
     .pe-pessoas-page .servidores-lw__columns { position: relative; }
     .pe-pessoas-page .servidores-lw__columns summary { align-items: center; cursor: pointer; display: flex; font-size: .78rem; gap: .35rem; list-style: none; }

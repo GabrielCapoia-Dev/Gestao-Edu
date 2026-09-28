@@ -268,6 +268,20 @@ class ServidoresTable extends Component implements HasForms
             : $selecionados->merge($ids)->unique()->values()->all();
     }
 
+    public function selecionarTodosFiltrados(): void
+    {
+        abort_unless(static::canView(), 403);
+
+        $selecionadosExistentes = $this->idsSelecionaveis($this->selecionados);
+        $idsFiltrados = $this->idsSelecionaveisDaConsulta();
+
+        $this->selecionados = collect($selecionadosExistentes)
+            ->merge($idsFiltrados)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
     public function alternarSelecionado(int $id): void
     {
         if (! in_array($id, $this->idsSelecionaveis([$id]), true)) {
@@ -631,6 +645,21 @@ class ServidoresTable extends Component implements HasForms
         return ServidorResource::getEloquentQuery()
             ->with('user:id')
             ->whereKey($ids)
+            ->get()
+            ->filter(fn (Servidor $servidor): bool => ServidorResource::pessoaPodeSerSelecionada($servidor))
+            ->map(fn (Servidor $servidor): int => (int) $servidor->getKey())
+            ->values()
+            ->all();
+    }
+
+    /** @return list<int> */
+    private function idsSelecionaveisDaConsulta(): array
+    {
+        return $this->servidoresQuery()
+            ->reorder()
+            ->withoutEagerLoads()
+            ->select(['servidores.id', 'servidores.user_id'])
+            ->with('user:id')
             ->get()
             ->filter(fn (Servidor $servidor): bool => ServidorResource::pessoaPodeSerSelecionada($servidor))
             ->map(fn (Servidor $servidor): int => (int) $servidor->getKey())

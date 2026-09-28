@@ -95,8 +95,11 @@
                 Selecionar página
             </label>
             @if (count($selecionados))
-                <span>{{ count($selecionados) }} selecionado(s)</span>
-                <button type="button" class="servidores-lw__button servidores-lw__button--link" wire:click="limparSelecao">Limpar seleção</button>
+                <span>{{ count($selecionados) }} registro(s) selecionado(s)</span>
+                <div class="servidores-lw__selection-actions">
+                    <button type="button" class="servidores-lw__selection-action" wire:click="selecionarTodosFiltrados">Selecionar todos os {{ number_format($servidores->total(), 0, ',', '.') }}</button>
+                    <button type="button" class="servidores-lw__selection-action servidores-lw__selection-action--clear" wire:click="limparSelecao">Desselecionar todos</button>
+                </div>
             @endif
         </div>
         <details class="servidores-lw__columns">
