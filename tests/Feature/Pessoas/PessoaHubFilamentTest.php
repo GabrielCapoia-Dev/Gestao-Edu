@@ -25,6 +25,7 @@ use App\Services\ServidorService;
 use Filament\Actions\Action;
 use Filament\Schemas\Components\View;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
@@ -104,6 +105,8 @@ class PessoaHubFilamentTest extends TestCase
     public function test_filtros_multiplos_filament_aplicam_e_limpam_selecao(): void
     {
         $usuario = $this->usuarioComPermissaoListar();
+        $this->assertTrue($usuario->hasPermissionTo('Listar Pessoas'));
+        $this->assertTrue(Gate::forUser($usuario)->allows('viewAny', Servidor::class));
         $setor = $this->criarSetor('Setor filtros multiple');
         $escola = $this->criarEscola('Escola filtros multiple', $setor);
         $professor = $this->criarServidor('Pessoa filtrada como professor', $escola, $setor);
