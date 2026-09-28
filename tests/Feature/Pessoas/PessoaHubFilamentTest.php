@@ -561,13 +561,8 @@ class PessoaHubFilamentTest extends TestCase
         ]);
         $setor = $this->criarSetor('Setor dos modais da tabela');
         $escola = $this->criarEscola('Escola dos modais da tabela', $setor);
-        $servidorOperador = $usuario->servidores()->create([
-            'nome' => 'Operador dos modais',
-            'email' => 'operador.dos.modais@edu.umuarama.pr.gov.br',
-            'status' => Servidor::STATUS_ATIVO,
-            'id_escola' => $escola->id,
-            'setor_id' => $setor->id,
-        ]);
+        $servidorOperador = $this->criarServidor('Operador dos modais', $escola, $setor, $usuario->id);
+        Servidor::query()->whereKey($servidorOperador->getKey())->update(['user_id' => $usuario->id]);
         Professor::query()->create([
             'servidor_id' => $servidorOperador->id,
             'id_escola' => $escola->id,
@@ -579,6 +574,7 @@ class PessoaHubFilamentTest extends TestCase
         ]);
         $alvo = $this->criarServidor('Pessoa alvo dos modais', $escola, $setor);
 
+        $this->assertSame((int) $usuario->getKey(), (int) $servidorOperador->fresh()->user_id);
         $this->assertSame(1, $usuario->fresh()->servidores()->count());
         $this->assertSame(1, $usuario->fresh()->servidores()->where('status', Servidor::STATUS_ATIVO)->whereHas('professores', fn ($query) => $query->where('ativo', true))->count());
         $this->assertTrue($usuario->fresh()->isOperationallyActive());
