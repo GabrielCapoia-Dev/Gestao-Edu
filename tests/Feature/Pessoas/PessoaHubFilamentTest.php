@@ -574,6 +574,8 @@ class PessoaHubFilamentTest extends TestCase
         ]);
         $alvo = $this->criarServidor('Pessoa alvo dos modais', $escola, $setor);
 
+        $this->assertSame(1, $usuario->fresh()->servidores()->count());
+        $this->assertSame(1, $usuario->fresh()->servidores()->where('status', Servidor::STATUS_ATIVO)->whereHas('professores', fn ($query) => $query->where('ativo', true))->count());
         $this->assertTrue($usuario->fresh()->isOperationallyActive());
 
         Livewire::actingAs($usuario)
