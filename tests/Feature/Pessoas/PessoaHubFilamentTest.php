@@ -120,8 +120,10 @@ class PessoaHubFilamentTest extends TestCase
 
         $componente = Livewire::actingAs($usuario)
             ->test(ServidoresTable::class)
+            ->assertOk()
             ->set('filtrosFormData.cargo', [ServidorResource::CARGO_PROFESSOR])
             ->call('aplicarFiltros')
+            ->assertSet('cargo', [ServidorResource::CARGO_PROFESSOR])
             ->assertSee($professor->nome)
             ->assertDontSee($naoProfessor->nome)
             ->call('limparFiltros')
