@@ -662,6 +662,36 @@ class PessoaHubFilamentTest extends TestCase
         $this->assertStringNotContainsString('value="20" checked', $html);
     }
 
+    public function test_turmas_da_coordenacao_separam_selecionadas_e_disponiveis(): void
+    {
+        $html = Blade::render(file_get_contents(resource_path(
+            'views/livewire/pessoas/partials/equipe-gestora.blade.php',
+        )), [
+            'cargo' => ServidorResource::CARGO_EQUIPE_GESTORA,
+            'podeGerenciarEquipeGestora' => true,
+            'escolasOptions' => [1 => 'Escola da coordenação'],
+            'idEscolaGestora' => 1,
+            'cargosGestores' => [ServidorEquipeGestoraForm::CARGO_COORDENADOR],
+            'temDiretor' => false,
+            'temCoordenador' => true,
+            'portaria' => 'PORT-123',
+            'turmasGestaoOptions' => [
+                10 => '5º Ano - Turma A',
+                20 => '6º Ano - Turma B',
+            ],
+            'turmaIds' => [10],
+            'todasTurmasGestaoSelecionadas' => false,
+            'errors' => new ViewErrorBag(),
+        ]);
+
+        $this->assertStringContainsString('Turmas coordenadas', $html);
+        $this->assertStringContainsString('Outras turmas disponíveis', $html);
+        $this->assertStringContainsString('5º Ano - Turma A', $html);
+        $this->assertStringContainsString('6º Ano - Turma B', $html);
+        $this->assertStringContainsString('value="10" checked', $html);
+        $this->assertStringNotContainsString('value="20" checked', $html);
+    }
+
     public function test_edit_servidor_abre_modal_com_registros(): void
     {
         $usuario = $this->usuarioHubAdmin([

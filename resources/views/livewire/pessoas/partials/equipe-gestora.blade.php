@@ -1,4 +1,17 @@
 @if ($cargo === 'equipe_gestora' && $podeGerenciarEquipeGestora)
+    @php
+        $idsTurmasGestaoSelecionadas = collect($turmaIds)
+            ->filter(fn (mixed $id): bool => filled($id))
+            ->map(fn (mixed $id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+        $turmasGestaoSelecionadas = collect($turmasGestaoOptions)
+            ->filter(fn (string $label, int|string $id): bool => in_array((int) $id, $idsTurmasGestaoSelecionadas, true));
+        $turmasGestaoDisponiveis = collect($turmasGestaoOptions)
+            ->reject(fn (string $label, int|string $id): bool => in_array((int) $id, $idsTurmasGestaoSelecionadas, true));
+    @endphp
+
     <section class="pe-person-form__section" aria-labelledby="pessoa-form-gestao-title">
         <header class="pe-person-form__section-header">
             <span class="pe-person-form__section-icon" aria-hidden="true">
@@ -89,15 +102,40 @@
                             </button>
                         @endif
                     </div>
-                    <div class="pe-person-form__checks pe-person-form__checks--2 pe-person-form__checks--scroll">
-                        @forelse ($turmasGestaoOptions as $value => $label)
-                            <label>
-                                <input type="checkbox" value="{{ $value }}" wire:model="turmaIds" wire:loading.attr="disabled">
-                                {{ $label }}
-                            </label>
-                        @empty
-                            <p>Nenhuma turma disponível nesta escola.</p>
-                        @endforelse
+                    <div class="pe-person-form__school-groups">
+                        <section class="pe-person-form__school-group pe-person-form__school-group--selected" aria-labelledby="pessoa-form-turmas-selecionadas">
+                            <header>
+                                <h4 id="pessoa-form-turmas-selecionadas">Turmas coordenadas</h4>
+                                <span>{{ $turmasGestaoSelecionadas->count() }}</span>
+                            </header>
+                            <div class="pe-person-form__checks pe-person-form__checks--2 pe-person-form__checks--scroll">
+                                @forelse ($turmasGestaoSelecionadas as $value => $label)
+                                    <label wire:key="coordinator-selected-class-{{ $value }}">
+                                        <input type="checkbox" value="{{ $value }}" @checked(in_array((int) $value, $idsTurmasGestaoSelecionadas, true)) wire:model.live.debounce.200ms="turmaIds" wire:loading.attr="disabled">
+                                        {{ $label }}
+                                    </label>
+                                @empty
+                                    <p>Nenhuma turma selecionada.</p>
+                                @endforelse
+                            </div>
+                        </section>
+
+                        <section class="pe-person-form__school-group" aria-labelledby="pessoa-form-turmas-disponiveis">
+                            <header>
+                                <h4 id="pessoa-form-turmas-disponiveis">Outras turmas disponíveis</h4>
+                                <span>{{ $turmasGestaoDisponiveis->count() }}</span>
+                            </header>
+                            <div class="pe-person-form__checks pe-person-form__checks--2 pe-person-form__checks--scroll">
+                                @forelse ($turmasGestaoDisponiveis as $value => $label)
+                                    <label wire:key="coordinator-available-class-{{ $value }}">
+                                        <input type="checkbox" value="{{ $value }}" @checked(in_array((int) $value, $idsTurmasGestaoSelecionadas, true)) wire:model.live.debounce.200ms="turmaIds" wire:loading.attr="disabled">
+                                        {{ $label }}
+                                    </label>
+                                @empty
+                                    <p>Não há outras turmas disponíveis nesta escola.</p>
+                                @endforelse
+                            </div>
+                        </section>
                     </div>
                     @error('turmaIds')
                         <small class="is-error">{{ $message }}</small>
