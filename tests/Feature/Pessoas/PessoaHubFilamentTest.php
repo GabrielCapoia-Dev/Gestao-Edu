@@ -97,6 +97,10 @@ class PessoaHubFilamentTest extends TestCase
             ->assertSee('Filtros avançados')
             ->assertSee('Selecionar página')
             ->assertSee('Colunas')
+            ->assertSee('Clique para Copiar')
+            ->assertSee('Copiado!')
+            ->assertSee('copyFallback')
+            ->assertSee('servidores-lw__copy-feedback')
             ->assertSee('5')
             ->set('search', 'Pessoa da tabela Livewire')
             ->assertSee((string) $servidor->nome);
@@ -616,6 +620,31 @@ class PessoaHubFilamentTest extends TestCase
             ->test(PessoaForm::class, ['pessoaId' => null])
             ->assertOk()
             ->assertSet('pessoaId', null);
+    }
+
+    public function test_escolas_da_assessoria_ficam_separadas_entre_selecionadas_e_disponiveis(): void
+    {
+        $usuario = $this->usuarioHubAdmin([
+            'Listar Pessoas',
+            'Criar Pessoas',
+            'Gerenciar Vínculos Estruturais de Pessoas',
+            'Acessar Escopo Global de Setores',
+        ]);
+        $setor = $this->criarSetor('Setor escolas agrupadas da assessoria');
+        $selecionada = $this->criarEscola('Escola já assessorada', $setor);
+        $disponivel = $this->criarEscola('Escola ainda disponível', $setor);
+
+        Livewire::actingAs($usuario)
+            ->test(PessoaForm::class, ['pessoaId' => null])
+            ->set('cargo', ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA)
+            ->set('escolaIdsAssessoria', [$selecionada->id])
+            ->assertSeeInOrder([
+                'Escolas selecionadas',
+                'Escola já assessorada',
+                'Outras escolas disponíveis',
+                'Escola ainda disponível',
+            ])
+            ->assertSeeHtml('checked');
     }
 
     public function test_edit_servidor_abre_modal_com_registros(): void

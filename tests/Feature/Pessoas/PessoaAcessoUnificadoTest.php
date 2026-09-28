@@ -160,6 +160,23 @@ class PessoaAcessoUnificadoTest extends TestCase
 
         $this->assertTrue($targetUser->fresh()->hasRole($roleExtra));
 
+        $permissionAction = Livewire::actingAs($this->admin)
+            ->test(ManageServidores::class)
+            ->mountTableBulkAction('permissoes_em_massa', [(string) $pessoa->getKey()])
+            ->assertHasNoTableBulkActionErrors();
+
+        $this->assertNotNull($permissionAction->instance()->getMountedTableBulkActionForm());
+
+        $permissionAction
+            ->setTableBulkActionData([
+                'modo' => 'add',
+                'permissions_Listar' => ['Listar Pessoas'],
+            ])
+            ->callMountedTableBulkAction()
+            ->assertHasNoTableBulkActionErrors();
+
+        $this->assertTrue($targetUser->fresh()->hasDirectPermission('Listar Pessoas'));
+
         $restrito = User::factory()->create(['email_approved' => true]);
         $restrito->givePermissionTo([
             'Listar Pessoas',

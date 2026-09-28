@@ -921,6 +921,51 @@
         overflow: auto;
     }
 
+    .pe-person-form__school-groups {
+        display: grid;
+        gap: 0.85rem;
+    }
+
+    .pe-person-form__school-group {
+        border: 1px solid #d6e0ef;
+        border-radius: 0.75rem;
+        padding: 0.8rem;
+    }
+
+    .pe-person-form__school-group--selected {
+        background: #f4f8ff;
+        border-color: #bfd4f5;
+    }
+
+    .pe-person-form__school-group > header {
+        align-items: center;
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.65rem;
+    }
+
+    .pe-person-form__school-group h4 {
+        color: #26334d;
+        font-size: 0.78rem;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    .pe-person-form__school-group > header > span {
+        background: #e8f0fc;
+        border-radius: 999px;
+        color: #1759b0;
+        font-size: 0.7rem;
+        font-weight: 700;
+        min-width: 1.45rem;
+        padding: 0.15rem 0.4rem;
+        text-align: center;
+    }
+
+    .pe-person-form__school-group .pe-person-form__checks--scroll {
+        max-height: 11rem;
+    }
+
     .pe-person-form__footer {
         position: sticky;
         bottom: 0;

@@ -353,7 +353,7 @@ class PessoaAcessoActions
                 ->color('warning')
                 ->visible(fn (): bool => Gate::allows('viewAny', User::class)
                     && Gate::allows('applyPermissionsAny', User::class))
-                ->schema(fn (Get $get): array => [
+                ->schema(fn (): array => [
                     Select::make('modo')
                         ->label('Como aplicar')
                         ->options([
@@ -363,14 +363,21 @@ class PessoaAcessoActions
                         ])
                         ->default('add')
                         ->required(),
-                    TextInput::make('buscar_permissao')
-                        ->label('Pesquisar permissão')
-                        ->live(debounce: 100)
-                        ->dehydrated(false),
-                    ...app(UserService::class)->checkboxesPermissoesEmMassa(
-                        $get,
-                        Auth::user(),
-                    ),
+                    Components\Section::make('Permissões')
+                        ->schema(fn (Get $get): array => [
+                            TextInput::make('buscar_permissao')
+                                ->label('Pesquisar permissão')
+                                ->placeholder('Ex: listar, editar, excluir...')
+                                ->live(debounce: 100)
+                                ->extraInputAttributes([
+                                    'onkeydown' => 'if(event.key === "Enter" || event.keyCode === 13) event.preventDefault()',
+                                ])
+                                ->dehydrated(false),
+                            ...app(UserService::class)->checkboxesPermissoesEmMassa(
+                                $get,
+                                Auth::user(),
+                            ),
+                        ]),
                 ])
                 ->action(function ($records, array $data): void {
                     $service = app(UserService::class);

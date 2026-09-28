@@ -1,6 +1,7 @@
 <div class="servidores-lw" wire:key="servidores-livewire-table" x-data="{
     copyTimer: null,
-    activeCopyElement: null,
+    copyFeedback: '',
+    copyFeedbackType: 'success',
     async copyCell(element) {
         const text = element.dataset.copy ?? '';
         try {
@@ -15,24 +16,17 @@
             }
 
             window.clearTimeout(this.copyTimer);
-            if (this.activeCopyElement && this.activeCopyElement !== element) {
-                this.activeCopyElement.dataset.tooltip = 'Clique para Copiar';
-            }
-            this.activeCopyElement = element;
-            element.dataset.tooltip = 'Copiado!';
+            this.copyFeedbackType = 'success';
+            this.copyFeedback = 'Copiado!';
             this.copyTimer = window.setTimeout(() => {
-                element.dataset.tooltip = 'Clique para Copiar';
-                this.activeCopyElement = null;
+                this.copyFeedback = '';
             }, 2500);
         } catch (error) {
             window.clearTimeout(this.copyTimer);
-            if (this.activeCopyElement) {
-                this.activeCopyElement.dataset.tooltip = 'Clique para Copiar';
-            }
-            this.activeCopyElement = null;
-            element.dataset.tooltip = 'Não foi possível copiar';
+            this.copyFeedbackType = 'error';
+            this.copyFeedback = 'Não foi possível copiar';
             this.copyTimer = window.setTimeout(() => {
-                element.dataset.tooltip = 'Clique para Copiar';
+                this.copyFeedback = '';
             }, 2500);
         }
     },
@@ -50,6 +44,11 @@
         if (!copied) throw new Error('clipboard_unavailable');
     }
 }">
+    <div class="servidores-lw__copy-feedback" x-cloak x-show="copyFeedback" :class="`servidores-lw__copy-feedback--${copyFeedbackType}`" role="status" aria-live="polite">
+        <template x-if="copyFeedbackType === 'success'"><x-filament::icon icon="heroicon-o-check-circle" /></template>
+        <template x-if="copyFeedbackType === 'error'"><x-filament::icon icon="heroicon-o-exclamation-circle" /></template>
+        <span x-text="copyFeedback"></span>
+    </div>
     <div class="servidores-lw__toolbar">
         <div class="servidores-lw__search">
             <label for="servidores-busca">Buscar servidores</label>
