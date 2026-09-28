@@ -551,6 +551,50 @@ class PessoaHubFilamentTest extends TestCase
             ->assertDontSee('password');
     }
 
+    public function test_modais_de_criacao_visualizacao_e_edicao_sao_montados_pela_tabela(): void
+    {
+        $usuario = $this->usuarioHubAdmin([
+            'Listar Pessoas',
+            'Criar Pessoas',
+            'Editar Pessoas',
+            'Acessar Escopo Global de Setores',
+        ]);
+        $setor = $this->criarSetor('Setor dos modais da tabela');
+        $escola = $this->criarEscola('Escola dos modais da tabela', $setor);
+        $servidorOperador = $this->criarServidor('Operador dos modais', $escola, $setor, $usuario->id);
+        Servidor::query()->whereKey($servidorOperador->getKey())->update(['user_id' => $usuario->id]);
+        Professor::query()->create([
+            'servidor_id' => $servidorOperador->id,
+            'id_escola' => $escola->id,
+            'matricula' => 'MODAL-OPERADOR',
+            'turno' => 'manha',
+            'nome' => $servidorOperador->nome,
+            'email' => $servidorOperador->email,
+            'ativo' => true,
+        ]);
+        $alvo = $this->criarServidor('Pessoa alvo dos modais', $escola, $setor);
+
+        $this->assertTrue($usuario->fresh()->isOperationallyActive());
+
+        Livewire::actingAs($usuario)
+            ->test(ManageServidores::class)
+            ->mountAction('create')
+            ->assertSeeLivewire(PessoaForm::class);
+
+        Livewire::actingAs($usuario)
+            ->test(ManageServidores::class)
+            ->call('abrirAcaoServidor', 'view', (int) $alvo->getKey())
+            ->assertHasNoErrors()
+            ->assertSee('Ficha da pessoa')
+            ->assertSee($alvo->nome);
+
+        Livewire::actingAs($usuario)
+            ->test(ManageServidores::class)
+            ->call('abrirAcaoServidor', 'edit', (int) $alvo->getKey())
+            ->assertHasNoErrors()
+            ->assertSeeLivewire(PessoaForm::class);
+    }
+
     public function test_formulario_personalizado_renderiza_no_modo_criacao(): void
     {
         $usuario = $this->usuarioHubAdmin(['Listar Pessoas', 'Criar Pessoas']);
