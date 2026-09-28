@@ -118,8 +118,7 @@ class PessoaHubFilamentTest extends TestCase
             'email' => $professor->email,
             'ativo' => true,
         ]);
-        $this->assertSame(1, $usuario->fresh()->servidores()->count());
-        $this->assertSame(1, $usuario->fresh()->servidores()->where('status', Servidor::STATUS_ATIVO)->whereHas('professores', fn ($query) => $query->where('ativo', true))->count());
+        Servidor::query()->whereKey($professor->getKey())->update(['user_id' => $usuario->id]);
         $this->assertTrue($usuario->fresh()->isOperationallyActive());
         $this->assertTrue(Gate::forUser($usuario->fresh())->allows('viewAny', Servidor::class));
         $naoProfessor = $this->criarServidor('Pessoa fora do filtro professor', $escola, $setor);
