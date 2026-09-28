@@ -266,12 +266,22 @@
     .pe-pessoas-page .servidores-lw__columns-menu label { align-items: center; display: flex; font-size: .75rem; gap: .4rem; white-space: nowrap; }
     .pe-pessoas-page .servidores-lw__bulkbar { background: var(--primary-50); border: 1px solid var(--primary-100); border-radius: .65rem; justify-content: flex-start; padding: .6rem .8rem; }
     .pe-pessoas-page .servidores-lw__table-wrap { border: 1px solid var(--pessoa-card-border); border-radius: .75rem; background: var(--pessoa-card-surface); overflow-x: auto; }
-    .pe-pessoas-page .servidores-lw__table { border-collapse: collapse; min-width: 58rem; table-layout: fixed; width: 100%; }
+    .pe-pessoas-page .servidores-lw__table { border-collapse: separate; border-spacing: 0; min-width: 58rem; table-layout: fixed; width: 100%; }
     .pe-pessoas-page .servidores-lw__table th { background: var(--gray-50); color: var(--gray-500); font-size: .68rem; font-weight: 700; letter-spacing: .02em; padding: .7rem .65rem; text-align: left; text-transform: uppercase; white-space: nowrap; }
     .pe-pessoas-page .servidores-lw__table th button { align-items: center; background: transparent; border: 0; color: inherit; cursor: pointer; display: inline-flex; font: inherit; gap: .25rem; padding: 0; text-transform: inherit; }
     .pe-pessoas-page .servidores-lw__table td { border-top: 1px solid var(--gray-100); color: var(--gray-700); font-size: .78rem; line-height: 1.35; padding: .7rem .65rem; vertical-align: middle; overflow-wrap: anywhere; }
+    .pe-pessoas-page .servidores-lw__table tbody tr:nth-child(even) { background: color-mix(in srgb, var(--gray-50) 72%, white); }
+    .pe-pessoas-page .servidores-lw__table tbody tr:hover { background: color-mix(in srgb, var(--primary-50) 72%, white); }
+    .pe-pessoas-page .servidores-lw__table td[data-copy] { cursor: copy; }
+    .pe-pessoas-page .servidores-lw__table td[data-copy]:hover { box-shadow: inset 0 0 0 1px var(--primary-200); }
     .pe-pessoas-page .servidores-lw__table td strong { color: var(--gray-950); display: block; font-size: .82rem; }
     .pe-pessoas-page .servidores-lw__table td small { color: var(--gray-500); display: block; font-size: .7rem; margin-top: .15rem; }
+    .pe-pessoas-page .servidores-lw__copy { align-items: center; background: transparent; border: 0; border-radius: .25rem; color: inherit; cursor: copy; display: inline-flex; gap: .3rem; max-width: 100%; padding: 0; text-align: left; }
+    .pe-pessoas-page .servidores-lw__copy:hover { color: var(--primary-700); text-decoration: underline; text-decoration-style: dotted; text-underline-offset: .15em; }
+    .pe-pessoas-page .servidores-lw__copy:focus-visible { outline: 2px solid var(--primary-500); outline-offset: 2px; }
+    .pe-pessoas-page .servidores-lw__copy svg { flex: 0 0 .85rem; height: .85rem; opacity: .45; width: .85rem; }
+    .pe-pessoas-page .servidores-lw__copy:hover svg { opacity: 1; }
+    .pe-pessoas-page .servidores-lw__copy-label { min-width: 0; overflow-wrap: anywhere; }
     .pe-pessoas-page .servidores-lw__check-col { text-align: center !important; width: 2.6rem; }
     .pe-pessoas-page .servidores-lw__actions-col { text-align: right !important; white-space: nowrap; width: 5.5rem; }
     .pe-pessoas-page .servidores-lw__email { overflow-wrap: anywhere; }
@@ -290,8 +300,14 @@
     .pe-pessoas-page .servidores-lw__row-menu-panel button:hover { background: var(--gray-100); color: var(--primary-600); }
     .pe-pessoas-page .servidores-lw__empty { color: var(--gray-500); padding: 3rem 1rem !important; text-align: center; }
     .pe-pessoas-page .servidores-lw__footer { flex-wrap: wrap; font-size: .75rem; color: var(--gray-500); }
-    .pe-pessoas-page .servidores-lw__footer nav { margin-left: auto; }
+    .pe-pessoas-page .servidores-lw__pagination { align-items: center; display: flex; flex-wrap: wrap; gap: .25rem; justify-content: flex-end; margin-left: auto; }
+    .pe-pessoas-page .servidores-lw__pagination button { align-items: center; background: var(--pessoa-card-surface); border: 1px solid var(--pessoa-card-border); border-radius: .4rem; color: var(--gray-700); cursor: pointer; display: inline-flex; font-size: .75rem; justify-content: center; min-height: 2rem; min-width: 2rem; padding: .35rem .55rem; }
+    .pe-pessoas-page .servidores-lw__pagination button:hover:not(:disabled) { background: var(--primary-50); border-color: var(--primary-200); color: var(--primary-700); }
+    .pe-pessoas-page .servidores-lw__pagination button[aria-current="page"] { background: var(--primary-600); border-color: var(--primary-600); color: #fff; font-weight: 700; }
+    .pe-pessoas-page .servidores-lw__pagination button:disabled { cursor: not-allowed; opacity: .45; }
+    .pe-pessoas-page .servidores-lw__pagination-ellipsis { padding: 0 .25rem; }
+    .pe-pessoas-page .servidores-lw__pagination svg { height: 1rem !important; max-height: 1rem; max-width: 1rem; width: 1rem !important; }
     @media (max-width: 70rem) { .pe-pessoas-page .servidores-lw__filter-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
     @media (max-width: 48rem) { .pe-pessoas-page .servidores-lw__toolbar, .pe-pessoas-page .servidores-lw__table-header { align-items: stretch; flex-direction: column; } .pe-pessoas-page .servidores-lw__toolbar-actions { justify-content: space-between; } .pe-pessoas-page .servidores-lw__filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-    @media (max-width: 32rem) { .pe-pessoas-page .servidores-lw__filter-grid { grid-template-columns: 1fr; } .pe-pessoas-page .servidores-lw__toolbar-actions { align-items: stretch; flex-direction: column; } .pe-pessoas-page .servidores-lw__button { justify-content: center; } }
+    @media (max-width: 32rem) { .pe-pessoas-page .servidores-lw__filter-grid { grid-template-columns: 1fr; } .pe-pessoas-page .servidores-lw__toolbar-actions { align-items: stretch; flex-direction: column; } .pe-pessoas-page .servidores-lw__button { justify-content: center; } .pe-pessoas-page .servidores-lw__footer { align-items: stretch; flex-direction: column; } .pe-pessoas-page .servidores-lw__pagination { justify-content: center; margin-left: 0; } }
 </style>

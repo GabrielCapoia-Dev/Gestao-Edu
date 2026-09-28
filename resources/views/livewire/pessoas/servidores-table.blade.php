@@ -1,4 +1,4 @@
-<div class="servidores-lw" wire:key="servidores-livewire-table">
+<div class="servidores-lw" wire:key="servidores-livewire-table" x-data x-on:click="const cell = $event.target.closest('[data-copy]'); if (cell) navigator.clipboard.writeText(cell.dataset.copy)">
     <div class="servidores-lw__toolbar">
         <div class="servidores-lw__search">
             <label for="servidores-busca">Buscar servidores</label>
@@ -165,15 +165,15 @@
                     <tr wire:key="servidor-row-{{ $servidor->id }}">
                         <td class="servidores-lw__check-col"><input type="checkbox" wire:click="alternarSelecionado({{ $servidor->id }})" @disabled(! \App\Filament\Admin\Resources\Servidores\ServidorResource::pessoaPodeSerSelecionada($servidor)) @checked(in_array($servidor->id, $selecionados, true)) /></td>
                         @if ($colunasVisiveis['identidade'])
-                            <td><strong>{{ $servidor->nome }}</strong><small>{{ $servidor->cpf ? \App\Filament\Admin\Resources\Servidores\ServidorResource::formatarCpf($servidor->cpf) : 'CPF não informado' }}</small></td>
+                            <td data-copy="{{ $servidor->nome }}&#10;{{ $servidor->cpf ? \App\Filament\Admin\Resources\Servidores\ServidorResource::formatarCpf($servidor->cpf) : 'CPF não informado' }}" title="Clique para copiar nome e CPF"><strong>{{ $servidor->nome }}</strong><small>{{ $servidor->cpf ? \App\Filament\Admin\Resources\Servidores\ServidorResource::formatarCpf($servidor->cpf) : 'CPF não informado' }}</small></td>
                         @endif
-                        @if ($colunasVisiveis['cargo']) <td><span class="servidores-lw__badge servidores-lw__badge--blue">{{ \App\Filament\Admin\Resources\Servidores\ServidorResource::cargoLabel($servidor) }}</span></td> @endif
-                        @if ($colunasVisiveis['escola']) <td>{{ \App\Filament\Admin\Resources\Servidores\ServidorResource::exibeEscolaNaListagem($servidor) ? \App\Filament\Admin\Resources\Servidores\ServidorResource::escolasLabel($servidor) : '—' }}</td> @endif
-                        @if ($colunasVisiveis['matricula']) <td>{{ $this->matriculasLabel($servidor) }}</td> @endif
-                        @if ($colunasVisiveis['email']) <td class="servidores-lw__email">{{ $servidor->user?->email ?: $servidor->email ?: '—' }}</td> @endif
-                        @if ($colunasVisiveis['status']) <td><span class="servidores-lw__badge servidores-lw__badge--{{ $this->statusColor($servidor) }}">{{ $this->statusLabel($servidor) }}</span></td> @endif
-                        @if ($colunasVisiveis['acesso'] && Gate::allows('viewAny', \App\Models\User::class)) <td>{{ $servidor->user?->roles?->pluck('name')->join(', ') ?: '—' }}</td> @endif
-                        @if ($colunasVisiveis['atualizado']) <td>{{ optional($servidor->updated_at)->format('d/m/Y H:i') }}</td> @endif
+                        @if ($colunasVisiveis['cargo']) <td data-copy="{{ \App\Filament\Admin\Resources\Servidores\ServidorResource::cargoLabel($servidor) }}" title="Clique para copiar"><span class="servidores-lw__badge servidores-lw__badge--blue">{{ \App\Filament\Admin\Resources\Servidores\ServidorResource::cargoLabel($servidor) }}</span></td> @endif
+                        @if ($colunasVisiveis['escola']) <td data-copy="{{ \App\Filament\Admin\Resources\Servidores\ServidorResource::exibeEscolaNaListagem($servidor) ? \App\Filament\Admin\Resources\Servidores\ServidorResource::escolasLabel($servidor) : '—' }}" title="Clique para copiar">{{ \App\Filament\Admin\Resources\Servidores\ServidorResource::exibeEscolaNaListagem($servidor) ? \App\Filament\Admin\Resources\Servidores\ServidorResource::escolasLabel($servidor) : '—' }}</td> @endif
+                        @if ($colunasVisiveis['matricula']) <td data-copy="{{ $this->matriculasLabel($servidor) }}" title="Clique para copiar">{{ $this->matriculasLabel($servidor) }}</td> @endif
+                        @if ($colunasVisiveis['email']) <td class="servidores-lw__email" data-copy="{{ $servidor->user?->email ?: $servidor->email ?: '—' }}" title="Clique para copiar">{{ $servidor->user?->email ?: $servidor->email ?: '—' }}</td> @endif
+                        @if ($colunasVisiveis['status']) <td data-copy="{{ $this->statusLabel($servidor) }}" title="Clique para copiar"><span class="servidores-lw__badge servidores-lw__badge--{{ $this->statusColor($servidor) }}">{{ $this->statusLabel($servidor) }}</span></td> @endif
+                        @if ($colunasVisiveis['acesso'] && Gate::allows('viewAny', \App\Models\User::class)) <td data-copy="{{ $servidor->user?->roles?->pluck('name')->join(', ') ?: '—' }}" title="Clique para copiar">{{ $servidor->user?->roles?->pluck('name')->join(', ') ?: '—' }}</td> @endif
+                        @if ($colunasVisiveis['atualizado']) <td data-copy="{{ optional($servidor->updated_at)->format('d/m/Y H:i') }}" title="Clique para copiar">{{ optional($servidor->updated_at)->format('d/m/Y H:i') }}</td> @endif
                         <td class="servidores-lw__actions-col"><button type="button" class="servidores-lw__action" wire:click="abrirAcao('view', {{ $servidor->id }})" title="Visualizar"><x-filament::icon icon="heroicon-o-eye" /></button><button type="button" class="servidores-lw__action" wire:click="abrirAcao('edit', {{ $servidor->id }})" title="Editar"><x-filament::icon icon="heroicon-o-pencil-square" /></button><details class="servidores-lw__row-menu"><summary class="servidores-lw__action" title="Mais ações"><x-filament::icon icon="heroicon-m-ellipsis-vertical" /></summary><div class="servidores-lw__row-menu-panel"><button type="button" wire:click="abrirAcao('alterar_status', {{ $servidor->id }})">Alterar status</button><button type="button" wire:click="abrirAcao('criar_acesso', {{ $servidor->id }})">Criar acesso</button><button type="button" wire:click="abrirAcao('gerenciar_acesso', {{ $servidor->id }})">Gerenciar acesso</button><button type="button" wire:click="abrirAcao('redefinir_senha', {{ $servidor->id }})">Redefinir senha</button><button type="button" wire:click="abrirAcao('excluir_acesso', {{ $servidor->id }})">Excluir acesso</button><button type="button" wire:click="abrirAcao('analisar_solicitacoes_professor', {{ $servidor->id }})">Solicitações</button><button type="button" wire:click="abrirAcao('delete', {{ $servidor->id }})">Arquivar</button><button type="button" wire:click="abrirAcao('restore', {{ $servidor->id }})">Restaurar</button></div></details></td>
                     </tr>
                 @empty
@@ -185,6 +185,14 @@
 
     <div class="servidores-lw__footer">
         <span>Exibindo {{ $servidores->firstItem() ?: 0 }}–{{ $servidores->lastItem() ?: 0 }} de {{ $servidores->total() }} servidores</span>
-        {{ $servidores->links() }}
+        @if ($servidores->hasPages())
+            <nav class="servidores-lw__pagination" aria-label="Paginação de servidores">
+                <button type="button" wire:click="previousPage" @disabled($servidores->onFirstPage()) aria-label="Página anterior">Anterior</button>
+                @foreach ($servidores->getUrlRange(max(1, $servidores->currentPage() - 2), min($servidores->lastPage(), $servidores->currentPage() + 2)) as $pagina => $url)
+                    <button type="button" wire:click="gotoPage({{ $pagina }})" @if ($pagina === $servidores->currentPage()) aria-current="page" @endif aria-label="Página {{ $pagina }}">{{ $pagina }}</button>
+                @endforeach
+                <button type="button" wire:click="nextPage" @disabled(! $servidores->hasMorePages()) aria-label="Próxima página">Próxima</button>
+            </nav>
+        @endif
     </div>
 </div>
