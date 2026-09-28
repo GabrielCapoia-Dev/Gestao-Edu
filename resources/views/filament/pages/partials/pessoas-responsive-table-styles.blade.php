@@ -330,6 +330,8 @@
         .pe-pessoas-page .servidores-lw__table tbody tr { background: var(--pessoa-card-surface); border: 1px solid var(--pessoa-card-border); border-radius: .8rem; box-shadow: 0 2px 8px rgba(15, 23, 42, .05); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; overflow: hidden; }
         .pe-pessoas-page .servidores-lw__table tbody tr:nth-child(even) { background: color-mix(in srgb, var(--gray-50) 55%, white); }
         .pe-pessoas-page .servidores-lw__table tbody tr:hover { background: color-mix(in srgb, var(--primary-50) 58%, white); }
+        .pe-pessoas-page .servidores-lw__table tbody tr > td[data-label] { grid-column: auto !important; width: auto; }
+        .pe-pessoas-page .servidores-lw__table tbody tr > td[data-label="Pessoa / CPF"], .pe-pessoas-page .servidores-lw__table tbody tr > td[data-label="E-mail"] { grid-column: 1 / -1 !important; }
         .pe-pessoas-page .servidores-lw__table tbody td { border-top: 1px solid var(--gray-100); display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: .65rem .75rem; }
         .pe-pessoas-page .servidores-lw__table tbody td[data-label]::before { color: var(--gray-500); content: attr(data-label); font-size: .64rem; font-weight: 700; letter-spacing: .03em; margin-bottom: .25rem; text-transform: uppercase; }
         .pe-pessoas-page .servidores-lw__table .servidores-lw__check-col, .pe-pessoas-page .servidores-lw__table .servidores-lw__actions-col { grid-column: 1 / -1; }
