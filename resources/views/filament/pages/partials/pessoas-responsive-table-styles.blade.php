@@ -265,11 +265,11 @@
     .pe-pessoas-page .servidores-lw__columns-menu { background: var(--pessoa-card-surface); border: 1px solid var(--pessoa-card-border); border-radius: .6rem; box-shadow: var(--pessoa-card-shadow); display: grid; gap: .45rem; min-width: 12rem; padding: .7rem; position: absolute; right: 0; top: 1.5rem; z-index: 3; }
     .pe-pessoas-page .servidores-lw__columns-menu label { align-items: center; display: flex; font-size: .75rem; gap: .4rem; white-space: nowrap; }
     .pe-pessoas-page .servidores-lw__bulkbar { background: var(--primary-50); border: 1px solid var(--primary-100); border-radius: .65rem; justify-content: flex-start; padding: .6rem .8rem; }
-    .pe-pessoas-page .servidores-lw__table-wrap { border: 1px solid var(--pessoa-card-border); border-radius: .75rem; background: var(--pessoa-card-surface); overflow-x: auto; }
-    .pe-pessoas-page .servidores-lw__table { border-collapse: separate; border-spacing: 0; min-width: 58rem; table-layout: fixed; width: 100%; }
-    .pe-pessoas-page .servidores-lw__table th { background: var(--gray-50); color: var(--gray-500); font-size: .68rem; font-weight: 700; letter-spacing: .02em; padding: .7rem .65rem; text-align: left; text-transform: uppercase; white-space: nowrap; }
+    .pe-pessoas-page .servidores-lw__table-wrap { border: 1px solid var(--pessoa-card-border); border-radius: .75rem; background: var(--pessoa-card-surface); max-width: 100%; overflow: hidden; }
+    .pe-pessoas-page .servidores-lw__table { border-collapse: separate; border-spacing: 0; min-width: 0; table-layout: fixed; width: 100%; }
+    .pe-pessoas-page .servidores-lw__table th { background: var(--gray-50); color: var(--gray-500); font-size: .68rem; font-weight: 700; letter-spacing: .02em; padding: .65rem .5rem; text-align: left; text-transform: uppercase; white-space: nowrap; }
     .pe-pessoas-page .servidores-lw__table th button { align-items: center; background: transparent; border: 0; color: inherit; cursor: pointer; display: inline-flex; font: inherit; gap: .25rem; padding: 0; text-transform: inherit; }
-    .pe-pessoas-page .servidores-lw__table td { border-top: 1px solid var(--gray-100); color: var(--gray-700); font-size: .78rem; line-height: 1.35; padding: .7rem .65rem; vertical-align: middle; overflow-wrap: anywhere; }
+    .pe-pessoas-page .servidores-lw__table td { border-top: 1px solid var(--gray-100); color: var(--gray-700); font-size: .76rem; line-height: 1.35; padding: .6rem .5rem; vertical-align: middle; overflow-wrap: anywhere; word-break: normal; }
     .pe-pessoas-page .servidores-lw__table tbody tr:nth-child(even) { background: color-mix(in srgb, var(--gray-50) 72%, white); }
     .pe-pessoas-page .servidores-lw__table tbody tr:hover { background: color-mix(in srgb, var(--primary-50) 72%, white); }
     .pe-pessoas-page .servidores-lw__table td[data-copy] { cursor: copy; }
@@ -307,7 +307,27 @@
     .pe-pessoas-page .servidores-lw__pagination button:disabled { cursor: not-allowed; opacity: .45; }
     .pe-pessoas-page .servidores-lw__pagination-ellipsis { padding: 0 .25rem; }
     .pe-pessoas-page .servidores-lw__pagination svg { height: 1rem !important; max-height: 1rem; max-width: 1rem; width: 1rem !important; }
-    @media (max-width: 70rem) { .pe-pessoas-page .servidores-lw__filter-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-    @media (max-width: 48rem) { .pe-pessoas-page .servidores-lw__toolbar, .pe-pessoas-page .servidores-lw__table-header { align-items: stretch; flex-direction: column; } .pe-pessoas-page .servidores-lw__toolbar-actions { justify-content: space-between; } .pe-pessoas-page .servidores-lw__filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-    @media (max-width: 32rem) { .pe-pessoas-page .servidores-lw__filter-grid { grid-template-columns: 1fr; } .pe-pessoas-page .servidores-lw__toolbar-actions { align-items: stretch; flex-direction: column; } .pe-pessoas-page .servidores-lw__button { justify-content: center; } .pe-pessoas-page .servidores-lw__footer { align-items: stretch; flex-direction: column; } .pe-pessoas-page .servidores-lw__pagination { justify-content: center; margin-left: 0; } }
+    @media (max-width: 70rem) { .pe-pessoas-page .servidores-lw__filter-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .pe-pessoas-page .servidores-lw__table th, .pe-pessoas-page .servidores-lw__table td { padding-left: .35rem; padding-right: .35rem; } }
+    @media (max-width: 48rem) {
+        .pe-pessoas-page .servidores-lw__toolbar, .pe-pessoas-page .servidores-lw__table-header { align-items: stretch; flex-direction: column; }
+        .pe-pessoas-page .servidores-lw__toolbar-actions { justify-content: space-between; }
+        .pe-pessoas-page .servidores-lw__filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .pe-pessoas-page .servidores-lw__table, .pe-pessoas-page .servidores-lw__table tbody { display: block; width: 100%; }
+        .pe-pessoas-page .servidores-lw__table thead { display: none; }
+        .pe-pessoas-page .servidores-lw__table tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .pe-pessoas-page .servidores-lw__table tbody td { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+        .pe-pessoas-page .servidores-lw__table tbody td[data-label]::before { color: var(--gray-500); content: attr(data-label); font-size: .64rem; font-weight: 700; letter-spacing: .03em; margin-bottom: .25rem; text-transform: uppercase; }
+        .pe-pessoas-page .servidores-lw__table .servidores-lw__check-col, .pe-pessoas-page .servidores-lw__table .servidores-lw__actions-col { grid-column: 1 / -1; }
+        .pe-pessoas-page .servidores-lw__table .servidores-lw__check-col { align-items: flex-start; }
+        .pe-pessoas-page .servidores-lw__table .servidores-lw__actions-col { flex-direction: row; justify-content: flex-start; text-align: left !important; }
+    }
+    @media (max-width: 32rem) {
+        .pe-pessoas-page .servidores-lw__filter-grid { grid-template-columns: 1fr; }
+        .pe-pessoas-page .servidores-lw__toolbar-actions { align-items: stretch; flex-direction: column; }
+        .pe-pessoas-page .servidores-lw__button { justify-content: center; }
+        .pe-pessoas-page .servidores-lw__footer { align-items: stretch; flex-direction: column; }
+        .pe-pessoas-page .servidores-lw__pagination { justify-content: center; margin-left: 0; }
+        .pe-pessoas-page .servidores-lw__table tbody tr { grid-template-columns: minmax(0, 1fr); }
+        .pe-pessoas-page .servidores-lw__table .servidores-lw__check-col, .pe-pessoas-page .servidores-lw__table .servidores-lw__actions-col { grid-column: 1; }
+    }
 </style>

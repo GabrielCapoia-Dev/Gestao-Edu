@@ -540,8 +540,9 @@ class PessoaHubFilamentTest extends TestCase
         ]);
 
         Livewire::actingAs($usuario)
-            ->test(ServidoresTable::class)
-            ->mountTableAction('edit', $servidor)
+            ->test(ManageServidores::class)
+            ->call('abrirAcaoServidor', 'edit', (int) $servidor->getKey())
+            ->assertHasNoErrors()
             ->assertSeeLivewire(PessoaForm::class)
             ->assertDontSee('email_approved')
             ->assertDontSee('roles_adicionais')
@@ -818,6 +819,7 @@ class PessoaHubFilamentTest extends TestCase
 
         Livewire::actingAs($usuario)
             ->test(ServidoresTable::class)
+            ->assertSet('colunasVisiveis.acesso', false)
             ->assertTableActionDoesNotExist('gerenciarAcesso');
     }
 
@@ -977,8 +979,8 @@ class PessoaHubFilamentTest extends TestCase
         $this->assertSame(['Matematica'], $grupos[0]['turmas'][0]['componentes']);
 
         Livewire::actingAs($usuario)
-            ->test(ServidoresTable::class)
-            ->mountTableAction('view', $servidor)
+            ->test(ManageServidores::class)
+            ->call('abrirAcaoServidor', 'view', (int) $servidor->getKey())
             ->assertHasNoErrors()
             ->assertSee('Ficha funcional')
             ->assertSee('Visão geral')

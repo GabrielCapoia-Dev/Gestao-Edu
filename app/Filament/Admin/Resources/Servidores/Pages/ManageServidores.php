@@ -47,7 +47,9 @@ class ManageServidores extends ManageRecords
 
         $record = ServidorResource::getEloquentQuery()->findOrFail($id);
 
-        $this->mountTableAction($action, $record);
+        // Filament resolves mounted record actions by the table record key, not
+        // by the Eloquent model instance.
+        $this->mountTableAction($action, (string) $record->getKey());
     }
 
     #[On('servidores-acao-massa')]

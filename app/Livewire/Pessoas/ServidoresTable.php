@@ -45,7 +45,7 @@ class ServidoresTable extends Component
         'matricula' => true,
         'email' => true,
         'status' => true,
-        'acesso' => true,
+        'acesso' => false,
         'atualizado' => false,
     ];
 
