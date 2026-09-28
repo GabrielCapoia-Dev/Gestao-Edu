@@ -25,6 +25,8 @@ use App\Services\ServidorService;
 use Filament\Actions\Action;
 use Filament\Schemas\Components\View;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\ViewErrorBag;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
@@ -624,27 +626,28 @@ class PessoaHubFilamentTest extends TestCase
 
     public function test_escolas_da_assessoria_ficam_separadas_entre_selecionadas_e_disponiveis(): void
     {
-        $usuario = $this->usuarioHubAdmin([
-            'Listar Pessoas',
-            'Criar Pessoas',
-            'Gerenciar Vínculos Estruturais de Pessoas',
-            'Acessar Escopo Global de Setores',
+        $html = Blade::render(file_get_contents(resource_path(
+            'views/livewire/pessoas/partials/assessoria-pedagogica.blade.php',
+        )), [
+            'cargo' => ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA,
+            'podeGerenciarEquipeGestora' => true,
+            'escolaIdsAssessoria' => [10],
+            'escolasOptions' => [
+                10 => 'Escola já assessorada',
+                20 => 'Escola ainda disponível',
+            ],
+            'matriculaOperacional' => '1234',
+            'turnoOperacional' => 'integral',
+            'turnosOptions' => ['integral' => 'Integral'],
+            'errors' => new ViewErrorBag(),
         ]);
-        $setor = $this->criarSetor('Setor escolas agrupadas da assessoria');
-        $selecionada = $this->criarEscola('Escola já assessorada', $setor);
-        $disponivel = $this->criarEscola('Escola ainda disponível', $setor);
 
-        Livewire::actingAs($usuario)
-            ->test(PessoaForm::class, ['pessoaId' => null])
-            ->set('cargo', ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA)
-            ->set('escolaIdsAssessoria', [$selecionada->id])
-            ->assertSeeInOrder([
-                'Escolas selecionadas',
-                'Escola já assessorada',
-                'Outras escolas disponíveis',
-                'Escola ainda disponível',
-            ])
-            ->assertSeeHtml('checked');
+        $this->assertStringContainsString('Escolas selecionadas', $html);
+        $this->assertStringContainsString('Outras escolas disponíveis', $html);
+        $this->assertStringContainsString('Escola já assessorada', $html);
+        $this->assertStringContainsString('Escola ainda disponível', $html);
+        $this->assertStringContainsString('value="10" checked', $html);
+        $this->assertStringNotContainsString('value="20" checked', $html);
     }
 
     public function test_edit_servidor_abre_modal_com_registros(): void

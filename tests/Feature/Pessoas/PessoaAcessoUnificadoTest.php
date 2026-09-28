@@ -160,23 +160,6 @@ class PessoaAcessoUnificadoTest extends TestCase
 
         $this->assertTrue($targetUser->fresh()->hasRole($roleExtra));
 
-        $permissionAction = Livewire::actingAs($this->admin)
-            ->test(ManageServidores::class)
-            ->mountTableBulkAction('permissoes_em_massa', [(string) $pessoa->getKey()])
-            ->assertHasNoTableBulkActionErrors();
-
-        $this->assertNotNull($permissionAction->instance()->getMountedTableBulkActionForm());
-
-        $permissionAction
-            ->setTableBulkActionData([
-                'modo' => 'add',
-                'permissions_Listar' => ['Listar Pessoas'],
-            ])
-            ->callMountedTableBulkAction()
-            ->assertHasNoTableBulkActionErrors();
-
-        $this->assertTrue($targetUser->fresh()->hasDirectPermission('Listar Pessoas'));
-
         $restrito = User::factory()->create(['email_approved' => true]);
         $restrito->givePermissionTo([
             'Listar Pessoas',
@@ -194,6 +177,34 @@ class PessoaAcessoUnificadoTest extends TestCase
             ->assertTableBulkActionHidden('niveis_em_massa')
             ->assertTableBulkActionHidden('permissoes_em_massa')
             ->assertTableBulkActionHidden('excluir_acessos_em_massa');
+    }
+
+    public function test_acao_em_massa_de_permissoes_monta_e_aplica_a_permissao_selecionada(): void
+    {
+        $targetUser = User::factory()->create(['email_approved' => true]);
+        $pessoa = Servidor::query()->create([
+            'user_id' => $targetUser->id,
+            'nome' => 'Pessoa alvo da permissão em massa',
+            'email' => $targetUser->email,
+            'status' => Servidor::STATUS_ATIVO,
+        ]);
+
+        $permissionAction = Livewire::actingAs($this->admin)
+            ->test(ManageServidores::class)
+            ->mountTableBulkAction('permissoes_em_massa', [(string) $pessoa->getKey()])
+            ->assertHasNoTableBulkActionErrors();
+
+        $this->assertNotNull($permissionAction->instance()->getMountedTableBulkActionForm());
+
+        $permissionAction
+            ->setTableBulkActionData([
+                'modo' => 'add',
+                'permissions_Listar' => ['Listar Pessoas'],
+            ])
+            ->callMountedTableBulkAction()
+            ->assertHasNoTableBulkActionErrors();
+
+        $this->assertTrue($targetUser->fresh()->hasDirectPermission('Listar Pessoas'));
     }
 
     public function test_cria_conta_na_pessoa_e_provisiona_role_funcional_sem_tela_de_usuarios_no_menu(): void
