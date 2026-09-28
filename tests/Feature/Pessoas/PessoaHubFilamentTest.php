@@ -231,6 +231,24 @@ class PessoaHubFilamentTest extends TestCase
         $this->assertStringContainsString('Desselecionar todos', $view);
     }
 
+    public function test_checkbox_de_selecionar_pagina_reflete_limpeza_da_selecao(): void
+    {
+        $usuario = $this->usuarioComPermissaoListar();
+        $setor = $this->criarSetor('Setor checkbox seleção');
+        $escola = $this->criarEscola('Escola checkbox seleção', $setor);
+        $ids = collect(range(1, 5))
+            ->map(fn (int $numero): int => (int) $this->criarServidor("Servidor checkbox {$numero}", $escola, $setor)->getKey())
+            ->all();
+
+        Livewire::actingAs($usuario)
+            ->test(ServidoresTable::class)
+            ->set('selecionados', $ids)
+            ->assertSeeHtml('wire:key="servidores-select-page-1-checked"')
+            ->call('limparSelecao')
+            ->assertSet('selecionados', [])
+            ->assertSeeHtml('wire:key="servidores-select-page-1-unchecked"');
+    }
+
     public function test_dropdown_de_acoes_fica_acima_da_busca_e_dos_cabecalhos(): void
     {
         $view = file_get_contents(resource_path('views/livewire/pessoas/servidores-table.blade.php'));

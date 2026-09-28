@@ -90,8 +90,12 @@
 
     <div class="servidores-lw__table-header">
         <div class="servidores-lw__selection-summary">
+            @php
+                $paginaTodaSelecionada = $servidores->isNotEmpty()
+                    && $servidores->pluck('id')->every(fn ($id) => in_array($id, $selecionados, true));
+            @endphp
             <label class="servidores-lw__select-page">
-                <input type="checkbox" wire:click="selecionarPagina(@js($servidores->pluck('id')->all()))" @checked($servidores->isNotEmpty() && $servidores->pluck('id')->every(fn ($id) => in_array($id, $selecionados, true))) />
+                <input type="checkbox" wire:key="servidores-select-page-{{ $servidores->currentPage() }}-{{ $paginaTodaSelecionada ? 'checked' : 'unchecked' }}" wire:click="selecionarPagina(@js($servidores->pluck('id')->all()))" @checked($paginaTodaSelecionada) />
                 Selecionar página
             </label>
             @if (count($selecionados))
