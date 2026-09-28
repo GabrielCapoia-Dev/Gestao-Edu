@@ -562,7 +562,7 @@ class PessoaHubFilamentTest extends TestCase
         $setor = $this->criarSetor('Setor dos modais da tabela');
         $escola = $this->criarEscola('Escola dos modais da tabela', $setor);
         $servidorOperador = $this->criarServidor('Operador dos modais', $escola, $setor, $usuario->id);
-        Servidor::query()->whereKey($servidorOperador->getKey())->update(['user_id' => $usuario->id]);
+        Servidor::query()->where('email', $servidorOperador->email)->update(['user_id' => $usuario->id]);
         Professor::query()->create([
             'servidor_id' => $servidorOperador->id,
             'id_escola' => $escola->id,
