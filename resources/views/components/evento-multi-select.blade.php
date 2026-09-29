@@ -30,14 +30,9 @@
                     class="evento-custom-modal__multi-select-placeholder"
                     x-show="selecionados.length === 0"
                 >{{ $placeholder }}</span>
-                <template x-for="valor in selecionados.slice(0, 2)" :key="valor">
+                <template x-for="valor in selecionados" :key="valor">
                     <span class="evento-custom-modal__multi-select-chip" x-text="opcoes[String(valor)] ?? valor"></span>
                 </template>
-                <span
-                    class="evento-custom-modal__multi-select-count"
-                    x-show="selecionados.length > 2"
-                    x-text="`+${selecionados.length - 2}`"
-                ></span>
             </span>
             <span class="evento-custom-modal__multi-select-chevron" aria-hidden="true">⌄</span>
         </summary>

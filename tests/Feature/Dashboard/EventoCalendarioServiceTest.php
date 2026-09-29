@@ -472,6 +472,9 @@ class EventoCalendarioServiceTest extends TestCase
         $this->assertStringNotContainsString('MutationObserver', $modalBlade);
         $this->assertStringNotContainsString('setInterval', $modalBlade);
         $this->assertStringContainsString('x-data="{ aberto: false, selecionados:', $multiSelectBlade);
+        $this->assertStringContainsString('x-for="valor in selecionados"', $multiSelectBlade);
+        $this->assertStringNotContainsString('selecionados.slice(0, 2)', $multiSelectBlade);
+        $this->assertStringNotContainsString('__multi-select-count', $multiSelectBlade);
         $this->assertStringContainsString('x-model="selecionados"', $multiSelectBlade);
         $this->assertStringContainsString('x-bind:open="aberto"', $multiSelectBlade);
         $this->assertStringContainsString('$wire.set(@js($model), selecionados, false)', $multiSelectBlade);
