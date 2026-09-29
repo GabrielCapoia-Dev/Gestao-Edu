@@ -25,18 +25,28 @@ window.eventoLocalMap = function () {
         localInput() { return this.fieldInput('local'); },
         latitudeInput() { return this.fieldInput('latitude'); },
         longitudeInput() { return this.fieldInput('longitude'); },
-        mapAddressInput() { return this.fieldInput('endereco_mapa'); },
         addressDisplayInput() {
             return this.componentRoot()?.querySelector('[data-evento-map-address]') || null;
         },
+        mapAddressInput() {
+            return this.addressDisplayInput() || this.fieldInput('endereco_mapa');
+        },
         setField(input, value) {
-            if (! input) return;
+            if (! input) return false;
             input.value = value;
-            const model = input.getAttribute('wire:model') || input.getAttribute('wire:model.live');
+            const modelAttribute = [...input.attributes].find(attribute => attribute.name.startsWith('wire:model'));
+            const model = modelAttribute?.value
+                || (input.name || '').replace(/\]\[?/g, '.').replace(/[\[\]]/g, '').replace(/\.+/g, '.').replace(/^\.|\.$/g, '');
             const component = input.closest('[wire\\:id]');
-            if (model && component && window.Livewire) {
-                window.Livewire.find(component.getAttribute('wire:id'))?.$wire.set(model, value, false);
-            }
+            const wire = component && window.Livewire
+                ? window.Livewire.find(component.getAttribute('wire:id'))
+                : null;
+
+            if (! model || ! wire) return false;
+
+            wire.$wire.set(model, value, false);
+
+            return true;
         },
         async init() {
             if (this.$refs.map.dataset.initialized) return;
@@ -139,19 +149,32 @@ window.eventoLocalMap = function () {
             }
         },
         async reverseGeocode(lat, lng) {
+            let endpointStatus = null;
+            let fallbackStatus = null;
+
             try {
                 const response = await fetch(`/admin/eventos-calendario/localizacoes/reverter?latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lng)}`, { headers: { Accept: 'application/json' } });
+                endpointStatus = response.status;
+                if (! response.ok) throw new Error(`HTTP ${response.status}`);
                 const result = await response.json();
                 if (result.endereco) { this.setAddress(result.endereco); this.message = ''; return; }
-            } catch (error) { /* A consulta direta abaixo mantém o mapa utilizável se a rota interna falhar. */ }
+                console.warn('[evento-local-map] A busca interna não retornou endereço para o ponto.', { lat, lng, status: response.status, result });
+            } catch (error) {
+                console.error('[evento-local-map] Falha na busca interna do endereço do ponto.', { lat, lng, status: endpointStatus, error });
+            }
 
             try {
                 const url = new URL('https://nominatim.openstreetmap.org/reverse');
                 url.search = new URLSearchParams({ lat, lon: lng, format: 'jsonv2', addressdetails: '1', 'accept-language': 'pt-BR' });
                 const response = await fetch(url, { headers: { Accept: 'application/json' } });
+                fallbackStatus = response.status;
+                if (! response.ok) throw new Error(`HTTP ${response.status}`);
                 const result = await response.json();
                 if (result.display_name) { this.setAddress(result.display_name); this.message = ''; return; }
-            } catch (error) { /* Mensagem abaixo orienta a pesquisa manual. */ }
+                console.warn('[evento-local-map] O serviço de mapa não retornou endereço para o ponto.', { lat, lng, status: response.status, result });
+            } catch (error) {
+                console.error('[evento-local-map] Falha no serviço de mapa ao buscar o endereço do ponto.', { lat, lng, status: fallbackStatus, error });
+            }
 
             this.setAddress('');
             this.message = 'Ponto marcado, mas não foi possível identificar o endereço. Pesquise o local pelo nome.';
@@ -175,7 +198,15 @@ window.eventoLocalMap = function () {
         setAddress(address) {
             const display = this.addressDisplayInput();
             if (display) display.value = address;
-            this.setField(this.mapAddressInput(), address);
+            const input = this.mapAddressInput();
+            const updated = this.setField(input, address);
+            if (address) {
+                console.log('[evento-local-map] Endereço retornado para o ponto selecionado:', address, {
+                    inputEncontrado: Boolean(input),
+                    estadoLivewireAtualizado: updated,
+                    componenteEncontrado: Boolean(this.componentRoot()),
+                });
+            }
             this.query = address;
             window.dispatchEvent(new CustomEvent('evento-mapa-endereco', {
                 detail: {
@@ -183,6 +214,7 @@ window.eventoLocalMap = function () {
                     address,
                 },
             }));
+            return updated;
         },
     };
 };
