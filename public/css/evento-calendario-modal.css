@@ -559,10 +559,18 @@
 .evento-custom-modal__result-heading > span { color: #64748b; font-size: .74rem; }
 .evento-custom-modal__empty { margin: 0; padding: 1rem; color: #64748b; font-size: .8rem; }
 .evento-custom-modal__groups { display: grid; gap: .6rem; padding: .75rem; }
+.evento-custom-modal__school-group { overflow: hidden; border: 1px solid #dce7f3; border-radius: .6rem; }
+.evento-custom-modal__school-heading { display: flex; align-items: stretch; background: #f5f8fc; }
+.evento-custom-modal__school-toggle { display: flex; flex: 1; align-items: center; justify-content: space-between; gap: .75rem; min-width: 0; padding: .7rem .8rem; color: #173b73; background: transparent; border: 0; cursor: pointer; text-align: left; font-size: .8rem; }
+.evento-custom-modal__school-toggle strong { overflow-wrap: anywhere; }
+.evento-custom-modal__school-toggle span { flex: 0 0 auto; color: #64748b; font-weight: 400; }
+.evento-custom-modal__remove-school { flex: 0 0 auto; padding: 0 .85rem; color: #dc2626; background: transparent; border: 0; border-left: 1px solid #dce7f3; cursor: pointer; font-size: 1.2rem; line-height: 1; }
+.evento-custom-modal__remove-school:hover { background: #fff1f2; }
+.evento-custom-modal__school-group [x-cloak] { display: none !important; }
 .evento-custom-modal__groups details { overflow: hidden; border: 1px solid #dce7f3; border-radius: .6rem; }
 .evento-custom-modal__groups summary { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .7rem .8rem; color: #173b73; background: #f5f8fc; cursor: pointer; font-size: .8rem; list-style: none; }
 .evento-custom-modal__groups summary::-webkit-details-marker { display: none; }
-.evento-custom-modal__groups summary span { color: #64748b; font-weight: 400; }
+.evento-custom-modal__groups details summary span { color: #64748b; font-weight: 400; }
 .evento-custom-modal__nested-group { margin: .55rem; border-color: #e7edf5 !important; }
 .evento-custom-modal__table-wrap { overflow-x: auto; }
 .evento-custom-modal__table-wrap table { width: 100%; border-collapse: collapse; font-size: .78rem; }

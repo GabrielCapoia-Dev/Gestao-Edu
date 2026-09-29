@@ -220,12 +220,45 @@ final class EventoCalendarioModal extends Component
     /** @param int|string $id */
     public function removerParticipante(int|string $id): void
     {
+        $this->autorizarCriacao();
+
+        $id = (int) $id;
+        $participanteExiste = collect($this->participantes)->contains(
+            fn (array $participante): bool => (int) ($participante['id'] ?? 0) === $id,
+        );
+
+        if (! $participanteExiste) {
+            return;
+        }
+
         $ids = $this->ids($this->data['publico_excecoes_ids'] ?? []);
-        $ids[] = (int) $id;
+        $ids[] = $id;
         $this->data['publico_excecoes_ids'] = array_values(array_unique($ids));
         $this->participantes = array_values(array_filter(
             $this->participantes,
-            fn (array $participante): bool => (int) ($participante['id'] ?? 0) !== (int) $id,
+            fn (array $participante): bool => (int) ($participante['id'] ?? 0) !== $id,
+        ));
+    }
+
+    public function removerParticipantesDaEscola(string $escola): void
+    {
+        $this->autorizarCriacao();
+
+        $idsRemovidos = collect($this->participantes)
+            ->filter(fn (array $participante): bool => (string) ($participante['escola'] ?? '') === $escola)
+            ->pluck('id')
+            ->map(fn (int|string $id): int => (int) $id)
+            ->all();
+
+        if ($idsRemovidos === []) {
+            return;
+        }
+
+        $excecoes = $this->ids($this->data['publico_excecoes_ids'] ?? []);
+        $this->data['publico_excecoes_ids'] = array_values(array_unique([...$excecoes, ...$idsRemovidos]));
+        $this->participantes = array_values(array_filter(
+            $this->participantes,
+            fn (array $participante): bool => (string) ($participante['escola'] ?? '') !== $escola,
         ));
     }
 

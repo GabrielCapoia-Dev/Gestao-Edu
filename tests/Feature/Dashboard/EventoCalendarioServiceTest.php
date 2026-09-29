@@ -560,6 +560,37 @@ class EventoCalendarioServiceTest extends TestCase
             ->assertHasErrors(['data.publico_prefixos']);
     }
 
+    public function test_remover_pessoas_ou_escola_preserva_excecoes_e_estado_do_grupo(): void
+    {
+        [$ator] = $this->atorEscolar('REMOVER-PARTICIPANTES');
+        $pessoas = [
+            ['id' => 101, 'nome' => 'Pessoa A', 'email' => 'a@example.test', 'cargo' => 'Professor', 'escola' => 'Escola A'],
+            ['id' => 102, 'nome' => 'Pessoa B', 'email' => 'b@example.test', 'cargo' => 'Professor', 'escola' => 'Escola A'],
+            ['id' => 103, 'nome' => 'Pessoa C', 'email' => 'c@example.test', 'cargo' => 'Professor', 'escola' => 'Escola B'],
+        ];
+
+        $modal = Livewire::actingAs($ator)
+            ->test(EventoCalendarioModal::class)
+            ->call('abrir')
+            ->set('participantes', $pessoas)
+            ->set('participantesConsultados', true)
+            ->call('removerParticipante', 101)
+            ->assertSet('participantes.0.id', 102)
+            ->assertSet('data.publico_excecoes_ids', [101])
+            ->call('removerParticipantesDaEscola', 'Escola A')
+            ->assertSet('participantes.0.id', 103)
+            ->assertSet('data.publico_excecoes_ids', [101, 102])
+            ->assertSet('participantesConsultados', true);
+
+        $modalBlade = file_get_contents(resource_path('views/livewire/home/evento-calendario-modal.blade.php'));
+        $modalCss = file_get_contents(public_path('css/evento-calendario-modal.css'));
+
+        $this->assertStringContainsString('x-data="{ aberto: false }" wire:key="participantes-escola-', $modalBlade);
+        $this->assertStringContainsString('x-on:click="aberto = ! aberto"', $modalBlade);
+        $this->assertStringContainsString('removerParticipantesDaEscola(@js((string) $escola))', $modalBlade);
+        $this->assertStringContainsString('.evento-custom-modal__remove-school', $modalCss);
+    }
+
     public function test_rejeita_envio_paralelo_para_todos_os_usuarios(): void
     {
         [$ator] = $this->atorEscolar('PUBLICO');

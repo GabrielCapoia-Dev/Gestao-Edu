@@ -262,14 +262,19 @@
                                         @else
                                             <div class="evento-custom-modal__groups">
                                                 @foreach ($gruposParticipantes as $escola => $pessoas)
-                                                    <details>
-                                                        <summary><strong>{{ $escola }}</strong><span>{{ $pessoas->count() }} pessoa(s)⌄</span></summary>
-                                                        <div class="evento-custom-modal__table-wrap">
+                                                    <section class="evento-custom-modal__school-group" x-data="{ aberto: false }" wire:key="participantes-escola-{{ \Illuminate\Support\Str::slug($escola) }}">
+                                                        <div class="evento-custom-modal__school-heading">
+                                                            <button type="button" class="evento-custom-modal__school-toggle" x-on:click="aberto = ! aberto" x-bind:aria-expanded="aberto.toString()">
+                                                                <strong>{{ $escola }}</strong><span>{{ $pessoas->count() }} pessoa(s)</span><span aria-hidden="true" x-text="aberto ? '⌃' : '⌄'"></span>
+                                                            </button>
+                                                            <button type="button" class="evento-custom-modal__remove-school" wire:click="removerParticipantesDaEscola(@js((string) $escola))" aria-label="Remover {{ $escola }} da listagem" title="Remover escola da listagem">&times;</button>
+                                                        </div>
+                                                        <div class="evento-custom-modal__table-wrap" x-show="aberto" x-cloak>
                                                             <table>
                                                                 <thead><tr><th>Nome</th><th>E-mail</th><th>Cargo</th><th></th></tr></thead>
                                                                 <tbody>
                                                                     @foreach ($pessoas as $pessoa)
-                                                                        <tr>
+                                                                        <tr wire:key="participante-{{ $pessoa['id'] }}">
                                                                             <td>{{ $pessoa['nome'] }}</td>
                                                                             <td>{{ $pessoa['email'] }}</td>
                                                                             <td>{{ $pessoa['cargo'] }}</td>
@@ -279,7 +284,7 @@
                                                                 </tbody>
                                                             </table>
                                                         </div>
-                                                    </details>
+                                                    </section>
                                                 @endforeach
                                             </div>
                                         @endif
