@@ -7,6 +7,7 @@ use App\Livewire\Home\AgendaProximosDias;
 use App\Models\Enums\DashboardPrioridade;
 use App\Models\User;
 use App\Services\Dashboard\Calendar\CalendarEventAggregator;
+use App\Services\Dashboard\Calendar\Sources\PedidoManutencaoCalendarEventSource;
 use App\Support\Dashboard\Calendar\CalendarEventData;
 use App\Support\Dashboard\Calendar\CalendarEventDetailData;
 use App\Support\Dashboard\Calendar\CalendarQueryContext;
@@ -169,6 +170,17 @@ class CalendarEventAggregatorTest extends TestCase
         $this->assertStringContainsString("@can('viewAny', \\App\\Models\\EventoCalendario::class)", $blade);
         $this->assertStringContainsString('<livewire:home.avisos-banner lazy />', $blade);
         $this->assertStringContainsString('<livewire:home.agenda-proximos-dias lazy />', $blade);
+    }
+
+    public function test_agenda_da_rede_pula_consulta_de_manutencao_que_nao_exibe(): void
+    {
+        config()->set('dashboard.calendar.sources.pedidos_manutencao', true);
+
+        $source = app(PedidoManutencaoCalendarEventSource::class);
+
+        $this->assertFalse($source->supports($this->contexto(ignorarPedidosManutencao: true)));
+        $agenda = file_get_contents(app_path('Livewire/Home/AgendaProximosDias.php'));
+        $this->assertStringContainsString('ignorarPedidosManutencao: $escopo === \'rede\'', $agenda);
     }
 
     public function test_detalhe_de_evento_exibe_estado_neutro_sem_coordenadas(): void
@@ -340,6 +352,7 @@ class CalendarEventAggregatorTest extends TestCase
         array $prioridades = [],
         ?string $assunto = null,
         bool $somenteNaoEncerrados = false,
+        bool $ignorarPedidosManutencao = false,
     ): CalendarQueryContext {
         $inicio ??= CarbonImmutable::parse('2026-07-20')->startOfDay();
         $fim ??= $inicio->addDays(6)->endOfDay();
@@ -365,6 +378,7 @@ class CalendarEventAggregatorTest extends TestCase
             prioridades: $prioridades,
             assunto: $assunto,
             somenteNaoEncerrados: $somenteNaoEncerrados,
+            ignorarPedidosManutencao: $ignorarPedidosManutencao,
         );
     }
 
