@@ -109,6 +109,7 @@ class CalendarEventAggregatorTest extends TestCase
             'periodOptions' => [5],
             'tabsAgenda' => [
                 ['key' => 'pessoal', 'label' => 'Para mim', 'count' => 4],
+                ['key' => 'rede', 'label' => 'Para a rede', 'count' => null],
                 ['key' => 'veiculos', 'label' => 'Veículos', 'count' => 2],
                 ['key' => 'transporte', 'label' => 'Transporte', 'count' => 0],
                 ['key' => 'manutencao', 'label' => 'Manutenção', 'count' => 2],
@@ -123,6 +124,8 @@ class CalendarEventAggregatorTest extends TestCase
         $this->assertStringContainsString('Manutenção', $html);
         $this->assertStringContainsString('Pedagógico', $html);
         $this->assertStringContainsString('Veículos', $html);
+        $this->assertStringContainsString('Para a rede', $html);
+        $this->assertStringContainsString('Contagem carregada ao selecionar', $html);
         $this->assertStringNotContainsString('<span>Transporte</span>', $html);
         $this->assertStringContainsString('Mostrar mais', $html);
         $this->assertStringContainsString('overflow-y: auto', $css);
