@@ -61,10 +61,10 @@ final class EventoCalendarioLocalizacaoService
 
     private function clienteNominatim(): \Illuminate\Http\Client\PendingRequest
     {
-        $contato = config('mail.from.address') ?: 'contato@gestaoedu.local';
+        $urlAplicacao = rtrim((string) config('app.url', 'https://gestaoedu.local'), '/');
 
         return Http::acceptJson()
-            ->withUserAgent(sprintf('%s/1.0 (%s)', config('app.name', 'Gestao Edu'), $contato))
+            ->withUserAgent(sprintf('Gestao-Edu/1.0 (+%s)', $urlAplicacao))
             ->timeout(8)
             ->retry(1, 200, throw: false);
     }

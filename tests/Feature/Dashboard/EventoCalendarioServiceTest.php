@@ -210,7 +210,8 @@ class EventoCalendarioServiceTest extends TestCase
         $endereco = app(EventoCalendarioLocalizacaoService::class)->reverter(-23.700123, -53.200456);
 
         $this->assertSame('Avenida Paraná, 1234 · Centro · Umuarama · Paraná', $endereco);
-        Http::assertSent(fn ($request): bool => $request->url() === 'https://nominatim.openstreetmap.org/reverse?lat=-23.700123&lon=-53.200456&format=jsonv2&addressdetails=1&zoom=18&layer=address&accept-language=pt-BR');
+        Http::assertSent(fn ($request): bool => $request->url() === 'https://nominatim.openstreetmap.org/reverse?lat=-23.700123&lon=-53.200456&format=jsonv2&addressdetails=1&zoom=18&layer=address&accept-language=pt-BR'
+            && $request->hasHeader('User-Agent', 'Gestao-Edu/1.0 (+'.rtrim((string) config('app.url'), '/').')'));
     }
 
     public function test_exige_detalhe_quando_categoria_do_evento_for_outro(): void
@@ -488,6 +489,7 @@ class EventoCalendarioServiceTest extends TestCase
         $this->assertStringContainsString('wire.$wire.set(model, value, false)', $mapScript);
         $this->assertStringContainsString('if (! response.ok) throw new Error(`HTTP ${response.status}`);', $mapScript);
         $this->assertStringContainsString("console.log('[evento-local-map] Endereço retornado para o ponto selecionado:'", $mapScript);
+        $this->assertStringNotContainsString('https://nominatim.openstreetmap.org/reverse', $mapScript);
         $this->assertStringContainsString('data-evento-map-address', $modalBlade);
         $this->assertStringContainsString("new CustomEvent('evento-mapa-endereco'", $mapScript);
         $this->assertStringContainsString('Nome ou referência do local', $modalBlade);

@@ -149,31 +149,14 @@ window.eventoLocalMap = function () {
             }
         },
         async reverseGeocode(lat, lng) {
-            let endpointStatus = null;
-            let fallbackStatus = null;
-
             try {
                 const response = await fetch(`/admin/eventos-calendario/localizacoes/reverter?latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lng)}`, { headers: { Accept: 'application/json' } });
-                endpointStatus = response.status;
                 if (! response.ok) throw new Error(`HTTP ${response.status}`);
                 const result = await response.json();
                 if (result.endereco) { this.setAddress(result.endereco); this.message = ''; return; }
-                console.warn('[evento-local-map] A busca interna não retornou endereço para o ponto.', { lat, lng, status: response.status, result });
+                console.warn('[evento-local-map] O Nominatim não retornou endereço para o ponto.', { lat, lng, status: response.status, result });
             } catch (error) {
-                console.error('[evento-local-map] Falha na busca interna do endereço do ponto.', { lat, lng, status: endpointStatus, error });
-            }
-
-            try {
-                const url = new URL('https://nominatim.openstreetmap.org/reverse');
-                url.search = new URLSearchParams({ lat, lon: lng, format: 'jsonv2', addressdetails: '1', 'accept-language': 'pt-BR' });
-                const response = await fetch(url, { headers: { Accept: 'application/json' } });
-                fallbackStatus = response.status;
-                if (! response.ok) throw new Error(`HTTP ${response.status}`);
-                const result = await response.json();
-                if (result.display_name) { this.setAddress(result.display_name); this.message = ''; return; }
-                console.warn('[evento-local-map] O serviço de mapa não retornou endereço para o ponto.', { lat, lng, status: response.status, result });
-            } catch (error) {
-                console.error('[evento-local-map] Falha no serviço de mapa ao buscar o endereço do ponto.', { lat, lng, status: fallbackStatus, error });
+                console.error('[evento-local-map] Falha ao consultar o Nominatim para o ponto selecionado.', { lat, lng, error });
             }
 
             this.setAddress('');
