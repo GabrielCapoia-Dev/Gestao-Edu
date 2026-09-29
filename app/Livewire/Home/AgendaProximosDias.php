@@ -112,7 +112,7 @@ class AgendaProximosDias extends Component
                     'pedagogico' => $this->filtrarResultado($resultadoPessoal, self::CATEGORIAS_PEDAGOGICAS),
                 ];
 
-                if ($this->escopoAgenda === 'rede' && $this->podeVisualizarRede($context->user)) {
+                if ($this->podeVisualizarRede($context->user)) {
                     $resultadoRede = $this->filtrarResultadoPor(
                         $aggregator->aggregate($this->contextoObrigatorio('rede')),
                         static fn ($evento): bool => ! in_array($evento->categoria, self::CATEGORIAS_MANUTENCAO, true),
@@ -124,7 +124,7 @@ class AgendaProximosDias extends Component
                     );
                 }
 
-                if ($this->escopoAgenda === 'veiculos' && $this->podeVisualizarVeiculos($context->user)) {
+                if ($this->podeVisualizarVeiculos($context->user)) {
                     $podeVisualizarVeiculos = true;
                     $resultados['veiculos'] = $aggregator->aggregate($this->contextoObrigatorio('veiculos'));
                 }
@@ -281,7 +281,7 @@ class AgendaProximosDias extends Component
 
     /**
      * @param  array<string, CalendarAggregationResult>  $resultados
-     * @return list<array{key: string, label: string, count: int|null}>
+     * @return list<array{key: string, label: string, count: int}>
      */
     private function montarAbas(User $user, array $resultados): array
     {
@@ -304,11 +304,9 @@ class AgendaProximosDias extends Component
         return array_values(array_filter(array_map(
             static fn (array $aba): array => [
                 ...$aba,
-                'count' => isset($resultados[$aba['key']])
-                    ? count($resultados[$aba['key']]->events)
-                    : null,
+                'count' => count(($resultados[$aba['key']] ?? null)?->events ?? []),
             ],
             $abas,
-        ), static fn (array $aba): bool => $aba['count'] === null || $aba['count'] > 0));
+        ), static fn (array $aba): bool => $aba['count'] > 0));
     }
 }

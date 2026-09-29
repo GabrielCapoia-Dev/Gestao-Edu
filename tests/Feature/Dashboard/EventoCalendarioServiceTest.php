@@ -471,6 +471,9 @@ class EventoCalendarioServiceTest extends TestCase
         $this->assertStringNotContainsString('@disabled(', $modalBlade);
         $this->assertStringNotContainsString('MutationObserver', $modalBlade);
         $this->assertStringNotContainsString('setInterval', $modalBlade);
+        $this->assertStringContainsString('evento-custom-modal__grid--three', $modalBlade);
+        $this->assertStringContainsString('evento-custom-modal__grid--two', $modalBlade);
+        $this->assertStringContainsString('id="publico-componentes"', $modalBlade);
         $this->assertStringContainsString('x-data="{ aberto: false, selecionados:', $multiSelectBlade);
         $this->assertStringContainsString('id="publico-tipo-escola"', $modalBlade);
         $this->assertStringContainsString('model="data.publico_prefixos"', $modalBlade);

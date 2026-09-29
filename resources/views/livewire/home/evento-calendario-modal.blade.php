@@ -185,7 +185,7 @@
                                         <span>A consulta só acontece quando você clicar em Filtrar participantes.</span>
                                     </div>
 
-                                    <div class="evento-custom-modal__grid evento-custom-modal__grid--two">
+                                    <div class="evento-custom-modal__grid evento-custom-modal__grid--three">
                                         <x-evento-multi-select
                                             id="publico-escolas"
                                             label="Escolas"
@@ -207,6 +207,9 @@
                                             :options="$funcoesOpcoes"
                                             :selected="$data['publico_funcao_ids'] ?? []"
                                         />
+                                    </div>
+
+                                    <div class="evento-custom-modal__grid evento-custom-modal__grid--two">
                                         <x-evento-multi-select
                                             id="publico-turnos"
                                             label="Turnos"
@@ -221,15 +224,16 @@
                                             :options="$seriesOpcoes"
                                             :selected="$data['publico_serie_ids'] ?? []"
                                         />
-                                        <div class="evento-custom-modal__field evento-custom-modal__field--full">
-                                            <x-evento-multi-select
-                                                id="publico-componentes"
-                                                label="Componentes curriculares"
-                                                model="data.publico_componente_ids"
-                                                :options="$componentesOpcoes"
-                                                :selected="$data['publico_componente_ids'] ?? []"
-                                            />
-                                        </div>
+                                    </div>
+
+                                    <div class="evento-custom-modal__grid">
+                                        <x-evento-multi-select
+                                            id="publico-componentes"
+                                            label="Componentes curriculares"
+                                            model="data.publico_componente_ids"
+                                            :options="$componentesOpcoes"
+                                            :selected="$data['publico_componente_ids'] ?? []"
+                                        />
                                     </div>
 
                                     <div class="evento-custom-modal__action-row">

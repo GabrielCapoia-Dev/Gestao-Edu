@@ -124,8 +124,8 @@ class CalendarEventAggregatorTest extends TestCase
         $this->assertStringContainsString('Manutenção', $html);
         $this->assertStringContainsString('Pedagógico', $html);
         $this->assertStringContainsString('Veículos', $html);
-        $this->assertStringContainsString('Para a rede', $html);
-        $this->assertStringContainsString('Contagem carregada ao selecionar', $html);
+        $this->assertStringNotContainsString('Para a rede', $html);
+        $this->assertStringNotContainsString('Contagem carregada ao selecionar', $html);
         $this->assertStringNotContainsString('<span>Transporte</span>', $html);
         $this->assertStringContainsString('Mostrar mais', $html);
         $this->assertStringContainsString('overflow-y: auto', $css);
