@@ -472,6 +472,8 @@ class EventoCalendarioServiceTest extends TestCase
         $this->assertStringNotContainsString('MutationObserver', $modalBlade);
         $this->assertStringNotContainsString('setInterval', $modalBlade);
         $this->assertStringContainsString('x-data="{ aberto: false, selecionados:', $multiSelectBlade);
+        $this->assertStringContainsString('id="publico-tipo-escola"', $modalBlade);
+        $this->assertStringContainsString('model="data.publico_prefixos"', $modalBlade);
         $this->assertStringContainsString('x-for="valor in selecionados"', $multiSelectBlade);
         $this->assertStringNotContainsString('selecionados.slice(0, 2)', $multiSelectBlade);
         $this->assertStringNotContainsString('__multi-select-count', $multiSelectBlade);
@@ -536,6 +538,23 @@ class EventoCalendarioServiceTest extends TestCase
             ->assertDontSee('Próximo');
 
         $this->assertDatabaseCount('eventos_calendario', 0);
+    }
+
+    public function test_filtro_de_tipo_de_escola_limita_participantes_a_prefixos_disponiveis(): void
+    {
+        [$ator, $escola] = $this->atorEscolar('PREFIXO-CONVITE');
+        $escola->update(['nome' => 'CMEI - Unidade de teste']);
+
+        Livewire::actingAs($ator)
+            ->test(EventoCalendarioModal::class)
+            ->call('abrir')
+            ->set('data.publico_prefixos', ['CMEI'])
+            ->call('aplicarFiltrosParticipantes')
+            ->assertHasNoErrors()
+            ->assertSet('data.publico_regras.0.escola_ids', [$escola->id])
+            ->set('data.publico_prefixos', ['ESCOLA'])
+            ->call('aplicarFiltrosParticipantes')
+            ->assertHasErrors(['data.publico_prefixos']);
     }
 
     public function test_rejeita_envio_paralelo_para_todos_os_usuarios(): void

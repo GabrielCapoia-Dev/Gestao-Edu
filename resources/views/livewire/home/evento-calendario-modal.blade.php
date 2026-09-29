@@ -194,6 +194,13 @@
                                             :selected="$data['publico_escola_ids'] ?? []"
                                         />
                                         <x-evento-multi-select
+                                            id="publico-tipo-escola"
+                                            label="Tipo de escola"
+                                            model="data.publico_prefixos"
+                                            :options="['CMEI' => 'CMEI', 'ESCOLA' => 'Escola']"
+                                            :selected="$data['publico_prefixos'] ?? []"
+                                        />
+                                        <x-evento-multi-select
                                             id="publico-funcoes"
                                             label="Cargos"
                                             model="data.publico_funcao_ids"

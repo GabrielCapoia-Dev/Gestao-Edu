@@ -167,7 +167,28 @@ final class EventoCalendarioModal extends Component
     public function aplicarFiltrosParticipantes(): void
     {
         $usuario = $this->autorizarCriacao();
+        $this->resetErrorBag('data.publico_prefixos');
+
+        try {
+            $this->validate([
+                'data.publico_prefixos' => ['array'],
+                'data.publico_prefixos.*' => [Rule::in(['CMEI', 'ESCOLA'])],
+            ]);
+        } catch (ValidationException $exception) {
+            $this->adicionarErros($exception);
+
+            return;
+        }
+
         $regra = $this->regraPublicoAtual();
+
+        if ($this->strings($this->data['publico_prefixos'] ?? []) !== [] && $regra['escola_ids'] === []) {
+            $this->addError('data.publico_prefixos', 'Não há escolas desse tipo disponíveis nos filtros selecionados.');
+            $this->participantesConsultados = false;
+            $this->participantes = [];
+
+            return;
+        }
 
         if (! $this->possuiFiltroPublico()) {
             $this->addError('data.publico_regras', 'Selecione ao menos um filtro antes de buscar participantes.');
@@ -310,6 +331,7 @@ final class EventoCalendarioModal extends Component
             'publico_regras' => $this->data['publico_regras'] ?? [],
             'publico_excecoes_ids' => $this->ids($this->data['publico_excecoes_ids'] ?? []),
         ];
+        unset($dados['publico_prefixos']);
 
         try {
             app(EventoCalendarioService::class)->criar($dados, [], $usuario);
@@ -354,6 +376,7 @@ final class EventoCalendarioModal extends Component
             'hora_fim' => '',
             'publico_tipo' => 'segmentado',
             'publico_escola_ids' => [],
+            'publico_prefixos' => [],
             'publico_funcao_ids' => [],
             'publico_turnos' => [],
             'publico_serie_ids' => [],
@@ -411,8 +434,25 @@ final class EventoCalendarioModal extends Component
     {
         $contexto = app(DashboardUserContextFactory::class)->make($this->autorizarCriacao());
         $escolas = $this->ids($this->data['publico_escola_ids'] ?? []);
+        $prefixos = collect($this->data['publico_prefixos'] ?? [])
+            ->map(fn ($prefixo): string => mb_strtoupper(trim((string) $prefixo)))
+            ->filter(fn (string $prefixo): bool => in_array($prefixo, ['CMEI', 'ESCOLA'], true))
+            ->unique()
+            ->values();
 
-        if ($escolas === [] && ! $contexto->escopoGlobal) {
+        if ($prefixos->isNotEmpty()) {
+            $escolasPorPrefixo = collect($this->escolasOpcoes)
+                ->filter(fn (string $nome): bool => $prefixos->contains(
+                    fn (string $prefixo): bool => str_starts_with(mb_strtoupper(trim($nome)), $prefixo),
+                ))
+                ->keys()
+                ->map(fn ($id): int => (int) $id)
+                ->all();
+
+            $escolas = $escolas === []
+                ? $escolasPorPrefixo
+                : array_values(array_intersect($escolas, $escolasPorPrefixo));
+        } elseif ($escolas === [] && ! $contexto->escopoGlobal) {
             $escolas = $contexto->escolaIds;
         }
 
@@ -428,6 +468,7 @@ final class EventoCalendarioModal extends Component
     private function possuiFiltroPublico(): bool
     {
         return $this->ids($this->data['publico_escola_ids'] ?? []) !== []
+            || $this->strings($this->data['publico_prefixos'] ?? []) !== []
             || $this->ids($this->data['publico_funcao_ids'] ?? []) !== []
             || $this->strings($this->data['publico_turnos'] ?? []) !== []
             || $this->ids($this->data['publico_serie_ids'] ?? []) !== []
