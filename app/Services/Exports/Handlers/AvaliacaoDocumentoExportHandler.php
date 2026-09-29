@@ -37,11 +37,15 @@ class AvaliacaoDocumentoExportHandler implements ExportHandler
 
         $exportRequest->updateProgress(90, 100, 'Salvando documento em armazenamento privado.');
 
-        return $this->storage->storeResponse(
+        $result = $this->storage->storeResponse(
             $exportRequest,
             $response,
             'avaliação-documento.' . $format,
             $format === 'csv' ? 'text/csv' : 'application/pdf',
+        );
+
+        return $result->withCompletionMessage(
+            $this->service->mensagemAvisosExportacao() ?? 'Arquivo pronto para download.'
         );
     }
 }

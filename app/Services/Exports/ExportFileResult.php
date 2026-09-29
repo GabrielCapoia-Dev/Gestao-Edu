@@ -11,10 +11,11 @@ class ExportFileResult
         public readonly ?string $mime,
         public readonly ?int $sizeBytes,
         public readonly ?string $checksum,
+        public readonly ?string $completionMessage = null,
     ) {}
 
     /**
-     * @return array{disk:string,path:string,file_name:string,mime:string|null,size_bytes:int|null,checksum:string|null}
+     * @return array{disk:string,path:string,file_name:string,mime:string|null,size_bytes:int|null,checksum:string|null,status_message:string|null}
      */
     public function toDatabasePayload(): array
     {
@@ -25,6 +26,20 @@ class ExportFileResult
             'mime' => $this->mime,
             'size_bytes' => $this->sizeBytes,
             'checksum' => $this->checksum,
+            'status_message' => $this->completionMessage,
         ];
+    }
+
+    public function withCompletionMessage(?string $message): self
+    {
+        return new self(
+            disk: $this->disk,
+            path: $this->path,
+            fileName: $this->fileName,
+            mime: $this->mime,
+            sizeBytes: $this->sizeBytes,
+            checksum: $this->checksum,
+            completionMessage: $message,
+        );
     }
 }

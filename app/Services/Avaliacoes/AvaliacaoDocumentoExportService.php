@@ -9,6 +9,7 @@ use App\Models\Avaliacao;
 use App\Models\AvaliacaoAlunoSnapshot;
 use App\Models\AvaliacaoExportacao;
 use App\Models\AvaliacaoAlunoDocumento;
+use App\Models\AvaliacaoSnapshotEvento;
 use App\Models\AvaliacaoTurmaCiclo;
 use App\Models\Pauta;
 use App\Models\Professor;
@@ -39,6 +40,9 @@ class AvaliacaoDocumentoExportService
     /** @var array<string, string> */
     private array $nomesProfessoresPorTurmaComponente = [];
 
+    /** @var array<string, array{turma:string, aluno:string, aluno_id:int}> */
+    private array $alunosIgnoradosSemSnapshot = [];
+
     /**
      * @param  array<string, mixed>  $params
      */
@@ -47,6 +51,7 @@ class AvaliacaoDocumentoExportService
         $this->nomesProfessores = [];
         $this->nomesAlternativas = [];
         $this->nomesProfessoresPorTurmaComponente = [];
+        $this->alunosIgnoradosSemSnapshot = [];
         $avaliacao = $this->buscarAvaliacao((int) ($params['avaliacao_id'] ?? 0));
         $escopo = (string) ($params['escopo'] ?? 'turma');
         $turmas = $this->resolverTurmas($avaliacao, $escopo, $params, $usuario);
@@ -54,7 +59,9 @@ class AvaliacaoDocumentoExportService
         $documentos = $this->montarDocumentos($avaliacao, $turmas, $escopo, $params, $usuario);
 
         if ($documentos->isEmpty()) {
-            throw new NotFoundHttpException('Nenhum aluno encontrado para exportação.');
+            throw new NotFoundHttpException(
+                $this->mensagemAvisosExportacao() ?? 'Nenhum aluno encontrado para exportação.'
+            );
         }
 
         $documentosComPaginas = $this->prepararDocumentosParaPdf($documentos, $escopo);
@@ -77,10 +84,16 @@ class AvaliacaoDocumentoExportService
             $quantidadePaginas
         );
 
-        return response($conteudo, 200, [
+        $headers = [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => sprintf('attachment; filename="%s"', addslashes($this->nomeArquivo($avaliacao, $escopo, $turmas, $documentosComPaginas))),
-        ]);
+        ];
+
+        if ($aviso = $this->mensagemAvisosExportacao()) {
+            $headers['X-Export-Warning'] = $aviso;
+        }
+
+        return response($conteudo, 200, $headers);
     }
 
     /**
@@ -97,6 +110,37 @@ class AvaliacaoDocumentoExportService
         $this->capturarSnapshotsParecer($avaliacao, $turmas, $escopo, $params);
     }
 
+    public function mensagemAvisosExportacao(): ?string
+    {
+        if ($this->alunosIgnoradosSemSnapshot === []) {
+            return null;
+        }
+
+        $alunos = collect($this->alunosIgnoradosSemSnapshot)->values();
+        $detalhes = $alunos
+            ->take(3)
+            ->map(fn (array $item): string => sprintf(
+                '%s (ID %d, turma %s)',
+                $item['aluno'],
+                $item['aluno_id'],
+                $item['turma'],
+            ))
+            ->implode('; ');
+        $restantes = $alunos->count() - min(3, $alunos->count());
+        $complemento = $restantes > 0 ? "; e mais {$restantes}" : '';
+
+        return Str::limit(
+            sprintf(
+                'Exportação parcial: %d matriculado(s) sem snapshot final foram ignorados: %s%s.',
+                $alunos->count(),
+                $detalhes,
+                $complemento,
+            ),
+            250,
+            '...'
+        );
+    }
+
     /**
      * @param  array<string, mixed>  $params
      */
@@ -105,13 +149,16 @@ class AvaliacaoDocumentoExportService
         $this->nomesProfessores = [];
         $this->nomesAlternativas = [];
         $this->nomesProfessoresPorTurmaComponente = [];
+        $this->alunosIgnoradosSemSnapshot = [];
         $avaliacao = $this->buscarAvaliacao((int) ($params['avaliacao_id'] ?? 0));
         $escopo = (string) ($params['escopo'] ?? 'turma');
         $turmas = $this->resolverTurmas($avaliacao, $escopo, $params, $usuario);
         $dados = $this->montarDadosCsv($avaliacao, $turmas, $escopo, $params);
 
         if ($dados->isEmpty()) {
-            throw new NotFoundHttpException('Nenhum dado encontrado para exportação.');
+            throw new NotFoundHttpException(
+                $this->mensagemAvisosExportacao() ?? 'Nenhum dado encontrado para exportação.'
+            );
         }
 
         $quantidadeAlunos = $dados
@@ -128,6 +175,14 @@ class AvaliacaoDocumentoExportService
             $quantidadeAlunos,
             null
         );
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ];
+
+        if ($aviso = $this->mensagemAvisosExportacao()) {
+            $headers['X-Export-Warning'] = $aviso;
+        }
 
         return response()->streamDownload(function () use ($avaliacao, $dados): void {
             echo "\xEF\xBB\xBF";
@@ -203,9 +258,7 @@ class AvaliacaoDocumentoExportService
             }
 
             fclose($out);
-        }, $this->nomeArquivoCsv($avaliacao, $escopo, $turmas), [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-        ]);
+        }, $this->nomeArquivoCsv($avaliacao, $escopo, $turmas), $headers);
     }
 
     /**
@@ -440,7 +493,21 @@ class AvaliacaoDocumentoExportService
 
             $alternativasPorPauta = $this->alternativasPorPauta($avaliacao, $pautas);
             $legenda = $this->montarLegenda($alternativasPorPauta);
-            $documentosPorAluno = $reader->lerParaAlunos((int) $avaliacao->id, $alunos, $turma);
+            $documentosPorAluno = $reader->lerParaAlunos(
+                (int) $avaliacao->id,
+                $alunos,
+                $turma,
+                true,
+                $escopo !== 'aluno',
+            );
+            $alunos = $alunos
+                ->filter(fn (Aluno $aluno): bool => $documentosPorAluno->has((int) $aluno->id))
+                ->values();
+
+            if ($alunos->isEmpty()) {
+                continue;
+            }
+
             $this->precarregarNomesProfessores($documentosPorAluno);
             $this->precarregarNomesAlternativas($documentosPorAluno);
             foreach ($alunos as $aluno) {
@@ -494,10 +561,10 @@ class AvaliacaoDocumentoExportService
             ->where('id_turma', $escopoTurma['turma_origem_id'])
             ->orderBy('nome');
 
-        if ($escopoTurma['tipo_vinculo'] === Aluno::TIPO_VINCULO_CONTRA_TURNO) {
-            $query->where('status', Aluno::STATUS_MATRICULADO);
-        } else {
+        if ($escopo === 'aluno') {
             $query->where('status', '!=', Aluno::STATUS_PENDENTE);
+        } else {
+            $query->where('status', Aluno::STATUS_MATRICULADO);
         }
 
         if ($escopo === 'aluno') {
@@ -538,13 +605,37 @@ class AvaliacaoDocumentoExportService
 
         $alunoIds = AvaliacaoAlunoSnapshot::query()
             ->where('evento_id', (string) $ciclo->snapshot_evento_atual_id)
-            ->where('tipo', 'conclusao')
+            ->where('tipo', AvaliacaoSnapshotEvento::TIPO_CONCLUSAO)
             ->orderBy('aluno_id')
             ->pluck('aluno_id')
             ->map(fn ($id): int => (int) $id)
             ->filter()
             ->unique()
             ->values();
+
+        if ($escopo !== 'aluno') {
+            $escopos = app(TurmaAvaliacaoAlunoScopeService::class)
+                ->escoposPorTurma(collect([$turma]));
+            $turmaOrigemId = (int) ($escopos[(int) $turma->id]['turma_origem_id'] ?? $turma->id);
+            $matriculadosAtuais = Aluno::query()
+                ->where('id_turma', $turmaOrigemId)
+                ->where('status', Aluno::STATUS_MATRICULADO)
+                ->get(['id', 'nome']);
+            $alunosComSnapshot = $alunoIds->flip();
+
+            foreach ($matriculadosAtuais as $alunoAtual) {
+                if ($alunosComSnapshot->has((int) $alunoAtual->id)) {
+                    continue;
+                }
+
+                $chave = (int) $turma->id.'|'.(int) $alunoAtual->id;
+                $this->alunosIgnoradosSemSnapshot[$chave] = [
+                    'turma' => (string) $turma->nome,
+                    'aluno' => (string) $alunoAtual->nome,
+                    'aluno_id' => (int) $alunoAtual->id,
+                ];
+            }
+        }
 
         if ($alunoIds->isEmpty()) {
             return collect();
@@ -556,6 +647,8 @@ class AvaliacaoDocumentoExportService
 
         if ($escopo === 'aluno') {
             $query->whereKey((int) ($params['aluno_id'] ?? 0));
+        } else {
+            $query->where('status', Aluno::STATUS_MATRICULADO);
         }
 
         return $query->get([
@@ -1002,7 +1095,21 @@ class AvaliacaoDocumentoExportService
                 $respostas = collect();
                 $informacoesComplementares = collect();
                 $alternativaIds = [];
-                $documentosPorAluno = $reader->lerParaAlunos((int) $avaliacao->id, $alunos, $turma, false);
+                $documentosPorAluno = $reader->lerParaAlunos(
+                    (int) $avaliacao->id,
+                    $alunos,
+                    $turma,
+                    false,
+                    $escopo !== 'aluno',
+                );
+                $alunos = $alunos
+                    ->filter(fn (Aluno $aluno): bool => $documentosPorAluno->has((int) $aluno->id))
+                    ->values();
+
+                if ($alunos->isEmpty()) {
+                    return null;
+                }
+
                 $this->precarregarNomesAlternativas($documentosPorAluno);
 
                 foreach ($alunos as $aluno) {

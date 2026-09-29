@@ -6,6 +6,7 @@ use App\Data\Avaliacoes\AvaliacaoDocumentoData;
 use App\Models\Aluno;
 use App\Models\AvaliacaoAlunoDocumento;
 use App\Models\AvaliacaoAlunoSnapshot;
+use App\Models\AvaliacaoSnapshotEvento;
 use App\Models\AvaliacaoRespostaOperacional;
 use App\Models\AvaliacaoInformacaoOperacional;
 use App\Models\AvaliacaoTurmaCiclo;
@@ -37,6 +38,7 @@ class AvaliacaoDocumentoBatchReader
         Collection $alunos,
         Turma $turmaAvaliativa,
         bool $incluirResponsaveis = true,
+        bool $ignorarSnapshotsAusentes = false,
     ): Collection {
         $alunos = $alunos->values();
 
@@ -48,7 +50,7 @@ class AvaliacaoDocumentoBatchReader
         $ciclo = $this->ciclo($avaliacaoId, (int) $turmaAvaliativa->id);
 
         if ($this->persistencia->leRelacional() && $ciclo?->status === AvaliacaoTurmaCiclo::STATUS_CONCLUIDA) {
-            return $this->lerSnapshots($ciclo, $alunos);
+            return $this->lerSnapshots($ciclo, $alunos, $ignorarSnapshotsAusentes);
         }
 
         $documentos = collect();
@@ -146,10 +148,15 @@ class AvaliacaoDocumentoBatchReader
     }
 
     /** @param Collection<int, Aluno> $alunos */
-    private function lerSnapshots(AvaliacaoTurmaCiclo $ciclo, Collection $alunos): Collection
+    private function lerSnapshots(
+        AvaliacaoTurmaCiclo $ciclo,
+        Collection $alunos,
+        bool $ignorarSnapshotsAusentes = false,
+    ): Collection
     {
         $snapshots = AvaliacaoAlunoSnapshot::query()
-            ->where('evento_id', (int) $ciclo->snapshot_evento_atual_id)
+            ->where('evento_id', (string) $ciclo->snapshot_evento_atual_id)
+            ->where('tipo', AvaliacaoSnapshotEvento::TIPO_CONCLUSAO)
             ->whereIn('aluno_id', $alunos->pluck('id')->map(fn ($id): int => (int) $id)->all())
             ->get()
             ->keyBy('aluno_id');
@@ -158,6 +165,10 @@ class AvaliacaoDocumentoBatchReader
             $snapshot = $snapshots->get((int) $aluno->id);
 
             if (! $snapshot) {
+                if ($ignorarSnapshotsAusentes) {
+                    return [];
+                }
+
                 throw new RuntimeException('Snapshot final do aluno não encontrado.');
             }
 

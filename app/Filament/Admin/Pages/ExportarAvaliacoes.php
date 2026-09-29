@@ -179,7 +179,7 @@ class ExportarAvaliacoes extends Page
                 'avaliacoes:id,nome,data_inicio,data_fim,tipo_avaliacao_id,periodo_avaliacao_id',
             ])
             ->withCount([
-                'alunos' => fn (Builder $alunos): Builder => $alunos->where('status', '!=', Aluno::STATUS_PENDENTE),
+                'alunos' => fn (Builder $alunos): Builder => $alunos->where('status', Aluno::STATUS_MATRICULADO),
             ])
             ->whereHas('avaliacoes');
 
@@ -313,7 +313,7 @@ class ExportarAvaliacoes extends Page
         $query = Turma::query()
             ->with(['escola:id,nome', 'serie:id,nome'])
             ->withCount([
-                'alunos' => fn (Builder $alunos): Builder => $alunos->where('status', '!=', Aluno::STATUS_PENDENTE),
+                'alunos' => fn (Builder $alunos): Builder => $alunos->where('status', Aluno::STATUS_MATRICULADO),
             ])
             ->whereKey($turmaId)
             ->whereHas('avaliacoes');

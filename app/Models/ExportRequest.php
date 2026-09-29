@@ -187,13 +187,13 @@ class ExportRequest extends Model
     }
 
     /**
-     * @param  array{disk:string,path:string,file_name:string,mime:string|null,size_bytes:int|null,checksum:string|null}  $file
+     * @param  array{disk:string,path:string,file_name:string,mime:string|null,size_bytes:int|null,checksum:string|null,status_message?:string|null}  $file
      */
     public function markFinished(array $file): void
     {
         $payload = [
             'status' => self::STATUS_FINISHED,
-            'status_message' => 'Arquivo pronto para download.',
+            'status_message' => $file['status_message'] ?? 'Arquivo pronto para download.',
             'progress_current' => 100,
             'progress_total' => 100,
             'file_disk' => $file['disk'],

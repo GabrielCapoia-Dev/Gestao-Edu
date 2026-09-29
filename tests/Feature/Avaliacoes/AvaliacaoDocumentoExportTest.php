@@ -5,7 +5,10 @@ namespace Tests\Feature\Avaliacoes;
 use App\Models\Aluno;
 use App\Models\Alternativa;
 use App\Models\Avaliacao;
+use App\Models\AvaliacaoAlunoSnapshot;
 use App\Models\AvaliacaoExportacao;
+use App\Models\AvaliacaoSnapshotEvento;
+use App\Models\AvaliacaoTurmaCiclo;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\FuncaoAdministrativa;
@@ -20,6 +23,7 @@ use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
 use App\Services\Avaliacoes\AvaliacaoAlunoDocumentoService;
+use App\Services\Avaliacoes\AvaliacaoDocumentoBatchReader;
 use App\Services\Avaliacoes\AvaliacaoDocumentoExportService;
 use App\Services\Avaliacoes\AvaliacaoParecerSnapshotService;
 use App\Services\ServidorService;
@@ -478,6 +482,84 @@ class AvaliacaoDocumentoExportTest extends TestCase
         );
 
         $this->assertSame([$aluno->id], $alunos->pluck('id')->all());
+    }
+
+    public function test_exportacao_em_massa_usa_uuid_exclui_movimentados_e_avisa_snapshot_ausente(): void
+    {
+        $escola = $this->criarEscola('Escola Exportacao UUID');
+        $serie = $this->criarSerie('SER-UUID-EXPORT', '1o Ano');
+        $turma = $this->criarTurma($escola, $serie, 'A');
+        $avaliacao = $this->criarAvaliacao('Avaliacao UUID Exportacao', '2026-02-01');
+        $avaliacao->turmas()->sync([$turma->id]);
+
+        $matriculado = Aluno::query()->create([
+            'nome' => 'Aluno Matriculado UUID',
+            'cgm' => 'CGM-UUID-MAT',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turma->id,
+            'status' => Aluno::STATUS_MATRICULADO,
+        ]);
+        $transferido = Aluno::query()->create([
+            'nome' => 'Aluno Transferido UUID',
+            'cgm' => 'CGM-UUID-TRA',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turma->id,
+            'status' => Aluno::STATUS_TRANSFERIDO,
+        ]);
+        $semSnapshot = Aluno::query()->create([
+            'nome' => 'Aluno Sem Snapshot UUID',
+            'cgm' => 'CGM-UUID-SEM',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turma->id,
+            'status' => Aluno::STATUS_MATRICULADO,
+        ]);
+
+        $ciclo = AvaliacaoTurmaCiclo::query()->create([
+            'avaliacao_id' => $avaliacao->id,
+            'turma_avaliativa_id' => $turma->id,
+            'turma_origem_id' => $turma->id,
+            'status' => AvaliacaoTurmaCiclo::STATUS_CONCLUIDA,
+            'roster_mode' => AvaliacaoTurmaCiclo::ROSTER_CONGELADO,
+            'versao_conclusao' => 1,
+        ]);
+        $evento = AvaliacaoSnapshotEvento::query()->create([
+            'idempotency_key' => 'conclusao:uuid-export:'.$ciclo->id,
+            'tipo' => AvaliacaoSnapshotEvento::TIPO_CONCLUSAO,
+            'ciclo_id' => $ciclo->id,
+            'avaliacao_id' => $avaliacao->id,
+            'turma_avaliativa_id' => $turma->id,
+            'turma_origem_id' => $turma->id,
+            'payload_hash_agregado' => hash('sha256', 'uuid-export'),
+        ]);
+        $ciclo->forceFill(['snapshot_evento_atual_id' => $evento->id])->save();
+
+        foreach ([$matriculado, $transferido] as $aluno) {
+            $this->criarSnapshotExportacao($evento, $ciclo, $avaliacao, $turma, $aluno);
+        }
+
+        $metodo = new ReflectionMethod(AvaliacaoDocumentoExportService::class, 'alunosDaTurma');
+        $metodo->setAccessible(true);
+        $service = new AvaliacaoDocumentoExportService();
+
+        $alunosEmMassa = $metodo->invoke($service, $turma, 'turma', [], $avaliacao);
+
+        $this->assertSame([$matriculado->id], $alunosEmMassa->pluck('id')->all());
+        $this->assertStringContainsString((string) $semSnapshot->id, $service->mensagemAvisosExportacao());
+
+        $alunoIndividual = $metodo->invoke(
+            $service,
+            $turma,
+            'aluno',
+            ['aluno_id' => $transferido->id],
+            $avaliacao,
+        );
+
+        $this->assertSame([$transferido->id], $alunoIndividual->pluck('id')->all());
+
+        $documentos = app(AvaliacaoDocumentoBatchReader::class)
+            ->lerParaAlunos($avaliacao->id, collect([$matriculado]), $turma);
+
+        $this->assertSame('snapshot', $documentos->first()->origem);
     }
 
     public function test_resolve_diretor_e_coordenador_por_funcoes_do_servidor_para_o_documento(): void
@@ -1042,6 +1124,40 @@ class AvaliacaoDocumentoExportTest extends TestCase
         ]);
 
         return [$direcao, $coordenacao];
+    }
+
+    private function criarSnapshotExportacao(
+        AvaliacaoSnapshotEvento $evento,
+        AvaliacaoTurmaCiclo $ciclo,
+        Avaliacao $avaliacao,
+        Turma $turma,
+        Aluno $aluno,
+    ): AvaliacaoAlunoSnapshot {
+        $payload = [
+            'v' => 1,
+            'pautas' => [],
+            'informacoes_complementares' => [],
+            'turma_avaliativa' => [
+                'id' => $turma->id,
+                'nome' => $turma->nome,
+                'turno' => $turma->turno,
+                'escola_id' => $turma->id_escola,
+                'serie_id' => $turma->id_serie,
+            ],
+        ];
+
+        return AvaliacaoAlunoSnapshot::query()->create([
+            'evento_id' => $evento->id,
+            'avaliacao_id' => $avaliacao->id,
+            'ciclo_id' => $ciclo->id,
+            'turma_avaliativa_id' => $turma->id,
+            'turma_origem_id' => $turma->id,
+            'aluno_id' => $aluno->id,
+            'cgm' => $aluno->cgm,
+            'tipo' => AvaliacaoSnapshotEvento::TIPO_CONCLUSAO,
+            'payload' => $payload,
+            'payload_hash' => hash('sha256', json_encode($payload)),
+        ]);
     }
 
     private function criarEscola(string $nome): Escola
