@@ -486,7 +486,7 @@ class EventoCalendarioServiceTest extends TestCase
         $this->assertStringContainsString('addressDisplayInput()', $mapScript);
         $this->assertStringContainsString('return this.addressDisplayInput() || this.fieldInput(\'endereco_mapa\');', $mapScript);
         $this->assertStringContainsString("attribute.name.startsWith('wire:model')", $mapScript);
-        $this->assertStringContainsString('wire.$wire.set(model, value, false)', $mapScript);
+        $this->assertStringContainsString('wire.set(model, value, false)', $mapScript);
         $this->assertStringContainsString('if (! response.ok) throw new Error(`HTTP ${response.status}`);', $mapScript);
         $this->assertStringContainsString("console.log('[evento-local-map] Endereço retornado para o ponto selecionado:'", $mapScript);
         $this->assertStringContainsString("console.log('[evento-local-map] Coordenadas clicadas no mapa:'", $mapScript);

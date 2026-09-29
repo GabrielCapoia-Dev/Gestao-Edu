@@ -208,6 +208,7 @@ class AgendaProximosDias extends Component
                 redeCompleta: $escopo === 'rede',
                 somenteReservasVeiculos: $escopo === 'veiculos',
                 somenteNaoEncerrados: true,
+                ignorarPedidosManutencao: $escopo === 'rede',
             );
         } catch (\Throwable $exception) {
             $this->erro = $exception instanceof InvalidArgumentException

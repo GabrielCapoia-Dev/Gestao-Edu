@@ -44,7 +44,7 @@ window.eventoLocalMap = function () {
 
             if (! model || ! wire) return false;
 
-            wire.$wire.set(model, value, false);
+            wire.set(model, value, false);
 
             return true;
         },

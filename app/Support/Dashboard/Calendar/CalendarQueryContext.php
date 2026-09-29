@@ -30,6 +30,7 @@ final readonly class CalendarQueryContext
         public bool $somenteReservasVeiculos = false,
         public bool $somenteNaoEncerrados = false,
         public bool $manutencaoSomenteEscolasUsuario = false,
+        public bool $ignorarPedidosManutencao = false,
     ) {
         if ($fim->lt($inicio)) {
             throw new InvalidArgumentException('A data final deve ser posterior ou igual à data inicial.');

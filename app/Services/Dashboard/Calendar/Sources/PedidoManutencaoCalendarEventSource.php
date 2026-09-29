@@ -33,6 +33,7 @@ class PedidoManutencaoCalendarEventSource implements CalendarEventSource
     public function supports(CalendarQueryContext $context): bool
     {
         return (bool) config('dashboard.calendar.sources.pedidos_manutencao', true)
+            && ! $context->ignorarPedidosManutencao
             && Gate::forUser($context->user)->allows('viewAny', Pedido::class);
     }
 
