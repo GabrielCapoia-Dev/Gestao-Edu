@@ -2,6 +2,7 @@
     class="evento-local-map"
     x-data="eventoLocalMap()"
     x-init="init()"
+    data-reverse-geocode-url="{{ route('eventos-calendario.localizacoes.reverter') }}"
     wire:ignore
 >
     <div class="evento-local-map__search">

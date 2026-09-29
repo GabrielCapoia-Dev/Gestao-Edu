@@ -68,7 +68,13 @@ window.eventoLocalMap = function () {
                 maxZoom: 19,
                 attribution: '&copy; OpenStreetMap contributors',
             }).addTo(this.map);
-            this.map.on('click', ({ latlng }) => this.selectPoint(latlng.lat, latlng.lng, true));
+            console.info('[evento-local-map] Mapa do evento pronto para receber cliques.');
+            this.map.on('click', ({ latlng }) => {
+                const coordenadas = { latitude: latlng.lat, longitude: latlng.lng };
+                console.log('[evento-local-map] Coordenadas clicadas no mapa:', coordenadas);
+                this.selectPoint(latlng.lat, latlng.lng, true)
+                    .catch(error => console.error('[evento-local-map] Falha ao processar o ponto clicado:', error));
+            });
             const lat = parseFloat(this.latitudeInput()?.value);
             const lng = parseFloat(this.longitudeInput()?.value);
             if (Number.isFinite(lat) && Number.isFinite(lng)) {
@@ -112,7 +118,7 @@ window.eventoLocalMap = function () {
         async selectPoint(lat, lng, reverse = true, label = null) {
             const latitude = this.latitudeInput();
             const longitude = this.longitudeInput();
-            if (! this.marker) this.marker = L.marker([lat, lng], { draggable: true }).addTo(this.map);
+            if (! this.marker) this.marker = L.marker([lat, lng], { draggable: true, bubblingMouseEvents: true }).addTo(this.map);
             else this.marker.setLatLng([lat, lng]);
             this.marker.off('dragend').on('dragend', ({ target }) => {
                 const point = target.getLatLng();
@@ -150,10 +156,23 @@ window.eventoLocalMap = function () {
         },
         async reverseGeocode(lat, lng) {
             try {
-                const response = await fetch(`/admin/eventos-calendario/localizacoes/reverter?latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lng)}`, { headers: { Accept: 'application/json' } });
+                const endpoint = this.$root.dataset.reverseGeocodeUrl || '/admin/eventos-calendario/localizacoes/reverter';
+                const url = new URL(endpoint, window.location.origin);
+                url.searchParams.set('latitude', lat);
+                url.searchParams.set('longitude', lng);
+                console.info('[evento-local-map] Consultando Nominatim para as coordenadas:', { latitude: lat, longitude: lng, url: url.toString() });
+
+                const response = await fetch(url, { headers: { Accept: 'application/json' } });
+                let result = null;
+                try {
+                    result = await response.json();
+                } catch (error) {
+                    console.error('[evento-local-map] A resposta do endpoint de geocodificação não é JSON.', { status: response.status, error });
+                }
+                console.log('[evento-local-map] Resposta do Nominatim:', { status: response.status, ok: response.ok, result });
+
                 if (! response.ok) throw new Error(`HTTP ${response.status}`);
-                const result = await response.json();
-                if (result.endereco) { this.setAddress(result.endereco); this.message = ''; return; }
+                if (result?.endereco) { this.setAddress(result.endereco); this.message = ''; return; }
                 console.warn('[evento-local-map] O Nominatim não retornou endereço para o ponto.', { lat, lng, status: response.status, result });
             } catch (error) {
                 console.error('[evento-local-map] Falha ao consultar o Nominatim para o ponto selecionado.', { lat, lng, error });

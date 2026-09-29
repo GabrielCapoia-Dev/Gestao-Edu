@@ -489,7 +489,11 @@ class EventoCalendarioServiceTest extends TestCase
         $this->assertStringContainsString('wire.$wire.set(model, value, false)', $mapScript);
         $this->assertStringContainsString('if (! response.ok) throw new Error(`HTTP ${response.status}`);', $mapScript);
         $this->assertStringContainsString("console.log('[evento-local-map] Endereço retornado para o ponto selecionado:'", $mapScript);
+        $this->assertStringContainsString("console.log('[evento-local-map] Coordenadas clicadas no mapa:'", $mapScript);
+        $this->assertStringContainsString("console.log('[evento-local-map] Resposta do Nominatim:'", $mapScript);
+        $this->assertStringContainsString('bubblingMouseEvents: true', $mapScript);
         $this->assertStringNotContainsString('https://nominatim.openstreetmap.org/reverse', $mapScript);
+        $this->assertStringContainsString('data-reverse-geocode-url="{{ route(\'eventos-calendario.localizacoes.reverter\') }}"', file_get_contents(resource_path('views/filament/admin/pages/fields/evento-local-map.blade.php')));
         $this->assertStringContainsString('data-evento-map-address', $modalBlade);
         $this->assertStringContainsString("new CustomEvent('evento-mapa-endereco'", $mapScript);
         $this->assertStringContainsString('Nome ou referência do local', $modalBlade);
