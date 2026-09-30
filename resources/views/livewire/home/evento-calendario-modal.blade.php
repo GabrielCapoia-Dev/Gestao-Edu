@@ -380,32 +380,51 @@
                                                 @else
                                                     <div class="evento-custom-modal__groups">
                                                         @foreach ($gruposAlunos as $escola => $porSerie)
-                                                            <details>
-                                                                <summary><strong>{{ $escola }}</strong><span>{{ $porSerie->flatten(1)->count() }} aluno(s)⌄</span></summary>
-                                                                @foreach ($porSerie as $serie => $porTurma)
-                                                                    <details class="evento-custom-modal__nested-group">
-                                                                        <summary><strong>{{ $serie }}</strong><span>{{ $porTurma->count() }} aluno(s)⌄</span></summary>
-                                                                        @foreach ($porTurma->groupBy('turma') as $turma => $pessoas)
-                                                                            <details class="evento-custom-modal__nested-group">
-                                                                                <summary><strong>{{ $turma }} · {{ $pessoas->first()['turno'] }}</strong><span>{{ $pessoas->count() }} aluno(s)⌄</span></summary>
-                                                                                <div class="evento-custom-modal__table-wrap">
-                                                                                    <table>
-                                                                                        <thead><tr><th>Aluno</th><th></th></tr></thead>
-                                                                                        <tbody>
-                                                                                            @foreach ($pessoas as $aluno)
-                                                                                                <tr>
-                                                                                                    <td>{{ $aluno['nome'] }}</td>
-                                                                                                    <td><button type="button" wire:click="removerAluno({{ $aluno['id'] }})" aria-label="Remover {{ $aluno['nome'] }}">&times;</button></td>
-                                                                                                </tr>
-                                                                                            @endforeach
-                                                                                        </tbody>
-                                                                                    </table>
-                                                                                </div>
-                                                                            </details>
-                                                                        @endforeach
-                                                                    </details>
-                                                                @endforeach
-                                                            </details>
+                                                            <section class="evento-custom-modal__school-group" x-data="{ aberto: false }" wire:key="transporte-escola-{{ md5((string) $escola) }}">
+                                                                <div class="evento-custom-modal__school-heading">
+                                                                    <button type="button" class="evento-custom-modal__school-toggle" x-on:click="aberto = ! aberto" x-bind:aria-expanded="aberto.toString()">
+                                                                        <strong>{{ $escola }}</strong><span>{{ $porSerie->flatten(1)->count() }} aluno(s)</span><span aria-hidden="true" x-text="aberto ? '⌃' : '⌄'"></span>
+                                                                    </button>
+                                                                    <button type="button" class="evento-custom-modal__remove-school" wire:click="removerGrupoAlunos('escola', @js((string) $escola))" aria-label="Remover {{ $escola }} do transporte" title="Remover escola do transporte">&times;</button>
+                                                                </div>
+                                                                <div x-show="aberto" x-cloak>
+                                                                    @foreach ($porSerie as $serie => $porTurma)
+                                                                        <section class="evento-custom-modal__school-group evento-custom-modal__nested-group" x-data="{ aberto: false }" wire:key="transporte-serie-{{ md5((string) $escola.'|'.(string) $serie) }}">
+                                                                            <div class="evento-custom-modal__school-heading">
+                                                                                <button type="button" class="evento-custom-modal__school-toggle" x-on:click="aberto = ! aberto" x-bind:aria-expanded="aberto.toString()">
+                                                                                    <strong>{{ $serie }}</strong><span>{{ $porTurma->count() }} aluno(s)</span><span aria-hidden="true" x-text="aberto ? '⌃' : '⌄'"></span>
+                                                                                </button>
+                                                                                <button type="button" class="evento-custom-modal__remove-school" wire:click="removerGrupoAlunos('serie', @js((string) $escola), @js((string) $serie))" aria-label="Remover série {{ $serie }} do transporte" title="Remover série do transporte">&times;</button>
+                                                                            </div>
+                                                                            <div x-show="aberto" x-cloak>
+                                                                                @foreach ($porTurma->groupBy('turma') as $turma => $pessoas)
+                                                                                    <section class="evento-custom-modal__school-group evento-custom-modal__nested-group" x-data="{ aberto: false }" wire:key="transporte-turma-{{ md5((string) $escola.'|'.(string) $serie.'|'.(string) $turma) }}">
+                                                                                        <div class="evento-custom-modal__school-heading">
+                                                                                            <button type="button" class="evento-custom-modal__school-toggle" x-on:click="aberto = ! aberto" x-bind:aria-expanded="aberto.toString()">
+                                                                                                <strong>{{ $turma }} · {{ $pessoas->first()['turno'] }}</strong><span>{{ $pessoas->count() }} aluno(s)</span><span aria-hidden="true" x-text="aberto ? '⌃' : '⌄'"></span>
+                                                                                            </button>
+                                                                                            <button type="button" class="evento-custom-modal__remove-school" wire:click="removerGrupoAlunos('turma', @js((string) $escola), @js((string) $serie), @js((string) $turma))" aria-label="Remover turma {{ $turma }} do transporte" title="Remover turma do transporte">&times;</button>
+                                                                                        </div>
+                                                                                        <div class="evento-custom-modal__table-wrap" x-show="aberto" x-cloak>
+                                                                                            <table>
+                                                                                                <thead><tr><th>Aluno</th><th></th></tr></thead>
+                                                                                                <tbody>
+                                                                                                    @foreach ($pessoas as $aluno)
+                                                                                                        <tr wire:key="transporte-aluno-{{ $aluno['id'] }}">
+                                                                                                            <td>{{ $aluno['nome'] }}</td>
+                                                                                                            <td><button type="button" wire:click="removerAluno({{ $aluno['id'] }})" aria-label="Remover {{ $aluno['nome'] }}">&times;</button></td>
+                                                                                                        </tr>
+                                                                                                    @endforeach
+                                                                                                </tbody>
+                                                                                            </table>
+                                                                                        </div>
+                                                                                    </section>
+                                                                                @endforeach
+                                                                            </div>
+                                                                        </section>
+                                                                    @endforeach
+                                                                </div>
+                                                            </section>
                                                         @endforeach
                                                     </div>
                                                 @endif

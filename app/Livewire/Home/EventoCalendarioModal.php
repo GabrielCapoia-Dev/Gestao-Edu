@@ -322,13 +322,41 @@ final class EventoCalendarioModal extends Component
     /** @param int|string $id */
     public function removerAluno(int|string $id): void
     {
-        $ids = $this->ids($this->data['transporte_excecoes_aluno_ids'] ?? []);
-        $ids[] = (int) $id;
-        $this->data['transporte_excecoes_aluno_ids'] = array_values(array_unique($ids));
-        $this->alunos = array_values(array_filter(
-            $this->alunos,
-            fn (array $aluno): bool => (int) ($aluno['id'] ?? 0) !== (int) $id,
-        ));
+        $this->autorizarCriacao();
+
+        $id = (int) $id;
+        if (! collect($this->alunos)->contains(fn (array $aluno): bool => (int) ($aluno['id'] ?? 0) === $id)) {
+            return;
+        }
+
+        $this->excluirAlunosDaSelecao([$id]);
+    }
+
+    public function removerGrupoAlunos(string $nivel, string $escola, ?string $serie = null, ?string $turma = null): void
+    {
+        $this->autorizarCriacao();
+
+        if (! in_array($nivel, ['escola', 'serie', 'turma'], true)) {
+            return;
+        }
+
+        $alunosDoGrupo = collect($this->alunos)->filter(function (array $aluno) use ($nivel, $escola, $serie, $turma): bool {
+            if ((string) ($aluno['escola'] ?? '') !== $escola) {
+                return false;
+            }
+
+            if ($nivel === 'escola') {
+                return true;
+            }
+
+            if ((string) ($aluno['serie'] ?? '') !== $serie) {
+                return false;
+            }
+
+            return $nivel === 'serie' || (string) ($aluno['turma'] ?? '') === $turma;
+        });
+
+        $this->excluirAlunosDaSelecao($alunosDoGrupo->pluck('id')->map(fn ($id): int => (int) $id)->all());
     }
 
     public function salvar(): void
@@ -532,11 +560,14 @@ final class EventoCalendarioModal extends Component
     /** @param list<array<string, mixed>> $linhas @return list<array<string, mixed>> */
     private function consultarAlunos(array $linhas): array
     {
+        $excecoes = $this->ids($this->data['transporte_excecoes_aluno_ids'] ?? []);
+
         $alunos = Aluno::query()
             ->select(['id', 'nome', 'id_turma'])
             ->with(['turma:id,nome,turno,id_escola,id_serie', 'turma.escola:id,nome', 'turma.serie:id,nome'])
             ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
             ->where('status', Aluno::STATUS_MATRICULADO)
+            ->when($excecoes !== [], fn (Builder $query): Builder => $query->whereNotIn('id', $excecoes))
             ->whereHas('turma', function (Builder $turmas) use ($linhas): void {
                 $turmas->where(function (Builder $filtros) use ($linhas): void {
                     foreach ($linhas as $linha) {
@@ -567,6 +598,24 @@ final class EventoCalendarioModal extends Component
                 'turno' => $this->turnoLabel($aluno->turma?->turno),
             ];
         })->values()->all();
+    }
+
+    /** @param list<int> $ids */
+    private function excluirAlunosDaSelecao(array $ids): void
+    {
+        $ids = $this->ids($ids);
+
+        if ($ids === []) {
+            return;
+        }
+
+        $excecoes = $this->ids($this->data['transporte_excecoes_aluno_ids'] ?? []);
+        $this->data['transporte_excecoes_aluno_ids'] = array_values(array_unique([...$excecoes, ...$ids]));
+        $idsRemovidos = array_fill_keys($ids, true);
+        $this->alunos = array_values(array_filter(
+            $this->alunos,
+            fn (array $aluno): bool => ! isset($idsRemovidos[(int) ($aluno['id'] ?? 0)]),
+        ));
     }
 
     /** @return array<string, mixed> */

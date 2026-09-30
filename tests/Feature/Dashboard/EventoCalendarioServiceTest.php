@@ -591,6 +591,38 @@ class EventoCalendarioServiceTest extends TestCase
         $this->assertStringContainsString('.evento-custom-modal__remove-school', $modalCss);
     }
 
+    public function test_remover_grupos_de_transporte_registra_excecoes_em_cada_nivel(): void
+    {
+        [$ator] = $this->atorEscolar('REMOVER-TRANSPORTE');
+        $alunos = [
+            ['id' => 201, 'nome' => 'Aluno A', 'escola' => 'Escola A', 'serie' => 'Infantil 3', 'turma' => 'A', 'turno' => 'Manhã'],
+            ['id' => 202, 'nome' => 'Aluno B', 'escola' => 'Escola A', 'serie' => 'Infantil 3', 'turma' => 'B', 'turno' => 'Manhã'],
+            ['id' => 203, 'nome' => 'Aluno C', 'escola' => 'Escola B', 'serie' => '1º ano', 'turma' => 'A', 'turno' => 'Tarde'],
+        ];
+
+        $modal = Livewire::actingAs($ator)
+            ->test(EventoCalendarioModal::class)
+            ->call('abrir')
+            ->set('alunos', $alunos)
+            ->set('alunosConsultados', true)
+            ->call('removerGrupoAlunos', 'turma', 'Escola A', 'Infantil 3', 'A')
+            ->assertSet('alunos.0.id', 202)
+            ->assertSet('data.transporte_excecoes_aluno_ids', [201])
+            ->call('removerGrupoAlunos', 'serie', 'Escola A', 'Infantil 3')
+            ->assertSet('alunos.0.id', 203)
+            ->assertSet('data.transporte_excecoes_aluno_ids', [201, 202])
+            ->call('removerGrupoAlunos', 'escola', 'Escola B')
+            ->assertSet('alunos', [])
+            ->assertSet('data.transporte_excecoes_aluno_ids', [201, 202, 203])
+            ->assertSet('alunosConsultados', true);
+
+        $modalBlade = file_get_contents(resource_path('views/livewire/home/evento-calendario-modal.blade.php'));
+        $modalPhp = file_get_contents(app_path('Livewire/Home/EventoCalendarioModal.php'));
+
+        $this->assertSame(3, substr_count($modalBlade, 'wire:click="removerGrupoAlunos('));
+        $this->assertStringContainsString("whereNotIn('id', \$excecoes)", $modalPhp);
+    }
+
     public function test_rejeita_envio_paralelo_para_todos_os_usuarios(): void
     {
         [$ator] = $this->atorEscolar('PUBLICO');
