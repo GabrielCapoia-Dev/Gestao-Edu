@@ -385,7 +385,7 @@
                                                                     <button type="button" class="evento-custom-modal__school-toggle" x-on:click="aberto = ! aberto" x-bind:aria-expanded="aberto.toString()">
                                                                         <strong>{{ $escola }}</strong><span>{{ $porSerie->flatten(1)->count() }} aluno(s)</span><span aria-hidden="true" x-text="aberto ? '⌃' : '⌄'"></span>
                                                                     </button>
-                                                                    <button type="button" class="evento-custom-modal__remove-school" wire:click="removerGrupoAlunos('escola', @js((string) $escola))" aria-label="Remover {{ $escola }} do transporte" title="Remover escola do transporte">&times;</button>
+                                                                    <button type="button" class="evento-custom-modal__remove-school" data-action-loading="local" wire:click="removerGrupoAlunos('escola', @js((string) $escola))" aria-label="Remover {{ $escola }} do transporte" title="Remover escola do transporte">&times;</button>
                                                                 </div>
                                                                 <div x-show="aberto" x-cloak>
                                                                     @foreach ($porSerie as $serie => $porTurma)
@@ -394,7 +394,7 @@
                                                                                 <button type="button" class="evento-custom-modal__school-toggle" x-on:click="aberto = ! aberto" x-bind:aria-expanded="aberto.toString()">
                                                                                     <strong>{{ $serie }}</strong><span>{{ $porTurma->count() }} aluno(s)</span><span aria-hidden="true" x-text="aberto ? '⌃' : '⌄'"></span>
                                                                                 </button>
-                                                                                <button type="button" class="evento-custom-modal__remove-school" wire:click="removerGrupoAlunos('serie', @js((string) $escola), @js((string) $serie))" aria-label="Remover série {{ $serie }} do transporte" title="Remover série do transporte">&times;</button>
+                                                                                <button type="button" class="evento-custom-modal__remove-school" data-action-loading="local" wire:click="removerGrupoAlunos('serie', @js((string) $escola), @js((string) $serie))" aria-label="Remover série {{ $serie }} do transporte" title="Remover série do transporte">&times;</button>
                                                                             </div>
                                                                             <div x-show="aberto" x-cloak>
                                                                                 @foreach ($porTurma->groupBy('turma') as $turma => $pessoas)
@@ -403,7 +403,7 @@
                                                                                             <button type="button" class="evento-custom-modal__school-toggle" x-on:click="aberto = ! aberto" x-bind:aria-expanded="aberto.toString()">
                                                                                                 <strong>{{ $turma }} · {{ $pessoas->first()['turno'] }}</strong><span>{{ $pessoas->count() }} aluno(s)</span><span aria-hidden="true" x-text="aberto ? '⌃' : '⌄'"></span>
                                                                                             </button>
-                                                                                            <button type="button" class="evento-custom-modal__remove-school" wire:click="removerGrupoAlunos('turma', @js((string) $escola), @js((string) $serie), @js((string) $turma))" aria-label="Remover turma {{ $turma }} do transporte" title="Remover turma do transporte">&times;</button>
+                                                                                            <button type="button" class="evento-custom-modal__remove-school" data-action-loading="local" wire:click="removerGrupoAlunos('turma', @js((string) $escola), @js((string) $serie), @js((string) $turma))" aria-label="Remover turma {{ $turma }} do transporte" title="Remover turma do transporte">&times;</button>
                                                                                         </div>
                                                                                         <div class="evento-custom-modal__table-wrap" x-show="aberto" x-cloak>
                                                                                             <table>
@@ -412,7 +412,7 @@
                                                                                                     @foreach ($pessoas as $aluno)
                                                                                                         <tr wire:key="transporte-aluno-{{ $aluno['id'] }}">
                                                                                                             <td>{{ $aluno['nome'] }}</td>
-                                                                                                            <td><button type="button" wire:click="removerAluno({{ $aluno['id'] }})" aria-label="Remover {{ $aluno['nome'] }}">&times;</button></td>
+                                                                                                            <td><button type="button" data-action-loading="local" wire:click="removerAluno({{ $aluno['id'] }})" aria-label="Remover {{ $aluno['nome'] }}">&times;</button></td>
                                                                                                         </tr>
                                                                                                     @endforeach
                                                                                                 </tbody>

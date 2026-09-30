@@ -620,6 +620,7 @@ class EventoCalendarioServiceTest extends TestCase
         $modalPhp = file_get_contents(app_path('Livewire/Home/EventoCalendarioModal.php'));
 
         $this->assertSame(3, substr_count($modalBlade, 'wire:click="removerGrupoAlunos('));
+        $this->assertSame(4, substr_count($modalBlade, 'data-action-loading="local" wire:click="remover'));
         $this->assertStringContainsString("whereNotIn('id', \$excecoes)", $modalPhp);
     }
 
