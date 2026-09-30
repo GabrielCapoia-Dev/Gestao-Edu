@@ -313,6 +313,7 @@ class FeedbackPedido extends Page implements HasTable
                 ->label('Data de início')
                 ->minDate(fn (): ?string => $this->firstPedidoDate())
                 ->maxDate(now()->toDateString())
+                ->default(fn (): ?string => $this->firstPedidoDate())
                 ->required(),
 
             Forms\Components\DatePicker::make('data_fim')

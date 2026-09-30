@@ -15,15 +15,12 @@ use App\Models\TipoManutencaoOpcao;
 use App\Models\TipoStatus;
 use App\Models\User;
 use App\Services\Exports\Handlers\FeedbackPedidoExportHandler;
-use App\Services\Relatorios\ChartRenderService;
 use App\Services\Relatorios\FeedbackPedidoAnalyticsService;
-use App\Services\Relatorios\FeedbackPedidoRelatorioService;
 use App\Services\UserSetorAccessService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
-use Mockery;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 use Spatie\Permission\Models\Role;
@@ -279,27 +276,11 @@ class FeedbackPedidoExportQueueTest extends TestCase
             'progress_total' => 100,
         ]);
 
-        app()->instance(ChartRenderService::class, tap(Mockery::mock(ChartRenderService::class), function ($mock): void {
-            $mock->shouldReceive('renderizarGrafico')->andReturn(null);
-            $mock->shouldReceive('renderizarGraficoLocal')->andReturn(null);
-        }));
-
-        app()->instance(FeedbackPedidoRelatorioService::class, tap(Mockery::mock(FeedbackPedidoRelatorioService::class), function ($mock) use ($dados): void {
-            $mock->shouldReceive('gerarComGraficosEMatriz')
-                ->once()
-                ->withArgs(function (...$arguments) use ($dados): bool {
-                    $this->assertSame([$dados['feedback']->id], $arguments[3]->pluck('id')->all());
-
-                    return true;
-                })
-                ->andReturn(response('PDF CONTENT', 200, ['Content-Type' => 'application/pdf']));
-        }));
-
         $result = app(FeedbackPedidoExportHandler::class)->handle($exportRequest->load('user'));
 
         Storage::disk('local')->assertExists($result->path);
         $this->assertSame('application/pdf', $result->mime);
-        $this->assertSame(strlen('PDF CONTENT'), $result->sizeBytes);
+        $this->assertGreaterThan(0, $result->sizeBytes);
     }
 
     public function test_listagem_e_analytics_respeitam_escola_e_admin_mantem_escopo_global(): void

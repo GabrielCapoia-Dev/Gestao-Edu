@@ -33,6 +33,9 @@ Route::view('/termos-de-servico', 'public.terms')->name('public.terms');
 Route::get('/pedidos/relatorio-geral', [PedidoRelatorioGeralController::class, 'exportar'])
     ->middleware('auth')
     ->name('pedidos.relatorio-geral');
+Route::get('/pedidos/relatorio-listagem', [PedidoRelatorioGeralController::class, 'exportarListagem'])
+    ->middleware('auth')
+    ->name('pedidos.relatorio-listagem');
 
 Route::get('/oauth/redirect/google', [GoogleAuthController::class, 'redirect'])->name('google.redirect');
 Route::get('/oauth/callback/google', [GoogleAuthController::class, 'callback'])->name('google.callback');

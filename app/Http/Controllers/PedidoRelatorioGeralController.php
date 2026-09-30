@@ -22,6 +22,16 @@ class PedidoRelatorioGeralController extends Controller
 
     public function exportar(Request $request): RedirectResponse
     {
+        return $this->queue($request, 'pedido_relatorio_geral', 'Relatório analítico de pedidos');
+    }
+
+    public function exportarListagem(Request $request): RedirectResponse
+    {
+        return $this->queue($request, 'pedido_relatorio_listagem', 'Listagem de pedidos');
+    }
+
+    private function queue(Request $request, string $type, string $label): RedirectResponse
+    {
         $user = app(ProfilePreviewService::class)->effectiveUser();
 
         Gate::forUser($user)->authorize('exportReports', Pedido::class);
@@ -39,11 +49,11 @@ class PedidoRelatorioGeralController extends Controller
 
             $exportRequest = $this->exports->queue(
                 user: $user,
-                type: 'pedido_relatorio_geral',
+                type: $type,
                 format: 'pdf',
                 filters: $filtros,
-                label: 'Relatório geral de pedidos',
-                metadata: ['route' => 'pedidos.relatorio-geral'],
+                label: $label,
+                metadata: ['route' => $request->route()?->getName()],
             );
 
             Notification::make()

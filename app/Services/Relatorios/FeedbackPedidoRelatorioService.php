@@ -32,8 +32,6 @@ class FeedbackPedidoRelatorioService
         array $rankingEscolas = [],
         array $distribuicaoNotas = [],
     ) {
-        ini_set('memory_limit', '512M');
-
         $usuario = $usuarioExportacao ?? Auth::user();
         $view = $tipo === FeedbackPedidoAnalyticsService::REPORT_EMPRESAS || $tipo === 'terceirizada'
             ? 'relatorios.FeedbackPedidos.relatorio-terceirizada'
@@ -73,8 +71,6 @@ class FeedbackPedidoRelatorioService
         ?string $graficoPorNota = null,
         array $reportFilters = [],
     ) {
-        ini_set('memory_limit', '512M');
-
         return $this->renderer->stream('relatorios.FeedbackPedidos.relatorio', [
             'mediaGeral' => $mediaGeral,
             'totalAvaliacoes' => $totalAvaliacoes,
@@ -103,8 +99,6 @@ class FeedbackPedidoRelatorioService
         Collection $feedbacks,
         array $reportFilters = [],
     ) {
-        ini_set('memory_limit', '512M');
-
         return $this->renderer->stream('relatorios.FeedbackPedidos.relatorio', [
             'mediaGeral' => $mediaGeral,
             'totalAvaliacoes' => $totalAvaliacoes,

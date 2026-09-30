@@ -32,10 +32,29 @@ class RelatorioPdfRenderer
         return $this->respond('attachment', $view, $data, $fileName);
     }
 
+    public function renderToFile(string $view, array $data, string $targetPath): void
+    {
+        $this->assertViewExists($view);
+        $contents = $this->renderPdf($view, $data);
+
+        if (file_put_contents($targetPath, $contents) === false) {
+            throw new \RuntimeException('Não foi possível gravar a parte temporária do relatório.');
+        }
+    }
+
     protected function respond(string $disposition, string $view, array $data, string $fileName): Response
     {
         $this->assertViewExists($view);
+        $contents = $this->renderPdf($view, $data);
 
+        return response($contents, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => sprintf('%s; filename="%s"', $disposition, addslashes($fileName)),
+        ]);
+    }
+
+    private function renderPdf(string $view, array $data): string
+    {
         $payload = $this->normalizePayload($data);
 
         $pdf = Pdf::loadView($view, $payload)
@@ -53,10 +72,7 @@ class RelatorioPdfRenderer
             $this->applyPagination($dompdf);
         }
 
-        return response($pdf->output(), 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => sprintf('%s; filename="%s"', $disposition, addslashes($fileName)),
-        ]);
+        return $pdf->output();
     }
 
     /**

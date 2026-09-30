@@ -10,7 +10,7 @@
 @extends('relatorios.layouts.base-pdf')
 
 @section('reportTitle', $reportTitle ?? 'Relatório Analítico de Pedidos de Manutenção')
-@section('reportSubtitle', $reportSubtitle ?? 'Visão consolidada com indicadores e listagem detalhada')
+@section('reportSubtitle', $reportSubtitle ?? 'Visão consolidada com indicadores e agrupamentos')
 
 @section('styles')
     .page-break {
@@ -437,80 +437,4 @@
         </table>
     @endif
 
-    <div class="page-break"></div>
-    <div class="section-title">Listagem de Pedidos</div>
-
-    @if($pedidos->isEmpty())
-        <p style="text-align: center; color: #6b7280; padding: 20px 0;">
-            Nenhum pedido encontrado para os filtros selecionados.
-        </p>
-    @else
-        <table class="listing-table">
-            <thead>
-                <tr>
-                    <th style="width: 9%;">Protocolo</th>
-                    <th style="width: 16%;">Escola</th>
-                    <th style="width: 11%;">Tipo</th>
-                    <th style="width: 10%;">Status</th>
-                    <th style="width: 8%;">Registro</th>
-                    <th style="width: 8%;">Identificado</th>
-                    <th style="width: 8%;">Solicitado</th>
-                    <th style="width: 8%;">Concluído</th>
-                    <th style="width: 12%;">Problemas</th>
-                    <th style="width: 10%;">Empresa</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($pedidos as $pedido)
-                    @php
-                        $statusCor = '#' . ltrim($pedido->status_cor ?? '6b7280', '#');
-                        $prioridadeCor = $coresPrioridade[$pedido->nivel_prioridade ?? 'Indeterminado'] ?? '#2b2b2b';
-                        $prazoCls = '';
-
-                        if (! empty($pedido->data_prevista)) {
-                            if (! empty($pedido->data_entrega)) {
-                                $prazoCls = $pedido->data_entrega > $pedido->data_prevista ? 'text-danger' : 'text-ok';
-                            } elseif ($pedido->data_prevista < now()->toDateString()) {
-                                $prazoCls = 'text-danger';
-                            }
-                        }
-                    @endphp
-                    <tr>
-                        <td>
-                            <strong>{{ $pedido->numero_protocolo }}</strong>
-                            @if($pedido->pedido_principal_protocolo)
-                                <br><span class="text-gray">Origem: {{ $pedido->pedido_principal_protocolo }}</span>
-                            @elseif((int) ($pedido->adicionais_count ?? 0) > 0)
-                                <br><span class="text-gray">{{ $pedido->adicionais_count }} adicional(is)</span>
-                            @endif
-                        </td>
-                        <td>{{ $pedido->escola_nome ?? '-' }}</td>
-                        <td>{{ $pedido->tipo_manutencao_nome ?? '-' }}</td>
-                        <td>
-                            <span class="badge" style="background: {{ $statusCor }};">
-                                {{ $pedido->status_nome ?? '-' }}
-                            </span>
-                        </td>
-                        <td>{{ $pedido->is_pedido_adicional ? 'Adicional' : 'Principal' }}</td>
-                        <td>{{ $pedido->data_identificacao_problema ? \Carbon\Carbon::parse($pedido->data_identificacao_problema)->format('d/m/Y') : '-' }}</td>
-                        <td>{{ $pedido->data_solicitacao ? \Carbon\Carbon::parse($pedido->data_solicitacao)->format('d/m/Y') : '-' }}</td>
-                        <td class="{{ $pedido->data_entrega ? 'text-ok' : 'text-gray' }}">
-                            {{ $pedido->data_entrega ? \Carbon\Carbon::parse($pedido->data_entrega)->format('d/m/Y') : '-' }}
-                        </td>
-                        <td style="font-size: 8px;">
-                            {{ $pedido->problemas ?? '-' }}
-                            @if($pedido->resultados_feedback)
-                                <br><span class="text-gray">{{ $pedido->resultados_feedback }}</span>
-                            @endif
-                        </td>
-                        <td style="font-size: 8px;">{{ $pedido->empresa_nome ?? '-' }}</td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
-
-        <p style="text-align: right; font-size: 9px; color: #6b7280; margin-top: 6px;">
-            Total: {{ $metricas->total }} pedido(s)
-        </p>
-    @endif
 @endsection

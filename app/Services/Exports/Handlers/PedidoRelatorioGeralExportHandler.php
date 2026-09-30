@@ -3,11 +3,11 @@
 namespace App\Services\Exports\Handlers;
 
 use App\Contracts\Exports\ExportHandler;
+use App\Exceptions\Exports\ExportPermanentException;
 use App\Models\ExportRequest;
 use App\Services\Exports\ExportFileResult;
 use App\Services\Exports\ExportFileStorage;
 use App\Services\Relatorios\PedidoRelatorioGeralService;
-use RuntimeException;
 
 class PedidoRelatorioGeralExportHandler implements ExportHandler
 {
@@ -21,10 +21,10 @@ class PedidoRelatorioGeralExportHandler implements ExportHandler
         $user = $exportRequest->user;
 
         if (! $user) {
-            throw new RuntimeException('Usuário da exportação não encontrado.');
+            throw new ExportPermanentException('Usuário da exportação não encontrado.');
         }
 
-        $exportRequest->updateProgress(10, 100, 'Preparando consulta de pedidos.');
+        $exportRequest->updateProgress(10, 100, 'Preparando consulta analítica de pedidos.');
 
         $response = $this->service->gerar($exportRequest->filters ?? [], $user);
 

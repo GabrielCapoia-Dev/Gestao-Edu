@@ -57,6 +57,48 @@ class ExportFileStorage
         );
     }
 
+    public function storeFile(
+        ExportRequest $exportRequest,
+        string $sourcePath,
+        string $fileName,
+        ?string $mime = null,
+    ): ExportFileResult {
+        if (! is_file($sourcePath) || ! is_readable($sourcePath)) {
+            throw new RuntimeException('O arquivo temporário da exportação não está disponível.');
+        }
+
+        $disk = (string) config('exports.disk', 'local');
+        $safeFileName = $this->sanitizeFileName($fileName);
+        $path = sprintf(
+            'exports/%s/%s/%s',
+            now()->format('Y/m'),
+            $exportRequest->getKey(),
+            $safeFileName
+        );
+        $stream = fopen($sourcePath, 'rb');
+
+        if ($stream === false) {
+            throw new RuntimeException('Não foi possível abrir o arquivo da exportação.');
+        }
+
+        try {
+            if (! Storage::disk($disk)->put($path, $stream)) {
+                throw new RuntimeException('Não foi possível armazenar o arquivo da exportação.');
+            }
+        } finally {
+            fclose($stream);
+        }
+
+        return new ExportFileResult(
+            disk: $disk,
+            path: $path,
+            fileName: $safeFileName,
+            mime: $mime,
+            sizeBytes: filesize($sourcePath) ?: 0,
+            checksum: hash_file('sha256', $sourcePath) ?: null,
+        );
+    }
+
     private function responseContents(Response $response): string
     {
         if ($response instanceof StreamedResponse) {

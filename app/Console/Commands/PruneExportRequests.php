@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\ExportRequest;
 use App\Services\Exports\ExportSessionService;
+use App\Services\Exports\ExportTemporaryFiles;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 
@@ -13,9 +14,10 @@ class PruneExportRequests extends Command
 
     protected $description = 'Remove arquivos de exportacao expirados e marca registros antigos como expirados';
 
-    public function handle(ExportSessionService $sessions): int
+    public function handle(ExportSessionService $sessions, ExportTemporaryFiles $temporaryFiles): int
     {
         $sessionResult = $sessions->expireInactiveSessions();
+        $temporaryRemoved = $temporaryFiles->pruneOrphans();
         $days = (int) ($this->option('days') ?: config('exports.expiration_days', 7));
         $cutoff = now()->subDays(max(1, $days));
         $removed = $sessionResult['files_deleted'];
@@ -60,6 +62,7 @@ class PruneExportRequests extends Command
         $this->info("Arquivos removidos: {$removed}");
         $this->info("Sessoes expiradas: {$sessionResult['expired']}");
         $this->info("Registros expirados removidos: {$recordsRemoved}");
+        $this->info("Diretórios temporários removidos: {$temporaryRemoved}");
 
         return Command::SUCCESS;
     }

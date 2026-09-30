@@ -20,9 +20,7 @@ class PedidoRelatorioGeralService
         protected PedidoService $pedidoService,
     ) {}
 
-    /**
-     * Gera o PDF do relatorio analitico com insights e listagem.
-     */
+    /** Gera somente o PDF analítico; a listagem é processada separadamente. */
     public function gerar(array $filtros, User $usuario): Response
     {
         $reportFilters = $this->formatarFiltros($filtros);
@@ -35,14 +33,20 @@ class PedidoRelatorioGeralService
             'porEscola' => $this->agruparPorEscola($filtros, $usuario),
             'porMes' => $this->evolucaoMensal($filtros, $usuario),
             'metricaFeedback' => $this->metricasFeedback($filtros, $usuario),
-            'pedidos' => $this->buscarPedidosLeve($filtros, $usuario),
             'filtros' => $reportFilters,
             'reportFilters' => $reportFilters,
             'reportTitle' => 'Relatório Analítico de Pedidos de Manutenção',
-            'reportSubtitle' => 'Visão consolidada com indicadores e listagem detalhada',
+            'reportSubtitle' => 'Visão consolidada com indicadores e agrupamentos',
             'usuarioExportacao' => $usuario,
             'dataExportacao' => Carbon::now(),
         ], 'relatório-pedidos-' . now()->format('Y-m-d_H-i') . '.pdf');
+    }
+
+    public function firstPedidoDate(User $usuario): ?string
+    {
+        $date = (clone $this->queryBase([], $usuario))->min('p.data_solicitacao');
+
+        return $date ? Carbon::parse($date)->toDateString() : null;
     }
 
     protected function calcularMetricas(array $filtros, User $usuario): object
@@ -209,7 +213,7 @@ class PedidoRelatorioGeralService
         }
     }
 
-    protected function buscarPedidosLeve(array $filtros, User $usuario): Collection
+    public function queryListagem(array $filtros, User $usuario): QueryBuilder
     {
         return $this->queryBase($filtros, $usuario)
             ->select([
@@ -236,8 +240,30 @@ class PedidoRelatorioGeralService
             ->leftJoin('tipo_status as ts', 'ts.id', '=', 'p.tipo_status_id')
             ->leftJoin('empresas_contratadas as ec', 'ec.id', '=', 'p.empresa_contratada_id')
             ->leftJoin('pedidos as principal', 'principal.id', '=', 'p.pedido_principal_id')
-            ->orderByDesc('p.data_solicitacao')
-            ->get();
+            ->orderBy('p.id');
+    }
+
+    /** @param object $pedido */
+    public function mapPedidoListagem(object $pedido): array
+    {
+        return [
+            'numero_protocolo' => $pedido->numero_protocolo,
+            'nivel_prioridade' => $pedido->nivel_prioridade,
+            'data_solicitacao' => $pedido->data_solicitacao,
+            'data_identificacao_problema' => $pedido->data_identificacao_problema,
+            'data_prevista' => $pedido->data_prevista,
+            'data_entrega' => $pedido->data_entrega,
+            'is_pedido_adicional' => (bool) $pedido->is_pedido_adicional,
+            'escola_nome' => $pedido->escola_nome,
+            'tipo_manutencao_nome' => $pedido->tipo_manutencao_nome,
+            'status_nome' => $pedido->status_nome,
+            'status_cor' => $pedido->status_cor,
+            'empresa_nome' => $pedido->empresa_nome,
+            'pedido_principal_protocolo' => $pedido->pedido_principal_protocolo,
+            'adicionais_count' => (int) ($pedido->adicionais_count ?? 0),
+            'problemas' => $pedido->problemas,
+            'resultados_feedback' => $pedido->resultados_feedback,
+        ];
     }
 
     protected function queryBase(array $filtros, User $usuario): QueryBuilder
@@ -287,7 +313,7 @@ class PedidoRelatorioGeralService
         return $q;
     }
 
-    protected function formatarFiltros(array $filtros): array
+    public function formatarFiltros(array $filtros): array
     {
         $r = [];
 

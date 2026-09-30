@@ -3,14 +3,15 @@
 namespace App\Services\Exports\Handlers;
 
 use App\Contracts\Exports\ExportHandler;
+use App\Exceptions\Exports\ExportPermanentException;
 use App\Models\ExportRequest;
 use App\Services\Exports\ExportFileResult;
 use App\Services\Exports\ExportFileStorage;
+use App\Services\Exports\ChunkedPdfExportService;
 use App\Services\Relatorios\ChartRenderService;
 use App\Services\Relatorios\FeedbackGraficoService;
 use App\Services\Relatorios\FeedbackPedidoAnalyticsService;
 use App\Services\Relatorios\FeedbackPedidoRelatorioService;
-use RuntimeException;
 
 class FeedbackPedidoExportHandler implements ExportHandler
 {
@@ -20,6 +21,7 @@ class FeedbackPedidoExportHandler implements ExportHandler
         private readonly FeedbackGraficoService $graficos,
         private readonly ChartRenderService $chartRender,
         private readonly ExportFileStorage $storage,
+        private readonly ChunkedPdfExportService $chunkedPdf,
     ) {}
 
     public function handle(ExportRequest $exportRequest): ExportFileResult
@@ -27,7 +29,7 @@ class FeedbackPedidoExportHandler implements ExportHandler
         $user = $exportRequest->user;
 
         if (! $user) {
-            throw new RuntimeException('Usuário da exportação não encontrado.');
+            throw new ExportPermanentException('Usuário da exportação não encontrado.');
         }
 
         $filters = $this->analytics->normalizeFilters($exportRequest->filters ?? []);
@@ -36,9 +38,33 @@ class FeedbackPedidoExportHandler implements ExportHandler
         $exportRequest->updateProgress(10, 100, 'Preparando feedbacks.');
 
         $query = $this->analytics->query($filters, $user);
-        $feedbacks = (clone $query)->orderByDesc('created_at')->get();
-        $metrics = $this->analytics->metrics(clone $query);
         $reportType = $filters['report_type'] ?? FeedbackPedidoAnalyticsService::REPORT_GERAL;
+
+        if ($reportType === FeedbackPedidoAnalyticsService::REPORT_LISTAGEM) {
+            $total = (clone $query)->count();
+            $reportFilters = $this->analytics->formatFilters($filters);
+
+            return $this->chunkedPdf->export(
+                exportRequest: $exportRequest,
+                query: (clone $query)->orderBy('id'),
+                view: 'relatorios.FeedbackPedidos.listagem',
+                mapper: fn (\App\Models\FeedbackPedido $feedback): array => $this->analytics->mapFeedbackListagem($feedback),
+                viewData: fn (array $feedbacks): array => [
+                    'feedbacks' => $feedbacks,
+                    'totalFeedbacks' => $total,
+                    'reportFilters' => $reportFilters,
+                    'reportTitle' => 'Listagem de Feedbacks de Pedidos',
+                    'reportSubtitle' => 'Avaliações detalhadas conforme os filtros selecionados',
+                    'usuarioExportacao' => $user,
+                    'dataExportacao' => now(),
+                ],
+                fileName: 'feedback-pedidos-listagem.pdf',
+                zipFileName: 'feedback-pedidos-listagem-partes.zip',
+                chunkIdColumn: 'feedback_pedidos.id',
+            );
+        }
+
+        $metrics = $this->analytics->metrics(clone $query);
 
         $exportRequest->updateProgress(45, 100, 'Montando indicadores.');
 
@@ -46,7 +72,7 @@ class FeedbackPedidoExportHandler implements ExportHandler
         $graficoPorNota = null;
 
         if ($reportType !== FeedbackPedidoAnalyticsService::REPORT_LISTAGEM) {
-            $monthlyConfig = $this->graficos->gerarChartConfig('media_mensal', $this->analytics->monthlyChartData($feedbacks));
+            $monthlyConfig = $this->graficos->gerarChartConfig('media_mensal', $this->analytics->monthlyChartDataQuery(clone $query));
             $noteConfig = $this->graficos->gerarChartConfig('por_nota', $this->analytics->noteChartData(clone $query));
 
             $graficoMediaMensal = $this->chartRender->renderizarGrafico($monthlyConfig, 700, 350)
@@ -61,17 +87,17 @@ class FeedbackPedidoExportHandler implements ExportHandler
             mediaGeral: $metrics['media'],
             totalAvaliacoes: $metrics['total'],
             percentualSatisfacao: $metrics['satisfacao'],
-            feedbacks: $feedbacks,
+            feedbacks: collect(),
             graficoMediaMensal: $graficoMediaMensal,
             graficoPorNota: $graficoPorNota,
             matrizNotasPorMes: [],
-            matrizesAgrupadas: $this->analytics->matrizNotasPorMes($feedbacks),
+            matrizesAgrupadas: $this->analytics->matrizNotasPorMesQuery(clone $query),
             tipo: $reportType,
-            matrizesEmpresa: $this->analytics->matrizPorEmpresa($feedbacks),
+            matrizesEmpresa: $this->analytics->matrizPorEmpresaQuery(clone $query),
             reportFilters: $this->analytics->formatFilters($filters),
             usuarioExportacao: $user,
-            rankingEmpresas: $this->analytics->rankingEmpresas($feedbacks),
-            rankingEscolas: $this->analytics->rankingEscolas($feedbacks),
+            rankingEmpresas: $this->analytics->rankingEmpresasQuery(clone $query),
+            rankingEscolas: $this->analytics->rankingEscolasQuery(clone $query),
             distribuicaoNotas: $this->analytics->noteDistribution(clone $query),
         );
 

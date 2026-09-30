@@ -7,6 +7,8 @@ use App\Models\ExportRequest;
 use App\Notifications\SistemaNotification;
 use App\Services\Exports\ExportManager;
 use App\Services\Exports\ExportSessionService;
+use App\Exceptions\Exports\ExportCancelledException;
+use App\Exceptions\Exports\ExportPermanentException;
 use App\Support\UserActorSnapshot;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -66,6 +68,23 @@ class ProcessExportRequestJob implements ShouldQueue
             $this->notifySuccess($exportRequest->refresh());
         } catch (Throwable $exception) {
             $exportRequest->refresh();
+
+            if ($exception instanceof ExportCancelledException) {
+                return;
+            }
+
+            if ($exception instanceof ExportPermanentException) {
+                $exportRequest->markFailed($exception->getMessage());
+                $this->notifyFailure($exportRequest->refresh());
+
+                Log::error('Exportação encerrada por falha permanente.', [
+                    'export_request_id' => $exportRequest->getKey(),
+                    'type' => $exportRequest->type,
+                    'exception' => $exception,
+                ]);
+
+                return;
+            }
 
             if (! $sessions->isActive($exportRequest)) {
                 $sessions->expireForEndedSession($exportRequest);

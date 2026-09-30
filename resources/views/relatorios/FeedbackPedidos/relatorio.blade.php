@@ -10,7 +10,7 @@
 @extends('relatorios.layouts.base-pdf')
 
 @section('reportTitle', $reportTitle ?? 'Relatório de Feedback de Pedidos')
-@section('reportSubtitle', $reportSubtitle ?? 'Resumo geral com indicadores, listagem e análise visual')
+@section('reportSubtitle', $reportSubtitle ?? 'Resumo geral com indicadores e análise visual')
 
 @section('styles')
     .cards-container {
@@ -302,59 +302,6 @@
         </table>
 
         <div class="divider"></div>
-    @endif
-
-    @if(in_array($tipoRelatorio ?? 'geral', ['geral', 'listagem', 'geral_satisfacao', 'listagem_filtrada'], true))
-        <div class="section-title">Detalhes das Avaliações</div>
-
-        @if($feedbacks->isEmpty())
-            <p style="text-align: center; color: #6b7280; padding: 20px 0;">
-                Nenhuma avaliação registrada para os filtros selecionados.
-            </p>
-        @else
-            <table class="feedback-table">
-                <thead>
-                    <tr>
-                        <th style="width: 12%;">Protocolo</th>
-                        <th style="width: 15%;">Escola</th>
-                        <th style="width: 10%;">Nota</th>
-                        <th style="width: 10%;">Reaberto</th>
-                        <th style="width: 23%;">Por problema</th>
-                        <th style="width: 15%;">Descrição</th>
-                        <th style="width: 10%;">Data</th>
-                        <th style="width: 15%;">Tipo de manutenção</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($feedbacks as $feedback)
-                        <tr>
-                            <td><strong>{{ $feedback->pedido?->numero_protocolo ?? '-' }}</strong></td>
-                            <td>{{ $feedback->pedido?->escola?->nome ?? '-' }}</td>
-                            <td style="text-align: center;">
-                                <span class="badge" style="background: {{ $cores[$feedback->valor] ?? '#6b7280' }};">
-                                    {{ $feedback->valor }}/5
-                                </span>
-                            </td>
-                            <td>{{ $feedback->reabrir_pedido ? 'Sim' : 'Não' }}</td>
-                            <td>
-                                @forelse($feedback->itens as $item)
-                                    <div style="margin-bottom:3px;">
-                                        {{ $item->problema?->texto_problema ?? 'Problema' }}:
-                                        {{ $item->valor }}/5 -
-                                        {{ $item->resultado?->label() ?? $item->resultado }}
-                                    </div>
-                                @empty
-                                    -
-                                @endforelse
-                            </td>
-                            <td class="text-truncate">{{ $feedback->descricao ?? '-' }}</td>
-                            <td>{{ $feedback->created_at?->format('d/m/Y H:i') ?? '-' }}</td>
-                            <td>{{ $feedback->pedido?->tipoManutencao?->nome ?? '-' }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        @endif
     @endif
 
     @if(in_array($tipoRelatorio ?? 'geral', ['geral', 'graficos', 'geral_satisfacao', 'satisfacao_escolas'], true) && ($graficoMediaMensal || $graficoPorNota))

@@ -429,6 +429,94 @@ class FeedbackPedidoAnalyticsService
         ];
     }
 
+    /** @return array{labels: array<int, string>, data: array<int, int>} */
+    public function monthlyChartDataQuery(Builder $query): array
+    {
+        $rows = $this->aggregateQuery($query)
+            ->selectRaw("DATE_FORMAT(feedback_pedidos.created_at, '%Y-%m') as mes, COUNT(*) as total")
+            ->whereNotNull('feedback_pedidos.created_at')
+            ->groupByRaw("DATE_FORMAT(feedback_pedidos.created_at, '%Y-%m')")
+            ->orderBy('mes')
+            ->get();
+
+        return [
+            'labels' => $rows->pluck('mes')->values()->all(),
+            'data' => $rows->pluck('total')->map(fn ($total): int => (int) $total)->values()->all(),
+        ];
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function rankingEmpresasQuery(Builder $query): array
+    {
+        return $this->rankingQuery($query, 'ec.id', 'ec.nome', 10);
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function rankingEscolasQuery(Builder $query): array
+    {
+        return $this->rankingQuery($query, 'e.id', 'e.nome', null);
+    }
+
+    /** @return array<string, array<string, array<int, int>>> */
+    public function matrizNotasPorMesQuery(Builder $query): array
+    {
+        $rows = $this->aggregateQuery($query)
+            ->selectRaw("YEAR(feedback_pedidos.created_at) as ano, DATE_FORMAT(feedback_pedidos.created_at, '%m/%Y') as mes, feedback_pedidos.valor, COUNT(*) as total")
+            ->whereNotNull('feedback_pedidos.created_at')
+            ->groupByRaw("YEAR(feedback_pedidos.created_at), DATE_FORMAT(feedback_pedidos.created_at, '%m/%Y'), feedback_pedidos.valor")
+            ->orderBy('ano')
+            ->orderBy('mes')
+            ->get();
+
+        $matrix = [];
+
+        foreach ($rows as $row) {
+            $matrix[(string) $row->ano][(string) $row->mes] ??= [1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0];
+            $matrix[(string) $row->ano][(string) $row->mes][(int) $row->valor] = (int) $row->total;
+        }
+
+        return $matrix;
+    }
+
+    /** @return array<int|string, array<string, mixed>> */
+    public function matrizPorEmpresaQuery(Builder $query): array
+    {
+        $rows = $this->aggregateQuery($query)
+            ->leftJoin('empresas_contratadas as ec', 'ec.id', '=', 'export_pedidos.empresa_contratada_id')
+            ->selectRaw("ec.id as empresa_id, ec.nome as empresa_nome, AVG(feedback_pedidos.valor) as media, COUNT(*) as total, YEAR(feedback_pedidos.created_at) as ano, DATE_FORMAT(feedback_pedidos.created_at, '%m/%Y') as mes, feedback_pedidos.valor, COUNT(*) as nota_total, {$this->reabertoSql()} as reabertos_total")
+            ->whereNotNull('ec.id')
+            ->groupByRaw("ec.id, ec.nome, YEAR(feedback_pedidos.created_at), DATE_FORMAT(feedback_pedidos.created_at, '%m/%Y'), feedback_pedidos.valor")
+            ->orderByDesc('media')
+            ->get();
+
+        $resultado = [];
+
+        foreach ($rows->groupBy('empresa_id') as $empresaId => $empresaRows) {
+            $totalNotas = max(1, (int) $empresaRows->sum('nota_total'));
+            $media = round((float) $empresaRows->sum(fn ($row): float => (float) $row->media * (int) $row->nota_total) / $totalNotas, 2);
+            $anos = [];
+
+            foreach ($empresaRows as $row) {
+                $anos[(string) $row->ano][(string) $row->mes] ??= [1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0];
+                $anos[(string) $row->ano][(string) $row->mes][(int) $row->valor] = (int) $row->nota_total;
+            }
+
+            $resultado[$empresaId] = [
+                'empresa' => EmpresaContratada::find($empresaId),
+                'percentual' => $this->satisfactionFromAverage($media),
+                'media' => $media,
+                'total' => (int) $empresaRows->sum('nota_total'),
+                'reabertos' => (int) $empresaRows->sum('reabertos_total'),
+                'criticas' => (int) $empresaRows->sum('reabertos_total'),
+                'anos' => $anos,
+            ];
+        }
+
+        uasort($resultado, fn (array $a, array $b): int => [$b['percentual'], $b['media'], $b['total']] <=> [$a['percentual'], $a['media'], $a['total']]);
+
+        return $resultado;
+    }
+
     /**
      * @return array<int, array<string, mixed>>
      */
@@ -562,6 +650,25 @@ class FeedbackPedidoAnalyticsService
         return $formatted;
     }
 
+    /** @return array<string, mixed> */
+    public function mapFeedbackListagem(FeedbackPedido $feedback): array
+    {
+        return [
+            'protocolo' => $feedback->pedido?->numero_protocolo,
+            'escola' => $feedback->pedido?->escola?->nome,
+            'nota' => (int) $feedback->valor,
+            'reaberto' => $this->feedbackPossuiHistoricoReaberto($feedback),
+            'itens' => $feedback->itens->map(fn (FeedbackPedidoItem $item): array => [
+                'problema' => $item->problema?->texto_problema ?? 'Problema',
+                'valor' => (int) $item->valor,
+                'resultado' => $item->resultado?->label() ?? (string) $item->resultado,
+            ])->values()->all(),
+            'descricao' => $feedback->descricao,
+            'data' => $feedback->created_at?->format('d/m/Y H:i'),
+            'tipo' => $feedback->pedido?->tipoManutencao?->nome,
+        ];
+    }
+
     /**
      * @return array<int, array<string, mixed>>
      */
@@ -601,6 +708,52 @@ class FeedbackPedidoAnalyticsService
 
             return $row;
         }, $rows);
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function rankingQuery(Builder $query, string $idColumn, string $nameColumn, ?int $limit): array
+    {
+        $rows = $this->aggregateQuery($query)
+            ->leftJoin('escolas as e', 'e.id', '=', 'export_pedidos.escola_id')
+            ->leftJoin('empresas_contratadas as ec', 'ec.id', '=', 'export_pedidos.empresa_contratada_id')
+            ->selectRaw("{$idColumn} as relacao_id, {$nameColumn} as nome, COUNT(*) as total, ROUND(AVG(feedback_pedidos.valor), 2) as media, {$this->reabertoSql()} as reabertos")
+            ->groupByRaw("{$idColumn}, {$nameColumn}")
+            ->orderByDesc('media')
+            ->orderByDesc('total')
+            ->when($limit !== null, fn ($builder) => $builder->limit($limit))
+            ->get();
+
+        return $rows->map(fn ($row): array => [
+            'id' => $row->relacao_id,
+            'nome' => $row->nome ?? ($idColumn === 'ec.id' ? 'Sem empresa' : 'Sem escola'),
+            'total' => (int) $row->total,
+            'media' => (float) $row->media,
+            'satisfacao' => $this->satisfactionFromAverage((float) $row->media),
+            'reabertos' => (int) $row->reabertos,
+            'criticas' => (int) $row->reabertos,
+            'pct_barra' => $this->satisfactionFromAverage((float) $row->media),
+        ])->all();
+    }
+
+    private function aggregateQuery(Builder $query): Builder
+    {
+        return (clone $query)
+            ->withoutEagerLoads()
+            ->join('pedidos as export_pedidos', 'export_pedidos.id', '=', 'feedback_pedidos.pedido_id');
+    }
+
+    private function reabertoSql(): string
+    {
+        $statusIds = $this->reabertoStatusIds();
+
+        if ($statusIds === []) {
+            return '0';
+        }
+
+        return sprintf(
+            "SUM(CASE WHEN EXISTS (SELECT 1 FROM pedido_historicos ph WHERE ph.pedido_id = export_pedidos.id AND ph.status_novo_id IN (%s)) THEN 1 ELSE 0 END)",
+            implode(',', $statusIds),
+        );
     }
 
     private function satisfactionFromAverage(float $average): int

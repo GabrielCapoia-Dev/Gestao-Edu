@@ -46,6 +46,7 @@ class ExportarRelatorioAction
                         ->validationAttribute('data inicial')
                         ->displayFormat('d/m/Y')
                         ->native(false)
+                        ->default(fn (): ?string => static::dataInicialPadrao())
                         ->helperText('Informe o início do período para exportação.')
                         ->maxDate(fn (Get $get) => $get('data_fim') ?: now()),
 
@@ -55,6 +56,7 @@ class ExportarRelatorioAction
                         ->validationAttribute('data final')
                         ->displayFormat('d/m/Y')
                         ->native(false)
+                        ->default(now()->toDateString())
                         ->helperText('Informe o fim do período para exportação.')
                         ->minDate(fn (Get $get) => $get('data_inicio'))
                         ->maxDate(now()),
@@ -99,6 +101,16 @@ class ExportarRelatorioAction
                         ])
                         ->placeholder('Todos'),
 
+                    Select::make('modo_relatorio')
+                        ->label('Formato')
+                        ->options([
+                            'bi' => 'Relatório analítico (BI)',
+                            'listagem' => 'Listagem detalhada',
+                        ])
+                        ->default('bi')
+                        ->required()
+                        ->native(false),
+
                     Select::make('tipo_status_id')
                         ->label('Status')
                         ->options(
@@ -132,6 +144,8 @@ class ExportarRelatorioAction
                 ]);
             }
 
+            $modoRelatorio = $data['modo_relatorio'] ?? 'bi';
+            unset($data['modo_relatorio']);
             $filtros = array_filter($data, fn ($v) => $v !== null && $v !== '');
 
             foreach (['data_inicio', 'data_fim'] as $campo) {
@@ -140,8 +154,22 @@ class ExportarRelatorioAction
                 }
             }
 
-            return redirect()->away(route('pedidos.relatorio-geral', $filtros));
+            return redirect()->away(route(
+                $modoRelatorio === 'listagem'
+                    ? 'pedidos.relatorio-listagem'
+                    : 'pedidos.relatorio-geral',
+                $filtros,
+            ));
         };
+    }
+
+    private static function dataInicialPadrao(): ?string
+    {
+        $user = static::usuarioEfetivo();
+
+        return $user
+            ? app(\App\Services\Relatorios\PedidoRelatorioGeralService::class)->firstPedidoDate($user)
+            : null;
     }
 
     private static function usuarioEfetivo(): ?\App\Models\User

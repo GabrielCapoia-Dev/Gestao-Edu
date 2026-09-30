@@ -7,6 +7,7 @@ use App\Services\Exports\Handlers\FeedbackPedidoExportHandler;
 use App\Services\Exports\Handlers\InventarioRelatorioExportHandler;
 use App\Services\Exports\Handlers\LotacaoXlsxExportHandler;
 use App\Services\Exports\Handlers\PedidoRelatorioGeralExportHandler;
+use App\Services\Exports\Handlers\PedidoRelatorioListagemExportHandler;
 use App\Services\Exports\Handlers\PedidoRelatorioSimplificadoExportHandler;
 use App\Services\Exports\Handlers\SelectedRecordsXlsxExportHandler;
 
@@ -20,6 +21,8 @@ return [
     'avaliacao_max_concurrent' => (int) env('EXPORTS_AVALIACAO_MAX_CONCURRENT', 2),
     'avaliacao_lock_wait' => (int) env('EXPORTS_AVALIACAO_LOCK_WAIT', 840),
     'job_timeout' => (int) env('EXPORTS_JOB_TIMEOUT', 900),
+    'pdf_chunk_size' => (int) env('EXPORTS_PDF_CHUNK_SIZE', 100),
+    'temporary_retention_minutes' => (int) env('EXPORTS_TEMPORARY_RETENTION_MINUTES', 1440),
     'xlsx_memory_limit' => env('EXPORTS_XLSX_MEMORY_LIMIT', '512M'),
     'lock_expiration' => (int) env('EXPORTS_LOCK_EXPIRATION', 1200),
     'stalled_queued_after_minutes' => (int) env('EXPORTS_STALLED_QUEUED_AFTER_MINUTES', 30),
@@ -34,6 +37,7 @@ return [
         'inventario_rede' => InventarioRelatorioExportHandler::class,
         'inventario_item' => InventarioRelatorioExportHandler::class,
         'pedido_relatorio_geral' => PedidoRelatorioGeralExportHandler::class,
+        'pedido_relatorio_listagem' => PedidoRelatorioListagemExportHandler::class,
         'pedido_relatorio_simplificado' => PedidoRelatorioSimplificadoExportHandler::class,
         'feedback_pedido_relatorio' => FeedbackPedidoExportHandler::class,
         'escolas_xlsx' => EscolaXlsxExportHandler::class,
