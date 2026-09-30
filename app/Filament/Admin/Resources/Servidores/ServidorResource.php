@@ -985,6 +985,11 @@ class ServidorResource extends Resource
             ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehAssessoriaPedagogica());
     }
 
+    public static function formatarCpf(?string $cpf): ?string
+    {
+        return Pessoa::formatarCpf($cpf);
+    }
+
     public static function cargoLabel(Servidor $record): string
     {
         $record->loadMissing(['professores', 'vinculosAtivos.funcaoAdministrativa']);

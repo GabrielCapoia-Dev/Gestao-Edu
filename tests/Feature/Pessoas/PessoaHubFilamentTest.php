@@ -50,6 +50,15 @@ class PessoaHubFilamentTest extends TestCase
         $this->assertSame('Servidor', ServidorResource::getModelLabel());
     }
 
+    public function test_resource_disponibiliza_formatador_de_cpf_para_tabela_livewire(): void
+    {
+        $view = file_get_contents(resource_path('views/livewire/pessoas/servidores-table.blade.php'));
+
+        $this->assertIsString($view);
+        $this->assertStringContainsString('ServidorResource::formatarCpf($servidor->cpf)', $view);
+        $this->assertSame('529.982.247-25', ServidorResource::formatarCpf('52998224725'));
+    }
+
     public function test_hub_lista_unica_sem_metodo_de_abas_proprio(): void
     {
         $reflection = new \ReflectionClass(ManageServidores::class);
