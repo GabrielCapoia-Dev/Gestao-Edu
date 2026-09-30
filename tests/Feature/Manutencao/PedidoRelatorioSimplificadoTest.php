@@ -121,6 +121,7 @@ class PedidoRelatorioSimplificadoTest extends TestCase
 
         $segundo = $primeiro->replicate();
         $segundo->data_solicitacao = '2026-09-10 09:00:00';
+        $segundo->numero_protocolo = '2026/00002';
         $segundo->save();
 
         app()->instance(PedidoService::class, tap(Mockery::mock(PedidoService::class), function ($mock): void {
