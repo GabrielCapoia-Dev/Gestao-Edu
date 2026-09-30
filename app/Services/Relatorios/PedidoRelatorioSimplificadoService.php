@@ -49,6 +49,74 @@ class PedidoRelatorioSimplificadoService
     }
 
     /**
+     * Divide a seleção por mês e por quantidade máxima de pedidos por PDF.
+     * A consulta contém somente id e data; os relacionamentos pesados são
+     * carregados apenas para a parte que será renderizada.
+     *
+     * @param  array<int|string>  $pedidoIds
+     * @return array<int, array{periodo: string, ids: array<int, int>>>
+     */
+    public function particionarSelecionados(array $pedidoIds, User $usuario, int $tamanhoParte): array
+    {
+        $ids = collect($pedidoIds)
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values();
+
+        if ($ids->isEmpty()) {
+            return [];
+        }
+
+        $ordem = $ids->flip();
+        $query = Pedido::query()
+            ->where('ativo', true)
+            ->select(['id', 'data_solicitacao']);
+
+        $this->pedidoService->aplicarEscopoConsulta($query, $usuario);
+
+        $porMes = [];
+        $selectionChunkSize = 1000;
+        $databaseChunkSize = max(100, (int) config('exports.pdf_chunk_size', 100));
+
+        foreach ($ids->chunk($selectionChunkSize) as $selection) {
+            $chunkQuery = (clone $query)->whereIn('id', $selection->all());
+
+            $chunkQuery->chunkById($databaseChunkSize, function (Collection $pedidos) use (&$porMes): void {
+                foreach ($pedidos as $pedido) {
+                    $periodo = $pedido->data_solicitacao
+                        ? Carbon::parse($pedido->data_solicitacao)->format('Y-m')
+                        : 'sem-data';
+
+                    $porMes[$periodo][] = (int) $pedido->id;
+                }
+            }, 'id', 'id');
+        }
+
+        foreach ($porMes as &$periodIds) {
+            usort(
+                $periodIds,
+                fn (int $left, int $right): int => (int) ($ordem[$left] ?? PHP_INT_MAX) <=> (int) ($ordem[$right] ?? PHP_INT_MAX),
+            );
+        }
+        unset($periodIds);
+
+        $tamanhoParte = max(1, $tamanhoParte);
+        $partes = [];
+
+        foreach ($porMes as $mes => $periodIds) {
+            foreach (array_chunk($periodIds, $tamanhoParte) as $parte) {
+                $partes[] = [
+                    'periodo' => (string) $mes,
+                    'ids' => array_map(static fn ($id): int => (int) $id, $parte),
+                ];
+            }
+        }
+
+        return $partes;
+    }
+
+    /**
      * @param  Collection<int, int>  $ids
      * @return Collection<int, Pedido>
      */

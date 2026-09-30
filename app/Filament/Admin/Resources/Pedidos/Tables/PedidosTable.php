@@ -1009,7 +1009,7 @@ class PedidosTable
                 ->visible(fn (): bool => Gate::allows('exportReports', Pedido::class))
                 ->requiresConfirmation()
                 ->modalHeading('Exportar pedidos selecionados em PDF')
-                ->modalDescription('O arquivo será gerado em segundo plano com um pedido por página, contendo cabeçalho, descrição do pedido e imagens do problema.')
+                ->modalDescription('O arquivo será gerado em segundo plano com um pedido por página, contendo cabeçalho, descrição do pedido e imagens do problema. Seleções grandes são divididas por mês e, quando necessário, entregues em um ZIP com PDFs numerados.')
                 ->modalSubmitActionLabel('Enviar para fila')
                 ->action(function (EloquentCollection $records) use ($user): mixed {
                     if (! $user) {

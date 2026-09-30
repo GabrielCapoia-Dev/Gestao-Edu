@@ -44,7 +44,6 @@ class FeedbackPedidoAnalyticsService
             self::REPORT_GERAL => 'Satisfação geral',
             self::REPORT_EMPRESAS => 'Desempenho das empresas',
             self::REPORT_ESCOLAS => 'Satisfação das escolas',
-            self::REPORT_LISTAGEM => 'Listagem filtrada',
         ];
     }
 
@@ -448,7 +447,7 @@ class FeedbackPedidoAnalyticsService
     /** @return array<int, array<string, mixed>> */
     public function rankingEmpresasQuery(Builder $query): array
     {
-        return $this->rankingQuery($query, 'ec.id', 'ec.nome', 10);
+        return $this->rankingQuery($query, 'ec.id', 'ec.nome', null);
     }
 
     /** @return array<int, array<string, mixed>> */
@@ -489,6 +488,10 @@ class FeedbackPedidoAnalyticsService
             ->orderByDesc('media')
             ->get();
 
+        $empresas = EmpresaContratada::query()
+            ->whereIn('id', $rows->pluck('empresa_id')->filter()->unique()->values())
+            ->get()
+            ->keyBy('id');
         $resultado = [];
 
         foreach ($rows->groupBy('empresa_id') as $empresaId => $empresaRows) {
@@ -502,7 +505,7 @@ class FeedbackPedidoAnalyticsService
             }
 
             $resultado[$empresaId] = [
-                'empresa' => EmpresaContratada::find($empresaId),
+                'empresa' => $empresas->get($empresaId),
                 'percentual' => $this->satisfactionFromAverage($media),
                 'media' => $media,
                 'total' => (int) $empresaRows->sum('nota_total'),

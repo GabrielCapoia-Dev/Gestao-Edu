@@ -75,10 +75,13 @@ class FeedbackPedidoExportHandler implements ExportHandler
             $monthlyConfig = $this->graficos->gerarChartConfig('media_mensal', $this->analytics->monthlyChartDataQuery(clone $query));
             $noteConfig = $this->graficos->gerarChartConfig('por_nota', $this->analytics->noteChartData(clone $query));
 
-            $graficoMediaMensal = $this->chartRender->renderizarGrafico($monthlyConfig, 700, 350)
-                ?: $this->chartRender->renderizarGraficoLocal($monthlyConfig);
-            $graficoPorNota = $this->chartRender->renderizarGrafico($noteConfig, 700, 350)
-                ?: $this->chartRender->renderizarGraficoLocal($noteConfig);
+            $graficoMediaMensal = $this->chartRender->renderizarGraficoLocal($monthlyConfig);
+            $graficoPorNota = $this->chartRender->renderizarGraficoLocal($noteConfig);
+
+            if (config('exports.feedback_external_charts', false)) {
+                $graficoMediaMensal ??= $this->chartRender->renderizarGrafico($monthlyConfig, 700, 350);
+                $graficoPorNota ??= $this->chartRender->renderizarGrafico($noteConfig, 700, 350);
+            }
         }
 
         $exportRequest->updateProgress(70, 100, 'Gerando PDF.');

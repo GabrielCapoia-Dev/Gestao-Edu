@@ -13,6 +13,7 @@ use Filament\Actions\Action;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables;
@@ -302,88 +303,93 @@ class FeedbackPedido extends Page implements HasTable
     private function exportForm(): array
     {
         return [
-            Forms\Components\Select::make('report_type')
-                ->label('Tipo de relatório')
-                ->options($this->analytics()->reportTypeOptions())
-                ->default(FeedbackPedidoAnalyticsService::REPORT_GERAL)
-                ->required()
-                ->native(false),
+            Grid::make()
+                ->columns(2)
+                ->schema([
+                    Forms\Components\Select::make('report_type')
+                        ->label('Tipo de relatório')
+                        ->options($this->analytics()->reportTypeOptions())
+                        ->default(FeedbackPedidoAnalyticsService::REPORT_GERAL)
+                        ->required()
+                        ->native(false)
+                        ->columnSpanFull(),
 
-            Forms\Components\DatePicker::make('data_inicio')
-                ->label('Data de início')
-                ->minDate(fn (): ?string => $this->firstPedidoDate())
-                ->maxDate(now()->toDateString())
-                ->default(fn (): ?string => $this->firstPedidoDate())
-                ->required(),
+                    Forms\Components\DatePicker::make('data_inicio')
+                        ->label('Data de início')
+                        ->minDate(fn (): ?string => $this->firstPedidoDate())
+                        ->maxDate(now()->toDateString())
+                        ->default(fn (): ?string => $this->firstPedidoDate())
+                        ->required(),
 
-            Forms\Components\DatePicker::make('data_fim')
-                ->label('Data de fim')
-                ->minDate(fn (): ?string => $this->firstPedidoDate())
-                ->maxDate(now()->toDateString())
-                ->default(now()->toDateString())
-                ->required(),
+                    Forms\Components\DatePicker::make('data_fim')
+                        ->label('Data de fim')
+                        ->minDate(fn (): ?string => $this->firstPedidoDate())
+                        ->maxDate(now()->toDateString())
+                        ->default(now()->toDateString())
+                        ->required(),
 
-            Forms\Components\Select::make('valor')
-                ->label('Nota')
-                ->visible(fn (): bool => $this->notaOptions() !== [])
-                ->options(fn (): array => $this->notaOptions())
-                ->native(false)
-                ->nullable(),
+                    Forms\Components\Select::make('valor')
+                        ->label('Nota')
+                        ->visible(fn (): bool => $this->notaOptions() !== [])
+                        ->options(fn (): array => $this->notaOptions())
+                        ->native(false)
+                        ->nullable(),
 
-            Forms\Components\Select::make('nivel_prioridade')
-                ->label('Prioridade')
-                ->visible(fn (): bool => $this->prioridadeOptions() !== [])
-                ->options(fn (): array => $this->prioridadeOptions())
-                ->native(false)
-                ->nullable(),
+                    Forms\Components\Select::make('nivel_prioridade')
+                        ->label('Prioridade')
+                        ->visible(fn (): bool => $this->prioridadeOptions() !== [])
+                        ->options(fn (): array => $this->prioridadeOptions())
+                        ->native(false)
+                        ->nullable(),
 
-            Forms\Components\Select::make('tipo_manutencao_id')
-                ->label('Tipo de manutenção')
-                ->visible(fn (): bool => $this->tipoManutencaoOptions() !== [])
-                ->options(fn (): array => $this->tipoManutencaoOptions())
-                ->searchable()
-                ->preload()
-                ->live()
-                ->afterStateUpdated(fn (callable $set): mixed => $set('tipo_manutencao_opcao_id', null))
-                ->nullable(),
+                    Forms\Components\Select::make('tipo_manutencao_id')
+                        ->label('Tipo de manutenção')
+                        ->visible(fn (): bool => $this->tipoManutencaoOptions() !== [])
+                        ->options(fn (): array => $this->tipoManutencaoOptions())
+                        ->searchable()
+                        ->preload()
+                        ->live()
+                        ->afterStateUpdated(fn (callable $set): mixed => $set('tipo_manutencao_opcao_id', null))
+                        ->nullable(),
 
-            Forms\Components\Select::make('tipo_manutencao_opcao_id')
-                ->label('Opção do tipo')
-                ->options(fn (Get $get): array => $this->tipoManutencaoOpcaoOptions($get('tipo_manutencao_id')))
-                ->visible(fn (Get $get): bool => filled($get('tipo_manutencao_id')) && $this->tipoManutencaoOpcaoOptions($get('tipo_manutencao_id')) !== [])
-                ->searchable()
-                ->preload()
-                ->nullable(),
+                    Forms\Components\Select::make('tipo_manutencao_opcao_id')
+                        ->label('Opção do tipo')
+                        ->options(fn (Get $get): array => $this->tipoManutencaoOpcaoOptions($get('tipo_manutencao_id')))
+                        ->visible(fn (Get $get): bool => filled($get('tipo_manutencao_id')) && $this->tipoManutencaoOpcaoOptions($get('tipo_manutencao_id')) !== [])
+                        ->searchable()
+                        ->preload()
+                        ->nullable(),
 
-            Forms\Components\Select::make('escola_id')
-                ->label('Escola')
-                ->visible(fn (): bool => $this->escolaOptions() !== [])
-                ->options(fn (): array => $this->escolaOptions())
-                ->searchable()
-                ->preload()
-                ->nullable(),
+                    Forms\Components\Select::make('escola_id')
+                        ->label('Escola')
+                        ->visible(fn (): bool => $this->escolaOptions() !== [])
+                        ->options(fn (): array => $this->escolaOptions())
+                        ->searchable()
+                        ->preload()
+                        ->nullable(),
 
-            Forms\Components\Select::make('empresa_contratada_id')
-                ->label('Empresa contratada')
-                ->visible(fn (): bool => $this->empresaOptions() !== [])
-                ->options(fn (): array => $this->empresaOptions())
-                ->searchable()
-                ->preload()
-                ->nullable(),
+                    Forms\Components\Select::make('empresa_contratada_id')
+                        ->label('Empresa contratada')
+                        ->visible(fn (): bool => $this->empresaOptions() !== [])
+                        ->options(fn (): array => $this->empresaOptions())
+                        ->searchable()
+                        ->preload()
+                        ->nullable(),
 
-            Forms\Components\Select::make('resultado')
-                ->label('Resultado por problema')
-                ->visible(fn (): bool => $this->resultadoOptions() !== [])
-                ->options(fn (): array => $this->resultadoOptions())
-                ->native(false)
-                ->nullable(),
+                    Forms\Components\Select::make('resultado')
+                        ->label('Resultado por problema')
+                        ->visible(fn (): bool => $this->resultadoOptions() !== [])
+                        ->options(fn (): array => $this->resultadoOptions())
+                        ->native(false)
+                        ->nullable(),
 
-            Forms\Components\Select::make('reabrir_pedido')
-                ->label('Reaberto')
-                ->visible(fn (): bool => $this->reabertoOptions() !== [])
-                ->options(fn (): array => $this->reabertoOptions())
-                ->native(false)
-                ->nullable(),
+                    Forms\Components\Select::make('reabrir_pedido')
+                        ->label('Reaberto')
+                        ->visible(fn (): bool => $this->reabertoOptions() !== [])
+                        ->options(fn (): array => $this->reabertoOptions())
+                        ->native(false)
+                        ->nullable(),
+                ]),
         ];
     }
 

@@ -31,6 +31,7 @@ class PedidoRelatorioGeralService
             'porPrioridade' => $this->agruparPorPrioridade($filtros, $usuario),
             'porTipo' => $this->agruparPorTipo($filtros, $usuario),
             'porEscola' => $this->agruparPorEscola($filtros, $usuario),
+            'porEmpresa' => $this->agruparPorEmpresa($filtros, $usuario),
             'porMes' => $this->evolucaoMensal($filtros, $usuario),
             'metricaFeedback' => $this->metricasFeedback($filtros, $usuario),
             'filtros' => $reportFilters,
@@ -132,7 +133,6 @@ class PedidoRelatorioGeralService
             ->leftJoin('tipo_status as ts', 'ts.id', '=', 'p.tipo_status_id')
             ->groupBy('tm.id', 'tm.nome')
             ->orderByDesc('total')
-            ->limit(8)
             ->get()
             ->map(fn ($r) => (object) [
                 'nome' => $r->nome ?? 'Não Informado',
@@ -149,7 +149,6 @@ class PedidoRelatorioGeralService
             ->leftJoin('escolas as e', 'e.id', '=', 'p.escola_id')
             ->groupBy('e.id', 'e.nome')
             ->orderByDesc('total')
-            ->limit(10)
             ->get();
 
         $max = $rows->max('total') ?: 1;
@@ -158,6 +157,28 @@ class PedidoRelatorioGeralService
             'nome' => $r->nome ?? 'Não Informada',
             'total' => (int) $r->total,
             'pct_bar' => round(($r->total / $max) * 100),
+        ]);
+    }
+
+    protected function agruparPorEmpresa(array $filtros, User $usuario): Collection
+    {
+        $rows = (clone $this->queryBase($filtros, $usuario))
+            ->selectRaw('
+                ec.nome,
+                COUNT(*) as total,
+                SUM(CASE WHEN ts.finaliza_pedido = 1 THEN 1 ELSE 0 END) as concluidos
+            ')
+            ->leftJoin('empresas_contratadas as ec', 'ec.id', '=', 'p.empresa_contratada_id')
+            ->leftJoin('tipo_status as ts', 'ts.id', '=', 'p.tipo_status_id')
+            ->groupBy('ec.id', 'ec.nome')
+            ->orderByDesc('total')
+            ->get();
+
+        return $rows->map(fn ($r) => (object) [
+            'nome' => $r->nome ?? 'Sem empresa',
+            'total' => (int) $r->total,
+            'concluidos' => (int) $r->concluidos,
+            'taxa' => $r->total > 0 ? round(((int) $r->concluidos / (int) $r->total) * 100) : 0,
         ]);
     }
 

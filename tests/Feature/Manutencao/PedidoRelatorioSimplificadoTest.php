@@ -112,6 +112,33 @@ class PedidoRelatorioSimplificadoTest extends TestCase
         Queue::assertPushed(ProcessExportRequestJob::class, 1);
     }
 
+    public function test_selecao_simplificada_e_dividida_por_mes_e_tamanho_da_parte(): void
+    {
+        $dados = $this->criarPedidoBase();
+        $primeiro = $dados['pedido'];
+        $usuario = $dados['usuario'];
+        $primeiro->update(['data_solicitacao' => '2026-08-10 09:00:00']);
+
+        $segundo = $primeiro->replicate();
+        $segundo->data_solicitacao = '2026-09-10 09:00:00';
+        $segundo->save();
+
+        app()->instance(PedidoService::class, tap(Mockery::mock(PedidoService::class), function ($mock): void {
+            $mock->shouldReceive('aplicarEscopoConsulta')
+                ->once()
+                ->andReturnUsing(static fn ($query) => $query);
+        }));
+
+        $partes = app(PedidoRelatorioSimplificadoService::class)->particionarSelecionados(
+            [$primeiro->id, $segundo->id],
+            $usuario,
+            1,
+        );
+
+        $this->assertSame(['2026-08', '2026-09'], array_column($partes, 'periodo'));
+        $this->assertSame([[$primeiro->id], [$segundo->id]], array_column($partes, 'ids'));
+    }
+
     public function test_handler_salva_pdf_simplificado_em_armazenamento_privado(): void
     {
         Storage::fake('local');
@@ -136,6 +163,12 @@ class PedidoRelatorioSimplificadoTest extends TestCase
         ]);
 
         app()->instance(PedidoRelatorioSimplificadoService::class, tap(Mockery::mock(PedidoRelatorioSimplificadoService::class), function ($mock): void {
+            $mock->shouldReceive('particionarSelecionados')
+                ->once()
+                ->with([10, 20], Mockery::type(User::class), Mockery::type('int'))
+                ->andReturn([
+                    ['periodo' => '2026-09', 'ids' => [10, 20]],
+                ]);
             $mock->shouldReceive('gerar')
                 ->once()
                 ->with([10, 20], Mockery::type(User::class))
@@ -147,6 +180,111 @@ class PedidoRelatorioSimplificadoTest extends TestCase
         Storage::disk('local')->assertExists($result->path);
         $this->assertSame('application/pdf', $result->mime);
         $this->assertSame(strlen('PDF CONTENT'), $result->sizeBytes);
+    }
+
+    public function test_handler_entrega_zip_com_todas_as_partes_da_selecao(): void
+    {
+        if (! class_exists(\ZipArchive::class)) {
+            $this->markTestSkipped('A extensão ZIP não está disponível no ambiente de testes.');
+        }
+
+        Storage::fake('local');
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+
+        $exportRequest = ExportRequest::query()->create([
+            'user_id' => $usuario->id,
+            'type' => 'pedido_relatorio_simplificado',
+            'format' => 'pdf',
+            'label' => 'PDF simplificado de pedidos',
+            'filters' => ['pedido_ids' => [10, 20]],
+            'metadata' => [],
+            'fingerprint' => fake()->uuid(),
+            'status' => ExportRequest::STATUS_QUEUED,
+            'status_message' => 'Aguardando processamento.',
+            'progress_current' => 0,
+            'progress_total' => 100,
+        ]);
+
+        app()->instance(PedidoRelatorioSimplificadoService::class, tap(Mockery::mock(PedidoRelatorioSimplificadoService::class), function ($mock): void {
+            $mock->shouldReceive('particionarSelecionados')
+                ->once()
+                ->andReturn([
+                    ['periodo' => '2026-08', 'ids' => [10]],
+                    ['periodo' => '2026-09', 'ids' => [20]],
+                ]);
+            $mock->shouldReceive('gerar')
+                ->twice()
+                ->andReturn(
+                    response('PDF CONTENT 1', 200, ['Content-Type' => 'application/pdf']),
+                    response('PDF CONTENT 2', 200, ['Content-Type' => 'application/pdf']),
+                );
+        }));
+
+        $result = app(PedidoRelatorioSimplificadoExportHandler::class)->handle($exportRequest->load('user'));
+
+        $this->assertSame('application/zip', $result->mime);
+        $this->assertGreaterThan(0, $result->sizeBytes);
+        Storage::disk('local')->assertExists($result->path);
+
+        $zip = new \ZipArchive();
+        $this->assertSame(true, $zip->open(Storage::disk('local')->path($result->path)));
+        $this->assertSame(2, $zip->numFiles);
+        $this->assertNotFalse($zip->locateName('pedidos-selecionados-2026-08-parte-01.pdf'));
+        $this->assertNotFalse($zip->locateName('pedidos-selecionados-2026-09-parte-02.pdf'));
+        $zip->close();
+    }
+
+    public function test_handler_cancela_entre_lotes_e_remove_temporarios(): void
+    {
+        Storage::fake('local');
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+
+        $exportRequest = ExportRequest::query()->create([
+            'user_id' => $usuario->id,
+            'type' => 'pedido_relatorio_simplificado',
+            'format' => 'pdf',
+            'label' => 'PDF simplificado de pedidos',
+            'filters' => ['pedido_ids' => [10, 20]],
+            'metadata' => [],
+            'fingerprint' => fake()->uuid(),
+            'status' => ExportRequest::STATUS_QUEUED,
+            'status_message' => 'Aguardando processamento.',
+            'progress_current' => 0,
+            'progress_total' => 100,
+        ]);
+
+        app()->instance(PedidoRelatorioSimplificadoService::class, tap(Mockery::mock(PedidoRelatorioSimplificadoService::class), function ($mock) use ($exportRequest): void {
+            $mock->shouldReceive('particionarSelecionados')
+                ->once()
+                ->andReturn([
+                    ['periodo' => '2026-08', 'ids' => [10]],
+                    ['periodo' => '2026-09', 'ids' => [20]],
+                ]);
+            $mock->shouldReceive('gerar')
+                ->once()
+                ->andReturnUsing(function () use ($exportRequest) {
+                    $exportRequest->requestCancellation();
+
+                    return response('PDF CONTENT', 200, ['Content-Type' => 'application/pdf']);
+                });
+        }));
+
+        $this->expectException(\App\Exceptions\Exports\ExportCancelledException::class);
+
+        try {
+            app(PedidoRelatorioSimplificadoExportHandler::class)->handle($exportRequest->load('user'));
+        } finally {
+            $this->assertSame(ExportRequest::STATUS_CANCELLED, $exportRequest->refresh()->status);
+            $this->assertSame([], Storage::disk('local')->allFiles('exports-tmp/'.$exportRequest->getKey()));
+        }
     }
 
     public function test_exportacao_simplificada_renderiza_pdf_quando_ha_imagem_webp(): void

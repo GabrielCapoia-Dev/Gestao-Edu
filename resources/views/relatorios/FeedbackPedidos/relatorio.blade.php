@@ -228,6 +228,7 @@
         border-collapse: collapse;
         margin-top: 12px;
         font-size: 9px;
+        page-break-inside: auto;
     }
 
     .ranking-table th {
@@ -245,6 +246,15 @@
 
     .ranking-table tbody tr:nth-child(odd) {
         background: #f9fafb;
+    }
+
+    .ranking-table tbody tr {
+        page-break-inside: avoid;
+    }
+
+    .ranking-block + .ranking-block {
+        margin-top: 22px;
+        page-break-before: always;
     }
 @endsection
 
@@ -273,7 +283,8 @@
         <div class="divider"></div>
     @endif
 
-    @if(($tipoRelatorio ?? null) === 'satisfacao_escolas' && ! empty($rankingEscolas ?? []))
+    @if(in_array($tipoRelatorio ?? 'geral', ['geral', 'graficos', 'geral_satisfacao', 'satisfacao_escolas'], true) && ! empty($rankingEscolas ?? []))
+        <div class="ranking-block">
         <div class="section-title">Satisfação por Escola</div>
 
         <table class="ranking-table">
@@ -302,6 +313,38 @@
         </table>
 
         <div class="divider"></div>
+        </div>
+    @endif
+
+    @if(in_array($tipoRelatorio ?? 'geral', ['geral', 'graficos', 'geral_satisfacao'], true) && ! empty($rankingEmpresas ?? []))
+        <div class="ranking-block">
+            <div class="section-title">Desempenho por Empresa Contratada</div>
+
+            <table class="ranking-table">
+                <thead>
+                    <tr>
+                        <th>Empresa</th>
+                        <th>Total</th>
+                        <th>Média</th>
+                        <th>Satisfação</th>
+                        <th>Reabertos</th>
+                        <th>Críticas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($rankingEmpresas as $row)
+                        <tr>
+                            <td><strong>{{ $row['nome'] }}</strong></td>
+                            <td>{{ $row['total'] }}</td>
+                            <td>{{ $row['media'] }}/5</td>
+                            <td>{{ $row['satisfacao'] }}%</td>
+                            <td>{{ $row['reabertos'] }}</td>
+                            <td>{{ $row['criticas'] }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
     @endif
 
     @if(in_array($tipoRelatorio ?? 'geral', ['geral', 'graficos', 'geral_satisfacao', 'satisfacao_escolas'], true) && ($graficoMediaMensal || $graficoPorNota))

@@ -36,8 +36,11 @@ class RelatorioPdfRenderer
     {
         $this->assertViewExists($view);
         $contents = $this->renderPdf($view, $data);
+        $written = file_put_contents($targetPath, $contents);
+        unset($contents);
+        gc_collect_cycles();
 
-        if (file_put_contents($targetPath, $contents) === false) {
+        if ($written === false) {
             throw new \RuntimeException('Não foi possível gravar a parte temporária do relatório.');
         }
     }
@@ -72,7 +75,11 @@ class RelatorioPdfRenderer
             $this->applyPagination($dompdf);
         }
 
-        return $pdf->output();
+        $contents = $pdf->output();
+        unset($dompdf, $pdf);
+        gc_collect_cycles();
+
+        return $contents;
     }
 
     /**

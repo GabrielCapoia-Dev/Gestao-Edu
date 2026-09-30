@@ -134,7 +134,7 @@ class FeedbackPedidoRelatorioService
             'graficos', FeedbackPedidoAnalyticsService::REPORT_GERAL => 'Visão gráfica e estatística das avaliações no período informado',
             'terceirizada', FeedbackPedidoAnalyticsService::REPORT_EMPRESAS => 'Consolidado de satisfação por empresa contratada',
             FeedbackPedidoAnalyticsService::REPORT_ESCOLAS => 'Consolidado de satisfação por escola solicitante',
-            default => 'Resumo geral com indicadores, listagem e análise visual',
+            default => 'Resumo geral com indicadores e análise visual',
         };
     }
 }

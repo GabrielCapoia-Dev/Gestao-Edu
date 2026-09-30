@@ -22,6 +22,8 @@ return [
     'avaliacao_lock_wait' => (int) env('EXPORTS_AVALIACAO_LOCK_WAIT', 840),
     'job_timeout' => (int) env('EXPORTS_JOB_TIMEOUT', 900),
     'pdf_chunk_size' => (int) env('EXPORTS_PDF_CHUNK_SIZE', 100),
+    'simplified_pdf_part_size' => (int) env('EXPORTS_SIMPLIFIED_PDF_PART_SIZE', 50),
+    'feedback_external_charts' => (bool) env('EXPORTS_FEEDBACK_EXTERNAL_CHARTS', false),
     'temporary_retention_minutes' => (int) env('EXPORTS_TEMPORARY_RETENTION_MINUTES', 1440),
     'xlsx_memory_limit' => env('EXPORTS_XLSX_MEMORY_LIMIT', '512M'),
     'lock_expiration' => (int) env('EXPORTS_LOCK_EXPIRATION', 1200),

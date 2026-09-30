@@ -205,6 +205,14 @@
         page-break-inside: avoid;
     }
 
+    .full-width-table {
+        page-break-before: always;
+    }
+
+    .full-width-table .insight-table {
+        page-break-inside: auto;
+    }
+
     .text-danger {
         color: #a10000;
         font-weight: bold;
@@ -357,7 +365,7 @@
 
     <div class="two-col">
         <div class="col-left">
-            <div class="section-title">Top Tipos de Manutenção</div>
+            <div class="section-title">Tipos de Manutenção</div>
             <table class="insight-table">
                 <thead>
                     <tr>
@@ -384,24 +392,24 @@
         </div>
 
         <div class="col-right">
-            <div class="section-title">Pedidos por Escola</div>
+            <div class="section-title">Desempenho por Empresa</div>
             <table class="insight-table">
                 <thead>
                     <tr>
-                        <th>Escola</th>
+                        <th>Empresa</th>
                         <th style="text-align: center;">Pedidos</th>
-                        <th style="width: 35%;">Volume</th>
+                        <th style="text-align: center;">Concluídos</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($porEscola as $e)
+                    @foreach($porEmpresa as $e)
                         <tr>
                             <td>{{ $e->nome }}</td>
                             <td style="text-align: center; font-weight: bold;">{{ $e->total }}</td>
-                            <td>
-                                <div class="bar-outer">
-                                    <div class="bar-inner" style="width: {{ $e->pct_bar }}%; background: #3b82f6;"></div>
-                                </div>
+                            <td style="text-align: center;">
+                                <span style="color: {{ $e->taxa >= 70 ? '#059669' : ($e->taxa >= 40 ? '#d97706' : '#a10000') }}; font-weight: bold;">
+                                    {{ $e->concluidos }} <span style="font-size: 8px; font-weight: normal;">({{ $e->taxa }}%)</span>
+                                </span>
                             </td>
                         </tr>
                     @endforeach
@@ -409,6 +417,36 @@
             </table>
         </div>
     </div>
+
+    @if($porEscola->isNotEmpty())
+        <div class="full-width-table">
+            <div class="section-title">Pedidos por Escola - visão completa</div>
+            <table class="insight-table">
+                <thead>
+                    <tr>
+                        <th>Escola</th>
+                        <th style="text-align: center; width: 14%;">Pedidos</th>
+                        <th style="width: 42%;">Participação no volume</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($porEscola as $e)
+                        @php $pctTotal = $metricas->total > 0 ? round(($e->total / $metricas->total) * 100, 1) : 0; @endphp
+                        <tr>
+                            <td>{{ $e->nome }}</td>
+                            <td style="text-align: center; font-weight: bold;">{{ $e->total }}</td>
+                            <td>
+                                <div class="bar-outer">
+                                    <div class="bar-inner" style="width: {{ $e->pct_bar }}%; background: #3b82f6;"></div>
+                                </div>
+                                <span style="font-size: 8px; color: #6b7280;">{{ $pctTotal }}% do total</span>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
 
     @if($porMes->count() > 1)
         <div class="divider"></div>
