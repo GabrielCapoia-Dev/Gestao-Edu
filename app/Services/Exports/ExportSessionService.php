@@ -178,7 +178,10 @@ class ExportSessionService
                 }
             });
 
-        return compact('expired', 'filesDeleted');
+        return [
+            'expired' => $expired,
+            'files_deleted' => $filesDeleted,
+        ];
     }
 
     public function belongsToCurrentSession(ExportRequest $exportRequest, ?Request $request = null): bool

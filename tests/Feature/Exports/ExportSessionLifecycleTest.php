@@ -55,9 +55,17 @@ class ExportSessionLifecycleTest extends TestCase
 
         $exportRequest->refresh();
 
-        $this->assertSame(['expired' => 1, 'filesDeleted' => 1], $result);
+        $this->assertSame(['expired' => 1, 'files_deleted' => 1], $result);
         Storage::disk('local')->assertMissing('exports/teste/relatorio.pdf');
         $this->assertSame(ExportRequest::STATUS_EXPIRED, $exportRequest->status);
+    }
+
+    public function test_comando_de_limpeza_de_exportacoes_conclui_sem_sessoes_expiradas(): void
+    {
+        Storage::fake('local');
+
+        $this->artisan('exports:prune')
+            ->assertExitCode(0);
     }
 
     public function test_arquivo_concluido_depois_do_encerramento_da_sessao_e_descartado(): void
