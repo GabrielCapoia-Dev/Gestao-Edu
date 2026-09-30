@@ -90,7 +90,7 @@ class FeedbackPedidoExportHandler implements ExportHandler
             mediaGeral: $metrics['media'],
             totalAvaliacoes: $metrics['total'],
             percentualSatisfacao: $metrics['satisfacao'],
-            feedbacks: collect(),
+            feedbacks: new \Illuminate\Database\Eloquent\Collection(),
             graficoMediaMensal: $graficoMediaMensal,
             graficoPorNota: $graficoPorNota,
             matrizNotasPorMes: [],

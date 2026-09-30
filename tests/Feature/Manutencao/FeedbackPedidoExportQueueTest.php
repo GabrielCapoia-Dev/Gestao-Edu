@@ -283,6 +283,42 @@ class FeedbackPedidoExportQueueTest extends TestCase
         $this->assertGreaterThan(0, $result->sizeBytes);
     }
 
+    public function test_handler_gera_pdf_bi_privado_da_exportacao_de_feedback(): void
+    {
+        Storage::fake('local');
+
+        $dados = $this->criarFeedbacksParaFiltro();
+        $user = User::factory()->create([
+            'id_escola' => $dados['escola']->id,
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+
+        $exportRequest = ExportRequest::query()->create([
+            'user_id' => $user->id,
+            'type' => 'feedback_pedido_relatorio',
+            'format' => 'pdf',
+            'label' => 'Feedback - BI',
+            'filters' => [
+                'report_type' => FeedbackPedidoAnalyticsService::REPORT_GERAL,
+                'data_inicio' => '2026-05-01',
+                'data_fim' => '2026-05-31',
+            ],
+            'metadata' => [],
+            'fingerprint' => fake()->uuid(),
+            'status' => ExportRequest::STATUS_QUEUED,
+            'status_message' => 'Aguardando processamento.',
+            'progress_current' => 0,
+            'progress_total' => 100,
+        ]);
+
+        $result = app(FeedbackPedidoExportHandler::class)->handle($exportRequest->load('user'));
+
+        Storage::disk('local')->assertExists($result->path);
+        $this->assertSame('application/pdf', $result->mime);
+        $this->assertGreaterThan(0, $result->sizeBytes);
+    }
+
     public function test_listagem_e_analytics_respeitam_escola_e_admin_mantem_escopo_global(): void
     {
         $dados = $this->criarFeedbacksParaFiltro();
