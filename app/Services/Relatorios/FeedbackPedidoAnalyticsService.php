@@ -431,10 +431,11 @@ class FeedbackPedidoAnalyticsService
     /** @return array{labels: array<int, string>, data: array<int, int>} */
     public function monthlyChartDataQuery(Builder $query): array
     {
+        $monthExpression = $this->monthExpression($query, '%Y-%m');
         $rows = $this->aggregateQuery($query)
-            ->selectRaw("DATE_FORMAT(feedback_pedidos.created_at, '%Y-%m') as mes, COUNT(*) as total")
+            ->selectRaw("{$monthExpression} as mes, COUNT(*) as total")
             ->whereNotNull('feedback_pedidos.created_at')
-            ->groupByRaw("DATE_FORMAT(feedback_pedidos.created_at, '%Y-%m')")
+            ->groupByRaw($monthExpression)
             ->orderBy('mes')
             ->get();
 
@@ -459,10 +460,12 @@ class FeedbackPedidoAnalyticsService
     /** @return array<string, array<string, array<int, int>>> */
     public function matrizNotasPorMesQuery(Builder $query): array
     {
+        $yearExpression = $this->yearExpression($query);
+        $monthExpression = $this->monthExpression($query, '%m/%Y');
         $rows = $this->aggregateQuery($query)
-            ->selectRaw("YEAR(feedback_pedidos.created_at) as ano, DATE_FORMAT(feedback_pedidos.created_at, '%m/%Y') as mes, feedback_pedidos.valor, COUNT(*) as total")
+            ->selectRaw("{$yearExpression} as ano, {$monthExpression} as mes, feedback_pedidos.valor, COUNT(*) as total")
             ->whereNotNull('feedback_pedidos.created_at')
-            ->groupByRaw("YEAR(feedback_pedidos.created_at), DATE_FORMAT(feedback_pedidos.created_at, '%m/%Y'), feedback_pedidos.valor")
+            ->groupByRaw("{$yearExpression}, {$monthExpression}, feedback_pedidos.valor")
             ->orderBy('ano')
             ->orderBy('mes')
             ->get();
@@ -480,11 +483,13 @@ class FeedbackPedidoAnalyticsService
     /** @return array<int|string, array<string, mixed>> */
     public function matrizPorEmpresaQuery(Builder $query): array
     {
+        $yearExpression = $this->yearExpression($query);
+        $monthExpression = $this->monthExpression($query, '%m/%Y');
         $rows = $this->aggregateQuery($query)
             ->leftJoin('empresas_contratadas as ec', 'ec.id', '=', 'export_pedidos.empresa_contratada_id')
-            ->selectRaw("ec.id as empresa_id, ec.nome as empresa_nome, AVG(feedback_pedidos.valor) as media, COUNT(*) as total, YEAR(feedback_pedidos.created_at) as ano, DATE_FORMAT(feedback_pedidos.created_at, '%m/%Y') as mes, feedback_pedidos.valor, COUNT(*) as nota_total, {$this->reabertoSql()} as reabertos_total")
+            ->selectRaw("ec.id as empresa_id, ec.nome as empresa_nome, AVG(feedback_pedidos.valor) as media, COUNT(*) as total, {$yearExpression} as ano, {$monthExpression} as mes, feedback_pedidos.valor, COUNT(*) as nota_total, {$this->reabertoSql()} as reabertos_total")
             ->whereNotNull('ec.id')
-            ->groupByRaw("ec.id, ec.nome, YEAR(feedback_pedidos.created_at), DATE_FORMAT(feedback_pedidos.created_at, '%m/%Y'), feedback_pedidos.valor")
+            ->groupByRaw("ec.id, ec.nome, {$yearExpression}, {$monthExpression}, feedback_pedidos.valor")
             ->orderByDesc('media')
             ->get();
 
@@ -757,6 +762,20 @@ class FeedbackPedidoAnalyticsService
             "SUM(CASE WHEN EXISTS (SELECT 1 FROM pedido_historicos ph WHERE ph.pedido_id = export_pedidos.id AND ph.status_novo_id IN (%s)) THEN 1 ELSE 0 END)",
             implode(',', $statusIds),
         );
+    }
+
+    private function yearExpression(Builder $query): string
+    {
+        return $query->getConnection()->getDriverName() === 'sqlite'
+            ? "CAST(strftime('%Y', feedback_pedidos.created_at) AS INTEGER)"
+            : 'YEAR(feedback_pedidos.created_at)';
+    }
+
+    private function monthExpression(Builder $query, string $sqliteFormat): string
+    {
+        return $query->getConnection()->getDriverName() === 'sqlite'
+            ? "strftime('{$sqliteFormat}', feedback_pedidos.created_at)"
+            : "DATE_FORMAT(feedback_pedidos.created_at, '" . ($sqliteFormat === '%Y-%m' ? '%Y-%m' : '%m/%Y') . "')";
     }
 
     private function satisfactionFromAverage(float $average): int
