@@ -36,7 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule) {
         $schedule
             ->command('eventos-calendario:rejeitar-expirados')
-            ->everyMinute()
+            ->twiceDailyAt(8, 13)
             ->withoutOverlapping(5);
     })
     ->withSchedule(function ($schedule) {
