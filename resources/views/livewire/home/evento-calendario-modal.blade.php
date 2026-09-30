@@ -364,55 +364,67 @@
                                             @php
                                                 $gruposAlunos = collect($alunos)->groupBy('escola')->map(fn ($escola) => $escola->groupBy('serie'));
                                                 $excecoesAlunos = collect($data['transporte_excecoes_aluno_ids'] ?? [])->map(fn ($id): int => (int) $id)->all();
+                                                $quantidadeTurmas = collect($alunos)->map(fn (array $aluno): string => implode('|', [$aluno['escola'], $aluno['serie'], $aluno['turma']]))->unique()->count();
                                             @endphp
-                                            <div class="evento-custom-modal__result-card">
+                                            <div class="evento-custom-modal__result-card" x-data="{ totalAlunos: {{ count($alunos) }}, totalTurmas: {{ $quantidadeTurmas }} }" x-on:transporte-alunos-removidos.window="totalAlunos = Math.max(0, totalAlunos - $event.detail.alunos); totalTurmas = Math.max(0, totalTurmas - $event.detail.turmas)">
                                                 <div class="evento-custom-modal__result-heading">
                                                     <div>
                                                         <p>Alunos selecionados</p>
-                                                        <h3>{{ count($alunos) }} aluno(s) estimado(s) para transporte</h3>
+                                                        <h3 x-text="`${totalAlunos} aluno(s) estimado(s) para transporte`"></h3>
                                                     </div>
-                                                    <span>{{ collect($alunos)->pluck('turma')->unique()->count() }} turma(s)</span>
+                                                    <span x-text="`${totalTurmas} turma(s)`"></span>
                                                 </div>
+                                                @if ($alunosConsultados)
+                                                    <p class="evento-custom-modal__empty" x-show="totalAlunos === 0" x-cloak>Nenhum aluno encontrado para os filtros informados.</p>
+                                                @endif
                                                 @if (! $alunosConsultados)
                                                     <p class="evento-custom-modal__empty">Busque os alunos para conferir a seleção por escola, série e turma.</p>
                                                 @elseif ($gruposAlunos->isEmpty())
                                                     <p class="evento-custom-modal__empty">Nenhum aluno encontrado para os filtros informados.</p>
                                                 @else
-                                                    <div class="evento-custom-modal__groups">
+                                                    <div class="evento-custom-modal__groups" x-show="totalAlunos > 0">
                                                         @foreach ($gruposAlunos as $escola => $porSerie)
-                                                            <section class="evento-custom-modal__school-group" x-data="{ aberto: false }" wire:key="transporte-escola-{{ md5((string) $escola) }}">
+                                                            @php
+                                                                $alunosNaEscola = $porSerie->flatten(1)->count();
+                                                                $turmasNaEscola = $porSerie->map(fn ($porTurma, $nomeSerie) => $porTurma->keys()->map(fn ($nomeTurma) => $nomeSerie.'|'.$nomeTurma))->flatten()->unique()->count();
+                                                            @endphp
+                                                            <section class="evento-custom-modal__school-group" x-data="{ aberto: false, removido: false, pendente: false, totalAlunos: {{ $alunosNaEscola }}, totalTurmas: {{ $turmasNaEscola }} }" x-show="! removido" x-on:transporte-alunos-removidos="totalAlunos = Math.max(0, totalAlunos - $event.detail.alunos); totalTurmas = Math.max(0, totalTurmas - $event.detail.turmas); if (totalAlunos === 0) removido = true" wire:key="transporte-escola-{{ md5((string) $escola) }}">
                                                                 <div class="evento-custom-modal__school-heading">
                                                                     <button type="button" class="evento-custom-modal__school-toggle" x-on:click="aberto = ! aberto" x-bind:aria-expanded="aberto.toString()">
-                                                                        <strong>{{ $escola }}</strong><span>{{ $porSerie->flatten(1)->count() }} aluno(s)</span><span aria-hidden="true" x-text="aberto ? '⌃' : '⌄'"></span>
+                                                                        <strong>{{ $escola }}</strong><span x-text="`${totalAlunos} aluno(s)`"></span><span aria-hidden="true" x-text="aberto ? '⌃' : '⌄'"></span>
                                                                     </button>
-                                                                    <button type="button" class="evento-custom-modal__remove-school" data-action-loading="local" wire:click="removerGrupoAlunos('escola', @js((string) $escola))" aria-label="Remover {{ $escola }} do transporte" title="Remover escola do transporte">&times;</button>
+                                                                    <button type="button" class="evento-custom-modal__remove-school" data-action-loading-ignore x-bind:disabled="pendente" x-on:click="if (pendente) return; pendente = true; $wire.removerGrupoAlunos('escola', @js((string) $escola)).then(() => { removido = true; $dispatch('transporte-alunos-removidos', { alunos: {{ $alunosNaEscola }}, turmas: {{ $turmasNaEscola }} }) }).catch(() => { pendente = false })" aria-label="Remover {{ $escola }} do transporte" title="Remover escola do transporte">&times;</button>
                                                                 </div>
                                                                 <div x-show="aberto" x-cloak>
                                                                     @foreach ($porSerie as $serie => $porTurma)
-                                                                        <section class="evento-custom-modal__school-group evento-custom-modal__nested-group" x-data="{ aberto: false }" wire:key="transporte-serie-{{ md5((string) $escola.'|'.(string) $serie) }}">
+                                                                        @php
+                                                                            $alunosNaSerie = $porTurma->flatten(1)->count();
+                                                                            $turmasNaSerie = $porTurma->keys()->unique()->count();
+                                                                        @endphp
+                                                                        <section class="evento-custom-modal__school-group evento-custom-modal__nested-group" x-data="{ aberto: false, removido: false, pendente: false, totalAlunos: {{ $alunosNaSerie }}, totalTurmas: {{ $turmasNaSerie }} }" x-show="! removido" x-on:transporte-alunos-removidos="totalAlunos = Math.max(0, totalAlunos - $event.detail.alunos); totalTurmas = Math.max(0, totalTurmas - $event.detail.turmas); if (totalAlunos === 0) removido = true" wire:key="transporte-serie-{{ md5((string) $escola.'|'.(string) $serie) }}">
                                                                             <div class="evento-custom-modal__school-heading">
                                                                                 <button type="button" class="evento-custom-modal__school-toggle" x-on:click="aberto = ! aberto" x-bind:aria-expanded="aberto.toString()">
-                                                                                    <strong>{{ $serie }}</strong><span>{{ $porTurma->count() }} aluno(s)</span><span aria-hidden="true" x-text="aberto ? '⌃' : '⌄'"></span>
+                                                                                    <strong>{{ $serie }}</strong><span x-text="`${totalAlunos} aluno(s)`"></span><span aria-hidden="true" x-text="aberto ? '⌃' : '⌄'"></span>
                                                                                 </button>
-                                                                                <button type="button" class="evento-custom-modal__remove-school" data-action-loading="local" wire:click="removerGrupoAlunos('serie', @js((string) $escola), @js((string) $serie))" aria-label="Remover série {{ $serie }} do transporte" title="Remover série do transporte">&times;</button>
+                                                                                <button type="button" class="evento-custom-modal__remove-school" data-action-loading-ignore x-bind:disabled="pendente" x-on:click="if (pendente) return; pendente = true; $wire.removerGrupoAlunos('serie', @js((string) $escola), @js((string) $serie)).then(() => { removido = true; $dispatch('transporte-alunos-removidos', { alunos: {{ $alunosNaSerie }}, turmas: {{ $turmasNaSerie }} }) }).catch(() => { pendente = false })" aria-label="Remover série {{ $serie }} do transporte" title="Remover série do transporte">&times;</button>
                                                                             </div>
                                                                             <div x-show="aberto" x-cloak>
                                                                                 @foreach ($porTurma->groupBy('turma') as $turma => $pessoas)
-                                                                                    <section class="evento-custom-modal__school-group evento-custom-modal__nested-group" x-data="{ aberto: false }" wire:key="transporte-turma-{{ md5((string) $escola.'|'.(string) $serie.'|'.(string) $turma) }}">
+                                                                                    <section class="evento-custom-modal__school-group evento-custom-modal__nested-group" x-data="{ aberto: false, removido: false, pendente: false, totalAlunos: {{ $pessoas->count() }} }" x-show="! removido" x-on:transporte-alunos-removidos="totalAlunos = Math.max(0, totalAlunos - $event.detail.alunos); if (totalAlunos === 0) removido = true" wire:key="transporte-turma-{{ md5((string) $escola.'|'.(string) $serie.'|'.(string) $turma) }}">
                                                                                         <div class="evento-custom-modal__school-heading">
                                                                                             <button type="button" class="evento-custom-modal__school-toggle" x-on:click="aberto = ! aberto" x-bind:aria-expanded="aberto.toString()">
-                                                                                                <strong>{{ $turma }} · {{ $pessoas->first()['turno'] }}</strong><span>{{ $pessoas->count() }} aluno(s)</span><span aria-hidden="true" x-text="aberto ? '⌃' : '⌄'"></span>
+                                                                                                <strong>{{ $turma }} · {{ $pessoas->first()['turno'] }}</strong><span x-text="`${totalAlunos} aluno(s)`"></span><span aria-hidden="true" x-text="aberto ? '⌃' : '⌄'"></span>
                                                                                             </button>
-                                                                                            <button type="button" class="evento-custom-modal__remove-school" data-action-loading="local" wire:click="removerGrupoAlunos('turma', @js((string) $escola), @js((string) $serie), @js((string) $turma))" aria-label="Remover turma {{ $turma }} do transporte" title="Remover turma do transporte">&times;</button>
+                                                                                            <button type="button" class="evento-custom-modal__remove-school" data-action-loading-ignore x-bind:disabled="pendente" x-on:click="if (pendente) return; pendente = true; $wire.removerGrupoAlunos('turma', @js((string) $escola), @js((string) $serie), @js((string) $turma)).then(() => { removido = true; $dispatch('transporte-alunos-removidos', { alunos: {{ $pessoas->count() }}, turmas: 1 }) }).catch(() => { pendente = false })" aria-label="Remover turma {{ $turma }} do transporte" title="Remover turma do transporte">&times;</button>
                                                                                         </div>
                                                                                         <div class="evento-custom-modal__table-wrap" x-show="aberto" x-cloak>
                                                                                             <table>
                                                                                                 <thead><tr><th>Aluno</th><th></th></tr></thead>
                                                                                                 <tbody>
                                                                                                     @foreach ($pessoas as $aluno)
-                                                                                                        <tr wire:key="transporte-aluno-{{ $aluno['id'] }}">
+                                                                                                        <tr x-data="{ removido: false, pendente: false }" x-show="! removido" wire:key="transporte-aluno-{{ $aluno['id'] }}">
                                                                                                             <td>{{ $aluno['nome'] }}</td>
-                                                                                                            <td><button type="button" data-action-loading="local" wire:click="removerAluno({{ $aluno['id'] }})" aria-label="Remover {{ $aluno['nome'] }}">&times;</button></td>
+                                                                                                            <td><button type="button" data-action-loading-ignore x-bind:disabled="pendente" x-on:click="if (pendente) return; pendente = true; $wire.removerAluno({{ $aluno['id'] }}).then(() => { removido = true; $dispatch('transporte-alunos-removidos', { alunos: 1, turmas: totalAlunos === 1 ? 1 : 0 }) }).catch(() => { pendente = false })" aria-label="Remover {{ $aluno['nome'] }}">&times;</button></td>
                                                                                                         </tr>
                                                                                                     @endforeach
                                                                                                 </tbody>

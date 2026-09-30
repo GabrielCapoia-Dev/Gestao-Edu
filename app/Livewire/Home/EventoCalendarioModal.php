@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Renderless;
 use Livewire\Component;
 
 final class EventoCalendarioModal extends Component
@@ -320,6 +321,7 @@ final class EventoCalendarioModal extends Component
     }
 
     /** @param int|string $id */
+    #[Renderless]
     public function removerAluno(int|string $id): void
     {
         $this->autorizarCriacao();
@@ -332,6 +334,7 @@ final class EventoCalendarioModal extends Component
         $this->excluirAlunosDaSelecao([$id]);
     }
 
+    #[Renderless]
     public function removerGrupoAlunos(string $nivel, string $escola, ?string $serie = null, ?string $turma = null): void
     {
         $this->autorizarCriacao();
