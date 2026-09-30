@@ -33,6 +33,12 @@ return Application::configure(basePath: dirname(__DIR__))
             ->hourly()
             ->withoutOverlapping(120);
     })
+    ->withSchedule(function (Schedule $schedule) {
+        $schedule
+            ->command('eventos-calendario:rejeitar-expirados')
+            ->everyMinute()
+            ->withoutOverlapping(5);
+    })
     ->withSchedule(function ($schedule) {
         $schedule->command('app:notificar-pedidos-a-vencer')
             ->dailyAt('08:00')

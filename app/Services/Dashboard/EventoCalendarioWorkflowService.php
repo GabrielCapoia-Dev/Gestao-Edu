@@ -7,12 +7,57 @@ use App\Models\Enums\EventoCalendarioStatus;
 use App\Models\EventoCalendario;
 use App\Models\EventoCalendarioHistorico;
 use App\Models\User;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 class EventoCalendarioWorkflowService
 {
+    public function rejeitarPendentesExpirados(CarbonInterface $agora): int
+    {
+        $totalRejeitado = 0;
+
+        EventoCalendario::query()
+            ->where('status', EventoCalendarioStatus::PENDENTE_APROVACAO)
+            ->where('data_inicio', '<=', $agora)
+            ->select('id')
+            ->chunkById(100, function ($eventos) use ($agora, &$totalRejeitado): void {
+                foreach ($eventos as $eventoCandidato) {
+                    $rejeitado = DB::transaction(function () use ($eventoCandidato, $agora): bool {
+                        $evento = EventoCalendario::query()
+                            ->lockForUpdate()
+                            ->find($eventoCandidato->getKey());
+
+                        if (
+                            ! $evento
+                            || $evento->status !== EventoCalendarioStatus::PENDENTE_APROVACAO
+                            || $evento->data_inicio->gt($agora)
+                        ) {
+                            return false;
+                        }
+
+                        $anterior = $evento->status;
+                        $this->atualizarEstado($evento, EventoCalendarioStatus::REJEITADO, null);
+                        $this->registrar(
+                            $evento,
+                            null,
+                            EventoCalendarioHistoricoAcao::REJEITADO,
+                            $anterior,
+                            EventoCalendarioStatus::REJEITADO,
+                            'Rejeitado automaticamente: o horário de início do evento já passou.',
+                        );
+
+                        return true;
+                    });
+
+                    $totalRejeitado += (int) $rejeitado;
+                }
+            });
+
+        return $totalRejeitado;
+    }
+
     public function publicar(EventoCalendario $evento, User $ator): EventoCalendario
     {
         return DB::transaction(function () use ($evento, $ator): EventoCalendario {
@@ -171,7 +216,7 @@ class EventoCalendarioWorkflowService
     private function atualizarEstado(
         EventoCalendario $evento,
         EventoCalendarioStatus $status,
-        User $ator,
+        ?User $ator,
     ): void {
         $evento->forceFill([
             'status' => $status,
@@ -182,7 +227,7 @@ class EventoCalendarioWorkflowService
 
     private function registrar(
         EventoCalendario $evento,
-        User $ator,
+        ?User $ator,
         EventoCalendarioHistoricoAcao $acao,
         ?EventoCalendarioStatus $anterior,
         EventoCalendarioStatus $novo,

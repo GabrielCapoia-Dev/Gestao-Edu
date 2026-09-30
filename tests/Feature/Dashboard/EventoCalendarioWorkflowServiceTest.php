@@ -19,6 +19,7 @@ use App\Models\User;
 use App\Services\Dashboard\EventoCalendarioWorkflowService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -80,6 +81,47 @@ class EventoCalendarioWorkflowServiceTest extends TestCase
             'status_novo' => EventoCalendarioStatus::REJEITADO->value,
             'motivo' => 'Transporte incompatível com a programação.',
         ]);
+    }
+
+    public function test_rejeita_automaticamente_eventos_pendentes_com_inicio_passado(): void
+    {
+        $agora = Carbon::parse('2026-09-30 12:00:00');
+        $vencido = $this->evento(EventoCalendarioStatus::PENDENTE_APROVACAO, false, transporte: true);
+        $vencido->update([
+            'data_inicio' => $agora->copy()->subMinute(),
+            'data_fim' => $agora->copy()->addHour(),
+        ]);
+
+        $futuro = $this->evento(EventoCalendarioStatus::PENDENTE_APROVACAO, false, transporte: true);
+        $futuro->update([
+            'data_inicio' => $agora->copy()->addMinute(),
+            'data_fim' => $agora->copy()->addHours(2),
+        ]);
+
+        $publicado = $this->evento(EventoCalendarioStatus::PUBLICADO, true, transporte: true);
+        $publicado->update([
+            'data_inicio' => $agora->copy()->subHour(),
+            'data_fim' => $agora->copy()->addHour(),
+        ]);
+
+        $workflow = app(EventoCalendarioWorkflowService::class);
+
+        $this->assertSame(1, $workflow->rejeitarPendentesExpirados($agora));
+
+        $this->assertSame(EventoCalendarioStatus::REJEITADO, $vencido->refresh()->status);
+        $this->assertFalse($vencido->ativo);
+        $this->assertNull($vencido->atualizado_por_id);
+        $this->assertSame(EventoCalendarioStatus::PENDENTE_APROVACAO, $futuro->refresh()->status);
+        $this->assertSame(EventoCalendarioStatus::PUBLICADO, $publicado->refresh()->status);
+        $this->assertDatabaseHas('evento_calendario_historicos', [
+            'evento_calendario_id' => $vencido->id,
+            'usuario_id' => null,
+            'acao' => EventoCalendarioHistoricoAcao::REJEITADO->value,
+            'status_anterior' => EventoCalendarioStatus::PENDENTE_APROVACAO->value,
+            'status_novo' => EventoCalendarioStatus::REJEITADO->value,
+            'motivo' => 'Rejeitado automaticamente: o horário de início do evento já passou.',
+        ]);
+        $this->assertSame(0, $workflow->rejeitarPendentesExpirados($agora));
     }
 
     public function test_evento_de_transporte_rejeitado_precisa_ser_reenviado_antes_de_publicar(): void
