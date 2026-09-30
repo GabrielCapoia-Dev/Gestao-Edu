@@ -221,7 +221,7 @@ class EventoCalendarioWorkflowService
         $evento->forceFill([
             'status' => $status,
             'ativo' => $status === EventoCalendarioStatus::PUBLICADO,
-            'atualizado_por_id' => $ator->getKey(),
+            'atualizado_por_id' => $ator?->getKey(),
         ])->save();
     }
 
