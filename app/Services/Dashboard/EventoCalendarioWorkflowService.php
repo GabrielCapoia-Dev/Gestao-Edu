@@ -235,7 +235,7 @@ class EventoCalendarioWorkflowService
     ): void {
         EventoCalendarioHistorico::query()->create([
             'evento_calendario_id' => $evento->getKey(),
-            'usuario_id' => $ator->getKey(),
+            'usuario_id' => $ator?->getKey(),
             'acao' => $acao,
             'status_anterior' => $anterior,
             'status_novo' => $novo,
