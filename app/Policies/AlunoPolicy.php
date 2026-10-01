@@ -115,6 +115,10 @@ class AlunoPolicy
             return true;
         }
 
+        if ($scope->podeConsultarTodaRede($user)) {
+            return true;
+        }
+
         if ($scope->ehEquipeGestora($user)) {
             return $scope->canAccessEscola($user, (int) $aluno->turma?->id_escola);
         }

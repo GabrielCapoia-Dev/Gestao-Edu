@@ -3,6 +3,7 @@
 namespace App\Services\Dashboard;
 
 use App\Models\User;
+use App\Models\Escola;
 use App\Services\PessoaScopeService;
 use App\Services\UserSetorAccessService;
 use App\Support\Dashboard\DashboardUserContext;
@@ -34,6 +35,10 @@ class DashboardUserContextFactory
 
         $vinculos = $this->pessoaScope->vinculosAtivos($user);
         $escolaIds = $this->ids($this->pessoaScope->escolaIdsDosVinculos($user));
+
+        if ($this->pessoaScope->podeConsultarTodaRede($user)) {
+            $escolaIds = Escola::query()->where('ativo', true)->orderBy('id')->pluck('id')->map(fn ($id): int => (int) $id);
+        }
 
         $setorIds = $this->ids($this->pessoaScope->setorIdsDosVinculos($user));
 

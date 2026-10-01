@@ -46,7 +46,8 @@ class EventoCalendarioPolicy
     public function update(User $user, EventoCalendario $evento): bool
     {
         return $this->view($user, $evento)
-            && $user->hasPermissionTo(ListaPermissoes::EditarEventos->label());
+            && $user->hasPermissionTo(ListaPermissoes::EditarEventos->label())
+            && $this->podeGerenciarRegistro($user, $evento);
     }
 
     public function delete(User $user, EventoCalendario $evento): bool
@@ -72,6 +73,10 @@ class EventoCalendarioPolicy
         }
 
         if (! $this->view($user, $evento)) {
+            return false;
+        }
+
+        if (! $this->podeGerenciarRegistro($user, $evento)) {
             return false;
         }
 
@@ -104,6 +109,10 @@ class EventoCalendarioPolicy
         }
 
         if (! $this->view($user, $evento)) {
+            return false;
+        }
+
+        if (! $this->podeGerenciarRegistro($user, $evento)) {
             return false;
         }
 
@@ -140,11 +149,18 @@ class EventoCalendarioPolicy
     public function manageAudience(User $user, ?EventoCalendario $evento = null): bool
     {
         return $user->hasPermissionTo(ListaPermissoes::GerenciarPublicoAlvoDeEventos->label())
-            && (! $evento || $this->view($user, $evento));
+            && (! $evento || ($this->view($user, $evento) && $this->podeGerenciarRegistro($user, $evento)));
     }
 
     public function applyViewAnyScope(User $user, Builder $query): Builder
     {
         return $this->access->aplicarEscopo($user, $query);
+    }
+
+    private function podeGerenciarRegistro(User $user, EventoCalendario $evento): bool
+    {
+        $scope = app(\App\Services\PessoaScopeService::class);
+        return ! ($scope->podeConsultarTodaRede($user) && ! $scope->hasGlobalAccess($user))
+            || (int) $evento->criado_por_id === (int) $user->getKey();
     }
 }

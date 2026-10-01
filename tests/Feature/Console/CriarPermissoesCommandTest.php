@@ -10,6 +10,7 @@ use App\Support\AssessoriaPedagogicaPermissionPreset;
 use App\Support\EquipeGestoraPermissionPreset;
 use App\Support\ManutencaoPermissionPreset;
 use App\Support\ObrasPermissionPreset;
+use App\Support\RhPermissionPreset;
 use App\Support\TransportePermissionPreset;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
@@ -196,6 +197,23 @@ class CriarPermissoesCommandTest extends TestCase
             'role_id' => $role->id,
         ]);
         $this->assertTrue($funcao->concedeAcessoSistema());
+        $this->assertFalse($funcao->exige_professor);
+    }
+
+    public function test_it_creates_rh_function_role_and_scoped_permissions(): void
+    {
+        Artisan::call('permissoes:criar');
+
+        $role = Role::findByName('RH', 'web');
+        $funcao = FuncaoAdministrativa::query()->where('codigo', 'rh')->firstOrFail();
+        $this->assertEqualsCanonicalizing(RhPermissionPreset::all(), $role->permissions()->pluck('name')->all());
+        $this->assertTrue($role->hasPermissionTo(ListaPermissoes::GerenciarLotacoes->label()));
+        $this->assertFalse($role->hasPermissionTo(ListaPermissoes::EditarEscolas->label()));
+        $this->assertFalse($role->hasPermissionTo(ListaPermissoes::CriarEscolas->label()));
+        $this->assertDatabaseHas('funcao_administrativa_role', [
+            'funcao_administrativa_id' => $funcao->id,
+            'role_id' => $role->id,
+        ]);
         $this->assertFalse($funcao->exige_professor);
     }
 

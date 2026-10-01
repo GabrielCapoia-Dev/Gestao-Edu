@@ -287,9 +287,11 @@ class PessoaMatricula extends Model
         }
 
         if (! $jornada) {
-            if (count($matriculas) !== 1 || count($turnos) !== 1 || ! in_array($turnos[0], ['manha', 'tarde'], true)) {
+            if (! in_array(count($matriculas), [1, 2], true)
+                || (count($matriculas) === 1 && ! in_array($turnos[0] ?? null, ['manha', 'tarde', 'integral'], true))
+                || (count($matriculas) === 2 && collect($turnos)->sort()->values()->all() !== ['manha', 'tarde'])) {
                 throw ValidationException::withMessages([
-                    $campo => 'Servidor de 20 horas sem jornada deve possuir uma única matrícula de manhã ou à tarde.',
+                    $campo => 'Sem jornada, informe uma matrícula (manhã, tarde ou integral) ou duas matrículas (manhã e tarde).',
                 ]);
             }
 

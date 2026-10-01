@@ -206,7 +206,9 @@ Observações:
 
 - Quem possui somente `Criar Eventos: Transporte` precisa selecionar escolas e solicitar transporte; o serviço rejeita eventos comuns.
 - O nível `Transporte` analisa, publica, desativa e rejeita solicitações de transporte sem acesso aos cadastros pedagógicos.
-- O nível `Assessoria Pedagógica` possui leitura pedagógica de rede, opera avisos e eventos próprios dentro das escolas assessoradas e cria/edita/cancela reservas nessas escolas, mas não administra frota nem aloca transporte de eventos.
+- O nível `Assessoria Pedagógica` lista dados de todas as escolas e exporta os relatórios permitidos sem receber escrita escolar; pode criar eventos para qualquer escola, mas só editar/publicar/desativar e alterar público-alvo dos próprios. Seus avisos e reservas continuam sujeitos aos escopos e permissões existentes; não administra frota nem aloca transporte de eventos.
+- O nível `RH` é sincronizado ao cargo funcional `RH`, não possui vínculo escolar e recebe acesso completo a Servidores, leitura/exportação de Locais de Trabalho, permissão isolada `Gerenciar Lotações`, relatórios e gestão dos próprios eventos, avisos e reservas. A permissão de lotações não concede edição de escolas.
+- Assessoria e RH têm leitura da rede por escopo dedicado; isso não equivale a `accessGlobalScope` nem deve ser usado para autorizar escrita genérica.
 
 ### Pedagógico -> Reserva de veículos
 
@@ -221,6 +223,7 @@ Policies: `ReservaVeiculoPolicy` e `VeiculoTransportePolicy` (registradas em `Ap
 Observações:
 
 - O preset `Assessoria Pedagógica` recebe as permissões de reserva, mas não `Gerenciar Frota de Veículos`; o escopo das escolas é validado no backend.
+- O perfil RH pode consultar todos os veículos necessários para reservar, mas não recebe `Gerenciar Frota de Veículos`; a listagem/edição das reservas do RH fica restrita às reservas de sua autoria.
 - A gestão de reservas é acessada pelos botões da página inicial e não é registrada no menu lateral.
 - Reservas para vários dias geram uma reserva por dia do intervalo, sempre no mesmo horário, com limite de 31 dias.
 - Reservas destinadas a uma escola ou CMEI aparecem na agenda da unidade.

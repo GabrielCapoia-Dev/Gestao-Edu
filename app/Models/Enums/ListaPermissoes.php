@@ -115,6 +115,7 @@ enum ListaPermissoes: string
     case EditarDominiosDeEmail = 'editar dominios de email';
     case EditarSeries = 'editar séries';
     case EditarEscolas = 'editar escolas';
+    case GerenciarLotacoes = 'gerenciar lotações';
     case EditarProfessores = 'editar professores';
     case EditarFuncoesAdministrativas = 'editar funções administrativas';
     case EditarAlternativas = 'editar alternativas';
@@ -382,6 +383,7 @@ enum ListaPermissoes: string
             self::EditarDominiosDeEmail => 'Editar Dominios de Email',
             self::EditarSeries => 'Editar Séries',
             self::EditarEscolas => 'Editar Escolas',
+            self::GerenciarLotacoes => 'Gerenciar Lotações',
             self::EditarProfessores => 'Editar Professores',
             self::EditarFuncoesAdministrativas => 'Editar Funções Administrativas',
             self::EditarAlternativas => 'Editar Alternativas',

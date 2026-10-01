@@ -120,6 +120,28 @@ class EventoCalendarioPolicyTest extends TestCase
         $this->assertFalse(Gate::forUser($assessoria)->allows('update', $eventoAlheio));
     }
 
+    public function test_assessoria_com_listagem_geral_le_eventos_de_outras_escolas_mas_so_edita_os_proprios(): void
+    {
+        $assessoria = User::factory()->create();
+        $criadorAlheio = User::factory()->create();
+        $proprio = $this->criarEvento($assessoria, false, 'Evento próprio');
+        $outraEscola = $this->criarEvento($criadorAlheio, false, 'Evento da rede');
+        $this->vincularAssessoria($assessoria);
+        $this->conceder(
+            $assessoria,
+            ListaPermissoes::ListarMeusEventos,
+            ListaPermissoes::ListarEventosGeral,
+            ListaPermissoes::EditarEventos,
+        );
+
+        $query = app(\App\Services\Dashboard\EventoCalendarioAccessService::class)
+            ->aplicarEscopo($assessoria, EventoCalendario::query());
+
+        $this->assertTrue($query->whereKey($outraEscola->id)->exists());
+        $this->assertTrue(Gate::forUser($assessoria)->allows('update', $proprio));
+        $this->assertFalse(Gate::forUser($assessoria)->allows('update', $outraEscola));
+    }
+
     public function test_publicacao_e_desativacao_comuns_nao_autorizam_eventos_com_transporte(): void
     {
         $gestor = User::factory()->create();

@@ -30,17 +30,19 @@ class LotacaoPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('Editar Escolas');
+        return $user->hasPermissionTo('Editar Escolas') || $user->hasPermissionTo('Gerenciar Lotações');
     }
 
     public function update(User $user, Lotacao $model): bool
     {
-        return $user->hasPermissionTo('Editar Escolas') && $this->localEstaNoEscopo($user, $model);
+        return ($user->hasPermissionTo('Editar Escolas') || $user->hasPermissionTo('Gerenciar Lotações'))
+            && $this->localEstaNoEscopo($user, $model);
     }
 
     public function delete(User $user, Lotacao $model): bool
     {
-        return $user->hasPermissionTo('Editar Escolas') && $this->localEstaNoEscopo($user, $model);
+        return ($user->hasPermissionTo('Editar Escolas') || $user->hasPermissionTo('Gerenciar Lotações'))
+            && $this->localEstaNoEscopo($user, $model);
     }
 
     private function localEstaNoEscopo(User $user, Lotacao $model): bool

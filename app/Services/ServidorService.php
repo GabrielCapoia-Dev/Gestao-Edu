@@ -80,6 +80,9 @@ class ServidorService
         if ($this->fluxoAssessoriaPedagogica($data, $vinculos)) {
             return $this->criarPessoaOperacional($data, $vinculos, 'assessoria_pedagogica');
         }
+        if ($this->fluxoRh($data, $vinculos)) {
+            return $this->criarPessoaOperacional($data, $vinculos, 'rh');
+        }
 
         if ($this->fluxoObras($data, $vinculos)) {
             return app(PessoaObrasService::class)->criarPessoaObras(
@@ -131,6 +134,9 @@ class ServidorService
 
         if ($this->fluxoAssessoriaPedagogica($data, $vinculos)) {
             return $this->atualizarPessoaOperacional($servidor, $data, $vinculos, 'assessoria_pedagogica');
+        }
+        if ($this->fluxoRh($data, $vinculos)) {
+            return $this->atualizarPessoaOperacional($servidor, $data, $vinculos, 'rh');
         }
 
         if ($this->fluxoObras($data, $vinculos)) {
@@ -363,6 +369,11 @@ class ServidorService
             || array_key_exists('assessoria_pedagogica', $vinculos);
     }
 
+    private function fluxoRh(array $data, array $vinculos): bool
+    {
+        return ($data['cargo'] ?? null) === 'rh' || array_key_exists('rh', $data) || array_key_exists('rh', $vinculos);
+    }
+
     private function criarPessoaMotorista(array $data, array $vinculos): Servidor
     {
         $matricula = $vinculos['motorista']['matricula']
@@ -460,11 +471,12 @@ class ServidorService
     private function criarPessoaOperacional(array $data, array $vinculos, string $tipo): Servidor
     {
         $dados = $vinculos[$tipo] ?? $data[$tipo] ?? $vinculos;
-        $matricula = $dados['matricula'] ?? $data['matricula'] ?? null;
-        $turno = $dados['turno'] ?? $data['turno_operacional'] ?? null;
+        $primeiraMatricula = $dados['matriculas'][0] ?? [];
+        $matricula = $dados['matricula'] ?? $primeiraMatricula['matricula'] ?? $data['matricula'] ?? null;
+        $turno = $dados['turno'] ?? $primeiraMatricula['turno'] ?? $data['turno_operacional'] ?? null;
         $escolaIds = $dados['escola_ids'] ?? [];
 
-        return DB::transaction(function () use ($data, $matricula, $turno, $tipo, $escolaIds): Servidor {
+        return DB::transaction(function () use ($data, $dados, $matricula, $turno, $tipo, $escolaIds): Servidor {
             $pessoa = Servidor::query()->create([
                 ...collect($data)->only([
                     'nome',
@@ -480,9 +492,11 @@ class ServidorService
                 'matricula' => filled($matricula) ? trim((string) $matricula) : null,
             ]);
 
-            $funcao = $tipo === 'transporte'
-                ? FuncaoAdministrativa::transportePadrao()
-                : FuncaoAdministrativa::assessoriaPedagogicaPadrao();
+            $funcao = match ($tipo) {
+                'transporte' => FuncaoAdministrativa::transportePadrao(),
+                'rh' => FuncaoAdministrativa::rhPadrao(),
+                default => FuncaoAdministrativa::assessoriaPedagogicaPadrao(),
+            };
 
             $vinculo = $this->vincularFuncao($pessoa, $funcao, [
                 'origem' => 'pessoas',
@@ -491,8 +505,13 @@ class ServidorService
                 'setor_id' => null,
             ]);
 
+            if (in_array($tipo, ['assessoria_pedagogica', 'rh'], true)) {
+                $this->sincronizarMatriculasFuncionais($pessoa, $dados['matriculas'] ?? [[
+                    'matricula' => $matricula,
+                    'turno' => $turno,
+                ]]);
+            }
             if ($tipo === 'assessoria_pedagogica') {
-                $this->sincronizarMatriculaAssessoria($pessoa, $matricula, $turno);
                 $this->sincronizarEscolasAssessoria($vinculo, $escolaIds);
             }
 
@@ -505,11 +524,12 @@ class ServidorService
     private function atualizarPessoaOperacional(Servidor $servidor, array $data, array $vinculos, string $tipo): Servidor
     {
         $dados = $vinculos[$tipo] ?? $data[$tipo] ?? $vinculos;
-        $matricula = $dados['matricula'] ?? $data['matricula'] ?? null;
-        $turno = $dados['turno'] ?? $data['turno_operacional'] ?? null;
+        $primeiraMatricula = $dados['matriculas'][0] ?? [];
+        $matricula = $dados['matricula'] ?? $primeiraMatricula['matricula'] ?? $data['matricula'] ?? null;
+        $turno = $dados['turno'] ?? $primeiraMatricula['turno'] ?? $data['turno_operacional'] ?? null;
         $escolaIds = $dados['escola_ids'] ?? [];
 
-        return DB::transaction(function () use ($servidor, $data, $matricula, $turno, $tipo, $escolaIds): Servidor {
+        return DB::transaction(function () use ($servidor, $data, $dados, $matricula, $turno, $tipo, $escolaIds): Servidor {
             $servidor = Servidor::query()
                 ->with('vinculosAtivos.funcaoAdministrativa')
                 ->lockForUpdate()
@@ -530,9 +550,11 @@ class ServidorService
                 'matricula' => filled($matricula) ? trim((string) $matricula) : null,
             ])->save();
 
-            $funcao = $tipo === 'transporte'
-                ? FuncaoAdministrativa::transportePadrao()
-                : FuncaoAdministrativa::assessoriaPedagogicaPadrao();
+            $funcao = match ($tipo) {
+                'transporte' => FuncaoAdministrativa::transportePadrao(),
+                'rh' => FuncaoAdministrativa::rhPadrao(),
+                default => FuncaoAdministrativa::assessoriaPedagogicaPadrao(),
+            };
 
             $this->encerrarVinculosOperacionaisIncompativeis($servidor, $funcao);
 
@@ -552,8 +574,13 @@ class ServidorService
                 'setor_id' => null,
             ])->save();
 
+            if (in_array($tipo, ['assessoria_pedagogica', 'rh'], true)) {
+                $this->sincronizarMatriculasFuncionais($servidor, $dados['matriculas'] ?? [[
+                    'matricula' => $matricula,
+                    'turno' => $turno,
+                ]]);
+            }
             if ($tipo === 'assessoria_pedagogica') {
-                $this->sincronizarMatriculaAssessoria($servidor, $matricula, $turno, $matriculaAnterior);
                 $this->sincronizarEscolasAssessoria($vinculo, $escolaIds);
             }
 
@@ -563,34 +590,34 @@ class ServidorService
         });
     }
 
-    private function sincronizarMatriculaAssessoria(
-        Servidor $pessoa,
-        mixed $matricula,
-        mixed $turno,
-        mixed $matriculaAnterior = null,
-    ): void {
-        $matricula = filled($matricula) ? trim((string) $matricula) : null;
-        $turno = filled($turno) ? (string) $turno : null;
-
-        if (! filled($matricula)) {
+    private function sincronizarMatriculasFuncionais(Servidor $pessoa, array $registros): void
+    {
+        $items = collect($registros)
+            ->filter(fn (mixed $item): bool => is_array($item) && filled($item['matricula'] ?? null) && filled($item['turno'] ?? null))
+            ->map(fn (array $item): array => [
+                'id' => $item['id'] ?? null,
+                'matricula' => trim((string) $item['matricula']),
+                'turno' => (string) $item['turno'],
+                'jornada' => false,
+            ])->values();
+        if ($items->isEmpty()) {
             throw ValidationException::withMessages([
-                'matricula_operacional' => 'Informe a matrícula da Assessoria Pedagógica.',
+                'matriculas_professor' => 'Informe ao menos uma matrícula e seu turno.',
             ]);
         }
-
-        PessoaMatricula::assertTurnoValido((string) $turno);
-
-        $registro = PessoaMatricula::query()
-            ->where('servidor_id', $pessoa->getKey())
-            ->whereIn('matricula', collect([$matriculaAnterior, $matricula])->filter()->unique()->values())
-            ->first() ?? new PessoaMatricula(['servidor_id' => $pessoa->getKey()]);
-
-        $registro->forceFill([
-            'servidor_id' => $pessoa->getKey(),
-            'matricula' => $matricula,
-            'turno' => $turno,
-            'jornada' => false,
-        ])->save();
+        PessoaMatricula::assertConjuntoFuncionalValido($items->map(fn (array $item): array => collect($item)->except('id')->all())->all(), 'matriculas_professor');
+        $anteriores = PessoaMatricula::query()->where('servidor_id', $pessoa->getKey())->get()->keyBy('id');
+        $mantidos = [];
+        foreach ($items as $item) {
+            $registro = filled($item['id']) ? $anteriores->get((int) $item['id']) : null;
+            if (filled($item['id']) && (! $registro || (int) $registro->servidor_id !== (int) $pessoa->getKey())) {
+                throw ValidationException::withMessages(['matriculas_professor' => 'Matrícula não pertence a esta pessoa.']);
+            }
+            $registro ??= new PessoaMatricula();
+            $registro->forceFill(collect($item)->except('id')->all() + ['servidor_id' => $pessoa->getKey()])->save();
+            $mantidos[] = $registro->getKey();
+        }
+        PessoaMatricula::query()->where('servidor_id', $pessoa->getKey())->whereNotIn('id', $mantidos)->delete();
     }
 
     private function sincronizarEscolasAssessoria(
@@ -1262,17 +1289,39 @@ class ServidorService
 
         Pessoa::assertDadosFuncionaisValidos($cargaHoraria, $jornada);
 
-        $cargo = (string) ($data['cargo'] ?? '');
-        $cargosSemMatriculas = ['motorista', 'transporte'];
+        $cargo = (string) ($data['cargo']
+            ?? ((array_key_exists('matriculas_professor', $data)
+                || array_key_exists('registros_professor', $data)
+                || array_key_exists('matriculas_professor', $vinculos)
+                || array_key_exists('registros_professor', $vinculos)) ? 'professor' : ''));
         $matriculas = $this->matriculasDosDadosFuncionais($data, $vinculos);
 
-        if (in_array($cargo, $cargosSemMatriculas, true) && $jornada === true) {
+        if ($cargo === 'assessoria_pedagogica' && $matriculas === []) {
+            $legado = $vinculos['assessoria_pedagogica'] ?? $data['assessoria_pedagogica'] ?? [];
+            $numero = $legado['matricula'] ?? $data['matricula'] ?? null;
+            $turno = $legado['turno'] ?? $data['turno_operacional'] ?? null;
+            if (filled($numero) && filled($turno)) {
+                $matriculas = [['matricula' => $numero, 'turno' => $turno, 'jornada' => false]];
+            }
+        }
+
+        if ($jornada === true && $cargo !== 'professor') {
             throw ValidationException::withMessages([
-                'jornada' => 'O cargo selecionado não utiliza matrículas por turno e não permite jornada adicional.',
+                'jornada' => 'Somente Professor pode possuir jornada adicional.',
             ]);
         }
 
-        if ($cargo === 'assessoria_pedagogica') {
+        if (in_array($cargo, ['assessoria_pedagogica', 'rh'], true)) {
+            PessoaMatricula::assertConjuntoFuncionalValido($matriculas, 'matriculas_professor');
+            PessoaMatricula::assertCompativelComCargaHoraria(
+                $cargaHoraria,
+                false,
+                $matriculas,
+                'matriculas_professor',
+            );
+        }
+
+        if ($cargo === 'assessoria_pedagogica' && $matriculas === []) {
             $assessoria = $vinculos['assessoria_pedagogica'] ?? $data['assessoria_pedagogica'] ?? [];
             $matricula = $assessoria['matricula'] ?? $data['matricula'] ?? null;
             $turno = $assessoria['turno'] ?? $data['turno_operacional'] ?? null;
@@ -1312,6 +1361,8 @@ class ServidorService
             ?? data_get($vinculos, 'equipe_gestora.matriculas')
             ?? data_get($vinculos, 'manutencao.matriculas')
             ?? data_get($vinculos, 'obras.matriculas')
+            ?? data_get($vinculos, 'assessoria_pedagogica.matriculas')
+            ?? data_get($vinculos, 'rh.matriculas')
             ?? [];
 
         if ($candidatos === [] && array_is_list($vinculos)) {

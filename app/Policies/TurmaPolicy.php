@@ -24,6 +24,10 @@ class TurmaPolicy
 
     public function applyViewAnyScope(User $user, Builder $query): Builder
     {
+        if (app(\App\Services\PessoaScopeService::class)->podeConsultarTodaRede($user)) {
+            return $query;
+        }
+
         return app(UserService::class)->aplicarFiltroPorEscolaDoUsuarioEmTurma($query, $user);
     }
 

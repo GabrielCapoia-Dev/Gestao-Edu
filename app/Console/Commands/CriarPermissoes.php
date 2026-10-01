@@ -81,6 +81,7 @@ class CriarPermissoes extends Command
         $this->sincronizarRoleObrasComFuncao();
         $this->sincronizarRoleTransporteComFuncao();
         $this->sincronizarRoleAssessoriaPedagogicaComFuncao();
+        $this->sincronizarRoleRhComFuncao();
 
         $this->sincronizarAdminComTodasAsPermissoes();
 
@@ -608,6 +609,7 @@ class CriarPermissoes extends Command
             'Obras' => $this->onlyPermissions($permissions, ObrasPermissionPreset::all()),
             'Transporte' => $this->onlyPermissions($permissions, TransportePermissionPreset::all()),
             'Assessoria Pedagógica' => $this->onlyPermissions($permissions, AssessoriaPedagogicaPermissionPreset::all()),
+            'RH' => $this->onlyPermissions($permissions, \App\Support\RhPermissionPreset::all()),
         ];
     }
 
@@ -721,6 +723,24 @@ class CriarPermissoes extends Command
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+        );
+    }
+
+    private function sincronizarRoleRhComFuncao(): void
+    {
+        if (! Schema::hasTable('funcao_administrativa') || ! Schema::hasTable('funcao_administrativa_role')) {
+            return;
+        }
+
+        $funcao = FuncaoAdministrativa::rhPadrao();
+        $role = Role::query()->where('name', 'RH')->where('guard_name', 'web')->first();
+        if (! $role) {
+            return;
+        }
+
+        DB::table('funcao_administrativa_role')->updateOrInsert(
+            ['funcao_administrativa_id' => $funcao->id, 'role_id' => $role->id],
+            ['created_at' => now(), 'updated_at' => now()],
         );
     }
 

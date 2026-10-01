@@ -22,8 +22,8 @@ class EscolaPolicy
     public function applyViewAnyScope(User $user, Builder $query): Builder
     {
         $scope = app(PessoaScopeService::class);
-        if ($scope->ehAssessoriaPedagogica($user)) {
-            return $scope->applyEscolaScope($query->where('ativo', true), $user, 'id');
+        if ($scope->podeConsultarTodaRede($user)) {
+            return $query->where('ativo', true);
         }
 
         return app(UserSetorAccessService::class)

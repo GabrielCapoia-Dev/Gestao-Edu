@@ -105,7 +105,7 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
             ->orderBy('cc.nome');
 
         $dados = app(PessoaScopeService::class)
-            ->applyEscolaScope($dadosQuery, Auth::user(), 'turmas.id_escola')
+            ->applyEscolaReadScope($dadosQuery, Auth::user(), 'turmas.id_escola')
             ->get();
 
         $spreadsheet = new Spreadsheet();
@@ -313,14 +313,14 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
     protected function scopeQuery(Builder $query): Builder
     {
         return app(PessoaScopeService::class)
-            ->applyEscolaScope($query, Auth::user(), 'turmas.id_escola');
+            ->applyEscolaReadScope($query, Auth::user(), 'turmas.id_escola');
     }
 
     /** @return array<int, string> */
     protected function escolaOptions(): array
     {
         $query = app(PessoaScopeService::class)
-            ->applyEscolaScope(Escola::query(), Auth::user(), 'escolas.id');
+            ->applyEscolaReadScope(Escola::query(), Auth::user(), 'escolas.id');
 
         return $query
             ->where('ativo', true)
@@ -333,7 +333,7 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
     protected function serieOptions(): array
     {
         $turmas = app(PessoaScopeService::class)
-            ->applyEscolaScope(Turma::query(), Auth::user(), 'turmas.id_escola')
+            ->applyEscolaReadScope(Turma::query(), Auth::user(), 'turmas.id_escola')
             ->select('id_serie');
 
         return Serie::query()

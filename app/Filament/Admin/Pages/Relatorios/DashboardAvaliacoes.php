@@ -882,7 +882,8 @@ class DashboardAvaliacoes extends Page implements HasForms
     {
         $user ??= $this->usuarioAtual();
 
-        return app(PessoaScopeService::class)->hasGlobalAccess($user);
+        $scope = app(PessoaScopeService::class);
+        return $scope->hasGlobalAccess($user) || $scope->podeConsultarTodaRede($user);
     }
 
     /**

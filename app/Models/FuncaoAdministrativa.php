@@ -294,6 +294,28 @@ class FuncaoAdministrativa extends Model
         return $funcao->fresh();
     }
 
+    public static function rhPadrao(): self
+    {
+        $funcao = static::query()->where('codigo', 'rh')->first()
+            ?? static::query()->where('nome', 'RH')->first()
+            ?? new static();
+
+        $funcao->fill([
+            'codigo' => 'rh',
+            'nome' => 'RH',
+            'categoria' => self::CATEGORIA_ADMINISTRATIVO,
+            'ativo' => true,
+            'exige_professor' => false,
+            'concede_acesso_sistema' => true,
+            'tem_relacao_turma' => false,
+            'direcao_escolar' => false,
+            'coordenacao_pedagogica' => false,
+            'secretaria_escolar' => false,
+        ])->save();
+
+        return $funcao->fresh();
+    }
+
     public function ehManutencao(): bool
     {
         return (string) $this->codigo === 'manutencao';
@@ -317,6 +339,11 @@ class FuncaoAdministrativa extends Model
     public function ehAssessoriaPedagogica(): bool
     {
         return (string) $this->codigo === 'assessoria-pedagogica';
+    }
+
+    public function ehRh(): bool
+    {
+        return (string) $this->codigo === 'rh';
     }
 
     public function ehEquipeGestora(): bool

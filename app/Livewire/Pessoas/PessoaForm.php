@@ -216,7 +216,7 @@ class PessoaForm extends Component
             'statusOptions' => Pessoa::statusOptions(),
             'cargasHorariasOptions' => Pessoa::cargaHorariaOptions(),
             'lotacoesOptionsPorEscola' => $lotacoesOptionsPorEscola,
-            'permiteJornada' => $this->cargoPossuiMatriculas(),
+            'permiteJornada' => $this->cargo === ServidorResource::CARGO_PROFESSOR,
             'turnosOptions' => $turnosOptions,
             'turnosOptionsPorMatricula' => $turnosOptionsPorMatricula,
             'matriculaLabels' => $matriculaLabels,
@@ -247,6 +247,7 @@ class PessoaForm extends Component
     public function adicionarJornada(): void
     {
         $this->autorizarEstruturaProfessor();
+        $this->exigirCargoProfessorParaJornada();
         $this->resetErrorBag('matriculas');
 
         if (count($this->matriculas) !== 1
@@ -262,6 +263,7 @@ class PessoaForm extends Component
     public function reativarJornada(int $matriculaId): void
     {
         $this->autorizarEstruturaProfessor();
+        $this->exigirCargoProfessorParaJornada();
         $arquivada = collect($this->jornadasArquivadas)->firstWhere('id', $matriculaId);
 
         if (! is_array($arquivada) || count($this->matriculas) !== 1) {
@@ -297,6 +299,7 @@ class PessoaForm extends Component
     public function jornadaDaMatriculaAlterada(string $matriculaKey, mixed $jornada): void
     {
         $this->autorizarEstruturaProfessor();
+        $this->exigirCargoProfessorParaJornada();
         if (! isset($this->matriculas[$matriculaKey])) {
             return;
         }
@@ -369,6 +372,7 @@ class PessoaForm extends Component
     public function jornadaAlterada(mixed $jornada): void
     {
         $this->autorizarEstruturaProfessor();
+        $this->exigirCargoProfessorParaJornada();
         if (filter_var($jornada, FILTER_VALIDATE_BOOLEAN)) {
             $this->adicionarJornada();
         } else {
@@ -993,6 +997,7 @@ class PessoaForm extends Component
             ServidorResource::CARGO_OBRAS,
             ServidorResource::CARGO_TRANSPORTE,
             ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA,
+            ServidorResource::CARGO_RH,
         ], true)) {
             $this->cargo = ServidorResource::CARGO_PROFESSOR;
             $this->addError('cargo', 'O cargo informado é inválido.');
@@ -1006,6 +1011,7 @@ class PessoaForm extends Component
             ServidorResource::CARGO_OBRAS,
             ServidorResource::CARGO_TRANSPORTE,
             ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA,
+            ServidorResource::CARGO_RH,
         ], true)) {
             $this->autorizarEquipeGestora();
         } else {
@@ -1013,6 +1019,19 @@ class PessoaForm extends Component
         }
 
         $this->cargo = $cargo;
+        if ($cargo === ServidorResource::CARGO_RH) {
+            $this->lotacaoId = null;
+            $this->escolaIdsAssessoria = [];
+        }
+        if ($cargo !== ServidorResource::CARGO_PROFESSOR) {
+            $this->jornada = false;
+            foreach ($this->matriculas as &$matricula) {
+                if (is_array($matricula)) {
+                    $matricula['jornada'] = false;
+                }
+            }
+            unset($matricula);
+        }
         if ($this->cargoPossuiMatriculas()) {
             $this->garantirMatriculaInicial();
         } else {
@@ -1031,6 +1050,7 @@ class PessoaForm extends Component
             ServidorResource::CARGO_MOTORISTA,
             ServidorResource::CARGO_TRANSPORTE,
             ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA,
+            ServidorResource::CARGO_RH,
         ], true)) {
             return;
         }
@@ -1118,6 +1138,7 @@ class PessoaForm extends Component
                 ServidorResource::CARGO_MOTORISTA,
                 ServidorResource::CARGO_TRANSPORTE,
                 ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA,
+                ServidorResource::CARGO_RH,
             ])],
         ];
 
@@ -1125,11 +1146,6 @@ class PessoaForm extends Component
             || $this->cargo === ServidorResource::CARGO_TRANSPORTE) {
             $rules += [
                 'matriculaOperacional' => ['nullable', 'string', 'max:255'],
-            ];
-        } elseif ($this->cargo === ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA) {
-            $rules += [
-                'matriculaOperacional' => ['required', 'string', 'max:255'],
-                'turnoOperacional' => ['required', Rule::in(array_keys(PessoaMatricula::turnosOptions()))],
             ];
         } else {
             $rules += [
@@ -1203,7 +1219,6 @@ class PessoaForm extends Component
         $cargosSemMatriculas = [
             ServidorResource::CARGO_MOTORISTA,
             ServidorResource::CARGO_TRANSPORTE,
-            ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA,
         ];
 
         if (! in_array($this->cargo, $cargosSemMatriculas, true)) {
@@ -1211,6 +1226,10 @@ class PessoaForm extends Component
                 collect($this->matriculas)->pluck('turno')->map(fn (mixed $turno): string => (string) $turno)->all(),
             );
             PessoaMatricula::assertConjuntoFuncionalValido($this->matriculas);
+            if ($this->cargo !== ServidorResource::CARGO_PROFESSOR
+                && collect($this->matriculas)->contains(fn (array $matricula): bool => (bool) ($matricula['jornada'] ?? false))) {
+                throw ValidationException::withMessages(['matriculas' => 'Somente Professor pode possuir jornada adicional.']);
+            }
             $this->validarMatriculasDuplicadas();
             $this->validarIdsDasMatriculas();
         }
@@ -1784,8 +1803,14 @@ class PessoaForm extends Component
         return ! in_array($this->cargo, [
             ServidorResource::CARGO_MOTORISTA,
             ServidorResource::CARGO_TRANSPORTE,
-            ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA,
         ], true);
+    }
+
+    private function exigirCargoProfessorParaJornada(): void
+    {
+        if ($this->cargo !== ServidorResource::CARGO_PROFESSOR) {
+            throw ValidationException::withMessages(['jornada' => 'Somente Professor pode possuir jornada adicional.']);
+        }
     }
 
     private function garantirMatriculaInicial(): void

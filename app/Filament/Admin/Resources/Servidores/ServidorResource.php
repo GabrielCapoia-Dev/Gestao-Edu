@@ -75,6 +75,8 @@ class ServidorResource extends Resource
 
     public const CARGO_ASSESSORIA_PEDAGOGICA = 'assessoria_pedagogica';
 
+    public const CARGO_RH = 'rh';
+
     protected static ?string $model = Servidor::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Briefcase;
@@ -104,6 +106,7 @@ class ServidorResource extends Resource
             $options[self::CARGO_OBRAS] = 'Obras';
             $options[self::CARGO_TRANSPORTE] = 'Transporte';
             $options[self::CARGO_ASSESSORIA_PEDAGOGICA] = 'Assessoria Pedagógica';
+            $options[self::CARGO_RH] = 'RH';
         }
 
         return $options;
@@ -151,7 +154,7 @@ class ServidorResource extends Resource
                 }
 
                 $scope = app(PessoaScopeService::class);
-                $acessoGlobal = $scope->hasGlobalAccess($user);
+                $acessoGlobal = $scope->hasGlobalAccess($user) || $scope->podeConsultarTodaRede($user);
                 $escolaIds = $acessoGlobal ? [] : $scope->escolaIdsDosVinculos($user);
 
                 return $query->selectSub(function ($pendentes) use ($table, $acessoGlobal, $escolaIds): void {
@@ -243,7 +246,7 @@ class ServidorResource extends Resource
                             ->getStateUsing(function (Servidor $record): string {
                                 $record->loadMissing(['matriculas', 'professores']);
 
-                                if (app(PessoaScopeService::class)->hasGlobalAccess(Auth::user()) && $record->matriculas->isNotEmpty()) {
+                                if ((app(PessoaScopeService::class)->hasGlobalAccess(Auth::user()) || app(PessoaScopeService::class)->podeConsultarTodaRede(Auth::user())) && $record->matriculas->isNotEmpty()) {
                                     return $record->matriculas
                                         ->map(fn ($m): string => sprintf('%s (%s)', $m->matricula, $m->turnoLabel()))
                                         ->implode(', ');
@@ -341,7 +344,7 @@ class ServidorResource extends Resource
                         true: function (Builder $query): Builder {
                             $user = Auth::user();
                             $scope = app(PessoaScopeService::class);
-                            $acessoGlobal = $scope->hasGlobalAccess($user);
+                            $acessoGlobal = $scope->hasGlobalAccess($user) || $scope->podeConsultarTodaRede($user);
                             $escolaIds = $acessoGlobal ? [] : $scope->escolaIdsDosVinculos($user);
                             $table = $query->getModel()->getTable();
 
@@ -361,7 +364,7 @@ class ServidorResource extends Resource
                         false: function (Builder $query): Builder {
                             $user = Auth::user();
                             $scope = app(PessoaScopeService::class);
-                            $acessoGlobal = $scope->hasGlobalAccess($user);
+                            $acessoGlobal = $scope->hasGlobalAccess($user) || $scope->podeConsultarTodaRede($user);
                             $escolaIds = $acessoGlobal ? [] : $scope->escolaIdsDosVinculos($user);
                             $table = $query->getModel()->getTable();
 
@@ -391,6 +394,7 @@ class ServidorResource extends Resource
                         ServidorEquipeGestoraForm::CARGO_COORDENADOR => 'Coordenador',
                         ServidorEquipeGestoraForm::CARGO_SECRETARIO => 'Secretário',
                         self::CARGO_ASSESSORIA_PEDAGOGICA => 'Assessoria Pedagógica',
+                        self::CARGO_RH => 'RH',
                         self::CARGO_MANUTENCAO => 'Manutenção',
                         self::CARGO_OBRAS => 'Obras',
                         'sem_cargo' => 'Sem cargo ativo',
@@ -985,6 +989,12 @@ class ServidorResource extends Resource
             ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehAssessoriaPedagogica());
     }
 
+    public static function ehRh(Servidor $record): bool
+    {
+        $record->loadMissing('vinculosAtivos.funcaoAdministrativa');
+        return $record->vinculosAtivos->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehRh());
+    }
+
     public static function formatarCpf(?string $cpf): ?string
     {
         return Pessoa::formatarCpf($cpf);
@@ -1012,6 +1022,10 @@ class ServidorResource extends Resource
 
         if (static::ehAssessoriaPedagogica($record)) {
             return 'Assessoria Pedagógica';
+        }
+
+        if (static::ehRh($record)) {
+            return 'RH';
         }
 
         $cargosGestores = static::vinculosVisiveis($record)
@@ -1138,7 +1152,7 @@ class ServidorResource extends Resource
     {
         $itens = ['nome', 'CPF', 'e-mail', 'matrícula', 'setor'];
 
-        if (app(PessoaScopeService::class)->hasGlobalAccess(Auth::user())) {
+        if (app(PessoaScopeService::class)->hasGlobalAccess(Auth::user()) || app(PessoaScopeService::class)->podeConsultarTodaRede(Auth::user())) {
             $itens[] = 'escola';
         }
 
@@ -1155,7 +1169,7 @@ class ServidorResource extends Resource
             return $query;
         }
 
-        if (app(PessoaScopeService::class)->hasGlobalAccess(Auth::user())) {
+        if (app(PessoaScopeService::class)->hasGlobalAccess(Auth::user()) || app(PessoaScopeService::class)->podeConsultarTodaRede(Auth::user())) {
             return match ($quantidade) {
                 'uma_ou_mais' => $query->has('matriculas', '>=', 1),
                 'uma' => $query->has('matriculas', '=', 1),
@@ -1203,7 +1217,7 @@ class ServidorResource extends Resource
         return $query->whereHas('matriculas', function (Builder $matriculas) use ($turnos): Builder {
             $matriculas->whereIn('turno', $turnos);
 
-            return app(PessoaScopeService::class)->hasGlobalAccess(Auth::user())
+            return (app(PessoaScopeService::class)->hasGlobalAccess(Auth::user()) || app(PessoaScopeService::class)->podeConsultarTodaRede(Auth::user()))
                 ? $matriculas
                 : static::restringirMatriculasAoEscopo($matriculas);
         });
@@ -1314,6 +1328,11 @@ class ServidorResource extends Resource
                         return;
                     }
 
+                    if ($cargo === self::CARGO_RH) {
+                        $pessoasDoCargo->whereHas('vinculosAtivos.funcaoAdministrativa', fn (Builder $funcoes): Builder => $funcoes->where('codigo', 'rh'));
+                        return;
+                    }
+
                     $pessoasDoCargo
                         ->whereDoesntHave(
                             'professores',
@@ -1329,7 +1348,8 @@ class ServidorResource extends Resource
                                         ->orWhere('codigo', 'obras')
                                         ->orWhere('codigo', 'motorista')
                                         ->orWhere('codigo', 'transporte')
-                                        ->orWhere('codigo', 'assessoria-pedagogica');
+                                        ->orWhere('codigo', 'assessoria-pedagogica')
+                                        ->orWhere('codigo', 'rh');
                                 });
                             },
                         );
@@ -1344,7 +1364,7 @@ class ServidorResource extends Resource
         $user = Auth::user();
         $scope = app(PessoaScopeService::class);
 
-        if ($scope->hasGlobalAccess($user)) {
+        if ($scope->hasGlobalAccess($user) || $scope->podeConsultarTodaRede($user)) {
             return $record->professores->where('ativo', true)->values();
         }
 
@@ -1362,7 +1382,7 @@ class ServidorResource extends Resource
         $user = Auth::user();
         $scope = app(PessoaScopeService::class);
 
-        if ($scope->hasGlobalAccess($user)) {
+        if ($scope->hasGlobalAccess($user) || $scope->podeConsultarTodaRede($user)) {
             return $record->vinculosAtivos;
         }
 
@@ -1461,7 +1481,7 @@ class ServidorResource extends Resource
             ->sort()
             ->values();
 
-        $acessoGlobal = $scope->hasGlobalAccess($usuario);
+        $acessoGlobal = $scope->hasGlobalAccess($usuario) || $scope->podeConsultarTodaRede($usuario);
         $numerosVinculosVisiveis = $professores
             ->pluck('matricula')
             ->merge($vinculos->pluck('matricula'))
@@ -1843,6 +1863,7 @@ class ServidorResource extends Resource
         $recordEraMotorista = $record ? static::ehMotorista($record) : false;
         $recordEraTransporte = $record ? static::ehTransporte($record) : false;
         $recordEraAssessoriaPedagogica = $record ? static::ehAssessoriaPedagogica($record) : false;
+        $recordEraRh = $record ? static::ehRh($record) : false;
 
         if (($cargo === self::CARGO_EQUIPE_GESTORA
             || $cargo === self::CARGO_MANUTENCAO
@@ -1850,12 +1871,14 @@ class ServidorResource extends Resource
             || $cargo === self::CARGO_MOTORISTA
             || $cargo === self::CARGO_TRANSPORTE
             || $cargo === self::CARGO_ASSESSORIA_PEDAGOGICA
+            || $cargo === self::CARGO_RH
             || $recordEraGestor
             || $recordEraManutencao
             || $recordEraObras
             || $recordEraMotorista
             || $recordEraTransporte
-            || $recordEraAssessoriaPedagogica)
+            || $recordEraAssessoriaPedagogica
+            || $recordEraRh)
             && ! ServidorEquipeGestoraForm::usuarioPodeAdministrar()) {
             throw new AuthorizationException(
                 'Apenas Admin ou usuário com a permissão Gerenciar Vínculos Estruturais de Pessoas pode administrar cargos funcionais.',
@@ -1899,12 +1922,21 @@ class ServidorResource extends Resource
             return [$data, ['assessoria_pedagogica' => [
                 'matricula' => $data['matricula'],
                 'turno' => $data['turno_operacional'] ?? null,
+                'matriculas' => collect($matriculas)->map(fn (array $item): array => collect($item)->only(['id', 'matricula', 'turno'])->all())->values()->all(),
                 'escola_ids' => collect($data['escola_ids_assessoria'] ?? [])
                     ->filter(fn (mixed $id): bool => filled($id))
                     ->map(fn (mixed $id): int => (int) $id)
                     ->unique()
                     ->values()
                     ->all(),
+            ]]];
+        }
+
+        if ($cargo === self::CARGO_RH) {
+            $data['id_escola'] = null;
+            $data['setor_id'] = null;
+            return [$data, ['rh' => [
+                'matriculas' => collect($matriculas)->map(fn (array $item): array => collect($item)->only(['id', 'matricula', 'turno'])->all())->values()->all(),
             ]]];
         }
 

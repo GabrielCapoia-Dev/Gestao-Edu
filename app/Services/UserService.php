@@ -924,7 +924,7 @@ class UserService
 
         $scope = app(PessoaScopeService::class);
 
-        if ($scope->hasGlobalAccess($user)) {
+        if ($scope->hasGlobalAccess($user) || $scope->podeConsultarTodaRede($user)) {
             return $query;
         }
 
@@ -961,7 +961,7 @@ class UserService
 
         $scope = app(PessoaScopeService::class);
 
-        if ($scope->hasGlobalAccess($user)) {
+        if ($scope->hasGlobalAccess($user) || $scope->podeConsultarTodaRede($user)) {
             return $query;
         }
 
@@ -994,7 +994,7 @@ class UserService
     {
         $scope = app(PessoaScopeService::class);
 
-        if ($scope->hasGlobalAccess($user)) {
+        if ($scope->hasGlobalAccess($user) || $scope->podeConsultarTodaRede($user)) {
             return true;
         }
 
@@ -1014,7 +1014,9 @@ class UserService
 
     public function podeAcessarProfessor(User $user, Professor $professor): bool
     {
-        return app(PessoaScopeService::class)->canAccessEscola($user, (int) $professor->id_escola);
+        $scope = app(PessoaScopeService::class);
+        return $scope->podeConsultarTodaRede($user)
+            || $scope->canAccessEscola($user, (int) $professor->id_escola);
     }
 
     public function aplicarFiltroPorEscolaDoUsuarioEmTurma(Builder $query, ?User $user): Builder

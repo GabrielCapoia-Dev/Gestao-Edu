@@ -417,7 +417,7 @@ class AvaliacaoDocumentoExportService
     {
         $scope = app(PessoaScopeService::class);
 
-        if ($scope->hasGlobalAccess($usuario)) {
+        if ($scope->hasGlobalAccess($usuario) || $scope->podeConsultarTodaRede($usuario)) {
             return;
         }
 

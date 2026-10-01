@@ -22,6 +22,7 @@ Manter coerencia entre eventos, fontes agregadas, publico-alvo, escolas, permiss
 
 - Distinguir evento persistido de evento projetado por uma fonte do agregador.
 - Aplicar escopo e policy tanto na listagem quanto nas actions e exports.
+- Assessoria pode ler eventos de toda a rede e criar eventos para qualquer escola, mas só altera os eventos que criou; RH lista e gerencia os próprios eventos, avisos e reservas. Validar ownership em todas as mutações secundárias e serviços de seleção escolar.
 - Preservar escola, publico-alvo, recorrencia, origem e historico do evento.
 - Impedir conflito de veiculo, motorista ou alocacao conforme a disponibilidade calculada pelo service.
 - Manter importacao por linha rastreavel e idempotente.

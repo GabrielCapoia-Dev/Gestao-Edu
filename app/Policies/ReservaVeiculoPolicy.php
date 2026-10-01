@@ -53,6 +53,9 @@ class ReservaVeiculoPolicy
     private function noEscopoEscolar(User $user, ReservaVeiculo $reserva): bool
     {
         $scope = app(PessoaScopeService::class);
+        if ($scope->ehRh($user) && ! $scope->hasGlobalAccess($user)) {
+            return $reserva->pertenceAo($user);
+        }
         if ($scope->hasGlobalAccess($user)) {
             return true;
         }

@@ -178,7 +178,7 @@ class EventoCalendarioEscolaService
         }
 
         $escolasAcessiveis = Escola::query()->where('ativo', true)->orderBy('nome');
-        $this->scope->applyEscolaScope($escolasAcessiveis, $ator, 'id');
+        $this->scope->applyEscolaReadScope($escolasAcessiveis, $ator, 'id');
 
         if ($prefixos !== []) {
             $escolasAcessiveis->where(function (Builder $query) use ($prefixos): void {
@@ -349,7 +349,8 @@ class EventoCalendarioEscolaService
             ? $escopo
             : EventoCalendarioTransporteEscopo::tryFrom((string) $escopo);
 
-        if (! $ator || ! $id || ! $tipo || ! $this->scope->canAccessEscola($ator, (int) $id)) {
+        if (! $ator || ! $id || ! $tipo
+            || (! $this->scope->podeConsultarTodaRede($ator) && ! $this->scope->canAccessEscola($ator, (int) $id))) {
             return 0;
         }
 
@@ -480,7 +481,8 @@ class EventoCalendarioEscolaService
     {
         $existe = Escola::query()->whereKey($escolaId)->where('ativo', true)->exists();
 
-        if (! $existe || ! $this->scope->canAccessEscola($ator, $escolaId)) {
+        if (! $existe || (! $this->scope->podeConsultarTodaRede($ator)
+            && ! $this->scope->canAccessEscola($ator, $escolaId))) {
             throw ValidationException::withMessages([
                 $campo => 'Selecione uma escola ativa pertencente ao seu contexto de acesso.',
             ]);

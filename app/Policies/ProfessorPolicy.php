@@ -23,7 +23,7 @@ class ProfessorPolicy
         $query = $query->where('ativo', true);
         $scope = app(PessoaScopeService::class);
 
-        if ($scope->hasGlobalAccess($user)) {
+        if ($scope->hasGlobalAccess($user) || $scope->podeConsultarTodaRede($user)) {
             return $query;
         }
 

@@ -10,12 +10,12 @@ class VeiculoTransportePolicy
 {
     public function viewAny(User $user): bool
     {
-        return $this->podeGerenciar($user);
+        return $this->podeGerenciar($user) || $user->hasPermissionTo(ListaPermissoes::CriarReservasVeiculos->label());
     }
 
     public function view(User $user, VeiculoTransporte $veiculo): bool
     {
-        return $this->podeGerenciar($user);
+        return $this->viewAny($user);
     }
 
     public function create(User $user): bool

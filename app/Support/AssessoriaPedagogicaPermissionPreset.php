@@ -39,6 +39,7 @@ class AssessoriaPedagogicaPermissionPreset
             ListaPermissoes::ExportarAvaliacoes,
             ListaPermissoes::ExportarComponenteCurricular,
             ListaPermissoes::ListarMeusEventos,
+            ListaPermissoes::ListarEventosGeral,
             ListaPermissoes::ListarReservasVeiculos,
             ListaPermissoes::CriarEventos,
             ListaPermissoes::CriarEventosTransporte,

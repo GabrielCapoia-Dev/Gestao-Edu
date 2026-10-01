@@ -358,7 +358,7 @@ class RelatorioComponenteProfessorFaltando extends Page
             ->join('series', 'series.id', '=', 'turmas.id_serie');
 
         $query = app(PessoaScopeService::class)
-            ->applyEscolaScope($query, Auth::user(), 'turmas.id_escola');
+            ->applyEscolaReadScope($query, Auth::user(), 'turmas.id_escola');
 
         if ($this->escola_id) {
             $query->where('turmas.id_escola', $this->escola_id);
@@ -472,7 +472,7 @@ class RelatorioComponenteProfessorFaltando extends Page
     protected function scopeEloquentQuery(Builder $query, string $column): Builder
     {
         return app(PessoaScopeService::class)
-            ->applyEscolaScope($query, Auth::user(), $column);
+            ->applyEscolaReadScope($query, Auth::user(), $column);
     }
 
     protected function countSubquery(QueryBuilder $query): int

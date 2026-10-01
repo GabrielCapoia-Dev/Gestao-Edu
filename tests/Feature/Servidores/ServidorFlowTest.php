@@ -245,6 +245,26 @@ class ServidorFlowTest extends TestCase
         ]);
     }
 
+    public function test_rh_e_criado_com_duas_matriculas_normais_sem_vinculo_escolar(): void
+    {
+        $rh = app(ServidorService::class)->criarServidorComFuncoes([
+            'cargo' => ServidorResource::CARGO_RH,
+            'nome' => 'Pessoa RH',
+            'email' => 'rh.teste@edu.umuarama.pr.gov.br',
+            'status' => Servidor::STATUS_ATIVO,
+        ], [
+            'rh' => ['matriculas' => [
+                ['matricula' => 'RH-001-M', 'turno' => 'manha'],
+                ['matricula' => 'RH-001-T', 'turno' => 'tarde'],
+            ]],
+        ]);
+
+        $this->assertNull($rh->id_escola);
+        $this->assertSame(['manha', 'tarde'], $rh->matriculas()->orderBy('turno')->pluck('turno')->all());
+        $this->assertSame(0, $rh->matriculas()->where('jornada', true)->count());
+        $this->assertTrue($rh->vinculosAtivos()->whereHas('funcaoAdministrativa', fn ($query) => $query->where('codigo', 'rh'))->exists());
+    }
+
     public function test_formulario_exige_matricula_do_servidor(): void
     {
         Permission::findOrCreate('Listar Servidores');

@@ -70,17 +70,9 @@ class EventoCalendarioAccessService
             return false;
         }
 
-        if ($this->scope->ehAssessoriaPedagogica($user)
+        if (($this->scope->ehAssessoriaPedagogica($user) || $this->scope->ehRh($user))
             && ! $this->podeListarGeral($user)
             && (int) $evento->criado_por_id !== (int) $user->getKey()) {
-            return false;
-        }
-
-        if ($this->scope->ehAssessoriaPedagogica($user)
-            && $this->podeListarGeral($user)
-            && ! $evento->escolasAgendadas()
-                ->whereIn('escola_id', $this->scope->escolaIdsDosVinculos($user))
-                ->exists()) {
             return false;
         }
 
@@ -97,7 +89,7 @@ class EventoCalendarioAccessService
 
     private function aplicarEscopoAssessoria(User $user, Builder $query): Builder
     {
-        if (! $this->scope->ehAssessoriaPedagogica($user)) {
+        if (! $this->scope->ehAssessoriaPedagogica($user) && ! $this->scope->ehRh($user)) {
             return $query;
         }
 
@@ -108,10 +100,6 @@ class EventoCalendarioAccessService
             return $query->where('eventos_calendario.criado_por_id', $user->getKey());
         }
 
-        $ids = $this->scope->escolaIdsDosVinculos($user);
-
-        return $ids === []
-            ? $query->whereRaw('1 = 0')
-            : $query->whereHas('escolasAgendadas', fn (Builder $escolas): Builder => $escolas->whereIn('escola_id', $ids));
+        return $query;
     }
 }

@@ -417,7 +417,7 @@ class ReservaVeiculoService
             }
 
             $permitidas = $this->scope->escolaIdsDosVinculos($ator);
-            if (! $this->scope->hasGlobalAccess($ator) && array_diff($escolaIds, $permitidas) !== []) {
+            if (! $this->scope->hasGlobalAccess($ator) && ! $this->scope->ehRh($ator) && array_diff($escolaIds, $permitidas) !== []) {
                 throw ValidationException::withMessages([
                     'escola_ids' => 'Selecione apenas escolas pertencentes ao seu contexto de acesso.',
                 ]);
@@ -444,6 +444,10 @@ class ReservaVeiculoService
     {
         if ($this->scope->hasGlobalAccess($ator)) {
             return $query;
+        }
+
+        if ($this->scope->ehRh($ator)) {
+            return $query->where('usuario_id', $ator->getKey());
         }
 
         $ids = $this->scope->escolaIdsDosVinculos($ator);

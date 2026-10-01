@@ -116,6 +116,17 @@ class PessoaScopeService
             ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehAssessoriaPedagogica());
     }
 
+    public function ehRh(?User $user): bool
+    {
+        return $this->vinculosAtivos($user)
+            ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehRh());
+    }
+
+    public function podeConsultarTodaRede(?User $user): bool
+    {
+        return $this->ehAssessoriaPedagogica($user) || $this->ehRh($user);
+    }
+
     public function usaEscopoPorVinculos(?User $user): bool
     {
         return $this->ehEquipeGestora($user) || $this->vinculosAtivos($user)->isNotEmpty();
@@ -267,6 +278,18 @@ class PessoaScopeService
         return $query->whereIn($column, $ids);
     }
 
+    public function applyEscolaReadScope(
+        Builder|QueryBuilder $query,
+        ?User $user,
+        string $column = 'id_escola',
+    ): Builder|QueryBuilder {
+        if ($this->podeConsultarTodaRede($user)) {
+            return $query;
+        }
+
+        return $this->applyEscolaScope($query, $user, $column);
+    }
+
     public function applyPessoaScope(Builder $query, ?User $user): Builder
     {
         if (! $user) {
@@ -279,7 +302,7 @@ class PessoaScopeService
 
         // A Assessoria Pedagógica consulta servidores da rede inteira; os
         // vínculos escolares continuam restritos nos demais domínios.
-        if ($this->ehAssessoriaPedagogica($user)) {
+        if ($this->podeConsultarTodaRede($user)) {
             return $query;
         }
 
@@ -320,7 +343,7 @@ class PessoaScopeService
             return true;
         }
 
-        if ($this->ehAssessoriaPedagogica($user)) {
+        if ($this->podeConsultarTodaRede($user)) {
             return true;
         }
 
