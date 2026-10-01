@@ -377,6 +377,11 @@ class Pessoa extends Model
         return $this->hasMany(ServidorFuncaoAdministrativa::class, 'servidor_id');
     }
 
+    public function movimentacoes(): HasMany
+    {
+        return $this->hasMany(ServidorMovimentacao::class, 'servidor_id')->latest('ocorrido_em');
+    }
+
     public function servidorFuncoesAtivas(): HasMany
     {
         return $this->servidorFuncoes()->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO);

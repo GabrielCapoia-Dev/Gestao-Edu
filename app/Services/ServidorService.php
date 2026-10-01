@@ -9,7 +9,9 @@ use App\Models\PessoaMatricula;
 use App\Models\Professor;
 use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
+use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -121,6 +123,21 @@ class ServidorService
     }
 
     public function atualizarServidorComFuncoes(Servidor $servidor, array $data, array $vinculos = []): Servidor
+    {
+        return app(ServidorHistoricoService::class)->registrarAtualizacao(
+            $servidor,
+            function (Servidor $locked) use ($data, $vinculos): Servidor {
+                $atualizado = $this->aplicarAtualizacaoServidorComFuncoes($locked, $data, $vinculos);
+                $this->encerrarCargosAnteriores($atualizado, (string) ($data['cargo'] ?? ''));
+                app(PessoaAcessoService::class)->provisionarAcessosDoServidor($atualizado->fresh());
+
+                return $atualizado->fresh(['vinculosAtivos.funcaoAdministrativa']);
+            },
+            Auth::id(),
+        );
+    }
+
+    private function aplicarAtualizacaoServidorComFuncoes(Servidor $servidor, array $data, array $vinculos = []): Servidor
     {
         $this->validarDadosFuncionais($data, $vinculos);
 
@@ -588,6 +605,70 @@ class ServidorService
 
             return $servidor->fresh(['vinculosAtivos.funcaoAdministrativa', 'vinculosAtivos.escolasAssessoradas']);
         });
+    }
+
+    private function encerrarCargosAnteriores(Servidor $servidor, string $cargoAtual): void
+    {
+        $codigosPorCargo = [
+            'rh' => ['rh'],
+            'assessoria_pedagogica' => ['assessoria-pedagogica'],
+            'transporte' => ['transporte'],
+            'motorista' => ['motorista'],
+            'manutencao' => ['manutencao'],
+            'obras' => ['obras'],
+            'professor' => [],
+            'equipe_gestora' => null,
+        ];
+
+        if (! array_key_exists($cargoAtual, $codigosPorCargo)) {
+            return;
+        }
+
+        $funcoesAtuais = $servidor->vinculosAtivos
+            ->filter(fn (ServidorFuncaoAdministrativa $vinculo): bool => $cargoAtual === 'equipe_gestora'
+                ? (bool) $vinculo->funcaoAdministrativa?->ehEquipeGestora()
+                : in_array((string) $vinculo->funcaoAdministrativa?->codigo, $codigosPorCargo[$cargoAtual] ?? [], true));
+        $funcoesManter = $funcoesAtuais->pluck('funcao_administrativa_id')->map(fn ($id): int => (int) $id)->all();
+        $hoje = now()->toDateString();
+
+        $encerrados = ServidorFuncaoAdministrativa::query()
+            ->where('servidor_id', $servidor->getKey())
+            ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO)
+            ->when($funcoesManter !== [], fn ($query) => $query->whereNotIn('funcao_administrativa_id', $funcoesManter))
+            ->lockForUpdate()
+            ->get(['id']);
+
+        ServidorFuncaoAdministrativa::query()->whereKey($encerrados->pluck('id'))->update([
+                'status' => ServidorFuncaoAdministrativa::STATUS_INATIVO,
+                'data_fim' => $hoje,
+                'updated_at' => now(),
+            ]);
+
+        if ($encerrados->isNotEmpty() && Schema::hasTable('servidor_funcao_turma')) {
+            DB::table('servidor_funcao_turma')
+                ->whereIn('servidor_funcao_administrativa_id', $encerrados->pluck('id'))
+                ->where('status', 'ativo')
+                ->update(['status' => 'inativo', 'data_fim' => $hoje, 'updated_at' => now()]);
+        }
+
+        if ($cargoAtual === 'professor') {
+            return;
+        }
+
+        $professores = $servidor->professores()->where('ativo', true)->lockForUpdate()->get();
+        if ($professores->isNotEmpty()) {
+            TurmaComponenteProfessor::query()
+                ->whereIn('professor_id', $professores->pluck('id'))
+                ->update(['professor_id' => null, 'tem_professor' => false, 'updated_at' => now()]);
+
+            $professores->each(fn (Professor $professor) => $professor->forceFill([
+                'ativo' => false,
+                'desativado_em' => now(),
+                'desativado_por_id' => Auth::id(),
+                'motivo_desativacao' => 'Alteração de cargo para '.str_replace('_', ' ', $cargoAtual),
+            ])->save());
+        }
+
     }
 
     private function sincronizarMatriculasFuncionais(Servidor $pessoa, array $registros): void

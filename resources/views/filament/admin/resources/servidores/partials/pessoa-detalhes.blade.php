@@ -22,6 +22,10 @@
 @endphp
 
 <div class="pessoa-custom-view" x-data="{ tab: 'resumo' }">
+    <div class="pessoa-custom-view__exports">
+        <a href="{{ $exportarHistoricoUrl }}">Exportar histórico</a>
+        <a href="{{ $exportarFichaUrl }}">Exportar ficha do servidor</a>
+    </div>
     <section class="pessoa-custom-view__hero">
         <div class="pessoa-custom-view__identity">
             <div class="pessoa-custom-view__avatar" aria-hidden="true">
@@ -145,6 +149,18 @@
                 </span>
             </button>
         @endif
+
+        <button
+            type="button"
+            role="tab"
+            x-on:click="tab = 'historico'"
+            x-bind:aria-selected="tab === 'historico'"
+            x-bind:class="{ 'is-active': tab === 'historico' }"
+        >
+            <x-filament::icon icon="heroicon-o-clock" />
+            Histórico
+            <span class="pessoa-custom-view__tab-count">{{ $movimentacoes->count() }}</span>
+        </button>
     </nav>
 
     <div class="pessoa-custom-view__content">
@@ -331,5 +347,41 @@
                 @endif
             </section>
         @endif
+
+        <section
+            class="pessoa-custom-view__panel"
+            role="tabpanel"
+            x-show="tab === 'historico'"
+            x-cloak
+            x-transition.opacity.duration.150ms
+        >
+            <div class="pessoa-custom-view__card">
+                <header>
+                    <span class="pessoa-custom-view__card-icon"><x-filament::icon icon="heroicon-o-clock" /></span>
+                    <div>
+                        <h3>Histórico de movimentações</h3>
+                        <p>Alterações registradas daqui em diante. Registros pedagógicos anteriores permanecem preservados.</p>
+                    </div>
+                </header>
+                @forelse ($movimentacoes as $movimentacao)
+                    <article class="pessoa-custom-view__history-item">
+                        <strong>{{ $movimentacao->ocorrido_em?->format('d/m/Y H:i') }} · {{ $movimentacao->usuario?->name ?? 'Sistema' }}</strong>
+                        @foreach ($movimentacao->alteracoes as $campo => $mudanca)
+                            <div>
+                                <b>{{ match ($campo) { 'cargo' => 'Cargo e vínculos', 'lotacao' => 'Lotação', 'matriculas' => 'Matrículas e turnos', 'pedagogico' => 'Turmas, séries e componentes', default => $campo } }}</b>
+                                <small>Antes: {{ json_encode($mudanca['antes'] ?? null, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</small>
+                                <small>Depois: {{ json_encode($mudanca['depois'] ?? null, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</small>
+                            </div>
+                        @endforeach
+                    </article>
+                @empty
+                    <div class="pessoa-custom-view__empty">
+                        <x-filament::icon icon="heroicon-o-information-circle" />
+                        <strong>Nenhuma movimentação registrada</strong>
+                        <span>As próximas alterações de cargo, escola, lotação, matrícula ou vínculo pedagógico aparecerão aqui.</span>
+                    </div>
+                @endforelse
+            </div>
+        </section>
     </div>
 </div>

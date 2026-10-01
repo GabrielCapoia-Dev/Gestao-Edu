@@ -27,6 +27,8 @@ Preservar a identidade unica da pessoa e seus vinculos funcionais sem duplicar r
 - Separar identidade, vinculo funcional e credencial de acesso.
 - Tratar normalizacao e backfill como operacoes idempotentes e auditaveis.
 - Confirmar impacto em equipe gestora, professor, manutencao e obras antes de excluir vinculo.
+- Trocas de cargo devem encerrar os vínculos incompatíveis sem apagar a identidade nem registros pedagógicos; manter movimentações append-only com antes/depois de cargo, escola, lotação, matrícula/turno e atribuições pedagógicas, exibidas e exportáveis no escopo autorizado.
+- Não inventar timeline retroativa: dados antigos só podem ser apresentados como histórico quando houver fonte persistida confiável; registrar alterações novas na mesma transação da edição.
 
 ## Saida esperada
 

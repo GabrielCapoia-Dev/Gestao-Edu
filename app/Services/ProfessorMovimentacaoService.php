@@ -26,7 +26,11 @@ class ProfessorMovimentacaoService
 
         $this->bloquearSeHouverPendencias($professor, 'transferido');
 
-        DB::transaction(function () use ($professor, $escolaDestino): void {
+        $servidor = $professor->servidor;
+        $historico = app(ServidorHistoricoService::class);
+        $antes = $servidor ? $historico->capturar($servidor) : null;
+
+        DB::transaction(function () use ($professor, $escolaDestino, $servidor, $historico, $antes, $usuario): void {
             $this->removerVinculosAtuais($professor);
 
             $professor->forceFill([
@@ -36,6 +40,10 @@ class ProfessorMovimentacaoService
                 'desativado_por_id' => null,
                 'motivo_desativacao' => null,
             ])->save();
+
+            if ($servidor && $antes !== null) {
+                $historico->registrarSeAlterou($servidor, $antes, $usuario?->getKey());
+            }
         });
 
         $this->sincronizarAcessoProfessor($professor);
@@ -47,7 +55,11 @@ class ProfessorMovimentacaoService
     {
         $this->bloquearSeHouverPendencias($professor, 'desativado');
 
-        DB::transaction(function () use ($professor, $usuario, $motivo): void {
+        $servidor = $professor->servidor;
+        $historico = app(ServidorHistoricoService::class);
+        $antes = $servidor ? $historico->capturar($servidor) : null;
+
+        DB::transaction(function () use ($professor, $usuario, $motivo, $servidor, $historico, $antes): void {
             $this->removerVinculosAtuais($professor);
 
             $professor->forceFill([
@@ -56,6 +68,10 @@ class ProfessorMovimentacaoService
                 'desativado_por_id' => $usuario?->id,
                 'motivo_desativacao' => filled($motivo) ? trim((string) $motivo) : null,
             ])->save();
+
+            if ($servidor && $antes !== null) {
+                $historico->registrarSeAlterou($servidor, $antes, $usuario?->getKey());
+            }
         });
 
         $this->sincronizarAcessoProfessor($professor);

@@ -1435,6 +1435,12 @@ class ServidorResource extends Resource
             View::make('filament.admin.resources.servidores.partials.pessoa-detalhes')
                 ->viewData([
                     'detalhes' => static::detalhesVisualizacaoPersonalizada($record),
+                    'movimentacoes' => $record->movimentacoes()
+                        ->with('usuario:id,name')
+                        ->latest('ocorrido_em')
+                        ->get(),
+                    'exportarHistoricoUrl' => route('admin.servidores.historico.exportar', $record),
+                    'exportarFichaUrl' => route('admin.servidores.ficha.exportar', $record),
                 ])
                 ->columnSpanFull(),
         ];

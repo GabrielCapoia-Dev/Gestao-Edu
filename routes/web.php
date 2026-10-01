@@ -21,6 +21,7 @@ use App\Http\Controllers\PedidoMerendaEmpenhoController;
 use App\Http\Controllers\PedidoRelatorioController;
 use App\Http\Controllers\PedidoRelatorioGeralController;
 use App\Http\Controllers\ProfilePreviewController;
+use App\Http\Controllers\ServidorDocumentoController;
 use App\Http\Controllers\UserPresenceController;
 use App\Http\Middleware\ApplyProfilePreviewUser;
 use App\Http\Middleware\BlockProfilePreviewWrites;
@@ -91,6 +92,11 @@ Route::prefix('admin')
 
         Route::get('/calendario/exportar', CalendarExportController::class)
             ->name('dashboard.calendar.export');
+
+        Route::get('/servidores/{servidor}/historico.csv', [ServidorDocumentoController::class, 'historico'])
+            ->whereNumber('servidor')->name('admin.servidores.historico.exportar');
+        Route::get('/servidores/{servidor}/ficha.csv', [ServidorDocumentoController::class, 'ficha'])
+            ->whereNumber('servidor')->name('admin.servidores.ficha.exportar');
 
         Route::get('/eventos-calendario/localizacoes', [EventoCalendarioLocalizacaoController::class, 'buscar'])
             ->middleware('throttle:30,1')->name('eventos-calendario.localizacoes.buscar');

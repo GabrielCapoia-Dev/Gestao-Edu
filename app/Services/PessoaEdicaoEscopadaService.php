@@ -16,6 +16,15 @@ class PessoaEdicaoEscopadaService
 {
     public function atualizar(Servidor $pessoa, User $user, array $data): Servidor
     {
+        return app(ServidorHistoricoService::class)->registrarAtualizacao(
+            $pessoa,
+            fn (Servidor $locked): Servidor => $this->atualizarDentroDaTransacao($locked, $user, $data),
+            (int) $user->getKey(),
+        );
+    }
+
+    private function atualizarDentroDaTransacao(Servidor $pessoa, User $user, array $data): Servidor
+    {
         return DB::transaction(function () use ($pessoa, $user, $data): Servidor {
             /** @var Servidor $locked */
             $locked = Servidor::query()

@@ -339,6 +339,41 @@
         min-width: 0;
     }
 
+    .pessoa-custom-view__exports {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        padding: 0.75rem 1.25rem 0;
+    }
+
+    .pessoa-custom-view__exports a {
+        padding: 0.45rem 0.7rem;
+        border: 1px solid var(--pv-border);
+        border-radius: 0.55rem;
+        color: var(--pv-primary);
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+
+    .pessoa-custom-view__history-item {
+        display: grid;
+        gap: 0.65rem;
+        padding: 0.9rem 0;
+        border-bottom: 1px solid var(--pv-border);
+    }
+
+    .pessoa-custom-view__history-item > div {
+        display: grid;
+        gap: 0.2rem;
+        padding-left: 0.8rem;
+        border-left: 2px solid #c7dcf3;
+        overflow-wrap: anywhere;
+    }
+
+    .pessoa-custom-view__history-item small {
+        color: var(--pv-muted);
+    }
+
     .pessoa-custom-view__card-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));

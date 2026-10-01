@@ -83,11 +83,20 @@ class PessoaProfessorFormService
 
         $vinculoAssessoriaPedagogica = $pessoa->vinculosAtivos
             ->first(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehAssessoriaPedagogica());
+        $vinculoRh = $pessoa->vinculosAtivos
+            ->first(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehRh());
 
         if ($vinculoMotorista) {
             return array_merge($dados, [
                 'cargo' => ServidorResource::CARGO_MOTORISTA,
                 'matricula_motorista' => $vinculoMotorista->matricula ?? $pessoa->matricula,
+            ]);
+        }
+
+        if ($vinculoRh) {
+            return array_merge($dados, [
+                'cargo' => ServidorResource::CARGO_RH,
+                'matricula_operacional' => $vinculoRh->matricula ?? $pessoa->matricula,
             ]);
         }
 
@@ -215,6 +224,8 @@ class PessoaProfessorFormService
             ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehTransporte());
         $ehAssessoriaPedagogicaNoEscopo = $pessoa->vinculosAtivos
             ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehAssessoriaPedagogica());
+        $ehRhNoEscopo = $pessoa->vinculosAtivos
+            ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehRh());
 
         return [
             'nome' => $pessoa->nome,
@@ -229,6 +240,7 @@ class PessoaProfessorFormService
                 $ehMotoristaNoEscopo => ServidorResource::CARGO_MOTORISTA,
                 $ehTransporteNoEscopo => ServidorResource::CARGO_TRANSPORTE,
                 $ehAssessoriaPedagogicaNoEscopo => ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA,
+                $ehRhNoEscopo => ServidorResource::CARGO_RH,
                 $ehObrasNoEscopo => ServidorResource::CARGO_OBRAS,
                 $ehManutencaoNoEscopo => ServidorResource::CARGO_MANUTENCAO,
                 $ehEquipeGestoraNoEscopo => ServidorResource::CARGO_EQUIPE_GESTORA,
