@@ -3,9 +3,11 @@
 namespace Tests\Feature\Pessoas;
 
 use App\Models\FuncaoAdministrativa;
+use App\Models\Escola;
 use App\Models\Professor;
 use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
+use App\Models\Setor;
 use App\Services\PessoaProfessorFormService;
 use App\Services\ServidorHistoricoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -17,6 +19,7 @@ class ServidorHistoricoTest extends TestCase
 
     public function test_formulario_prioriza_rh_quando_ha_registro_legado_de_professor_ativo(): void
     {
+        [$escola] = $this->criarLocalDeTrabalho();
         $servidor = Servidor::query()->create([
             'nome' => 'Servidor convertido',
             'email' => 'convertido@teste.local',
@@ -32,6 +35,7 @@ class ServidorHistoricoTest extends TestCase
 
         Professor::query()->create([
             'servidor_id' => $servidor->id,
+            'id_escola' => $escola->id,
             'matricula' => 'LEGADO-001',
             'turno' => 'manha',
             'nome' => $servidor->nome,
@@ -67,6 +71,29 @@ class ServidorHistoricoTest extends TestCase
 
         $this->assertArrayHasKey('cargo', $movimentacao->alteracoes);
         $this->assertSame('RH', $movimentacao->alteracoes['cargo']['antes'][0]['cargo']);
-        $this->assertSame([], $movimentacao->alteracoes['cargo']['depois']);
+        $this->assertSame('inativo', $movimentacao->alteracoes['cargo']['depois'][0]['status']);
+    }
+
+    /** @return array{Escola, Setor} */
+    private function criarLocalDeTrabalho(): array
+    {
+        $setor = Setor::query()->create([
+            'nome' => 'Setor de teste',
+            'ativo' => true,
+            'status' => 'Ativo',
+            'is_default_root' => true,
+            'contexto' => 'escolar',
+            'exige_vinculo_escola' => true,
+        ]);
+        $escola = Escola::query()->create([
+            'codigo' => 'HIST-001',
+            'nome' => 'Escola de histórico',
+            'setor_id' => $setor->id,
+            'email' => 'historico@escola.local',
+            'telefone' => '(44) 99999-9999',
+            'ativo' => true,
+        ]);
+
+        return [$escola, $setor];
     }
 }
