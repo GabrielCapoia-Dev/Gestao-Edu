@@ -158,7 +158,7 @@ class PessoaForm extends Component
             }
 
             $matriculaLabels[$matriculaKey] = $this->matriculaLabel($matricula, $turnosOptions);
-            if ((bool) ($matricula['jornada'] ?? false)) {
+            if ($this->cargo === ServidorResource::CARGO_PROFESSOR && (bool) ($matricula['jornada'] ?? false)) {
                 $matriculaLabels[$matriculaKey] = 'Jornada · '.$matriculaLabels[$matriculaKey];
             }
             $turnosOptionsPorMatricula[$matriculaKey] = $this->turnosDisponiveisParaMatricula(
@@ -888,6 +888,14 @@ class PessoaForm extends Component
         }
 
         $this->matriculas = $this->normalizarEstadoMatriculas($matriculas);
+        if ($this->cargo !== ServidorResource::CARGO_PROFESSOR) {
+            $this->jornada = false;
+            $this->jornadasArquivadas = [];
+            foreach ($this->matriculas as &$matricula) {
+                $matricula['jornada'] = false;
+            }
+            unset($matricula);
+        }
         $this->matriculaAtiva = array_key_first($this->matriculas);
         foreach ($this->matriculas as $matriculaKey => $matricula) {
             $this->lotacoesAtivas[$matriculaKey] = array_key_first($matricula['escolas'] ?? []);

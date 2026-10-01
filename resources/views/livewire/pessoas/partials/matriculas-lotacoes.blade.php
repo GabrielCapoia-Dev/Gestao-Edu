@@ -8,7 +8,7 @@
                 <h3 id="pessoa-form-matriculas-title">
                     {{ in_array($cargo, ['manutencao', 'obras'], true) ? 'Matrículas' : 'Matrículas e lotações' }}
                 </h3>
-                <p>Cada matrícula de manhã ou tarde possui 20 horas; matrícula integral possui 40 horas e é exclusiva.</p>
+                <p>Cada matrícula de manhã ou tarde possui 20 horas; matrícula integral possui 40 horas e é exclusiva.@if ($permiteJornada) A jornada é exclusiva para Professor.@endif</p>
             </div>
         </div>
         @if (($modoCriacao || $gerenciaEstrutura) && $matriculas !== [])
@@ -16,14 +16,16 @@
                 <button type="button" class="pe-person-form__button pe-person-form__button--secondary" wire:click="adicionarMatricula" wire:loading.attr="disabled" wire:target="adicionarMatricula,salvar">
                     <x-heroicon-o-plus aria-hidden="true" /> Matrícula comum
                 </button>
-                <button type="button" class="pe-person-form__button pe-person-form__button--secondary" wire:click="adicionarJornada" wire:loading.attr="disabled" wire:target="adicionarJornada,salvar">
-                    <x-heroicon-o-plus aria-hidden="true" /> Jornada
-                </button>
+                @if ($permiteJornada)
+                    <button type="button" class="pe-person-form__button pe-person-form__button--secondary" wire:click="adicionarJornada" wire:loading.attr="disabled" wire:target="adicionarJornada,salvar">
+                        <x-heroicon-o-plus aria-hidden="true" /> Jornada
+                    </button>
+                @endif
             </div>
         @endif
     </header>
 
-    @if ($jornadasArquivadas !== [])
+    @if ($permiteJornada && $jornadasArquivadas !== [])
         <div class="pe-person-form__empty pe-person-form__empty--small">
             <strong>Jornadas arquivadas</strong>
             @foreach ($jornadasArquivadas as $arquivada)
@@ -130,9 +132,11 @@
                             @enderror
                             <small>
                                 {{ ($matricula['turno'] ?? '') === 'integral' ? '40 horas semanais' : '20 horas semanais' }}
-                                · {{ (bool) ($matricula['jornada'] ?? false) ? 'Matrícula de jornada' : 'Matrícula comum' }}
+                                @if ($permiteJornada)
+                                    · {{ (bool) ($matricula['jornada'] ?? false) ? 'Matrícula de jornada' : 'Matrícula comum' }}
+                                @endif
                             </small>
-                            @if ($modoCriacao || $gerenciaEstrutura)
+                            @if ($permiteJornada && ($modoCriacao || $gerenciaEstrutura))
                                 <span class="pe-person-form__checks">
                                     <input
                                         type="checkbox"
@@ -143,9 +147,11 @@
                                     Esta matrícula é de jornada
                                 </span>
                             @endif
-                            @error("matriculas.$matriculaKey.jornada")
-                                <small class="is-error">{{ $message }}</small>
-                            @enderror
+                            @if ($permiteJornada)
+                                @error("matriculas.$matriculaKey.jornada")
+                                    <small class="is-error">{{ $message }}</small>
+                                @enderror
+                            @endif
                         </label>
                     </div>
 

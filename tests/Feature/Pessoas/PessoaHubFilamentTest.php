@@ -59,6 +59,18 @@ class PessoaHubFilamentTest extends TestCase
         $this->assertSame('529.982.247-25', ServidorResource::formatarCpf('52998224725'));
     }
 
+    public function test_tabela_servidores_usa_filtros_na_barra_e_paginacao_nomeada(): void
+    {
+        $view = file_get_contents(resource_path('views/livewire/pessoas/servidores-table.blade.php'));
+
+        $this->assertIsString($view);
+        $this->assertStringContainsString('x-on:click="filtersOpen = ! filtersOpen"', $view);
+        $this->assertStringNotContainsString('Exportar filtrados', $view);
+        $this->assertStringContainsString("previousPage('servidoresPage')", $view);
+        $this->assertStringContainsString('gotoPage({{ $pagina }}, \'servidoresPage\')', $view);
+        $this->assertStringContainsString("nextPage('servidoresPage')", $view);
+    }
+
     public function test_hub_lista_unica_sem_metodo_de_abas_proprio(): void
     {
         $reflection = new \ReflectionClass(ManageServidores::class);
@@ -645,6 +657,32 @@ class PessoaHubFilamentTest extends TestCase
             ->assertDontSee('roles_adicionais')
             ->assertDontSee('usar_permissoes_extras')
             ->assertDontSee('password');
+    }
+
+    public function test_formulario_disponibiliza_rh_duas_matriculas_e_jornada_so_para_professor(): void
+    {
+        $usuario = $this->usuarioHubAdmin([
+            'Listar Pessoas',
+            'Criar Pessoas',
+            'Gerenciar Vínculos Estruturais de Pessoas',
+        ]);
+
+        Livewire::actingAs($usuario)
+            ->test(PessoaForm::class, ['pessoaId' => null])
+            ->assertSeeHtml('value="rh"')
+            ->assertSee('Jornada')
+            ->call('cargoAlterado', ServidorResource::CARGO_EQUIPE_GESTORA)
+            ->assertDontSee('Jornada')
+            ->assertSee('Matrícula comum')
+            ->call('cargoAlterado', ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA)
+            ->assertSee('Escolas assessoradas')
+            ->assertSee('Matrícula comum')
+            ->call('adicionarMatricula')
+            ->assertCount('matriculas', 2)
+            ->assertDontSee('Jornada')
+            ->call('cargoAlterado', ServidorResource::CARGO_RH)
+            ->assertSee('Matrícula comum')
+            ->assertDontSee('Jornada');
     }
 
     public function test_modais_de_criacao_visualizacao_e_edicao_sao_montados_pela_tabela(): void

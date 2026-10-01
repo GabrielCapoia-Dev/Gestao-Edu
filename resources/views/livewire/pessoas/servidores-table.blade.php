@@ -1,4 +1,5 @@
 <div class="servidores-lw" wire:key="servidores-livewire-table" x-data="{
+    filtersOpen: @js((bool) ($cargo || $quantidadeMatriculas || $turnoMatricula || $status || $escola || $nivelAcesso || $arquivados !== 'sem' || $emailDuplicado)),
     copyTimer: null,
     copyFeedback: '',
     copyFeedbackType: 'success',
@@ -59,9 +60,10 @@
         </div>
 
         <div class="servidores-lw__toolbar-actions">
-            <button type="button" class="servidores-lw__button servidores-lw__button--ghost" wire:click="exportarFiltrados">
-                <x-filament::icon icon="heroicon-o-document-arrow-down" />
-                Exportar filtrados
+            <button type="button" class="servidores-lw__button servidores-lw__button--ghost" x-on:click="filtersOpen = ! filtersOpen" x-bind:aria-expanded="filtersOpen.toString()" aria-controls="servidores-filtros-avancados">
+                <x-filament::icon icon="heroicon-o-adjustments-horizontal" />
+                Filtros avançados
+                <span class="servidores-lw__filter-count">{{ collect([$cargo, $quantidadeMatriculas, $turnoMatricula, $status, $escola, $nivelAcesso, $emailDuplicado])->flatten()->filter()->count() }}</span>
             </button>
             <label class="servidores-lw__page-size">
                 <span>Por página</span>
@@ -74,11 +76,7 @@
         </div>
     </div>
 
-    <details class="servidores-lw__filters" @if($cargo || $quantidadeMatriculas || $turnoMatricula || $status || $escola || $nivelAcesso || $arquivados !== 'sem' || $emailDuplicado) open @endif>
-        <summary>
-            <span><x-filament::icon icon="heroicon-o-adjustments-horizontal" /> Filtros avançados</span>
-            <span class="servidores-lw__filter-count">{{ collect([$cargo, $quantidadeMatriculas, $turnoMatricula, $status, $escola, $nivelAcesso, $emailDuplicado])->flatten()->filter()->count() }}</span>
-        </summary>
+    <div id="servidores-filtros-avancados" class="servidores-lw__filters" x-cloak x-show="filtersOpen">
         <div class="servidores-lw__filter-grid servidores-lw__filter-grid--filament">
             {{ $this->filtrosForm }}
         </div>
@@ -86,7 +84,7 @@
             <button type="button" class="servidores-lw__button servidores-lw__button--primary" wire:click="aplicarFiltros">Aplicar filtros</button>
             <button type="button" class="servidores-lw__button servidores-lw__button--link" wire:click="limparFiltros">Limpar filtros</button>
         </div>
-    </details>
+    </div>
 
     <div class="servidores-lw__table-header">
         <div class="servidores-lw__selection-summary">
@@ -224,11 +222,11 @@
         <span>Exibindo {{ $servidores->firstItem() ?: 0 }}–{{ $servidores->lastItem() ?: 0 }} de {{ $servidores->total() }} servidores</span>
         @if ($servidores->hasPages())
             <nav class="servidores-lw__pagination" aria-label="Paginação de servidores">
-                <button type="button" wire:click="previousPage" @disabled($servidores->onFirstPage()) aria-label="Página anterior">Anterior</button>
+                <button type="button" wire:click="previousPage('servidoresPage')" @disabled($servidores->onFirstPage()) aria-label="Página anterior">Anterior</button>
                 @foreach ($servidores->getUrlRange(max(1, $servidores->currentPage() - 2), min($servidores->lastPage(), $servidores->currentPage() + 2)) as $pagina => $url)
-                    <button type="button" wire:click="gotoPage({{ $pagina }})" @if ($pagina === $servidores->currentPage()) aria-current="page" @endif aria-label="Página {{ $pagina }}">{{ $pagina }}</button>
+                    <button type="button" wire:click="gotoPage({{ $pagina }}, 'servidoresPage')" @if ($pagina === $servidores->currentPage()) aria-current="page" @endif aria-label="Página {{ $pagina }}">{{ $pagina }}</button>
                 @endforeach
-                <button type="button" wire:click="nextPage" @disabled(! $servidores->hasMorePages()) aria-label="Próxima página">Próxima</button>
+                <button type="button" wire:click="nextPage('servidoresPage')" @disabled(! $servidores->hasMorePages()) aria-label="Próxima página">Próxima</button>
             </nav>
         @endif
     </div>

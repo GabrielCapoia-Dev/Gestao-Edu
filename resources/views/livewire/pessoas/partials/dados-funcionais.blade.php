@@ -5,7 +5,7 @@
         </span>
         <div>
             <h3 id="pessoa-form-dados-funcionais-title">Dados funcionais</h3>
-            <p>Lotação principal da pessoa. Carga horária e jornada são definidas em cada matrícula.</p>
+            <p>Lotação principal da pessoa. A carga horária é definida em cada matrícula.</p>
         </div>
     </header>
 

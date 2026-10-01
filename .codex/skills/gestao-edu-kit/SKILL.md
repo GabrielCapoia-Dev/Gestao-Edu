@@ -60,3 +60,7 @@ Ao final da analise, registrar:
 - comportamento atual confirmado
 - estrategia de implementacao
 - testes focados e validacao manual necessaria
+
+## Manutencao evolutiva das skills
+
+Ao concluir uma implementacao que amplia um fluxo, introduz regra duradoura ou revela divergencia na documentacao do dominio, revise apenas as skills diretamente afetadas. Use `skill-creator` para fazer uma atualizacao pequena e especifica; valide descricoes, referencias e instrucoes contra o comportamento confirmado no codigo. Ajustes pontuais ou temporarios nao justificam alterar skills. Se surgir um novo dominio ou fluxo, atualize o mapa de modulos e o roteamento deste kit quando aplicavel. Encerre apos registrar o conhecimento duradouro, sem expandir para skills nao relacionadas.

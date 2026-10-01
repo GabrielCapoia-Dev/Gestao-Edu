@@ -19,41 +19,11 @@
             </span>
             <div>
                 <h3 id="pessoa-form-assessoria-pedagogica-title">Assessoria Pedagógica</h3>
-                <p>Define a matrícula e as escolas sob responsabilidade da Assessoria Pedagógica.</p>
+                <p>Defina as escolas sob responsabilidade da Assessoria Pedagógica.</p>
             </div>
         </header>
 
-        <div class="pe-person-form__grid pe-person-form__grid--2">
-            <label class="pe-person-form__field">
-                <span>Matrícula</span>
-                <input
-                    type="text"
-                    wire:model.blur="matriculaOperacional"
-                    maxlength="255"
-                    placeholder="Número da matrícula"
-                    @error('matriculaOperacional') aria-invalid="true" aria-describedby="pessoa-form-matricula-assessoria-error" @enderror
-                >
-                @error('matriculaOperacional')
-                    <small id="pessoa-form-matricula-assessoria-error" class="is-error">{{ $message }}</small>
-                @enderror
-            </label>
-
-            <label class="pe-person-form__field">
-                <span>Turno <b aria-hidden="true">*</b></span>
-                <select
-                    wire:model.blur="turnoOperacional"
-                    @error('turnoOperacional') aria-invalid="true" aria-describedby="pessoa-form-turno-assessoria-error" @enderror
-                >
-                    <option value="">Selecione o turno</option>
-                    @foreach ($turnosOptions as $value => $label)
-                        <option value="{{ $value }}">{{ $label }}</option>
-                    @endforeach
-                </select>
-                @error('turnoOperacional')
-                    <small id="pessoa-form-turno-assessoria-error" class="is-error">{{ $message }}</small>
-                @enderror
-            </label>
-
+        <div class="pe-person-form__grid">
             <fieldset class="pe-person-form__field pe-person-form__span-2">
                 <legend>Escolas assessoradas <b aria-hidden="true">*</b></legend>
                 <div class="pe-person-form__school-groups">

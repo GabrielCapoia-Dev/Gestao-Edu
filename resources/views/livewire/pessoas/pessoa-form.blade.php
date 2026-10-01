@@ -81,7 +81,7 @@
 
                 @if ($cargo === 'motorista')
                     @include('livewire.pessoas.partials.motorista')
-                @elseif ($cargo !== 'assessoria_pedagogica')
+                @else
                     @include('livewire.pessoas.partials.matriculas-lotacoes')
                 @endif
 

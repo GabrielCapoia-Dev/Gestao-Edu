@@ -238,6 +238,7 @@
         background: var(--pessoa-card-surface);
     }
 
+    .pe-pessoas-page .servidores-lw__toolbar { align-items: end; }
     .pe-pessoas-page .servidores-lw__search { flex: 1 1 24rem; }
     .pe-pessoas-page .servidores-lw__search label,
     .pe-pessoas-page .servidores-lw__filter-grid label { color: var(--gray-600); display: grid; font-size: .75rem; font-weight: 600; gap: .35rem; }
