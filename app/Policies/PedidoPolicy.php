@@ -120,7 +120,8 @@ class PedidoPolicy
             return false;
         }
 
-        return $this->view($user, $pedido);
+        return $this->view($user, $pedido)
+            && app(PedidoService::class)->executarAcaoDaEscolaOuSetor($pedido, $user);
     }
 
     public function evaluate(User $user, Pedido $pedido): bool

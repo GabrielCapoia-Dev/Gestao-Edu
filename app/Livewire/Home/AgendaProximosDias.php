@@ -7,6 +7,7 @@ use App\Models\EventoCalendario;
 use App\Models\User;
 use App\Services\Dashboard\Calendar\CalendarEventAggregator;
 use App\Services\Dashboard\DashboardUserContextFactory;
+use App\Services\PedidoService;
 use App\Services\ProfilePreviewService;
 use App\Support\Dashboard\Calendar\CalendarAggregationResult;
 use App\Support\Dashboard\Calendar\CalendarQueryContext;
@@ -39,6 +40,12 @@ class AgendaProximosDias extends Component
         $this->quantidadeDias = $this->normalizarQuantidadeDias(
             (int) config('dashboard.calendar.default_days', 5),
         );
+
+        $user = app(ProfilePreviewService::class)->effectiveUser();
+
+        if (app(PedidoService::class)->ehMembroDaManutencao($user)) {
+            $this->escopoAgenda = 'manutencao';
+        }
     }
 
     public function updatedQuantidadeDias(int|string $days): void
@@ -102,13 +109,16 @@ class AgendaProximosDias extends Component
             try {
                 $aggregator = app(CalendarEventAggregator::class);
                 $resultadoPessoal = $aggregator->aggregate($this->contextoObrigatorio('pessoal'));
+                $ehMembroDaManutencao = app(PedidoService::class)->ehMembroDaManutencao($context->user);
                 $resultados = [
                     'pessoal' => $resultadoPessoal,
                     'transporte' => $this->filtrarResultadoPor(
                         $resultadoPessoal,
                         static fn ($evento): bool => $evento->precisaTransporte(),
                     ),
-                    'manutencao' => $this->filtrarResultado($resultadoPessoal, self::CATEGORIAS_MANUTENCAO),
+                    'manutencao' => $ehMembroDaManutencao
+                        ? $aggregator->aggregate($this->contextoObrigatorio('manutencao'))
+                        : $this->filtrarResultado($resultadoPessoal, self::CATEGORIAS_MANUTENCAO),
                     'pedagogico' => $this->filtrarResultado($resultadoPessoal, self::CATEGORIAS_PEDAGOGICAS),
                 ];
 
@@ -208,7 +218,8 @@ class AgendaProximosDias extends Component
                 redeCompleta: $escopo === 'rede',
                 somenteReservasVeiculos: $escopo === 'veiculos',
                 somenteNaoEncerrados: true,
-                ignorarPedidosManutencao: $escopo === 'rede',
+                ignorarPedidosManutencao: $escopo === 'rede'
+                    || ($escopo === 'pessoal' && app(PedidoService::class)->ehMembroDaManutencao($user)),
             );
         } catch (\Throwable $exception) {
             $this->erro = $exception instanceof InvalidArgumentException
@@ -285,9 +296,10 @@ class AgendaProximosDias extends Component
      */
     private function montarAbas(User $user, array $resultados): array
     {
-        $abas = [
-            ['key' => 'pessoal', 'label' => 'Para mim'],
-        ];
+        $ehMembroDaManutencao = app(PedidoService::class)->ehMembroDaManutencao($user);
+        $abas = $ehMembroDaManutencao
+            ? [['key' => 'manutencao', 'label' => 'Manutenção'], ['key' => 'pessoal', 'label' => 'Para mim']]
+            : [['key' => 'pessoal', 'label' => 'Para mim']];
 
         if ($this->podeVisualizarRede($user)) {
             $abas[] = ['key' => 'rede', 'label' => 'Para a rede'];
@@ -298,7 +310,11 @@ class AgendaProximosDias extends Component
         }
 
         $abas[] = ['key' => 'transporte', 'label' => 'Transporte'];
-        $abas[] = ['key' => 'manutencao', 'label' => 'Manutenção'];
+
+        if (! $ehMembroDaManutencao) {
+            $abas[] = ['key' => 'manutencao', 'label' => 'Manutenção'];
+        }
+
         $abas[] = ['key' => 'pedagogico', 'label' => 'Pedagógico'];
 
         return array_values(array_filter(array_map(

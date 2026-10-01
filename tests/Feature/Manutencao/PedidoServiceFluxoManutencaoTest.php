@@ -445,6 +445,51 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         $this->assertSame([$pedidoEducacao->id], $this->service->queryTabela($escolaUser)->pluck('id')->all());
     }
 
+    public function test_membro_ativo_da_manutencao_le_todos_os_pedidos_sem_ganhar_edicao_global(): void
+    {
+        $pedidoEducacao = $this->pedido(status: 'Em Aberto', setor: $this->educacao, escola: $this->escola);
+        $setorIndependente = Setor::create([
+            'nome' => 'Setor independente da manutenção',
+            'ativo' => true,
+            'status' => 'Ativo',
+        ]);
+        $escolaIndependente = Escola::create([
+            'codigo' => '003',
+            'nome' => 'Escola independente',
+            'setor_id' => $setorIndependente->id,
+            'ativo' => true,
+        ]);
+        $pedidoIndependente = $this->pedido(
+            status: 'Em Manutenção',
+            setor: $setorIndependente,
+            escola: $escolaIndependente,
+        );
+        $usuario = $this->usuarioComPermissoes(['Listar Pedidos', 'Editar Pedidos', 'Comentar Pedidos']);
+        $servidor = Servidor::query()->create([
+            'user_id' => $usuario->id,
+            'nome' => $usuario->name,
+            'email' => $usuario->email,
+            'status' => Servidor::STATUS_ATIVO,
+        ]);
+        ServidorFuncaoAdministrativa::query()->create([
+            'servidor_id' => $servidor->id,
+            'funcao_administrativa_id' => FuncaoAdministrativa::manutencaoPadrao()->id,
+            'setor_id' => $this->educacao->id,
+            'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+            'origem' => 'teste',
+            'principal' => true,
+            'data_inicio' => now()->toDateString(),
+        ]);
+
+        $this->assertEqualsCanonicalizing(
+            [$pedidoEducacao->id, $pedidoIndependente->id],
+            $this->service->queryTabela($usuario)->pluck('id')->all(),
+        );
+        $this->assertTrue($usuario->can('view', $pedidoIndependente));
+        $this->assertFalse($usuario->can('update', $pedidoIndependente));
+        $this->assertFalse($usuario->can('comment', $pedidoIndependente));
+    }
+
     public function test_usuario_vinculado_a_escola_tem_escopo_de_escola_prioritario_ao_setor_geral(): void
     {
         $pedidoDaEscola = $this->pedido(status: 'Em Aberto', setor: $this->educacao, escola: $this->escola);

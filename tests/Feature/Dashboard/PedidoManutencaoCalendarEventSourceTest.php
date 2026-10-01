@@ -2,12 +2,16 @@
 
 namespace Tests\Feature\Dashboard;
 
+use App\Livewire\Home\AgendaProximosDias;
 use App\Models\Enums\ListaPermissoes;
 use App\Models\Enums\NivelEmergenciaPedido;
 use App\Models\Escola;
+use App\Models\FuncaoAdministrativa;
 use App\Models\Pedido;
 use App\Models\Permission;
 use App\Models\Setor;
+use App\Models\Servidor;
+use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\TipoManutencao;
 use App\Models\TipoStatus;
 use App\Models\User;
@@ -17,6 +21,7 @@ use App\Support\Dashboard\Calendar\CalendarEventData;
 use App\Support\Dashboard\Calendar\CalendarQueryContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -185,6 +190,31 @@ class PedidoManutencaoCalendarEventSourceTest extends TestCase
         $this->assertNull($source->detail($contexto, (string) $adicional->id));
         $this->assertNull($source->detail($contexto, (string) $entregue->id));
         $this->assertNull($source->detail($contexto, (string) $final->id));
+    }
+
+    public function test_agenda_abre_na_aba_manutencao_para_membro_com_vinculo_ativo(): void
+    {
+        $setor = $this->criarSetor('Setor do membro da agenda');
+        $usuario = User::factory()->create();
+        $servidor = Servidor::query()->create([
+            'user_id' => $usuario->id,
+            'nome' => $usuario->name,
+            'email' => $usuario->email,
+            'status' => Servidor::STATUS_ATIVO,
+        ]);
+        ServidorFuncaoAdministrativa::query()->create([
+            'servidor_id' => $servidor->id,
+            'funcao_administrativa_id' => FuncaoAdministrativa::manutencaoPadrao()->id,
+            'setor_id' => $setor->id,
+            'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+            'origem' => 'teste',
+            'principal' => true,
+            'data_inicio' => now()->toDateString(),
+        ]);
+
+        Livewire::actingAs($usuario)
+            ->test(AgendaProximosDias::class)
+            ->assertSet('escopoAgenda', 'manutencao');
     }
 
     private function contexto(

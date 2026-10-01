@@ -13,6 +13,7 @@ use App\Models\Pedido;
 use App\Models\PedidoHistorico;
 use App\Models\PedidoProblema;
 use App\Models\Setor;
+use App\Models\Servidor;
 use App\Models\TipoManutencao;
 use App\Models\TipoManutencaoOpcao;
 use App\Models\TipoStatus;
@@ -49,6 +50,27 @@ class PedidoService
     public function podeListarTodos(?User $user): bool
     {
         return $user && Gate::forUser($user)->allows('viewAll', Pedido::class);
+    }
+
+    public function ehMembroDaManutencao(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->relationLoaded('eh_membro_da_manutencao')) {
+            return (bool) $user->getRelation('eh_membro_da_manutencao');
+        }
+
+        $ehMembro = $user->servidores()
+            ->where('status', Servidor::STATUS_ATIVO)
+            ->whereHas('vinculosAtivos.funcaoAdministrativa', fn (Builder $funcoes): Builder => $funcoes
+                ->whereIn('codigo', ['manutencao', 'obras']))
+            ->exists();
+
+        $user->setRelation('eh_membro_da_manutencao', $ehMembro);
+
+        return $ehMembro;
     }
 
     public function podeVerTodosOsPedidos(?User $user): bool
@@ -417,6 +439,12 @@ class PedidoService
         }
 
         if ($this->podeListarTodos($user)) {
+            return $query;
+        }
+
+        // A equipe de manutenção consulta a fila completa, mas as autorizações
+        // de edição/cancelamento continuam validadas separadamente por setor.
+        if ($this->ehMembroDaManutencao($user)) {
             return $query;
         }
 
