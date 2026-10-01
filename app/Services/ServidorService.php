@@ -609,7 +609,9 @@ class ServidorService
         $anteriores = PessoaMatricula::query()->where('servidor_id', $pessoa->getKey())->get()->keyBy('id');
         $mantidos = [];
         foreach ($items as $item) {
-            $registro = filled($item['id']) ? $anteriores->get((int) $item['id']) : null;
+            $registro = filled($item['id'])
+                ? $anteriores->get((int) $item['id'])
+                : $anteriores->firstWhere('matricula', $item['matricula']);
             if (filled($item['id']) && (! $registro || (int) $registro->servidor_id !== (int) $pessoa->getKey())) {
                 throw ValidationException::withMessages(['matriculas_professor' => 'Matrícula não pertence a esta pessoa.']);
             }

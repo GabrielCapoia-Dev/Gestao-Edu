@@ -11,18 +11,13 @@ class RhPermissionPreset
     {
         return [
             ListaPermissoes::VisualizarTelaDeInicio,
-            ListaPermissoes::ListarServidores,
             ListaPermissoes::ListarPessoas,
-            ListaPermissoes::CriarServidores,
             ListaPermissoes::CriarPessoas,
             ListaPermissoes::CriarUsuarios,
-            ListaPermissoes::EditarServidores,
             ListaPermissoes::EditarPessoas,
             ListaPermissoes::EditarDadosDePessoas,
             ListaPermissoes::EditarUsuarios,
-            ListaPermissoes::ExcluirServidores,
             ListaPermissoes::ExcluirPessoasDefinitivamente,
-            ListaPermissoes::GerenciarFuncoesDeServidores,
             ListaPermissoes::GerenciarVinculosEstruturaisDePessoas,
             ListaPermissoes::ExcluirPessoas,
             ListaPermissoes::ListarEscolas,
