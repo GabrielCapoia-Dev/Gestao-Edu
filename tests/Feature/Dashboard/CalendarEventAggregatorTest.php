@@ -165,12 +165,12 @@ class CalendarEventAggregatorTest extends TestCase
         $this->assertStringNotContainsString('nav-card', file_get_contents(public_path('css/geral.css')));
     }
 
-    public function test_dashboard_monta_avisos_e_agenda_somente_com_permissao_de_listagem(): void
+    public function test_dashboard_monta_avisos_com_permissao_e_agenda_pela_regra_de_acesso_especifica(): void
     {
         $blade = file_get_contents(resource_path('views/filament/pages/dashboard.blade.php'));
 
         $this->assertStringContainsString("@can('viewAny', \\App\\Models\\Aviso::class)", $blade);
-        $this->assertStringContainsString("@can('viewAny', \\App\\Models\\EventoCalendario::class)", $blade);
+        $this->assertStringContainsString('$this->podeVisualizarAgenda()', $blade);
         $this->assertStringContainsString('<livewire:home.avisos-banner lazy />', $blade);
         $this->assertStringContainsString('<livewire:home.agenda-proximos-dias lazy />', $blade);
     }

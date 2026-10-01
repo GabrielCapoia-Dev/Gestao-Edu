@@ -2,9 +2,11 @@
 
 namespace Tests\Feature\Dashboard;
 
+use App\Filament\Admin\Pages\Dashboard;
 use App\Livewire\Home\AgendaProximosDias;
 use App\Models\Enums\ListaPermissoes;
 use App\Models\Enums\NivelEmergenciaPedido;
+use App\Models\EventoCalendario;
 use App\Models\Escola;
 use App\Models\FuncaoAdministrativa;
 use App\Models\Pedido;
@@ -215,6 +217,11 @@ class PedidoManutencaoCalendarEventSourceTest extends TestCase
         Livewire::actingAs($usuario)
             ->test(AgendaProximosDias::class)
             ->assertSet('escopoAgenda', 'manutencao');
+
+        $this->actingAs($usuario);
+        $this->assertFalse(\Illuminate\Support\Facades\Gate::forUser($usuario)
+            ->allows('viewAny', EventoCalendario::class));
+        $this->assertTrue(app(Dashboard::class)->podeVisualizarAgenda());
     }
 
     private function contexto(

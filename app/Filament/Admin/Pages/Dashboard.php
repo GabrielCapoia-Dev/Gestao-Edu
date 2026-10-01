@@ -11,6 +11,7 @@ use App\Models\EventoCalendario;
 use App\Models\ReservaVeiculo;
 use App\Models\User;
 use App\Services\Dashboard\ReservaVeiculoService;
+use App\Services\PedidoService;
 use App\Services\ProfilePreviewService;
 use App\Services\UserService;
 use BackedEnum;
@@ -141,6 +142,15 @@ class Dashboard extends Page
     public static function canAccess(): bool
     {
         return Gate::allows('viewDashboard', User::class);
+    }
+
+    public function podeVisualizarAgenda(): bool
+    {
+        $usuario = app(ProfilePreviewService::class)->effectiveUser();
+
+        return $usuario !== null
+            && (Gate::forUser($usuario)->allows('viewAny', EventoCalendario::class)
+                || app(PedidoService::class)->ehMembroDaManutencao($usuario));
     }
 
     public static function userService(): UserService

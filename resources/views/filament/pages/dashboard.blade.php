@@ -4,10 +4,10 @@
             <livewire:home.avisos-banner lazy />
         @endcan
 
-        @can('viewAny', \App\Models\EventoCalendario::class)
+        @if ($this->podeVisualizarAgenda())
             <livewire:home.agenda-proximos-dias lazy />
             <livewire:home.evento-calendario-modal :mostrar-gatilho="false" />
             <livewire:home.evento-calendario-detalhes-modal />
-        @endcan
+        @endif
     </div>
 </x-filament-panels::page>
