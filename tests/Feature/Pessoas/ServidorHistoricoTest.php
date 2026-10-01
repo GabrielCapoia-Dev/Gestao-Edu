@@ -82,6 +82,49 @@ class ServidorHistoricoTest extends TestCase
         $this->assertSame('inativo', $movimentacao->alteracoes['cargo']['depois'][0]['status']);
     }
 
+    public function test_troca_de_cargo_encerra_professor_sem_disparar_a_rotina_que_recria_seu_vinculo(): void
+    {
+        [$escola] = $this->criarLocalDeTrabalho();
+        $servidor = Servidor::query()->create([
+            'nome' => 'Professor promovido',
+            'email' => 'promovido@teste.local',
+            'status' => Servidor::STATUS_INATIVO,
+        ]);
+        $funcaoRh = FuncaoAdministrativa::rhPadrao();
+        $funcaoProfessor = FuncaoAdministrativa::professorPadrao();
+        $vinculoRh = ServidorFuncaoAdministrativa::query()->create([
+            'servidor_id' => $servidor->id,
+            'funcao_administrativa_id' => $funcaoRh->id,
+            'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+            'origem' => 'pessoas',
+        ]);
+        $vinculoProfessor = ServidorFuncaoAdministrativa::query()->create([
+            'servidor_id' => $servidor->id,
+            'funcao_administrativa_id' => $funcaoProfessor->id,
+            'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+            'origem' => 'professor',
+        ]);
+        $professor = new Professor([
+            'servidor_id' => $servidor->id,
+            'id_escola' => $escola->id,
+            'matricula' => 'PROMOVIDO-001',
+            'turno' => 'manha',
+            'nome' => $servidor->nome,
+            'email' => $servidor->email,
+            'ativo' => true,
+        ]);
+        $professor->saveQuietly();
+
+        $service = app(\App\Services\ServidorService::class);
+        $metodo = new \ReflectionMethod($service, 'encerrarCargosAnteriores');
+        $metodo->invoke($service, $servidor->fresh('vinculosAtivos.funcaoAdministrativa'), 'rh');
+
+        $this->assertSame(ServidorFuncaoAdministrativa::STATUS_ATIVO, $vinculoRh->fresh()->status);
+        $this->assertSame(ServidorFuncaoAdministrativa::STATUS_INATIVO, $vinculoProfessor->fresh()->status);
+        $this->assertFalse((bool) $professor->fresh()->ativo);
+        $this->assertDatabaseHas('professores', ['id' => $professor->id]);
+    }
+
     /** @return array{Escola, Setor} */
     private function criarLocalDeTrabalho(): array
     {

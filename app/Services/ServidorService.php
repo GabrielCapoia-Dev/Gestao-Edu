@@ -661,12 +661,13 @@ class ServidorService
                 ->whereIn('professor_id', $professores->pluck('id'))
                 ->update(['professor_id' => null, 'tem_professor' => false, 'updated_at' => now()]);
 
-            $professores->each(fn (Professor $professor) => $professor->forceFill([
+            Professor::query()->whereKey($professores->modelKeys())->update([
                 'ativo' => false,
                 'desativado_em' => now(),
                 'desativado_por_id' => Auth::id(),
                 'motivo_desativacao' => 'Alteração de cargo para '.str_replace('_', ' ', $cargoAtual),
-            ])->save());
+                'updated_at' => now(),
+            ]);
         }
 
     }
