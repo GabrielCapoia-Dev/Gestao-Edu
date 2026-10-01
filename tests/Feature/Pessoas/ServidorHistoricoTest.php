@@ -8,6 +8,7 @@ use App\Models\Professor;
 use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\Setor;
+use App\Models\User;
 use App\Services\PessoaProfessorFormService;
 use App\Services\ServidorHistoricoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -20,9 +21,15 @@ class ServidorHistoricoTest extends TestCase
     public function test_formulario_prioriza_rh_quando_ha_registro_legado_de_professor_ativo(): void
     {
         [$escola] = $this->criarLocalDeTrabalho();
+        $usuario = User::factory()->create([
+            'email' => 'convertido@teste.local',
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
         $servidor = Servidor::query()->create([
             'nome' => 'Servidor convertido',
             'email' => 'convertido@teste.local',
+            'user_id' => $usuario->id,
             'status' => Servidor::STATUS_INATIVO,
         ]);
 
