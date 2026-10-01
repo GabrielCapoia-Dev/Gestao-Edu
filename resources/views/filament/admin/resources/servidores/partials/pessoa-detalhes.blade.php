@@ -19,6 +19,40 @@
     ])->where('visible', true)->values()->all();
 
     $temPedagogico = is_array($detalhes['pedagogico']);
+    $formatarValorHistorico = function (mixed $valor) use (&$formatarValorHistorico): string {
+        if ($valor === null || $valor === '') {
+            return '—';
+        }
+
+        if (is_bool($valor)) {
+            return $valor ? 'Sim' : 'Não';
+        }
+
+        if (! is_array($valor)) {
+            return (string) $valor;
+        }
+
+        if (array_is_list($valor)) {
+            return $valor === []
+                ? 'Nenhum vínculo'
+                : collect($valor)->map($formatarValorHistorico)->implode('; ');
+        }
+
+        $rotulos = [
+            'cargo' => 'Cargo', 'escola' => 'Escola', 'setor' => 'Setor',
+            'lotacao' => 'Lotação', 'matricula' => 'Matrícula', 'turno' => 'Turno',
+            'jornada' => 'Jornada', 'serie' => 'Série', 'turma' => 'Turma',
+            'componente' => 'Componente', 'status' => 'Situação',
+            'inicio' => 'Início', 'fim' => 'Fim', 'arquivada' => 'Arquivada',
+            'ativo' => 'Vínculo ativo', 'nome' => 'Nome',
+        ];
+
+        return collect($valor)
+            ->reject(fn (mixed $item, string|int $chave): bool => $chave === 'id' || $item === null || $item === '')
+            ->map(fn (mixed $item, string|int $chave): string => ($rotulos[$chave] ?? ucfirst((string) $chave))
+                .': '.$formatarValorHistorico($item))
+            ->implode(' · ');
+    };
 @endphp
 
 <div class="pessoa-custom-view" x-data="{ tab: 'resumo' }">
@@ -369,8 +403,8 @@
                         @foreach ($movimentacao->alteracoes as $campo => $mudanca)
                             <div>
                                 <b>{{ match ($campo) { 'cargo' => 'Cargo e vínculos', 'lotacao' => 'Lotação', 'matriculas' => 'Matrículas e turnos', 'pedagogico' => 'Turmas, séries e componentes', default => $campo } }}</b>
-                                <small>Antes: {{ json_encode($mudanca['antes'] ?? null, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</small>
-                                <small>Depois: {{ json_encode($mudanca['depois'] ?? null, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</small>
+                                <small>Antes: {{ $formatarValorHistorico($mudanca['antes'] ?? null) }}</small>
+                                <small>Depois: {{ $formatarValorHistorico($mudanca['depois'] ?? null) }}</small>
                             </div>
                         @endforeach
                     </article>
