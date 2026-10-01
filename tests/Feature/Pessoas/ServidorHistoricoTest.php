@@ -42,6 +42,7 @@ class ServidorHistoricoTest extends TestCase
 
         Professor::query()->create([
             'servidor_id' => $servidor->id,
+            'user_id' => $usuario->id,
             'id_escola' => $escola->id,
             'matricula' => 'LEGADO-001',
             'turno' => 'manha',
