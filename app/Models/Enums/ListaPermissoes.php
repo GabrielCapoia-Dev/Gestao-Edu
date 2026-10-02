@@ -93,6 +93,7 @@ enum ListaPermissoes: string
     case CriarReservasVeiculos = 'criar reservas de veículos';
     case SolicitarAdicaoSaldoEleitoral = 'solicitar adição de saldo eleitoral';
     case SolicitarUsoSaldoEleitoral = 'solicitar uso de saldo eleitoral';
+    case SolicitarEstornoSaldoEleitoral = 'solicitar estorno de saldo eleitoral';
     case GerenciarSaldoEleitoral = 'gerenciar saldo eleitoral';
 
     case EditarEmpresaContratada = 'editar empresa contratada';
@@ -365,6 +366,7 @@ enum ListaPermissoes: string
             self::CriarReservasVeiculos => 'Criar Reservas de Veículos',
             self::SolicitarAdicaoSaldoEleitoral => 'Solicitar Adição de Saldo Eleitoral',
             self::SolicitarUsoSaldoEleitoral => 'Solicitar Uso de Saldo Eleitoral',
+            self::SolicitarEstornoSaldoEleitoral => 'Solicitar Estorno de Saldo Eleitoral',
             self::GerenciarSaldoEleitoral => 'Gerenciar Saldo Eleitoral',
 
             self::EditarEmpresaContratada => 'Editar Empresa Contratada',

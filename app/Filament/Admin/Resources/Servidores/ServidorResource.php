@@ -39,6 +39,7 @@ use Filament\Actions\RestoreAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -47,6 +48,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\View;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Layout\Grid;
 use Filament\Tables\Columns\TextColumn;
@@ -567,6 +569,65 @@ class ServidorResource extends Resource
                             $datas = $data['datas'] ?? [];
                             app(SaldoEleitoralService::class)->solicitar($record, Auth::user(), SaldoEleitoral::TIPO_USO, count($datas), $datas);
                             Notification::make()->title('Solicitação de uso enviada ao RH')->success()->send();
+                        }),
+
+                    Action::make('solicitar_estorno_saldo_eleitoral')
+                        ->label('Solicitar Estorno de Saldo')
+                        ->icon('heroicon-o-arrow-uturn-left')
+                        ->authorize(fn (Servidor $record): bool => ! $record->trashed()
+                            && (Auth::user()?->hasPermissionTo('Solicitar Estorno de Saldo Eleitoral', 'web') ?? false))
+                        ->visible(fn (Servidor $record): bool => ! $record->trashed()
+                            && (Auth::user()?->hasPermissionTo('Solicitar Estorno de Saldo Eleitoral', 'web') ?? false)
+                            && app(SaldoEleitoralService::class)->usosElegiveisParaEstorno($record)->isNotEmpty())
+                        ->modalHeading(fn (Servidor $record): string => "Solicitar estorno de uso de saldo para {$record->nome}")
+                        ->modalDescription('Selecione um uso já aprovado, informe os dias que não serão descontados e justifique. O RH precisa aprovar o estorno.')
+                        ->schema(fn (Servidor $record): array => [
+                            Select::make('movimento_origem_id')
+                                ->label('Uso aprovado')
+                                ->options(fn (): array => app(SaldoEleitoralService::class)
+                                    ->usosElegiveisParaEstorno($record)
+                                    ->mapWithKeys(fn (SaldoEleitoral $uso): array => [
+                                        $uso->getKey() => 'Uso de '.$uso->dias.' dia(s) · '.($uso->decidido_em ?? $uso->created_at)?->format('d/m/Y')
+                                            .' · estornável: '.app(SaldoEleitoralService::class)->diasRestantesParaEstorno($uso),
+                                    ])->all())
+                                ->searchable()
+                                ->live()
+                                ->required(),
+                            CheckboxList::make('datas')
+                                ->label('Dias do uso que serão estornados')
+                                ->options(fn (Get $get): array => static::opcoesDatasEstorno($record, $get('movimento_origem_id')))
+                                ->columns(3)
+                                ->visible(fn (Get $get): bool => static::usoSelecionadoParaEstorno($record, $get('movimento_origem_id'))?->datas !== null)
+                                ->required(fn (Get $get): bool => static::usoSelecionadoParaEstorno($record, $get('movimento_origem_id'))?->datas !== null),
+                            TextInput::make('dias')
+                                ->label('Dias a estornar')
+                                ->numeric()
+                                ->integer()
+                                ->minValue(1)
+                                ->maxValue(fn (Get $get): int => ($uso = static::usoSelecionadoParaEstorno($record, $get('movimento_origem_id')))
+                                    ? app(SaldoEleitoralService::class)->diasRestantesParaEstorno($uso)
+                                    : 0)
+                                ->visible(fn (Get $get): bool => ($uso = static::usoSelecionadoParaEstorno($record, $get('movimento_origem_id')))
+                                    && blank($uso->datas))
+                                ->required(fn (Get $get): bool => ($uso = static::usoSelecionadoParaEstorno($record, $get('movimento_origem_id')))
+                                    && blank($uso->datas)),
+                            Textarea::make('justificativa')
+                                ->label('Justificativa')
+                                ->required()
+                                ->maxLength(1000)
+                                ->rows(3),
+                        ])
+                        ->action(function (Servidor $record, array $data): void {
+                            $datas = $data['datas'] ?? [];
+                            app(SaldoEleitoralService::class)->solicitarEstorno(
+                                $record,
+                                Auth::user(),
+                                (int) $data['movimento_origem_id'],
+                                $datas !== [] ? count($datas) : (int) ($data['dias'] ?? 0),
+                                $data['justificativa'],
+                                $datas !== [] ? $datas : null,
+                            );
+                            Notification::make()->title('Solicitação de estorno enviada ao RH')->success()->send();
                         }),
 
                     Action::make('edit')
@@ -1494,7 +1555,8 @@ class ServidorResource extends Resource
                         ->latest('ocorrido_em')
                         ->get(),
                     'saldoEleitoral' => $record->saldoEleitoralMovimentacoes()
-                        ->with(['solicitante:id,name', 'aprovador:id,name'])
+                        ->with(['solicitante:id,name', 'aprovador:id,name', 'movimentoOrigem:id,dias,datas,decidido_em,created_at'])
+                        ->latest('created_at')
                         ->get(),
                     'saldoEleitoralDias' => app(SaldoEleitoralService::class)->saldoAprovado($record),
                     'saldoEleitoralDisponivel' => app(SaldoEleitoralService::class)->disponivelParaSolicitacao($record),
@@ -2171,5 +2233,27 @@ class ServidorResource extends Resource
                 $componente->id => $componente->nome,
             ])
             ->toArray();
+    }
+
+    private static function usoSelecionadoParaEstorno(Servidor $servidor, mixed $id): ?SaldoEleitoral
+    {
+        if (! filled($id)) {
+            return null;
+        }
+
+        return app(SaldoEleitoralService::class)
+            ->usosElegiveisParaEstorno($servidor)
+            ->first(fn (SaldoEleitoral $uso): bool => (int) $uso->getKey() === (int) $id);
+    }
+
+    /** @return array<string, string> */
+    private static function opcoesDatasEstorno(Servidor $servidor, mixed $id): array
+    {
+        $uso = static::usoSelecionadoParaEstorno($servidor, $id);
+        $datas = $uso ? app(SaldoEleitoralService::class)->datasDisponiveisParaEstorno($uso) : null;
+
+        return collect($datas ?? [])->mapWithKeys(fn (string $data): array => [
+            $data => \Illuminate\Support\Carbon::parse($data)->format('d/m/Y'),
+        ])->all();
     }
 }

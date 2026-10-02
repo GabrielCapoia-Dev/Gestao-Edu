@@ -9,6 +9,7 @@ use App\Services\SaldoEleitoralService;
 use App\Support\EquipeGestoraPermissionPreset;
 use App\Support\RhPermissionPreset;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -97,6 +98,7 @@ class SaldoEleitoralServiceTest extends TestCase
 
         $this->assertContains('Solicitar Adição de Saldo Eleitoral', $equipeGestora);
         $this->assertContains('Solicitar Uso de Saldo Eleitoral', $equipeGestora);
+        $this->assertContains('Solicitar Estorno de Saldo Eleitoral', $equipeGestora);
         $this->assertNotContains('Gerenciar Saldo Eleitoral', $equipeGestora);
         $this->assertContains('Gerenciar Saldo Eleitoral', $rh);
     }
@@ -116,6 +118,72 @@ class SaldoEleitoralServiceTest extends TestCase
                 $this->assertTrue(true);
             }
         }
+    }
+
+    public function test_estorno_pendente_reserva_dias_do_uso_e_so_restitui_saldo_apos_aprovacao(): void
+    {
+        [$servidor, $solicitante, $rh] = $this->contexto();
+        $service = app(SaldoEleitoralService::class);
+        $this->lancamento($servidor, $solicitante, SaldoEleitoral::TIPO_ADICAO, 10, SaldoEleitoral::STATUS_APROVADO);
+        $uso = $service->solicitar($servidor, $solicitante, SaldoEleitoral::TIPO_USO, 4, $this->datas(4));
+        $service->decidir($uso, $rh, true);
+
+        $estorno = $service->solicitarEstorno($servidor, $solicitante, $uso->id, 2, 'Servidor impedido de comparecer.', ['2027-01-04', '2027-01-05']);
+
+        $this->assertSame(SaldoEleitoral::STATUS_PENDENTE, $estorno->status);
+        $this->assertSame($uso->id, $estorno->movimento_origem_id);
+        $this->assertSame(6, $service->saldoAprovado($servidor));
+        $this->assertSame(2, $service->diasRestantesParaEstorno($uso->fresh()->load('estornos')));
+
+        $service->decidir($estorno, $rh, true);
+
+        $this->assertSame(8, $service->saldoAprovado($servidor));
+        $this->assertSame(SaldoEleitoral::STATUS_APROVADO, $uso->fresh()->status);
+        $this->assertSame(['2027-01-06', '2027-01-07'], $service->datasDisponiveisParaEstorno($uso->fresh()->load('estornos')));
+    }
+
+    public function test_estorno_nao_pode_exceder_o_uso_original_nem_repetir_data_reservada(): void
+    {
+        [$servidor, $solicitante] = $this->contexto();
+        $service = app(SaldoEleitoralService::class);
+        $uso = $this->lancamento($servidor, $solicitante, SaldoEleitoral::TIPO_USO, 2, SaldoEleitoral::STATUS_APROVADO);
+        $uso->forceFill(['datas' => ['2027-01-04', '2027-01-05']])->save();
+        $service->solicitarEstorno($servidor, $solicitante, $uso->id, 1, 'Imprevisto.', ['2027-01-04']);
+
+        try {
+            $service->solicitarEstorno($servidor, $solicitante, $uso->id, 1, 'Mesmo dia.', ['2027-01-04']);
+            $this->fail('A mesma data não pode ser reservada por dois estornos.');
+        } catch (ValidationException) {
+            $this->assertTrue(true);
+        }
+
+        $this->expectException(ValidationException::class);
+        $service->solicitarEstorno($servidor, $solicitante, $uso->id, 2, 'Excede uso original.', ['2027-01-05', '2027-01-06']);
+    }
+
+    public function test_estorno_rejeitado_preserva_o_saldo_e_o_uso_original(): void
+    {
+        [$servidor, $solicitante, $rh] = $this->contexto();
+        $service = app(SaldoEleitoralService::class);
+        $this->lancamento($servidor, $solicitante, SaldoEleitoral::TIPO_ADICAO, 7, SaldoEleitoral::STATUS_APROVADO);
+        $uso = $service->solicitar($servidor, $solicitante, SaldoEleitoral::TIPO_USO, 2, $this->datas(2));
+        $service->decidir($uso, $rh, true);
+        $estorno = $service->solicitarEstorno($servidor, $solicitante, $uso->id, 1, 'Justificativa registrada.', ['2027-01-04']);
+
+        $service->decidir($estorno, $rh, false);
+
+        $this->assertSame(5, $service->saldoAprovado($servidor));
+        $this->assertSame(SaldoEleitoral::STATUS_APROVADO, $uso->fresh()->status);
+        $this->assertSame(SaldoEleitoral::STATUS_REJEITADO, $estorno->fresh()->status);
+    }
+
+    public function test_normaliza_datas_armazenadas_como_json_escalar_legado(): void
+    {
+        [$servidor, $solicitante] = $this->contexto();
+        $movimento = $this->lancamento($servidor, $solicitante, SaldoEleitoral::TIPO_USO, 1, SaldoEleitoral::STATUS_APROVADO);
+        DB::table('saldos_eleitorais')->where('id', $movimento->id)->update(['datas' => json_encode('2027-01-04')]);
+
+        $this->assertSame(['2027-01-04'], $movimento->fresh()->datas);
     }
 
     private function contexto(): array

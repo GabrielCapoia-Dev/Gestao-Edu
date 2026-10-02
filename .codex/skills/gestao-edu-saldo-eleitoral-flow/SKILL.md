@@ -19,8 +19,10 @@ Manter o saldo de cada servidor auditável, impedir uso acima do disponível e s
 
 ## Regras críticas
 
-- Registros são append-only: adições, usos aprovados, recusas e descontos manuais formam o histórico; não editar nem apagar lançamentos decididos.
-- O saldo líquido considera somente adições e usos aprovados. Para novos pedidos, usos pendentes também reservam dias até aprovação ou recusa.
+- Registros são append-only: adições, usos aprovados, recusas, descontos manuais e estornos formam o histórico; não editar nem apagar lançamentos decididos.
+- O saldo líquido considera somente adições e estornos aprovados como créditos e usos aprovados como débitos. Para novos pedidos, usos pendentes também reservam dias até aprovação ou recusa.
+- Estorno é um novo movimento pendente vinculado a um uso aprovado original; exigir justificativa e aprovação do RH. O pedido não altera o saldo antes da aprovação, e o lançamento de uso original nunca é reescrito. Somar estornos pendentes/aprovados para limitar o total ao uso original; quando ele tiver datas, permitir estornar somente um subconjunto ainda não reservado dessas datas. Usos legados sem datas podem ser estornados por quantidade, sempre dentro do limite original.
+- Estorno aprovado devolve dias ao saldo líquido; estorno rejeitado não altera saldo. Solicitações de estorno devem aparecer junto aos usos na aba de uso do RH, com badges de pendência e justificativa preservada.
 - Criar pedidos e descontos sob lock transacional do servidor. Validar o saldo novamente no servidor no momento da aprovação e do desconto manual; saldo nunca pode ficar negativo.
 - Uso de saldo registra as datas efetivamente solicitadas em `saldos_eleitorais.datas`; a quantidade deve coincidir com `dias`. O calendário bloqueia fins de semana e feriados nacionais, estaduais aplicáveis no Paraná e municipais de Umuarama. Repetir a validação no servidor, impedir sobreposição com usos pendentes/aprovados e guardar as datas no histórico/relatório.
 - Manter as regras de feriados do calendário e da validação centralizadas em `SaldoEleitoralCalendarService`; não tratar ponto facultativo como feriado. Ao alterar o escopo legal/local, revisar testes e as duas representações (interface e backend).

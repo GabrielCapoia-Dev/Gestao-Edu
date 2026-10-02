@@ -20,7 +20,7 @@ Dar um panorama rapido dos dominios do sistema e de onde cada responsabilidade p
 - `User`, `Role`, `Permission`, `DominioEmail`, `IgnoredUser`
 - CRUDs e gestao via Filament em usuarios, roles e dominios
 - Login manual e login Google
-- Saldo eleitoral: `SaldoEleitoral` e `SaldoEleitoralService` guardam solicitações append-only, aprovação RH, saldo líquido e descontos com validação transacional; gestão na tela Filament `SaldoEleitoralResource`.
+- Saldo eleitoral: `SaldoEleitoral` e `SaldoEleitoralService` guardam adições, usos, descontos e estornos append-only, com aprovação RH, saldo líquido e validação transacional; gestão na tela Filament `SaldoEleitoralResource`.
 
 ### Estrutura escolar e pedagogica
 
@@ -41,6 +41,7 @@ Dar um panorama rapido dos dominios do sistema e de onde cada responsabilidade p
 ### Relatorios e exportacoes
 
 - Controllers e services em `app/Services/Relatorios`
+- `ServidorDocumentoController` gera ficha funcional PDF autenticada com dados pessoais, funcionais, pedagógicos, perfis de acesso e históricos.
 - Views em `resources/views/relatorios`
 - Relatorios misturam PDF, dashboards e paginas Filament
 

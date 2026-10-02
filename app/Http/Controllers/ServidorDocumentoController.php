@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Servidor;
 use App\Services\ServidorHistoricoService;
+use App\Services\SaldoEleitoralService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class ServidorDocumentoController extends Controller
 {
@@ -32,29 +35,65 @@ class ServidorDocumentoController extends Controller
         });
     }
 
-    public function ficha(Servidor $servidor, ServidorHistoricoService $historico): StreamedResponse
+    public function ficha(
+        Servidor $servidor,
+        ServidorHistoricoService $historico,
+        SaldoEleitoralService $saldoEleitoral,
+    ): Response
     {
         Gate::authorize('view', $servidor);
-        $servidor->load(['matriculas' => fn ($q) => $q->withTrashed(), 'lotacao.escola', 'user']);
+        $servidor->load([
+            'matriculas' => fn ($query) => $query->withTrashed(),
+            'lotacao.escola',
+            'escola',
+            'setor',
+            'user.roles',
+            'servidorFuncoes.funcaoAdministrativa',
+            'servidorFuncoes.escola',
+            'servidorFuncoes.setor',
+            'servidorFuncoes.escolasAssessoradas',
+            'saldoEleitoralMovimentacoes' => fn ($query) => $query
+                ->with(['solicitante:id,name', 'aprovador:id,name', 'movimentoOrigem:id,dias,datas,created_at,decidido_em'])
+                ->latest('created_at'),
+        ]);
         $snapshot = $historico->capturar($servidor);
+        $funcoes = $servidor->servidorFuncoes->map(fn ($vinculo): array => [
+            'cargo' => $vinculo->funcaoAdministrativa?->nome ?? 'Cargo removido',
+            'status' => $vinculo->status,
+            'escola' => $vinculo->escola?->nome,
+            'setor' => $vinculo->setor?->nome,
+            'matricula' => $vinculo->matricula,
+            'portaria' => $vinculo->portaria,
+            'inicio' => $vinculo->data_inicio?->format('d/m/Y'),
+            'fim' => $vinculo->data_fim?->format('d/m/Y'),
+            'escolas_assessoradas' => $vinculo->escolasAssessoradas->pluck('nome')->all(),
+        ])->all();
+        $escolas = collect([$servidor->escola?->nome])
+            ->merge(collect($funcoes)->pluck('escola'))
+            ->merge(collect($funcoes)->pluck('escolas_assessoradas')->flatten())
+            ->filter()->unique()->values()->all();
+        $movimentacoesSaldo = $servidor->saldoEleitoralMovimentacoes;
+        $movimentacoesServidor = $servidor->movimentacoes()->with('usuario:id,name')->latest('ocorrido_em')->get();
+        $usuario = $servidor->user;
 
-        return $this->csv('ficha-servidor-'.$servidor->getKey().'.csv', function ($output) use ($servidor, $snapshot): void {
-            fputcsv($output, ['Campo', 'Informação'], ';');
-            foreach ([
-                'Nome' => $servidor->nome,
-                'CPF' => $servidor->cpf,
-                'E-mail' => $servidor->email,
-                'Telefone' => $servidor->telefone,
-                'Status' => $servidor->status,
-                'Observações' => $servidor->observacoes,
-                'Matrículas e turnos' => $this->valorCsv($snapshot['matriculas']),
-                'Cargos e vínculos' => $this->valorCsv($snapshot['cargo']),
-                'Lotação' => $this->valorCsv($snapshot['lotacao']),
-                'Turmas, séries e componentes' => $this->valorCsv($snapshot['pedagogico']),
-            ] as $campo => $valor) {
-                fputcsv($output, [$campo, $valor], ';');
-            }
-        });
+        return Pdf::loadView('relatorios.servidores.ficha', [
+            'servidor' => $servidor,
+            'snapshot' => $snapshot,
+            'funcoes' => $funcoes,
+            'escolas' => $escolas,
+            'acesso' => $usuario ? [
+                'email' => $usuario->email,
+                'aprovado' => (bool) $usuario->email_approved,
+                'status' => $usuario->trashed() ? 'Arquivado' : 'Ativo',
+                'perfis' => $usuario->getRoleNames()->all(),
+            ] : null,
+            'movimentacoesSaldo' => $movimentacoesSaldo,
+            'saldoDisponivel' => $saldoEleitoral->disponivelParaSolicitacao($servidor),
+            'saldoAprovado' => $saldoEleitoral->saldoAprovado($servidor),
+            'movimentacoesServidor' => $movimentacoesServidor,
+            'geradoEm' => now(),
+        ])->setPaper('a4', 'portrait')
+            ->download('ficha-servidor-'.$servidor->getKey().'.pdf');
     }
 
     private function csv(string $filename, callable $write): StreamedResponse

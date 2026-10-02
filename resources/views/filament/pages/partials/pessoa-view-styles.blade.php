@@ -374,6 +374,43 @@
         color: var(--pv-muted);
     }
 
+    .pessoa-custom-view__saldo-history {
+        display: grid;
+        gap: 0.55rem;
+        max-height: 27rem;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: 0.25rem 0.4rem 0.25rem 0;
+    }
+
+    .pessoa-custom-view__history-item--saldo {
+        margin-left: 0.35rem;
+        padding: 0.8rem 1rem;
+        border: 1px solid #dbe4ef;
+        border-left: 4px solid #94a3b8;
+        border-radius: 0.75rem;
+        background: #f8fafc;
+    }
+
+    .pessoa-custom-view__history-item--saldo-aprovado,
+    .pessoa-custom-view__history-item--saldo-estornado {
+        border-color: #c8ead9;
+        border-left-color: #53a77b;
+        background: #f0faf4;
+    }
+
+    .pessoa-custom-view__history-item--saldo-usado {
+        border-color: #f3dfae;
+        border-left-color: #d7a63d;
+        background: #fff9e9;
+    }
+
+    .pessoa-custom-view__history-item--saldo-rejeitado {
+        border-color: #f2cbcb;
+        border-left-color: #d77878;
+        background: #fff3f3;
+    }
+
     .pessoa-custom-view__card-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));

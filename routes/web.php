@@ -95,7 +95,7 @@ Route::prefix('admin')
 
         Route::get('/servidores/{servidor}/historico.csv', [ServidorDocumentoController::class, 'historico'])
             ->whereNumber('servidor')->name('admin.servidores.historico.exportar');
-        Route::get('/servidores/{servidor}/ficha.csv', [ServidorDocumentoController::class, 'ficha'])
+        Route::get('/servidores/{servidor}/ficha.pdf', [ServidorDocumentoController::class, 'ficha'])
             ->whereNumber('servidor')->name('admin.servidores.ficha.exportar');
 
         Route::get('/eventos-calendario/localizacoes', [EventoCalendarioLocalizacaoController::class, 'buscar'])

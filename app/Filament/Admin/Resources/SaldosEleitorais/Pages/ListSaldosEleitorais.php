@@ -97,8 +97,8 @@ class ListSaldosEleitorais extends ListRecords
                 ->badge(fn (): int => (clone $base)->where('tipo', SaldoEleitoral::TIPO_ADICAO)->where('status', SaldoEleitoral::STATUS_PENDENTE)->count())
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('tipo', SaldoEleitoral::TIPO_ADICAO)),
             'uso' => Tab::make('Uso do saldo')
-                ->badge(fn (): int => (clone $base)->where('tipo', SaldoEleitoral::TIPO_USO)->where('status', SaldoEleitoral::STATUS_PENDENTE)->count())
-                ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('tipo', SaldoEleitoral::TIPO_USO)),
+                ->badge(fn (): int => (clone $base)->whereIn('tipo', [SaldoEleitoral::TIPO_USO, SaldoEleitoral::TIPO_ESTORNO])->where('status', SaldoEleitoral::STATUS_PENDENTE)->count())
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->whereIn('tipo', [SaldoEleitoral::TIPO_USO, SaldoEleitoral::TIPO_ESTORNO])),
         ];
     }
 
@@ -110,15 +110,35 @@ class ListSaldosEleitorais extends ListRecords
     public function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['servidor:id,nome', 'solicitante:id,name', 'aprovador:id,name']))
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['servidor:id,nome', 'solicitante:id,name', 'aprovador:id,name', 'movimentoOrigem:id,dias,datas']))
             ->columns([
                 TextColumn::make('servidor.nome')->label('Servidor')->searchable()->sortable()->weight('bold'),
+                TextColumn::make('tipo')->label('Movimentação')->formatStateUsing(fn (string $state): string => match ($state) {
+                    SaldoEleitoral::TIPO_ADICAO => 'Adição',
+                    SaldoEleitoral::TIPO_ESTORNO => 'Estorno',
+                    default => 'Uso',
+                })->toggleable(),
                 TextColumn::make('dias')->label('Dias')->numeric()->sortable(),
                 TextColumn::make('datas')
                     ->label('Datas selecionadas')
-                    ->formatStateUsing(fn (?array $state): string => collect($state ?? [])
-                        ->map(fn (string $date): string => \Illuminate\Support\Carbon::parse($date)->format('d/m/Y'))
-                        ->implode(', '))
+                    ->formatStateUsing(static function (mixed $state): string {
+                        if (is_string($state)) {
+                            $decoded = json_decode($state, true);
+                            $state = is_array($decoded)
+                                ? $decoded
+                                : (is_string($decoded) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $decoded)
+                                    ? [$decoded]
+                                    : (preg_match('/^\d{4}-\d{2}-\d{2}$/', $state) ? [$state] : []));
+                        }
+
+                        if (! is_array($state)) {
+                            return '—';
+                        }
+
+                        return collect($state)->filter('is_string')
+                            ->map(fn (string $date): string => \Illuminate\Support\Carbon::parse($date)->format('d/m/Y'))
+                            ->implode(', ') ?: '—';
+                    })
                     ->placeholder('—')
                     ->wrap()
                     ->toggleable(),
@@ -167,17 +187,25 @@ class ListSaldosEleitorais extends ListRecords
         return response()->streamDownload(function (): void {
             $output = fopen('php://output', 'w');
             fwrite($output, "\xEF\xBB\xBF");
-            fputcsv($output, ['Servidor', 'Tipo', 'Dias', 'Datas selecionadas', 'Status', 'Solicitante', 'Responsável', 'Observação', 'Data'], ';');
-            SaldoEleitoral::query()->with(['servidor:id,nome', 'solicitante:id,name', 'aprovador:id,name'])
+            fputcsv($output, ['Servidor', 'Movimentação', 'Dias', 'Datas selecionadas', 'Uso original', 'Status', 'Solicitante', 'Responsável', 'Justificativa / observação', 'Data'], ';');
+            SaldoEleitoral::query()->with(['servidor:id,nome', 'solicitante:id,name', 'aprovador:id,name', 'movimentoOrigem:id,dias,datas'])
                 ->orderBy('created_at')->chunk(500, function ($registros) use ($output): void {
                     foreach ($registros as $registro) {
                         fputcsv($output, [
                             self::csvCell($registro->servidor?->nome),
-                            $registro->tipo === SaldoEleitoral::TIPO_ADICAO ? 'Adição' : 'Uso',
+                            match ($registro->tipo) {
+                                SaldoEleitoral::TIPO_ADICAO => 'Adição',
+                                SaldoEleitoral::TIPO_ESTORNO => 'Estorno',
+                                default => 'Uso',
+                            },
                             $registro->dias,
                             implode(', ', array_map(
                                 static fn (string $date): string => \Illuminate\Support\Carbon::parse($date)->format('d/m/Y'),
                                 $registro->datas ?? [],
+                            )),
+                            implode(', ', array_map(
+                                static fn (string $date): string => \Illuminate\Support\Carbon::parse($date)->format('d/m/Y'),
+                                $registro->movimentoOrigem?->datas ?? [],
                             )),
                             $registro->status,
                             self::csvCell($registro->solicitante?->name),

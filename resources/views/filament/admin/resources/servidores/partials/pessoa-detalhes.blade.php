@@ -19,6 +19,28 @@
     ])->where('visible', true)->values()->all();
 
     $temPedagogico = is_array($detalhes['pedagogico']);
+    $saldoTitulo = static function ($movimento): string {
+        return match ($movimento->tipo) {
+            \App\Models\SaldoEleitoral::TIPO_ADICAO => $movimento->status === 'aprovado' ? 'Saldo adicionado' : 'Adição solicitada',
+            \App\Models\SaldoEleitoral::TIPO_ESTORNO => $movimento->status === 'aprovado' ? 'Saldo estornado' : 'Solicitação de estorno',
+            default => $movimento->status === 'aprovado' ? 'Saldo utilizado' : 'Uso solicitado',
+        };
+    };
+    $saldoTom = static function ($movimento): string {
+        if ($movimento->status === 'rejeitado') {
+            return 'rejeitado';
+        }
+
+        if ($movimento->tipo === \App\Models\SaldoEleitoral::TIPO_ESTORNO) {
+            return $movimento->status === 'aprovado' ? 'estornado' : 'pendente';
+        }
+
+        return match ([$movimento->tipo, $movimento->status]) {
+            [\App\Models\SaldoEleitoral::TIPO_ADICAO, 'aprovado'] => 'aprovado',
+            [\App\Models\SaldoEleitoral::TIPO_USO, 'aprovado'] => 'usado',
+            default => 'pendente',
+        };
+    };
     $formatarValorHistorico = function (mixed $valor) use (&$formatarValorHistorico): string {
         if ($valor === null || $valor === '') {
             return '—';
@@ -445,13 +467,16 @@
                         <p>Saldo aprovado: {{ $saldoEleitoralDias }} dia(s). Solicitações de uso pendentes já ficam reservadas.</p>
                     </div>
                 </header>
-                <div>
+                <div class="pessoa-custom-view__saldo-history">
                     @forelse ($saldoEleitoral as $movimento)
-                        <article class="pessoa-custom-view__history-item">
-                            <strong>{{ $movimento->tipo === 'adicao' ? ($movimento->status === 'aprovado' ? 'Saldo adicionado' : 'Adição solicitada') : ($movimento->status === 'aprovado' ? 'Saldo utilizado' : 'Uso solicitado') }}: {{ $movimento->dias }} dia(s)</strong>
-                            <span>{{ match ($movimento->status) { 'aprovado' => 'Aprovado', 'rejeitado' => 'Rejeitado', default => 'Pendente de aprovação do RH' } }}{{ $movimento->lancamento_manual ? ' · Desconto lançado pelo RH' : '' }}</span>
+                        <article class="pessoa-custom-view__history-item pessoa-custom-view__history-item--saldo pessoa-custom-view__history-item--saldo-{{ $saldoTom($movimento) }}">
+                            <strong>{{ $saldoTitulo($movimento) }}: {{ $movimento->dias }} dia(s)</strong>
+                            <span>{{ match ($movimento->status) { 'aprovado' => 'Aprovado pelo RH', 'rejeitado' => 'Rejeitado pelo RH', default => 'Pendente de aprovação do RH' } }}{{ $movimento->lancamento_manual ? ' · Desconto lançado pelo RH' : '' }}</span>
                             @if ($movimento->datas)
-                                <p>Datas de uso: {{ collect($movimento->datas)->map(fn ($date) => \Illuminate\Support\Carbon::parse($date)->format('d/m/Y'))->join(', ') }}</p>
+                                <p>{{ $movimento->tipo === \App\Models\SaldoEleitoral::TIPO_ESTORNO ? 'Datas estornadas' : 'Datas de uso' }}: {{ collect($movimento->datas)->map(fn ($date) => \Illuminate\Support\Carbon::parse($date)->format('d/m/Y'))->join(', ') }}</p>
+                            @endif
+                            @if ($movimento->movimentoOrigem)
+                                <p>Estorno referente ao uso aprovado em {{ ($movimento->movimentoOrigem->decidido_em ?? $movimento->movimentoOrigem->created_at)?->format('d/m/Y') }}.</p>
                             @endif
                             <small>{{ ($movimento->decidido_em ?? $movimento->created_at)?->format('d/m/Y H:i') }} · solicitado/lançado por {{ $movimento->solicitante?->name ?? 'Usuário removido' }}@if ($movimento->aprovador) · analisado por {{ $movimento->aprovador->name }}@endif</small>
                             @if ($movimento->observacao)<p>{{ $movimento->observacao }}</p>@endif
