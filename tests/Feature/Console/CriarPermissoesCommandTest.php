@@ -208,6 +208,10 @@ class CriarPermissoesCommandTest extends TestCase
         $funcao = FuncaoAdministrativa::query()->where('codigo', 'rh')->firstOrFail();
         $this->assertEqualsCanonicalizing(RhPermissionPreset::all(), $role->permissions()->pluck('name')->all());
         $this->assertTrue($role->hasPermissionTo(ListaPermissoes::GerenciarLotacoes->label()));
+        $this->assertTrue($role->hasPermissionTo(ListaPermissoes::VisualizarAgendaDeTodaARede->label()));
+        $this->assertTrue($role->hasPermissionTo(ListaPermissoes::ListarEventosGeral->label()));
+        $this->assertFalse($role->hasPermissionTo(ListaPermissoes::ListarPedidos->label()));
+        $this->assertFalse($role->hasPermissionTo(ListaPermissoes::AcompanharAvaliacoes->label()));
         $this->assertFalse($role->hasPermissionTo(ListaPermissoes::EditarEscolas->label()));
         $this->assertFalse($role->hasPermissionTo(ListaPermissoes::CriarEscolas->label()));
         $this->assertDatabaseHas('funcao_administrativa_role', [

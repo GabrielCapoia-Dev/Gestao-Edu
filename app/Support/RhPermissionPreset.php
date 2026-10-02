@@ -33,6 +33,8 @@ class RhPermissionPreset
             ListaPermissoes::CriarReservasVeiculos,
             ListaPermissoes::EditarReservasVeiculos,
             ListaPermissoes::CancelarReservasVeiculos,
+            ListaPermissoes::VisualizarAgendaDeTodaARede,
+            ListaPermissoes::ListarEventosGeral,
             ListaPermissoes::ListarMeusEventos,
             ListaPermissoes::CriarEventos,
             ListaPermissoes::EditarEventos,
