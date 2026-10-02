@@ -135,7 +135,7 @@ class ListSaldosEleitorais extends ListRecords
                             return '—';
                         }
 
-                        return collect($state)->filter('is_string')
+                        return collect($state)->filter(static fn (mixed $date): bool => is_string($date))
                             ->map(fn (string $date): string => \Illuminate\Support\Carbon::parse($date)->format('d/m/Y'))
                             ->implode(', ') ?: '—';
                     })
