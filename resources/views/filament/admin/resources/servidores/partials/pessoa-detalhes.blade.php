@@ -450,6 +450,9 @@
                         <article class="pessoa-custom-view__history-item">
                             <strong>{{ $movimento->tipo === 'adicao' ? ($movimento->status === 'aprovado' ? 'Saldo adicionado' : 'Adição solicitada') : ($movimento->status === 'aprovado' ? 'Saldo utilizado' : 'Uso solicitado') }}: {{ $movimento->dias }} dia(s)</strong>
                             <span>{{ match ($movimento->status) { 'aprovado' => 'Aprovado', 'rejeitado' => 'Rejeitado', default => 'Pendente de aprovação do RH' } }}{{ $movimento->lancamento_manual ? ' · Desconto lançado pelo RH' : '' }}</span>
+                            @if ($movimento->datas)
+                                <p>Datas de uso: {{ collect($movimento->datas)->map(fn ($date) => \Illuminate\Support\Carbon::parse($date)->format('d/m/Y'))->join(', ') }}</p>
+                            @endif
                             <small>{{ ($movimento->decidido_em ?? $movimento->created_at)?->format('d/m/Y H:i') }} · solicitado/lançado por {{ $movimento->solicitante?->name ?? 'Usuário removido' }}@if ($movimento->aprovador) · analisado por {{ $movimento->aprovador->name }}@endif</small>
                             @if ($movimento->observacao)<p>{{ $movimento->observacao }}</p>@endif
                         </article>

@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\Servidores\Pages;
 
 use App\Filament\Admin\Resources\Servidores\ServidorResource;
+use App\Filament\Admin\Resources\SaldosEleitorais\SaldoEleitoralResource;
 use App\Filament\Admin\Resources\Users\UserResource;
 use App\Livewire\Pessoas\ServidoresTable;
 use App\Models\Servidor;
@@ -147,6 +148,13 @@ class ManageServidores extends ManageRecords
                         'sem_pessoa' => ['value' => true],
                     ],
                 ])),
+
+            Action::make('saldo_eleitoral')
+                ->label('Saldo Eleitoral')
+                ->icon('heroicon-o-scale')
+                ->color('gray')
+                ->visible(fn (): bool => SaldoEleitoralResource::canAccess())
+                ->url(fn (): string => SaldoEleitoralResource::getUrl()),
 
             Action::make('create')
                 ->label('Novo servidor')

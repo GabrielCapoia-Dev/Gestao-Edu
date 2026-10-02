@@ -17,6 +17,8 @@ class SaldoEleitoralResource extends Resource
 
     protected static ?string $navigationLabel = 'Saldo Eleitoral';
 
+    protected static ?string $navigationParentItem = 'Servidores';
+
     protected static ?string $pluralModelLabel = 'Saldo Eleitoral';
 
     protected static ?string $modelLabel = 'Movimentação de saldo';

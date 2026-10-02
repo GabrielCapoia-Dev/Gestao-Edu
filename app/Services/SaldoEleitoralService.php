@@ -33,17 +33,35 @@ class SaldoEleitoralService
         return max(0, $this->saldoAprovado($id) - $pendente);
     }
 
-    public function solicitar(Servidor $servidor, User $usuario, string $tipo, int $dias): SaldoEleitoral
+    public function solicitar(Servidor $servidor, User $usuario, string $tipo, int $dias, ?array $datas = null): SaldoEleitoral
     {
         if (! in_array($tipo, [SaldoEleitoral::TIPO_ADICAO, SaldoEleitoral::TIPO_USO], true) || $dias < 1) {
             throw ValidationException::withMessages(['dias' => 'Informe um número de dias maior que zero.']);
         }
 
-        return DB::transaction(function () use ($servidor, $usuario, $tipo, $dias): SaldoEleitoral {
+        $datas = $tipo === SaldoEleitoral::TIPO_USO
+            ? app(SaldoEleitoralCalendarService::class)->validateUsageDates($datas ?? [], $dias)
+            : null;
+
+        return DB::transaction(function () use ($servidor, $usuario, $tipo, $dias, $datas): SaldoEleitoral {
             $servidor = Servidor::query()->lockForUpdate()->findOrFail($servidor->getKey());
 
             if ($tipo === SaldoEleitoral::TIPO_USO && $dias > $this->disponivelParaSolicitacao($servidor)) {
                 throw ValidationException::withMessages(['dias' => 'A quantidade solicitada excede os dias disponíveis para uso.']);
+            }
+
+            if ($tipo === SaldoEleitoral::TIPO_USO) {
+                $datasEmUso = SaldoEleitoral::query()
+                    ->where('servidor_id', $servidor->getKey())
+                    ->where('tipo', SaldoEleitoral::TIPO_USO)
+                    ->whereIn('status', [SaldoEleitoral::STATUS_PENDENTE, SaldoEleitoral::STATUS_APROVADO])
+                    ->get(['datas'])
+                    ->flatMap(fn (SaldoEleitoral $movimento): array => $movimento->datas ?? [])
+                    ->all();
+
+                if (array_intersect($datas, $datasEmUso)) {
+                    throw ValidationException::withMessages(['datas' => 'Uma ou mais datas já estão reservadas ou aprovadas para uso do saldo.']);
+                }
             }
 
             return SaldoEleitoral::query()->create([
@@ -51,6 +69,7 @@ class SaldoEleitoralService
                 'solicitante_id' => $usuario->getKey(),
                 'tipo' => $tipo,
                 'dias' => $dias,
+                'datas' => $datas,
                 'status' => SaldoEleitoral::STATUS_PENDENTE,
             ]);
         });
@@ -66,8 +85,23 @@ class SaldoEleitoralService
                 throw ValidationException::withMessages(['solicitacao' => 'Esta solicitação já foi analisada.']);
             }
 
-            if ($aprovar && $registro->tipo === SaldoEleitoral::TIPO_USO && $registro->dias > $this->saldoAprovado($servidor)) {
-                throw ValidationException::withMessages(['solicitacao' => 'O saldo aprovado já não cobre esta solicitação.']);
+            if ($aprovar && $registro->tipo === SaldoEleitoral::TIPO_USO) {
+                if ($registro->dias > $this->saldoAprovado($servidor)) {
+                    throw ValidationException::withMessages(['solicitacao' => 'O saldo aprovado já não cobre esta solicitação.']);
+                }
+
+                $datasEmUso = SaldoEleitoral::query()
+                    ->where('servidor_id', $servidor->getKey())
+                    ->where('tipo', SaldoEleitoral::TIPO_USO)
+                    ->whereIn('status', [SaldoEleitoral::STATUS_PENDENTE, SaldoEleitoral::STATUS_APROVADO])
+                    ->where('id', '<>', $registro->getKey())
+                    ->get(['datas'])
+                    ->flatMap(fn (SaldoEleitoral $movimento): array => $movimento->datas ?? [])
+                    ->all();
+
+                if (array_intersect($registro->datas ?? [], $datasEmUso)) {
+                    throw ValidationException::withMessages(['solicitacao' => 'Uma ou mais datas desta solicitação já foram reservadas ou aprovadas em outro pedido.']);
+                }
             }
 
             $registro->forceFill([
@@ -80,17 +114,31 @@ class SaldoEleitoralService
         });
     }
 
-    public function descontar(Servidor $servidor, User $rh, int $dias, ?string $observacao = null): SaldoEleitoral
+    public function descontar(Servidor $servidor, User $rh, int $dias, ?string $observacao = null, ?array $datas = null): SaldoEleitoral
     {
         if ($dias < 1) {
             throw ValidationException::withMessages(['dias' => 'Informe um número de dias maior que zero.']);
         }
 
-        return DB::transaction(function () use ($servidor, $rh, $dias, $observacao): SaldoEleitoral {
+        $datas = app(SaldoEleitoralCalendarService::class)->validateUsageDates($datas ?? [], $dias);
+
+        return DB::transaction(function () use ($servidor, $rh, $dias, $observacao, $datas): SaldoEleitoral {
             $servidor = Servidor::query()->lockForUpdate()->findOrFail($servidor->getKey());
 
             if ($dias > $this->disponivelParaSolicitacao($servidor)) {
                 throw ValidationException::withMessages(['dias' => 'O desconto não pode exceder os dias disponíveis.']);
+            }
+
+            $datasEmUso = SaldoEleitoral::query()
+                ->where('servidor_id', $servidor->getKey())
+                ->where('tipo', SaldoEleitoral::TIPO_USO)
+                ->whereIn('status', [SaldoEleitoral::STATUS_PENDENTE, SaldoEleitoral::STATUS_APROVADO])
+                ->get(['datas'])
+                ->flatMap(fn (SaldoEleitoral $movimento): array => $movimento->datas ?? [])
+                ->all();
+
+            if (array_intersect($datas, $datasEmUso)) {
+                throw ValidationException::withMessages(['datas' => 'Uma ou mais datas já estão reservadas ou aprovadas para uso do saldo.']);
             }
 
             return SaldoEleitoral::query()->create([
@@ -99,6 +147,7 @@ class SaldoEleitoralService
                 'aprovador_id' => $rh->getKey(),
                 'tipo' => SaldoEleitoral::TIPO_USO,
                 'dias' => $dias,
+                'datas' => $datas,
                 'status' => SaldoEleitoral::STATUS_APROVADO,
                 'lancamento_manual' => true,
                 'observacao' => $observacao,

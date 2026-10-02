@@ -3,13 +3,15 @@
 namespace App\Filament\Admin\Resources\SaldosEleitorais\Pages;
 
 use App\Filament\Admin\Resources\SaldosEleitorais\SaldoEleitoralResource;
+use App\Filament\Admin\Components\MultiDateCalendar;
 use App\Models\SaldoEleitoral;
 use App\Models\Servidor;
 use App\Services\SaldoEleitoralService;
+use App\Services\SaldoEleitoralCalendarService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -53,21 +55,29 @@ class ListSaldosEleitorais extends ListRecords
                 ->form([
                     Select::make('servidor_id')
                         ->label('Servidor')
+                        ->live()
                         ->searchable()
                         ->getSearchResultsUsing(fn (string $search): array => Servidor::query()
                             ->where('nome', 'like', "%{$search}%")
                             ->orderBy('nome')->limit(50)->pluck('nome', 'id')->all())
                         ->getOptionLabelUsing(fn ($value): ?string => Servidor::query()->whereKey($value)->value('nome'))
                         ->required(),
-                    TextInput::make('dias')->label('Dias a descontar')->numeric()->integer()->minValue(1)->required(),
+                    MultiDateCalendar::make('datas')
+                        ->label('Datas do desconto')
+                        ->maxSelectableDays(fn (Get $get): int => $get('servidor_id')
+                            ? app(SaldoEleitoralService::class)->disponivelParaSolicitacao((int) $get('servidor_id'))
+                            : 0)
+                        ->holidayRules(app(SaldoEleitoralCalendarService::class)->holidayRules())
+                        ->required(),
                     Textarea::make('observacao')->label('Motivo / observação')->maxLength(1000),
                 ])
                 ->action(function (array $data): void {
                     app(SaldoEleitoralService::class)->descontar(
                         Servidor::query()->findOrFail((int) $data['servidor_id']),
                         Auth::user(),
-                        (int) $data['dias'],
+                        count($data['datas'] ?? []),
                         $data['observacao'] ?? null,
+                        $data['datas'] ?? [],
                     );
                     Notification::make()->title('Desconto registrado')->success()->send();
                 }),
@@ -104,6 +114,14 @@ class ListSaldosEleitorais extends ListRecords
             ->columns([
                 TextColumn::make('servidor.nome')->label('Servidor')->searchable()->sortable()->weight('bold'),
                 TextColumn::make('dias')->label('Dias')->numeric()->sortable(),
+                TextColumn::make('datas')
+                    ->label('Datas selecionadas')
+                    ->formatStateUsing(fn (?array $state): string => collect($state ?? [])
+                        ->map(fn (string $date): string => \Illuminate\Support\Carbon::parse($date)->format('d/m/Y'))
+                        ->implode(', '))
+                    ->placeholder('—')
+                    ->wrap()
+                    ->toggleable(),
                 TextColumn::make('status')->label('Status')->badge()->color(fn (string $state): string => match ($state) {
                     SaldoEleitoral::STATUS_APROVADO => 'success',
                     SaldoEleitoral::STATUS_REJEITADO => 'danger',
@@ -149,7 +167,7 @@ class ListSaldosEleitorais extends ListRecords
         return response()->streamDownload(function (): void {
             $output = fopen('php://output', 'w');
             fwrite($output, "\xEF\xBB\xBF");
-            fputcsv($output, ['Servidor', 'Tipo', 'Dias', 'Status', 'Solicitante', 'Responsável', 'Observação', 'Data'], ';');
+            fputcsv($output, ['Servidor', 'Tipo', 'Dias', 'Datas selecionadas', 'Status', 'Solicitante', 'Responsável', 'Observação', 'Data'], ';');
             SaldoEleitoral::query()->with(['servidor:id,nome', 'solicitante:id,name', 'aprovador:id,name'])
                 ->orderBy('created_at')->chunk(500, function ($registros) use ($output): void {
                     foreach ($registros as $registro) {
@@ -157,6 +175,10 @@ class ListSaldosEleitorais extends ListRecords
                             self::csvCell($registro->servidor?->nome),
                             $registro->tipo === SaldoEleitoral::TIPO_ADICAO ? 'Adição' : 'Uso',
                             $registro->dias,
+                            implode(', ', array_map(
+                                static fn (string $date): string => \Illuminate\Support\Carbon::parse($date)->format('d/m/Y'),
+                                $registro->datas ?? [],
+                            )),
                             $registro->status,
                             self::csvCell($registro->solicitante?->name),
                             self::csvCell($registro->aprovador?->name),

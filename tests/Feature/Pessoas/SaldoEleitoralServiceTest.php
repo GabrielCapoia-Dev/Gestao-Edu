@@ -22,7 +22,7 @@ class SaldoEleitoralServiceTest extends TestCase
         $service = app(SaldoEleitoralService::class);
         $this->lancamento($servidor, $solicitante, SaldoEleitoral::TIPO_ADICAO, 12, SaldoEleitoral::STATUS_APROVADO);
 
-        $service->solicitar($servidor, $solicitante, SaldoEleitoral::TIPO_USO, 5);
+        $service->solicitar($servidor, $solicitante, SaldoEleitoral::TIPO_USO, 5, $this->datas(5));
 
         $this->assertSame(12, $service->saldoAprovado($servidor));
         $this->assertSame(7, $service->disponivelParaSolicitacao($servidor));
@@ -34,7 +34,7 @@ class SaldoEleitoralServiceTest extends TestCase
         $this->lancamento($servidor, $solicitante, SaldoEleitoral::TIPO_ADICAO, 4, SaldoEleitoral::STATUS_APROVADO);
 
         $this->expectException(ValidationException::class);
-        app(SaldoEleitoralService::class)->solicitar($servidor, $solicitante, SaldoEleitoral::TIPO_USO, 5);
+        app(SaldoEleitoralService::class)->solicitar($servidor, $solicitante, SaldoEleitoral::TIPO_USO, 5, $this->datas(5));
     }
 
     public function test_aprovacao_de_uso_desconta_saldo_e_desconto_manual_nao_permite_saldo_negativo(): void
@@ -42,15 +42,15 @@ class SaldoEleitoralServiceTest extends TestCase
         [$servidor, $solicitante, $rh] = $this->contexto();
         $service = app(SaldoEleitoralService::class);
         $this->lancamento($servidor, $solicitante, SaldoEleitoral::TIPO_ADICAO, 8, SaldoEleitoral::STATUS_APROVADO);
-        $pedidoUso = $service->solicitar($servidor, $solicitante, SaldoEleitoral::TIPO_USO, 3);
+        $pedidoUso = $service->solicitar($servidor, $solicitante, SaldoEleitoral::TIPO_USO, 3, $this->datas(3));
         $service->decidir($pedidoUso, $rh, true);
 
         $this->assertSame(5, $service->saldoAprovado($servidor));
-        $service->descontar($servidor, $rh, 5, 'Uso registrado pelo RH');
+        $service->descontar($servidor, $rh, 5, 'Uso registrado pelo RH', $this->datas(5, 3));
         $this->assertSame(0, $service->saldoAprovado($servidor));
 
         try {
-            $service->descontar($servidor, $rh, 1);
+            $service->descontar($servidor, $rh, 1, null, $this->datas(1, 8));
             $this->fail('O serviço deveria impedir saldo negativo.');
         } catch (ValidationException) {
             $this->assertSame(0, $service->saldoAprovado($servidor));
@@ -73,10 +73,10 @@ class SaldoEleitoralServiceTest extends TestCase
         [$servidor, $solicitante] = $this->contexto();
         $service = app(SaldoEleitoralService::class);
         $this->lancamento($servidor, $solicitante, SaldoEleitoral::TIPO_ADICAO, 6, SaldoEleitoral::STATUS_APROVADO);
-        $service->solicitar($servidor, $solicitante, SaldoEleitoral::TIPO_USO, 4);
+        $service->solicitar($servidor, $solicitante, SaldoEleitoral::TIPO_USO, 4, $this->datas(4));
 
         $this->expectException(ValidationException::class);
-        $service->solicitar($servidor, $solicitante, SaldoEleitoral::TIPO_USO, 3);
+        $service->solicitar($servidor, $solicitante, SaldoEleitoral::TIPO_USO, 3, $this->datas(3));
     }
 
     public function test_desconto_manual_respeita_dias_reservados_por_solicitacoes_pendentes(): void
@@ -84,10 +84,10 @@ class SaldoEleitoralServiceTest extends TestCase
         [$servidor, $solicitante, $rh] = $this->contexto();
         $service = app(SaldoEleitoralService::class);
         $this->lancamento($servidor, $solicitante, SaldoEleitoral::TIPO_ADICAO, 6, SaldoEleitoral::STATUS_APROVADO);
-        $service->solicitar($servidor, $solicitante, SaldoEleitoral::TIPO_USO, 4);
+        $service->solicitar($servidor, $solicitante, SaldoEleitoral::TIPO_USO, 4, $this->datas(4));
 
         $this->expectException(ValidationException::class);
-        $service->descontar($servidor, $rh, 3);
+        $service->descontar($servidor, $rh, 3, null, $this->datas(3, 4));
     }
 
     public function test_presets_separam_solicitacao_da_aprovacao_do_rh(): void
@@ -101,6 +101,23 @@ class SaldoEleitoralServiceTest extends TestCase
         $this->assertContains('Gerenciar Saldo Eleitoral', $rh);
     }
 
+    public function test_nao_permite_fins_de_semana_feriados_ou_datas_ja_reservadas(): void
+    {
+        [$servidor, $solicitante] = $this->contexto();
+        $service = app(SaldoEleitoralService::class);
+        $this->lancamento($servidor, $solicitante, SaldoEleitoral::TIPO_ADICAO, 10, SaldoEleitoral::STATUS_APROVADO);
+        $service->solicitar($servidor, $solicitante, SaldoEleitoral::TIPO_USO, 1, ['2027-01-04']);
+
+        foreach ([['2027-01-04'], ['2027-01-02'], ['2027-01-01']] as $datas) {
+            try {
+                $service->solicitar($servidor, $solicitante, SaldoEleitoral::TIPO_USO, 1, $datas);
+                $this->fail('O serviço deveria rejeitar data reservada, fim de semana ou feriado.');
+            } catch (ValidationException) {
+                $this->assertTrue(true);
+            }
+        }
+    }
+
     private function contexto(): array
     {
         $servidor = Servidor::query()->create([
@@ -110,6 +127,14 @@ class SaldoEleitoralServiceTest extends TestCase
         ]);
 
         return [$servidor, User::factory()->create(), User::factory()->create()];
+    }
+
+    private function datas(int $count, int $offset = 0): array
+    {
+        return array_slice([
+            '2027-01-04', '2027-01-05', '2027-01-06', '2027-01-07', '2027-01-08',
+            '2027-01-11', '2027-01-12', '2027-01-13', '2027-01-14', '2027-01-15',
+        ], $offset, $count);
     }
 
     private function lancamento(Servidor $servidor, User $usuario, string $tipo, int $dias, string $status): SaldoEleitoral

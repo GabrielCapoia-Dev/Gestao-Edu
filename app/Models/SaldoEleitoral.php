@@ -22,12 +22,12 @@ class SaldoEleitoral extends Model
 
     protected $fillable = [
         'servidor_id', 'solicitante_id', 'aprovador_id', 'tipo', 'dias', 'status',
-        'lancamento_manual', 'observacao', 'decidido_em',
+        'datas', 'lancamento_manual', 'observacao', 'decidido_em',
     ];
 
     protected function casts(): array
     {
-        return ['dias' => 'integer', 'lancamento_manual' => 'boolean', 'decidido_em' => 'datetime'];
+        return ['dias' => 'integer', 'datas' => 'array', 'lancamento_manual' => 'boolean', 'decidido_em' => 'datetime'];
     }
 
     public function servidor(): BelongsTo

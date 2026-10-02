@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\Servidores;
 
 use App\Filament\Admin\Actions\ExportSelectedRecordsBulkAction;
+use App\Filament\Admin\Components\MultiDateCalendar;
 use App\Filament\Admin\Pages\GerenciarEventos;
 use App\Filament\Admin\Resources\Servidores\Actions\PessoaAcessoActions;
 use App\Filament\Admin\Resources\Servidores\Pages\ManageServidores;
@@ -26,6 +27,7 @@ use App\Services\PessoaScopeService;
 use App\Services\ProfessorComponenteSolicitacaoService;
 use App\Services\ServidorService;
 use App\Services\SaldoEleitoralService;
+use App\Services\SaldoEleitoralCalendarService;
 use App\Services\UserService;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -555,11 +557,15 @@ class ServidorResource extends Resource
                         ->modalHeading(fn (Servidor $record): string => "Solicitar uso de saldo eleitoral para {$record->nome}")
                         ->modalDescription(fn (Servidor $record): string => 'Dias disponíveis para solicitar: '.app(SaldoEleitoralService::class)->disponivelParaSolicitacao($record).'. A solicitação ficará pendente de aprovação do RH.')
                         ->schema(fn (Servidor $record): array => [
-                            TextInput::make('dias')->label('Dias de saldo a utilizar')->numeric()->integer()->minValue(1)
-                                ->maxValue(app(SaldoEleitoralService::class)->disponivelParaSolicitacao($record))->required(),
+                            MultiDateCalendar::make('datas')
+                                ->label('Dias de uso')
+                                ->maxSelectableDays(app(SaldoEleitoralService::class)->disponivelParaSolicitacao($record))
+                                ->holidayRules(app(SaldoEleitoralCalendarService::class)->holidayRules())
+                                ->required(),
                         ])
                         ->action(function (Servidor $record, array $data): void {
-                            app(SaldoEleitoralService::class)->solicitar($record, Auth::user(), SaldoEleitoral::TIPO_USO, (int) $data['dias']);
+                            $datas = $data['datas'] ?? [];
+                            app(SaldoEleitoralService::class)->solicitar($record, Auth::user(), SaldoEleitoral::TIPO_USO, count($datas), $datas);
                             Notification::make()->title('Solicitação de uso enviada ao RH')->success()->send();
                         }),
 
