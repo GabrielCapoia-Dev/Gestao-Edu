@@ -49,6 +49,7 @@ enum ListaPermissoes: string
     case ListarEventosGeral = 'listar eventos: geral';
     case ListarMeusEventos = 'listar eventos: meus eventos';
     case ListarReservasVeiculos = 'listar reservas de veículos';
+    case ListarSaldoEleitoral = 'listar saldo eleitoral';
 
     case CriarEmpresaContratada = 'criar empresa contratada';
     case CriarAlunos = 'criar alunos';
@@ -90,6 +91,9 @@ enum ListaPermissoes: string
     case CriarEventos = 'criar eventos';
     case CriarEventosTransporte = 'criar eventos: transporte';
     case CriarReservasVeiculos = 'criar reservas de veículos';
+    case SolicitarAdicaoSaldoEleitoral = 'solicitar adição de saldo eleitoral';
+    case SolicitarUsoSaldoEleitoral = 'solicitar uso de saldo eleitoral';
+    case GerenciarSaldoEleitoral = 'gerenciar saldo eleitoral';
 
     case EditarEmpresaContratada = 'editar empresa contratada';
     case EditarAlunos = 'editar alunos';
@@ -317,6 +321,7 @@ enum ListaPermissoes: string
             self::ListarEventosGeral => 'Listar Eventos: Geral',
             self::ListarMeusEventos => 'Listar Eventos: Meus Eventos',
             self::ListarReservasVeiculos => 'Listar Reservas de Veículos',
+            self::ListarSaldoEleitoral => 'Listar Saldo Eleitoral',
 
             self::CriarEmpresaContratada => 'Criar Empresa Contratada',
             self::CriarAlunos => 'Criar Alunos',
@@ -358,6 +363,9 @@ enum ListaPermissoes: string
             self::CriarEventos => 'Criar Eventos',
             self::CriarEventosTransporte => 'Criar Eventos: Transporte',
             self::CriarReservasVeiculos => 'Criar Reservas de Veículos',
+            self::SolicitarAdicaoSaldoEleitoral => 'Solicitar Adição de Saldo Eleitoral',
+            self::SolicitarUsoSaldoEleitoral => 'Solicitar Uso de Saldo Eleitoral',
+            self::GerenciarSaldoEleitoral => 'Gerenciar Saldo Eleitoral',
 
             self::EditarEmpresaContratada => 'Editar Empresa Contratada',
             self::EditarAlunos => 'Editar Alunos',

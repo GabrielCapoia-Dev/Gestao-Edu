@@ -43,7 +43,8 @@ class ManageServidores extends ManageRecords
     {
         abort_unless(in_array($action, [
             'view', 'edit', 'criar_acesso', 'gerenciar_acesso', 'redefinir_senha',
-            'excluir_acesso', 'analisar_solicitacoes_professor', 'alterar_status', 'delete', 'restore',
+            'excluir_acesso', 'analisar_solicitacoes_professor', 'solicitar_adicao_saldo_eleitoral',
+            'solicitar_uso_saldo_eleitoral', 'alterar_status', 'delete', 'restore',
         ], true), 404);
 
         $record = ServidorResource::getEloquentQuery()->findOrFail($id);

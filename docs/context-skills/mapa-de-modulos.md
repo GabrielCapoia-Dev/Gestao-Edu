@@ -20,6 +20,7 @@ Dar um panorama rapido dos dominios do sistema e de onde cada responsabilidade p
 - `User`, `Role`, `Permission`, `DominioEmail`, `IgnoredUser`
 - CRUDs e gestao via Filament em usuarios, roles e dominios
 - Login manual e login Google
+- Saldo eleitoral: `SaldoEleitoral` e `SaldoEleitoralService` guardam solicitações append-only, aprovação RH, saldo líquido e descontos com validação transacional; gestão na tela Filament `SaldoEleitoralResource`.
 
 ### Estrutura escolar e pedagogica
 

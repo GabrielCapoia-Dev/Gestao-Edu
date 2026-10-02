@@ -8,6 +8,12 @@
     <details class="servidores-lw__row-menu">
         <summary class="servidores-lw__action" title="Mais ações"><x-filament::icon icon="heroicon-m-ellipsis-vertical" /></summary>
         <div class="servidores-lw__row-menu-panel">
+            @if (! $servidor->trashed() && (auth()->user()?->hasPermissionTo('Solicitar Adição de Saldo Eleitoral', 'web') ?? false))
+                <button type="button" wire:click="abrirAcao('solicitar_adicao_saldo_eleitoral', {{ $servidor->id }})">Adicionar Saldo Eleitoral</button>
+            @endif
+            @if (! $servidor->trashed() && (auth()->user()?->hasPermissionTo('Solicitar Uso de Saldo Eleitoral', 'web') ?? false))
+                <button type="button" wire:click="abrirAcao('solicitar_uso_saldo_eleitoral', {{ $servidor->id }})">Solicitar Uso de Saldo</button>
+            @endif
             @if (\App\Filament\Admin\Resources\Servidores\ServidorResource::usuarioPodeGerenciarEstrutura($servidor))
                 <button type="button" wire:click="abrirAcao('alterar_status', {{ $servidor->id }})">Alterar status</button>
             @endif

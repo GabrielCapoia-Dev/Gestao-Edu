@@ -31,6 +31,7 @@ Escolher a skill especializada correta e montar uma sequencia segura de analise 
    - `$gestao-edu-avaliacoes-flow` para avaliacoes, pautas, alternativas, respostas e pareceres
    - `$gestao-edu-transferencia-remanejamento-flow` para matricula pendente, transferencia, remanejamento e parecer de transferencia
    - `$gestao-edu-pessoas-servidores-flow` para Pessoa, Servidor, matriculas, funcoes, equipes e consolidacao de legados
+   - `$gestao-edu-saldo-eleitoral-flow` para saldo eleitoral de servidores, solicitações de adição/uso, aprovação RH, descontos e relatórios
    - `$gestao-edu-dashboard-calendario-flow` para dashboard, calendario, avisos, publico-alvo, transporte e reservas
    - `$estoque-flow-mapper` para contratos, estoque, merenda, inventarios escolares, balancos e romaneios
    - `$manutencao-fluxo-pedidos` para pedidos de manutencao, status, anexos, historico e notificacoes

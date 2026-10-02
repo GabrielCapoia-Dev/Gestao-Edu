@@ -18,6 +18,8 @@ class EquipeGestoraPermissionPreset
             ListaPermissoes::EditarAlunos,
             ListaPermissoes::ListarPessoas,
             ListaPermissoes::EditarPessoas,
+            ListaPermissoes::SolicitarAdicaoSaldoEleitoral,
+            ListaPermissoes::SolicitarUsoSaldoEleitoral,
             ListaPermissoes::EditarDadosDePessoas,
             ListaPermissoes::EditarTurmasEComponentesDePessoas,
             ListaPermissoes::EditarTurmas,

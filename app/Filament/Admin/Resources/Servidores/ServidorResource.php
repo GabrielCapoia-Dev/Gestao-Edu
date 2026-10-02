@@ -15,6 +15,7 @@ use App\Models\Professor;
 use App\Models\ProfessorComponenteSolicitacao;
 use App\Models\ProfessorMatricula;
 use App\Models\Role;
+use App\Models\SaldoEleitoral;
 use App\Models\Servidor;
 use App\Models\Setor;
 use App\Models\Turma;
@@ -24,6 +25,7 @@ use App\Services\PessoaExclusaoDefinitivaService;
 use App\Services\PessoaScopeService;
 use App\Services\ProfessorComponenteSolicitacaoService;
 use App\Services\ServidorService;
+use App\Services\SaldoEleitoralService;
 use App\Services\UserService;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -525,6 +527,41 @@ class ServidorResource extends Resource
                         ])
                         ->stickyModalHeader()
                         ->schema(fn (Servidor $record): array => static::infolistDetalhesCompletos($record)),
+
+                    Action::make('solicitar_adicao_saldo_eleitoral')
+                        ->label('Adicionar Saldo Eleitoral')
+                        ->icon('heroicon-o-plus-circle')
+                        ->authorize(fn (Servidor $record): bool => ! $record->trashed()
+                            && (Auth::user()?->hasPermissionTo('Solicitar Adição de Saldo Eleitoral', 'web') ?? false))
+                        ->visible(fn (Servidor $record): bool => ! $record->trashed()
+                            && (Auth::user()?->hasPermissionTo('Solicitar Adição de Saldo Eleitoral', 'web') ?? false))
+                        ->modalHeading(fn (Servidor $record): string => "Solicitar adição de saldo eleitoral para {$record->nome}")
+                        ->modalDescription('Aqui você pode preencher o número de dias que o servidor tem de saldo. Esta solicitação ficará pendente de aprovação do RH.')
+                        ->schema([
+                            TextInput::make('dias')->label('Número de dias de saldo')->numeric()->integer()->minValue(1)->required(),
+                        ])
+                        ->action(function (Servidor $record, array $data): void {
+                            app(SaldoEleitoralService::class)->solicitar($record, Auth::user(), SaldoEleitoral::TIPO_ADICAO, (int) $data['dias']);
+                            Notification::make()->title('Solicitação de adição enviada ao RH')->success()->send();
+                        }),
+
+                    Action::make('solicitar_uso_saldo_eleitoral')
+                        ->label('Solicitar Uso de Saldo')
+                        ->icon('heroicon-o-minus-circle')
+                        ->authorize(fn (Servidor $record): bool => ! $record->trashed()
+                            && (Auth::user()?->hasPermissionTo('Solicitar Uso de Saldo Eleitoral', 'web') ?? false))
+                        ->visible(fn (Servidor $record): bool => ! $record->trashed()
+                            && (Auth::user()?->hasPermissionTo('Solicitar Uso de Saldo Eleitoral', 'web') ?? false))
+                        ->modalHeading(fn (Servidor $record): string => "Solicitar uso de saldo eleitoral para {$record->nome}")
+                        ->modalDescription(fn (Servidor $record): string => 'Dias disponíveis para solicitar: '.app(SaldoEleitoralService::class)->disponivelParaSolicitacao($record).'. A solicitação ficará pendente de aprovação do RH.')
+                        ->schema(fn (Servidor $record): array => [
+                            TextInput::make('dias')->label('Dias de saldo a utilizar')->numeric()->integer()->minValue(1)
+                                ->maxValue(app(SaldoEleitoralService::class)->disponivelParaSolicitacao($record))->required(),
+                        ])
+                        ->action(function (Servidor $record, array $data): void {
+                            app(SaldoEleitoralService::class)->solicitar($record, Auth::user(), SaldoEleitoral::TIPO_USO, (int) $data['dias']);
+                            Notification::make()->title('Solicitação de uso enviada ao RH')->success()->send();
+                        }),
 
                     Action::make('edit')
                         ->label('Editar')
@@ -1450,6 +1487,11 @@ class ServidorResource extends Resource
                         ->with('usuario:id,name')
                         ->latest('ocorrido_em')
                         ->get(),
+                    'saldoEleitoral' => $record->saldoEleitoralMovimentacoes()
+                        ->with(['solicitante:id,name', 'aprovador:id,name'])
+                        ->get(),
+                    'saldoEleitoralDias' => app(SaldoEleitoralService::class)->saldoAprovado($record),
+                    'saldoEleitoralDisponivel' => app(SaldoEleitoralService::class)->disponivelParaSolicitacao($record),
                     'exportarHistoricoUrl' => route('admin.servidores.historico.exportar', $record),
                     'exportarFichaUrl' => route('admin.servidores.ficha.exportar', $record),
                 ])

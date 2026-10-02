@@ -11,6 +11,8 @@ class RhPermissionPreset
     {
         return [
             ListaPermissoes::VisualizarTelaDeInicio,
+            ListaPermissoes::ListarSaldoEleitoral,
+            ListaPermissoes::GerenciarSaldoEleitoral,
             ListaPermissoes::ListarPessoas,
             ListaPermissoes::CriarPessoas,
             ListaPermissoes::CriarUsuarios,

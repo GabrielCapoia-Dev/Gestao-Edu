@@ -39,6 +39,7 @@ class ServidoresTable extends Component implements HasForms
     public array $nivelAcesso = [];
     public ?string $solicitacoesPendentes = null;
     public bool $emailDuplicado = false;
+    public ?string $saldoEleitoral = null;
     public string $ordenarPor = 'updated_at';
     public string $ordenarDirecao = 'desc';
     public int $perPage = 5;
@@ -174,9 +175,14 @@ class ServidoresTable extends Component implements HasForms
             ->label('E-mail duplicado')
             ->columnSpan(1);
 
+        $campos[] = Select::make('saldoEleitoral')
+            ->label('Servidores com saldo eleitoral')
+            ->options(['sim' => 'Com saldo disponível', 'nao' => 'Sem saldo disponível'])
+            ->placeholder('Todos');
+
         return $schema
             ->components([
-                Grid::make(4)->schema($campos),
+                Grid::make(5)->schema($campos),
             ])
             ->statePath('filtrosFormData');
     }
@@ -218,6 +224,7 @@ class ServidoresTable extends Component implements HasForms
         $this->arquivados = $filtros['arquivados'] ?? 'sem';
         $this->solicitacoesPendentes = $filtros['solicitacoesPendentes'] ?? null;
         $this->emailDuplicado = (bool) ($filtros['emailDuplicado'] ?? false);
+        $this->saldoEleitoral = $filtros['saldoEleitoral'] ?? null;
         $this->selecionados = [];
         $this->resetPage('servidoresPage');
     }
@@ -234,6 +241,7 @@ class ServidoresTable extends Component implements HasForms
         $this->nivelAcesso = [];
         $this->solicitacoesPendentes = null;
         $this->emailDuplicado = false;
+        $this->saldoEleitoral = null;
         $this->filtrosForm->fill($this->estadoInicialDosFiltros());
         $this->selecionados = [];
         $this->resetPage('servidoresPage');
@@ -303,6 +311,8 @@ class ServidoresTable extends Component implements HasForms
             'criar_acesso',
             'gerenciar_acesso',
             'redefinir_senha',
+            'solicitar_adicao_saldo_eleitoral',
+            'solicitar_uso_saldo_eleitoral',
             'excluir_acesso',
             'analisar_solicitacoes_professor',
             'alterar_status',
@@ -518,6 +528,11 @@ class ServidoresTable extends Component implements HasForms
             $query->comEmailDuplicado();
         }
 
+        if (in_array($this->saldoEleitoral, ['sim', 'nao'], true)) {
+            $saldoPositivo = "(SELECT COALESCE(SUM(CASE WHEN tipo = 'adicao' THEN dias ELSE -dias END), 0) FROM saldos_eleitorais WHERE saldos_eleitorais.servidor_id = servidores.id AND status = 'aprovado') > 0";
+            $query->whereRaw($this->saldoEleitoral === 'sim' ? $saldoPositivo : "NOT {$saldoPositivo}");
+        }
+
         $usuario = auth()->user();
         if ($usuario && app(ProfessorComponenteSolicitacaoService::class)->podeAnalisar($usuario) && $this->solicitacoesPendentes !== null) {
             $table = $query->getModel()->getTable();
@@ -564,6 +579,7 @@ class ServidoresTable extends Component implements HasForms
             'arquivados' => $this->arquivados,
             'solicitacoesPendentes' => $this->solicitacoesPendentes,
             'emailDuplicado' => $this->emailDuplicado,
+            'saldoEleitoral' => $this->saldoEleitoral,
         ];
     }
 

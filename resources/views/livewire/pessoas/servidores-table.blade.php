@@ -1,5 +1,5 @@
 <div class="servidores-lw" wire:key="servidores-livewire-table" x-data="{
-    filtersOpen: @js((bool) ($cargo || $quantidadeMatriculas || $turnoMatricula || $status || $escola || $nivelAcesso || $arquivados !== 'sem' || $emailDuplicado)),
+    filtersOpen: @js((bool) ($cargo || $quantidadeMatriculas || $turnoMatricula || $status || $escola || $nivelAcesso || $arquivados !== 'sem' || $emailDuplicado || $saldoEleitoral)),
     copyTimer: null,
     copyFeedback: '',
     copyFeedbackType: 'success',
@@ -63,7 +63,7 @@
             <button type="button" class="servidores-lw__button servidores-lw__button--ghost" x-on:click="filtersOpen = ! filtersOpen" x-bind:aria-expanded="filtersOpen.toString()" aria-controls="servidores-filtros-avancados">
                 <x-filament::icon icon="heroicon-o-adjustments-horizontal" />
                 Filtros avançados
-                <span class="servidores-lw__filter-count">{{ collect([$cargo, $quantidadeMatriculas, $turnoMatricula, $status, $escola, $nivelAcesso, $emailDuplicado])->flatten()->filter()->count() }}</span>
+                <span class="servidores-lw__filter-count">{{ collect([$cargo, $quantidadeMatriculas, $turnoMatricula, $status, $escola, $nivelAcesso, $emailDuplicado, $saldoEleitoral])->flatten()->filter()->count() }}</span>
             </button>
             <label class="servidores-lw__page-size">
                 <span>Por página</span>

@@ -195,6 +195,18 @@
             Histórico
             <span class="pessoa-custom-view__tab-count">{{ $movimentacoes->count() }}</span>
         </button>
+
+        <button
+            type="button"
+            role="tab"
+            x-on:click="tab = 'saldo-eleitoral'"
+            x-bind:aria-selected="tab === 'saldo-eleitoral'"
+            x-bind:class="{ 'is-active': tab === 'saldo-eleitoral' }"
+        >
+            <x-filament::icon icon="heroicon-o-scale" />
+            Saldo Eleitoral
+            <span class="pessoa-custom-view__tab-count">{{ $saldoEleitoral->count() }}</span>
+        </button>
     </nav>
 
     <div class="pessoa-custom-view__content">
@@ -416,6 +428,40 @@
                     </div>
                 @endforelse
             </div>
+        </section>
+
+        <section
+            class="pessoa-custom-view__panel"
+            role="tabpanel"
+            x-show="tab === 'saldo-eleitoral'"
+            x-cloak
+            x-transition.opacity.duration.150ms
+        >
+            <article class="pessoa-custom-view__card">
+                <header>
+                    <span class="pessoa-custom-view__card-icon"><x-filament::icon icon="heroicon-o-scale" /></span>
+                    <div>
+                        <h3>Saldo eleitoral disponível: {{ $saldoEleitoralDisponivel }} dia(s)</h3>
+                        <p>Saldo aprovado: {{ $saldoEleitoralDias }} dia(s). Solicitações de uso pendentes já ficam reservadas.</p>
+                    </div>
+                </header>
+                <div>
+                    @forelse ($saldoEleitoral as $movimento)
+                        <article class="pessoa-custom-view__history-item">
+                            <strong>{{ $movimento->tipo === 'adicao' ? ($movimento->status === 'aprovado' ? 'Saldo adicionado' : 'Adição solicitada') : ($movimento->status === 'aprovado' ? 'Saldo utilizado' : 'Uso solicitado') }}: {{ $movimento->dias }} dia(s)</strong>
+                            <span>{{ match ($movimento->status) { 'aprovado' => 'Aprovado', 'rejeitado' => 'Rejeitado', default => 'Pendente de aprovação do RH' } }}{{ $movimento->lancamento_manual ? ' · Desconto lançado pelo RH' : '' }}</span>
+                            <small>{{ ($movimento->decidido_em ?? $movimento->created_at)?->format('d/m/Y H:i') }} · solicitado/lançado por {{ $movimento->solicitante?->name ?? 'Usuário removido' }}@if ($movimento->aprovador) · analisado por {{ $movimento->aprovador->name }}@endif</small>
+                            @if ($movimento->observacao)<p>{{ $movimento->observacao }}</p>@endif
+                        </article>
+                    @empty
+                        <div class="pessoa-custom-view__empty">
+                            <x-filament::icon icon="heroicon-o-information-circle" />
+                            <strong>Nenhuma movimentação de saldo eleitoral</strong>
+                            <span>Solicitações e descontos aparecerão aqui.</span>
+                        </div>
+                    @endforelse
+                </div>
+            </article>
         </section>
     </div>
 </div>

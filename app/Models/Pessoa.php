@@ -382,6 +382,11 @@ class Pessoa extends Model
         return $this->hasMany(ServidorMovimentacao::class, 'servidor_id')->latest('ocorrido_em');
     }
 
+    public function saldoEleitoralMovimentacoes(): HasMany
+    {
+        return $this->hasMany(SaldoEleitoral::class, 'servidor_id')->latest('created_at');
+    }
+
     public function servidorFuncoesAtivas(): HasMany
     {
         return $this->servidorFuncoes()->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO);
