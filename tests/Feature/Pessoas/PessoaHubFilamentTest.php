@@ -778,6 +778,42 @@ class PessoaHubFilamentTest extends TestCase
         $this->assertStringNotContainsString('value="20" checked', $html);
     }
 
+    public function test_rh_com_permissao_estrutural_pode_vincular_assessoria_a_escolas_da_rede(): void
+    {
+        $setor = $this->criarSetor('Setor do RH');
+        $escolaRh = $this->criarEscola('Escola vinculada ao RH', $setor);
+        $escolaDisponivel = $this->criarEscola('Escola disponível para assessoria', $setor);
+        $permissoes = collect([
+            'Listar Pessoas',
+            'Editar Pessoas',
+            'Gerenciar Vínculos Estruturais de Pessoas',
+        ])->map(fn (string $nome): Permission => $this->garantirPermissao($nome));
+        $usuarioRh = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuarioRh->syncPermissions($permissoes);
+        $usuarioRh->assignRole(Role::query()->firstOrCreate([
+            'name' => 'RH',
+            'guard_name' => 'web',
+        ]));
+
+        $servidorRh = $this->criarServidor('Servidor RH', $escolaRh, $setor, $usuarioRh->id);
+        ServidorFuncaoAdministrativa::query()->create([
+            'servidor_id' => $servidorRh->id,
+            'funcao_administrativa_id' => FuncaoAdministrativa::rhPadrao()->id,
+            'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+            'origem' => 'pessoas',
+        ]);
+
+        $this->actingAs($usuarioRh);
+
+        $escolasDisponiveis = ServidorResource::escolasOptionsEscopadas();
+
+        $this->assertArrayHasKey($escolaRh->id, $escolasDisponiveis);
+        $this->assertArrayHasKey($escolaDisponivel->id, $escolasDisponiveis);
+    }
+
     public function test_turmas_da_coordenacao_separam_selecionadas_e_disponiveis(): void
     {
         $html = Blade::render(file_get_contents(resource_path(

@@ -57,6 +57,7 @@ Mapear rapidamente o controle de acesso para evitar regressao em:
 - Revisar nomes de permissoes com acentuacao, mojibake ou busca por fragmento.
 - Separar permissao de leitura global da autorizacao de escrita: nunca amplie `canAccessEscola()` para liberar consultas de rede; crie/ use escopo de leitura e confirme policies de mutacao independentemente.
 - Assessoria Pedagógica e RH podem consultar escola/dados de rede por vínculo funcional, sem receber `accessGlobalScope`; RH tem preset próprio sincronizado com o cargo funcional `rh`.
+- Ao editar vínculos de Assessoria Pedagógica, RH com `Gerenciar Vínculos Estruturais de Pessoas` precisa receber todas as escolas ativas como opções cadastrais. Esse vínculo é informativo e não concede nem restringe acesso aos dados das escolas; mantenha a autorização estrutural separada do escopo de leitura.
 - Restringir edicao de eventos/avisos/reservas próprios no backend por `criado_por_id`/proprietário, inclusive ações secundárias (publicar, desativar, público-alvo), não só esconder ações na interface.
 
 ## Saida esperada
