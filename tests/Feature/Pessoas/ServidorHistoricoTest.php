@@ -18,6 +18,16 @@ class ServidorHistoricoTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_historico_da_ficha_usa_tabela_com_antes_e_depois(): void
+    {
+        $template = file_get_contents(resource_path('views/filament/admin/resources/servidores/partials/pessoa-detalhes.blade.php'));
+
+        $this->assertIsString($template);
+        $this->assertStringContainsString('pessoa-custom-view__history-table', $template);
+        $this->assertStringContainsString('Campo alterado', $template);
+        $this->assertStringContainsString('pessoa-custom-view__history-mobile-label', $template);
+    }
+
     public function test_formulario_prioriza_rh_quando_ha_registro_legado_de_professor_ativo(): void
     {
         [$escola] = $this->criarLocalDeTrabalho();

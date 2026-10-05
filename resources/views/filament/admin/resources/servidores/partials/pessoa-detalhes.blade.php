@@ -440,13 +440,26 @@
                 @forelse ($movimentacoes as $movimentacao)
                     <article class="pessoa-custom-view__history-item">
                         <strong>{{ $movimentacao->ocorrido_em?->format('d/m/Y H:i') }} · {{ $movimentacao->usuario?->name ?? 'Sistema' }}</strong>
-                        @foreach ($movimentacao->alteracoes as $campo => $mudanca)
-                            <div>
-                                <b>{{ match ($campo) { 'cargo' => 'Cargo e vínculos', 'lotacao' => 'Lotação', 'matriculas' => 'Matrículas e turnos', 'pedagogico' => 'Turmas, séries e componentes', default => $campo } }}</b>
-                                <small class="pessoa-custom-view__history-change pessoa-custom-view__history-change--before"><span>Antes</span>{{ $formatarValorHistorico($mudanca['antes'] ?? null) }}</small>
-                                <small class="pessoa-custom-view__history-change pessoa-custom-view__history-change--after"><span>Depois</span>{{ $formatarValorHistorico($mudanca['depois'] ?? null) }}</small>
-                            </div>
-                        @endforeach
+                        <div class="pessoa-custom-view__history-table-wrap">
+                            <table class="pessoa-custom-view__history-table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Campo alterado</th>
+                                        <th scope="col">Antes</th>
+                                        <th scope="col">Depois</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($movimentacao->alteracoes as $campo => $mudanca)
+                                        <tr>
+                                            <th scope="row">{{ match ($campo) { 'cargo' => 'Cargo e vínculos', 'lotacao' => 'Lotação', 'matriculas' => 'Matrículas e turnos', 'pedagogico' => 'Turmas, séries e componentes', default => $campo } }}</th>
+                                            <td><span class="pessoa-custom-view__history-mobile-label">Antes</span>{{ $formatarValorHistorico($mudanca['antes'] ?? null) }}</td>
+                                            <td><span class="pessoa-custom-view__history-mobile-label">Depois</span>{{ $formatarValorHistorico($mudanca['depois'] ?? null) }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
                     </article>
                 @empty
                     <div class="pessoa-custom-view__empty">
