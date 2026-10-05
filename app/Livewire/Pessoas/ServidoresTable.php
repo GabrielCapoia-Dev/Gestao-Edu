@@ -396,7 +396,8 @@ class ServidoresTable extends Component implements HasForms
     public function matriculasLabel(Servidor $servidor): string
     {
         $scope = app(\App\Services\PessoaScopeService::class);
-        $matriculas = $scope->hasGlobalAccess(auth()->user())
+        $usuario = auth()->user();
+        $matriculas = $scope->hasGlobalAccess($usuario) || $scope->podeConsultarTodaRede($usuario)
             ? $servidor->matriculas
             : $servidor->professores->where('ativo', true)->map(fn ($professor): string => sprintf('%s (%s)', $professor->matricula, $professor->turnoLabel()));
 
