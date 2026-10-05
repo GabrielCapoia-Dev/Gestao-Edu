@@ -165,6 +165,22 @@ class ReservaVeiculoServiceTest extends TestCase
         $this->assertDatabaseCount('reservas_veiculos', 1);
     }
 
+    public function test_nao_aceita_os_tipos_de_repeticao_removidos_da_interface(): void
+    {
+        foreach (['dias_uteis', 'anual'] as $repeticaoRemovida) {
+            try {
+                $this->service->criarEmLote($this->usuario, $this->dados([
+                    'repeticao' => $repeticaoRemovida,
+                    'data_final' => today()->addDays(7)->toDateString(),
+                    'fim_repeticao' => 'data',
+                ]));
+                $this->fail("A repetição {$repeticaoRemovida} deveria ser inválida.");
+            } catch (ValidationException $exception) {
+                $this->assertArrayHasKey('repeticao', $exception->errors());
+            }
+        }
+    }
+
     public function test_cria_uma_reserva_com_varias_escolas(): void
     {
         $segundaEscola = Escola::query()->create([

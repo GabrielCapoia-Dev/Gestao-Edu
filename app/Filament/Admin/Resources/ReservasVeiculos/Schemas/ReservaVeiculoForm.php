@@ -38,11 +38,9 @@ final class ReservaVeiculoForm
                         ->options([
                             'nenhuma' => 'Não se repete',
                             'diaria' => 'Todos os dias',
-                            'dias_uteis' => 'Todos os dias da semana (segunda a sexta)',
                             'semanal' => 'Semanalmente',
-                            'mensal' => 'Mensalmente no mesmo dia da semana',
-                            'anual' => 'Anualmente na mesma data',
-                            'personalizada' => 'Personalizar…',
+                            'mensal' => 'Mensalmente',
+                            'personalizada' => 'Personalizar',
                         ])
                         ->default('nenhuma')
                         ->native(false)

@@ -239,7 +239,7 @@ class ReservaVeiculoService
 
         $validados = validator($dados, [
             'data_inicial' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
-            'repeticao' => ['required', Rule::in(['nenhuma', 'diaria', 'dias_uteis', 'semanal', 'mensal', 'anual', 'personalizada'])],
+            'repeticao' => ['required', Rule::in(['nenhuma', 'diaria', 'semanal', 'mensal', 'personalizada'])],
             'repetir_a_cada' => ['nullable', 'integer', 'min:1', 'max:52'],
             'unidade_repeticao' => ['nullable', Rule::in(['dia', 'semana', 'mes', 'ano'])],
             'dias_semana' => ['nullable', 'array'],
@@ -262,10 +262,9 @@ class ReservaVeiculoService
 
         $validados['repetir_a_cada'] = (int) ($validados['repetir_a_cada'] ?? 1);
         $validados['unidade_repeticao'] ??= match ($validados['repeticao']) {
-            'diaria', 'dias_uteis' => 'dia',
+            'diaria' => 'dia',
             'semanal' => 'semana',
             'mensal' => 'mes',
-            'anual' => 'ano',
             default => 'semana',
         };
         $validados['data_final'] = $validados['repeticao'] === 'nenhuma'
@@ -389,10 +388,9 @@ class ReservaVeiculoService
         }
         $intervalo = max(1, (int) ($dados['repetir_a_cada'] ?? 1));
         $unidade = $dados['unidade_repeticao'] ?? match ($repeticao) {
-            'diaria', 'dias_uteis' => 'dia',
+            'diaria' => 'dia',
             'semanal' => 'semana',
             'mensal' => 'mes',
-            'anual' => 'ano',
             default => 'semana',
         };
         $dias = array_values(array_unique(array_map('intval', $dados['dias_semana'] ?? [])));
@@ -432,7 +430,6 @@ class ReservaVeiculoService
     /** @param list<int> $dias */
     private function ocorreNaData(CarbonImmutable $data, CarbonImmutable $inicio, string $repeticao, string $unidade, int $intervalo, array $dias): bool
     {
-        $diasUteis = $data->isWeekday();
         $diffDias = $this->diferencaEmDias($inicio, $data);
         $diffSemanas = intdiv(
             $this->diferencaEmDias(
@@ -446,12 +443,10 @@ class ReservaVeiculoService
 
         return match ($repeticao) {
             'diaria' => $diffDias % $intervalo === 0,
-            'dias_uteis' => $diasUteis,
             'semanal' => $diffSemanas % $intervalo === 0 && in_array($data->dayOfWeekIso, $dias ?: [$inicio->dayOfWeekIso], true),
             'mensal' => $diffMeses % $intervalo === 0
                 && $data->dayOfWeekIso === $inicio->dayOfWeekIso
                 && (int) ceil($data->day / 7) === (int) ceil($inicio->day / 7),
-            'anual' => $diffAnos % $intervalo === 0 && $data->month === $inicio->month && $data->day === $inicio->day,
             'personalizada' => match ($unidade) {
                 'dia' => $diffDias % $intervalo === 0,
                 'semana' => $diffSemanas % $intervalo === 0 && in_array($data->dayOfWeekIso, $dias, true),
