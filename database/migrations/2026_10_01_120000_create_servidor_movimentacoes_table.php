@@ -9,7 +9,10 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $this->garantirChavePrimariaDoServidor();
+        foreach (['servidores', 'users'] as $table) {
+            $this->garantirChavePrimariaId($table);
+        }
+
         $this->removerTabelaParcialVazia();
 
         Schema::create('servidor_movimentacoes', function (Blueprint $table): void {
@@ -28,34 +31,35 @@ return new class extends Migration
         Schema::dropIfExists('servidor_movimentacoes');
     }
 
-    private function garantirChavePrimariaDoServidor(): void
+    private function garantirChavePrimariaId(string $table): void
     {
-        if (! Schema::hasTable('servidores')) {
+        if (! Schema::hasTable($table)) {
             return;
         }
 
-        $possuiChavePrimaria = collect(Schema::getIndexes('servidores'))
-            ->contains(fn (array $index): bool => (bool) ($index['primary'] ?? false));
+        $possuiChavePrimariaId = collect(Schema::getIndexes($table))
+            ->contains(fn (array $index): bool => (bool) ($index['primary'] ?? false)
+                && ($index['columns'] ?? []) === ['id']);
 
-        if ($possuiChavePrimaria) {
+        if ($possuiChavePrimariaId) {
             return;
         }
 
         if (DB::getDriverName() !== 'mysql') {
-            throw new RuntimeException('A tabela servidores precisa ter uma chave primária em id antes de registrar movimentações.');
+            throw new RuntimeException("A tabela {$table} precisa ter uma chave primária em id antes de registrar movimentações.");
         }
 
-        $idsDuplicados = DB::table('servidores')
+        $idsDuplicados = DB::table($table)
             ->select('id')
             ->groupBy('id')
             ->havingRaw('COUNT(*) > 1')
             ->exists();
 
-        if ($idsDuplicados || DB::table('servidores')->whereNull('id')->exists()) {
-            throw new RuntimeException('Não foi possível restaurar a chave primária de servidores: existem IDs ausentes ou duplicados.');
+        if ($idsDuplicados || DB::table($table)->whereNull('id')->exists()) {
+            throw new RuntimeException("Não foi possível restaurar a chave primária de {$table}: existem IDs ausentes ou duplicados.");
         }
 
-        DB::statement('ALTER TABLE `servidores` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, ADD PRIMARY KEY (`id`)');
+        DB::statement("ALTER TABLE `{$table}` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, ADD PRIMARY KEY (`id`)");
     }
 
     private function removerTabelaParcialVazia(): void
