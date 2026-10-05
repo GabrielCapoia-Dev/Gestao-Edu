@@ -231,10 +231,8 @@ class ReservaVeiculoService
     private function validarCriacao(array $dados): array
     {
         $dados['repeticao'] ??= ! empty($dados['reservar_varios_dias']) ? 'diaria' : 'nenhuma';
-        $dados['fim_repeticao'] ??= 'data';
-        if (in_array($dados['repeticao'], ['diaria', 'mensal'], true)) {
-            $dados['fim_repeticao'] = 'data';
-        }
+        // Mantém compatibilidade com clientes antigos, mas toda série termina pela data final.
+        $dados['fim_repeticao'] = 'data';
 
         if (! array_key_exists('escola_ids', $dados) && array_key_exists('escola_id', $dados)) {
             $dados['escola_ids'] = $dados['escola_id'] ? [$dados['escola_id']] : null;
@@ -247,16 +245,10 @@ class ReservaVeiculoService
             'unidade_repeticao' => ['nullable', Rule::in(['dia', 'semana', 'mes', 'ano'])],
             'dias_semana' => ['nullable', 'array'],
             'dias_semana.*' => ['integer', 'between:1,7'],
-            'fim_repeticao' => ['required', Rule::in(['data', 'ocorrencias'])],
-            'quantidade_ocorrencias' => [
-                Rule::requiredIf(fn (): bool => ($dados['fim_repeticao'] ?? null) === 'ocorrencias' && ($dados['repeticao'] ?? 'nenhuma') !== 'nenhuma'),
-                'nullable', 'integer', 'min:1', 'max:366',
-            ],
             'data_final' => [
-                Rule::excludeIf(fn (): bool => ($dados['repeticao'] ?? 'nenhuma') === 'nenhuma'
-                    || ($dados['fim_repeticao'] ?? 'data') !== 'data'),
+                Rule::excludeIf(fn (): bool => ($dados['repeticao'] ?? 'nenhuma') === 'nenhuma'),
                 'nullable',
-                Rule::requiredIf(fn (): bool => ($dados['repeticao'] ?? 'nenhuma') !== 'nenhuma' && ($dados['fim_repeticao'] ?? 'data') === 'data'),
+                Rule::requiredIf(fn (): bool => ($dados['repeticao'] ?? 'nenhuma') !== 'nenhuma'),
                 'date_format:Y-m-d',
                 'after_or_equal:data_inicial',
             ],
@@ -272,9 +264,8 @@ class ReservaVeiculoService
         };
         $validados['data_final'] = $validados['repeticao'] === 'nenhuma'
             ? $validados['data_inicial']
-            : ($validados['fim_repeticao'] === 'data'
-                ? $validados['data_final']
-                : CarbonImmutable::parse($validados['data_inicial'])->addYears(10)->toDateString());
+            : $validados['data_final'];
+        $validados['fim_repeticao'] = 'data';
 
         $this->datasDaRepeticao($validados);
 
@@ -364,14 +355,9 @@ class ReservaVeiculoService
             ]);
         }
         $repeticao = $dados['repeticao'] ?? 'nenhuma';
-        $fimRepeticao = in_array($repeticao, ['diaria', 'mensal'], true)
-            ? 'data'
-            : ($dados['fim_repeticao'] ?? 'data');
         $fim = $repeticao === 'nenhuma'
             ? $inicio
-            : ($fimRepeticao === 'ocorrencias'
-                ? $inicio->addYears(10)
-                : CarbonImmutable::createFromFormat('!Y-m-d', $dados['data_final'] ?? '', $timezone));
+            : CarbonImmutable::createFromFormat('!Y-m-d', $dados['data_final'] ?? '', $timezone);
 
         if (! $inicio || ! $fim || $fim->lt($inicio) || $fim->gt($inicio->addYears(10))) {
             throw ValidationException::withMessages([
@@ -384,14 +370,6 @@ class ReservaVeiculoService
         }
 
         $datas = [];
-        $maximo = $fimRepeticao === 'ocorrencias'
-            ? (int) ($dados['quantidade_ocorrencias'] ?? 0)
-            : 366;
-        if ($maximo < 1 || $maximo > 366) {
-            throw ValidationException::withMessages([
-                'quantidade_ocorrencias' => 'Informe entre 1 e 366 ocorrências.',
-            ]);
-        }
         $intervalo = max(1, (int) ($dados['repetir_a_cada'] ?? 1));
         $unidade = $dados['unidade_repeticao'] ?? match ($repeticao) {
             'diaria' => 'dia',
@@ -413,20 +391,17 @@ class ReservaVeiculoService
         for ($data = $inicio; $data->lte($limite); $data = $data->addDay()) {
             if ($this->ocorreNaData($data, $inicio, $repeticao, $unidade, $intervalo, $dias)) {
                 $datas[] = $data->toDateString();
-                if ($fimRepeticao === 'data' && count($datas) > 366) {
+                if (count($datas) > 366) {
                     throw ValidationException::withMessages([
                         'data_final' => 'A série pode conter no máximo 366 ocorrências. Reduza o intervalo ou o período.',
                     ]);
                 }
-                if ($fimRepeticao === 'ocorrencias' && count($datas) >= $maximo) {
-                    break;
-                }
             }
         }
 
-        if ($datas === [] || ($fimRepeticao === 'ocorrencias' && count($datas) < $maximo)) {
+        if ($datas === []) {
             throw ValidationException::withMessages([
-                'quantidade_ocorrencias' => 'Não foi possível concluir essa repetição dentro do limite máximo de 10 anos.',
+                'data_final' => 'Não há ocorrências para os dias selecionados dentro do intervalo informado.',
             ]);
         }
 

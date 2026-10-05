@@ -159,17 +159,17 @@ class ReservaVeiculoServiceTest extends TestCase
         $this->assertSame((int) ceil($inicio->day / 7), (int) ceil($reservas->last()->data_inicio->day / 7));
     }
 
-    public function test_repeticao_personalizada_pode_terminar_por_numero_de_ocorrencias(): void
+    public function test_repeticao_personalizada_usa_intervalo_e_ignora_contagem_legada(): void
     {
         $inicio = today()->next(Carbon::MONDAY);
         $reservas = $this->service->criarEmLote($this->usuario, $this->dados([
             'data_inicial' => $inicio->toDateString(),
-            'data_final' => null,
+            'data_final' => $inicio->copy()->addWeeks(3)->toDateString(),
             'repeticao' => 'personalizada',
             'unidade_repeticao' => 'semana',
             'dias_semana' => [$inicio->dayOfWeekIso],
             'fim_repeticao' => 'ocorrencias',
-            'quantidade_ocorrencias' => 4,
+            'quantidade_ocorrencias' => null,
         ]));
 
         $this->assertCount(4, $reservas);
