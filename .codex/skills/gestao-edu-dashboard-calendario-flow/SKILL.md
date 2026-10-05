@@ -26,6 +26,7 @@ Manter coerencia entre eventos, fontes agregadas, publico-alvo, escolas, permiss
 - Preservar escola, publico-alvo, recorrencia, origem e historico do evento.
 - Impedir conflito de veiculo, motorista ou alocacao conforme a disponibilidade calculada pelo service.
 - Reservas recorrentes de veículos são materializadas como ocorrências concretas, agrupadas por `grupo_recorrencia`; toda repetição usa data inicial e data final (não há término por contagem), com limite de 366 ocorrências e 10 anos. Manter criação atômica: um único conflito rejeita toda a série. A edição e o cancelamento atuais afetam uma ocorrência, não todo o grupo.
+- Criação e edição de reservas devem rejeitar datas/horários retroativos e exigir pelo menos 20 minutos entre o momento atual e o início de cada ocorrência; alinhar o limite visual do campo de hora com a validação do serviço.
 - Ao alterar disponibilidade recorrente, gerar a mesma lista de datas no formulário e no serviço de criação; validar conflitos em lote, mantendo a trava transacional do veículo e sem uma consulta por ocorrência.
 - Manter importacao por linha rastreavel e idempotente.
 

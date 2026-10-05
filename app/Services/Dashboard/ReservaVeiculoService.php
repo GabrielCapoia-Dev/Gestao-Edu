@@ -478,11 +478,14 @@ class ReservaVeiculoService
      */
     private function validarPeriodosFuturos(array $periodos): void
     {
+        $timezone = (string) config('dashboard.calendar.timezone', config('app.timezone'));
+        $inicioMinimo = CarbonImmutable::now($timezone)->addMinutes(20);
+
         if (collect($periodos)->contains(
-            fn (array $periodo): bool => $periodo['inicio']->lte(now()),
+            fn (array $periodo): bool => $periodo['inicio']->lt($inicioMinimo),
         )) {
             throw ValidationException::withMessages([
-                'hora_inicio' => 'O horário inicial da reserva deve ser posterior ao horário atual.',
+                'hora_inicio' => 'A reserva deve ser solicitada com pelo menos 20 minutos de antecedência.',
             ]);
         }
     }

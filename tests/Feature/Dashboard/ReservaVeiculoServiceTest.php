@@ -358,7 +358,7 @@ class ReservaVeiculoServiceTest extends TestCase
             $this->fail('Era esperado o bloqueio do horário passado.');
         } catch (ValidationException $exception) {
             $this->assertSame(
-                'O horário inicial da reserva deve ser posterior ao horário atual.',
+                'A reserva deve ser solicitada com pelo menos 20 minutos de antecedência.',
                 $exception->errors()['hora_inicio'][0],
             );
         }
@@ -387,12 +387,61 @@ class ReservaVeiculoServiceTest extends TestCase
             $this->fail('Era esperado o bloqueio da edição para horário passado.');
         } catch (ValidationException $exception) {
             $this->assertSame(
-                'O horário inicial da reserva deve ser posterior ao horário atual.',
+                'A reserva deve ser solicitada com pelo menos 20 minutos de antecedência.',
                 $exception->errors()['hora_inicio'][0],
             );
         }
 
         $this->assertSame('2026-07-29', $reserva->fresh()->data_inicio->toDateString());
+    }
+
+    public function test_reserva_exige_antecedencia_minima_de_vinte_minutos(): void
+    {
+        Carbon::setTestNow('2026-07-28 09:00:00');
+
+        try {
+            $this->service->criarEmLote($this->usuario, $this->dados([
+                'data_inicial' => '2026-07-28',
+                'hora_inicio' => '09:19',
+            ]));
+            $this->fail('Era esperado o bloqueio de uma reserva com menos de 20 minutos de antecedência.');
+        } catch (ValidationException $exception) {
+            $this->assertSame(
+                'A reserva deve ser solicitada com pelo menos 20 minutos de antecedência.',
+                $exception->errors()['hora_inicio'][0],
+            );
+        }
+
+        $reservaNoLimite = $this->service->criarEmLote($this->usuario, $this->dados([
+            'data_inicial' => '2026-07-28',
+            'hora_inicio' => '09:20',
+            'hora_fim' => '10:00',
+        ]));
+
+        $this->assertCount(1, $reservaNoLimite);
+    }
+
+    public function test_nao_permite_data_inicial_retroativa_ou_data_final_antes_da_inicial(): void
+    {
+        try {
+            $this->service->criarEmLote($this->usuario, $this->dados([
+                'data_inicial' => today()->subDay()->toDateString(),
+            ]));
+            $this->fail('Era esperado o bloqueio de uma data inicial retroativa.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('data_inicial', $exception->errors());
+        }
+
+        try {
+            $this->service->criarEmLote($this->usuario, $this->dados([
+                'data_inicial' => today()->addDays(2)->toDateString(),
+                'data_final' => today()->addDay()->toDateString(),
+                'repeticao' => 'diaria',
+            ]));
+            $this->fail('Era esperado o bloqueio de uma data final anterior à inicial.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('data_final', $exception->errors());
+        }
     }
 
     /** @return array<string, mixed> */

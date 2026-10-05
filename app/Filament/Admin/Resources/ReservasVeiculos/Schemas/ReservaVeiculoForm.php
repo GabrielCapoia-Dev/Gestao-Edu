@@ -273,6 +273,11 @@ final class ReservaVeiculoForm
             return [];
         }
 
-        return ['min' => now()->format('H:i')];
+        $minimo = now()->addMinutes(20);
+        if ($minimo->second > 0 || $minimo->micro > 0) {
+            $minimo = $minimo->addMinute()->startOfMinute();
+        }
+
+        return ['min' => $minimo->format('H:i')];
     }
 }
