@@ -241,8 +241,6 @@ class ReservaVeiculoService
         $validados = validator($dados, [
             'data_inicial' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'repeticao' => ['required', Rule::in(['nenhuma', 'diaria', 'semanal', 'mensal', 'personalizada'])],
-            'repetir_a_cada' => ['nullable', 'integer', 'min:1', 'max:52'],
-            'unidade_repeticao' => ['nullable', Rule::in(['dia', 'semana', 'mes', 'ano'])],
             'dias_semana' => ['nullable', 'array'],
             'dias_semana.*' => ['integer', 'between:1,7'],
             'data_final' => [
@@ -255,13 +253,6 @@ class ReservaVeiculoService
             ...$this->regrasComuns(),
         ], $this->mensagens())->validate();
 
-        $validados['repetir_a_cada'] = (int) ($validados['repetir_a_cada'] ?? 1);
-        $validados['unidade_repeticao'] ??= match ($validados['repeticao']) {
-            'diaria' => 'dia',
-            'semanal' => 'semana',
-            'mensal' => 'mes',
-            default => 'semana',
-        };
         $validados['data_final'] = $validados['repeticao'] === 'nenhuma'
             ? $validados['data_inicial']
             : $validados['data_final'];
@@ -370,18 +361,11 @@ class ReservaVeiculoService
         }
 
         $datas = [];
-        $intervalo = max(1, (int) ($dados['repetir_a_cada'] ?? 1));
-        $unidade = $dados['unidade_repeticao'] ?? match ($repeticao) {
-            'diaria' => 'dia',
-            'semanal' => 'semana',
-            'mensal' => 'mes',
-            default => 'semana',
-        };
         $dias = array_values(array_unique(array_map('intval', $dados['dias_semana'] ?? [])));
         if ($repeticao === 'semanal' && $dias === []) {
             $dias = [$inicio->dayOfWeekIso];
         }
-        if ($repeticao === 'personalizada' && $unidade === 'semana' && $dias === []) {
+        if ($repeticao === 'personalizada' && $dias === []) {
             throw ValidationException::withMessages([
                 'dias_semana' => 'Selecione ao menos um dia da semana para a repetição personalizada.',
             ]);
@@ -389,7 +373,7 @@ class ReservaVeiculoService
 
         $limite = $inicio->addYears(10)->min($fim);
         for ($data = $inicio; $data->lte($limite); $data = $data->addDay()) {
-            if ($this->ocorreNaData($data, $inicio, $repeticao, $unidade, $intervalo, $dias)) {
+            if ($this->ocorreNaData($data, $inicio, $repeticao, $dias)) {
                 $datas[] = $data->toDateString();
                 if (count($datas) > 366) {
                     throw ValidationException::withMessages([
@@ -409,42 +393,15 @@ class ReservaVeiculoService
     }
 
     /** @param list<int> $dias */
-    private function ocorreNaData(CarbonImmutable $data, CarbonImmutable $inicio, string $repeticao, string $unidade, int $intervalo, array $dias): bool
+    private function ocorreNaData(CarbonImmutable $data, CarbonImmutable $inicio, string $repeticao, array $dias): bool
     {
-        $diffDias = $this->diferencaEmDias($inicio, $data);
-        $diffSemanas = intdiv(
-            $this->diferencaEmDias(
-                $inicio->startOfWeek(CarbonImmutable::MONDAY),
-                $data->startOfWeek(CarbonImmutable::MONDAY),
-            ),
-            7,
-        );
-        $diffMeses = (($data->year - $inicio->year) * 12) + $data->month - $inicio->month;
-        $diffAnos = $data->year - $inicio->year;
-
         return match ($repeticao) {
-            'diaria' => $diffDias % $intervalo === 0,
-            'semanal' => $diffSemanas % $intervalo === 0 && in_array($data->dayOfWeekIso, $dias ?: [$inicio->dayOfWeekIso], true),
-            'mensal' => $diffMeses % $intervalo === 0
-                && $data->dayOfWeekIso === $inicio->dayOfWeekIso
+            'diaria' => true,
+            'semanal', 'personalizada' => in_array($data->dayOfWeekIso, $dias ?: [$inicio->dayOfWeekIso], true),
+            'mensal' => $data->dayOfWeekIso === $inicio->dayOfWeekIso
                 && (int) ceil($data->day / 7) === (int) ceil($inicio->day / 7),
-            'personalizada' => match ($unidade) {
-                'dia' => $diffDias % $intervalo === 0,
-                'semana' => $diffSemanas % $intervalo === 0 && in_array($data->dayOfWeekIso, $dias, true),
-                'mes' => $diffMeses % $intervalo === 0 && $data->day === $inicio->day,
-                'ano' => $diffAnos % $intervalo === 0 && $data->month === $inicio->month && $data->day === $inicio->day,
-                default => false,
-            },
             default => false,
         };
-    }
-
-    private function diferencaEmDias(CarbonImmutable $inicio, CarbonImmutable $fim): int
-    {
-        $inicioUtc = CarbonImmutable::createFromFormat('!Y-m-d', $inicio->toDateString(), 'UTC');
-        $fimUtc = CarbonImmutable::createFromFormat('!Y-m-d', $fim->toDateString(), 'UTC');
-
-        return (int) $inicioUtc->diffInDays($fimUtc);
     }
 
     /**
@@ -514,8 +471,9 @@ class ReservaVeiculoService
         }
 
         return [
-            null, [],
+            null,
             Str::of((string) $dados['local_outro'])->squish()->limit(255)->toString(),
+            [],
         ];
     }
 

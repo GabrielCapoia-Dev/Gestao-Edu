@@ -58,6 +58,10 @@ class ReservaVeiculoPageTest extends TestCase
             ->mountAction('nova_reserva');
 
         $componente
+            ->assertFormFieldDoesNotExist('repetir_a_cada')
+            ->assertFormFieldDoesNotExist('unidade_repeticao');
+
+        $componente
             ->setActionData([
                 'data_inicial' => today()->addDay()->toDateString(),
                 'repeticao' => 'diaria',

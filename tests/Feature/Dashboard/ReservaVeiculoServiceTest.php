@@ -100,7 +100,7 @@ class ReservaVeiculoServiceTest extends TestCase
         );
     }
 
-    public function test_cria_repeticao_semanal_nos_dias_selecionados_e_agrupa_as_ocorrencias(): void
+    public function test_cria_repeticao_personalizada_nos_dias_selecionados_e_agrupa_as_ocorrencias(): void
     {
         $inicio = today()->next(Carbon::MONDAY);
         $fim = $inicio->copy()->addDays(14);
@@ -109,8 +109,6 @@ class ReservaVeiculoServiceTest extends TestCase
             'data_inicial' => $inicio->toDateString(),
             'data_final' => $fim->toDateString(),
             'repeticao' => 'personalizada',
-            'repetir_a_cada' => 1,
-            'unidade_repeticao' => 'semana',
             'dias_semana' => [1, 3],
             'fim_repeticao' => 'data',
         ]));
@@ -123,6 +121,23 @@ class ReservaVeiculoServiceTest extends TestCase
             $inicio->copy()->addDays(14)->toDateString(),
         ], $reservas->map(fn (ReservaVeiculo $reserva): string => $reserva->data_inicio->toDateString())->all());
         $this->assertCount(1, $reservas->pluck('grupo_recorrencia')->unique());
+    }
+
+    public function test_repeticao_semanal_usa_dia_da_data_inicial_quando_nao_ha_selecao(): void
+    {
+        $inicio = today()->next(Carbon::MONDAY);
+        $reservas = $this->service->criarEmLote($this->usuario, $this->dados([
+            'data_inicial' => $inicio->toDateString(),
+            'data_final' => $inicio->copy()->addDays(14)->toDateString(),
+            'repeticao' => 'semanal',
+            'dias_semana' => [],
+        ]));
+
+        $this->assertSame([
+            $inicio->toDateString(),
+            $inicio->copy()->addWeek()->toDateString(),
+            $inicio->copy()->addWeeks(2)->toDateString(),
+        ], $reservas->map(fn (ReservaVeiculo $reserva): string => $reserva->data_inicio->toDateString())->all());
     }
 
     public function test_todos_os_dias_usa_intervalo_e_ignora_configuracao_antiga_de_ocorrencias(): void
@@ -159,14 +174,13 @@ class ReservaVeiculoServiceTest extends TestCase
         $this->assertSame((int) ceil($inicio->day / 7), (int) ceil($reservas->last()->data_inicio->day / 7));
     }
 
-    public function test_repeticao_personalizada_usa_intervalo_e_ignora_contagem_legada(): void
+    public function test_repeticao_personalizada_repete_nos_dias_escolhidos_dentro_do_intervalo(): void
     {
         $inicio = today()->next(Carbon::MONDAY);
         $reservas = $this->service->criarEmLote($this->usuario, $this->dados([
             'data_inicial' => $inicio->toDateString(),
             'data_final' => $inicio->copy()->addWeeks(3)->toDateString(),
             'repeticao' => 'personalizada',
-            'unidade_repeticao' => 'semana',
             'dias_semana' => [$inicio->dayOfWeekIso],
             'fim_repeticao' => 'ocorrencias',
             'quantidade_ocorrencias' => null,
@@ -177,6 +191,21 @@ class ReservaVeiculoServiceTest extends TestCase
             $inicio->copy()->addWeeks(3)->toDateString(),
             $reservas->last()->data_inicio->toDateString(),
         );
+    }
+
+    public function test_reserva_em_outro_local_persiste_o_nome_e_nao_tenta_vincular_escolas(): void
+    {
+        $reservas = $this->service->criarEmLote($this->usuario, $this->dados([
+            'tipo_local' => 'outros',
+            'local_outro' => '  Secretaria   Municipal  ',
+        ]));
+
+        $this->assertCount(1, $reservas);
+        $this->assertSame('Secretaria Municipal', $reservas->firstOrFail()->local_nome);
+        $this->assertNull($reservas->firstOrFail()->escola_id);
+        $this->assertDatabaseMissing('reserva_veiculo_escola', [
+            'reserva_veiculo_id' => $reservas->firstOrFail()->id,
+        ]);
     }
 
     public function test_conflito_em_uma_ocorrencia_da_repeticao_impede_a_serie_inteira(): void

@@ -45,40 +45,19 @@ final class ReservaVeiculoForm
                         ->native(false)
                         ->live(),
 
-                    TextInput::make('repetir_a_cada')
-                        ->label('Repetir a cada')
-                        ->numeric()
-                        ->default(1)
-                        ->minValue(1)
-                        ->maxValue(52)
-                        ->suffix(fn (Get $get): string => match ($get('unidade_repeticao')) {
-                            'dia' => 'dia(s)', 'semana' => 'semana(s)', 'mes' => 'mês(es)', 'ano' => 'ano(s)', default => '',
-                        })
-                        ->visible(fn (Get $get): bool => $get('repeticao') === 'personalizada')
-                        ->required(fn (Get $get): bool => $get('repeticao') === 'personalizada'),
-
-                    Select::make('unidade_repeticao')
-                        ->label('Unidade')
-                        ->options(['dia' => 'dia', 'semana' => 'semana', 'mes' => 'mês', 'ano' => 'ano'])
-                        ->default('semana')
-                        ->native(false)
-                        ->live()
-                        ->visible(fn (Get $get): bool => $get('repeticao') === 'personalizada')
-                        ->required(fn (Get $get): bool => $get('repeticao') === 'personalizada'),
-
                     CheckboxList::make('dias_semana')
                         ->label('Repetir nos dias')
                         ->options(['1' => 'Seg', '2' => 'Ter', '3' => 'Qua', '4' => 'Qui', '5' => 'Sex', '6' => 'Sáb', '7' => 'Dom'])
-                        ->helperText('Na repetição semanal, sem seleção, será usado o dia da data inicial.')
+                        ->helperText(fn (Get $get): string => $get('repeticao') === 'personalizada'
+                            ? 'A reserva será criada nos dias selecionados, dentro do intervalo informado.'
+                            : 'Na repetição semanal, sem seleção, será usado o dia da data inicial.')
                         ->default(fn (Get $get): array => filled($get('data_inicial'))
                             ? [(string) CarbonImmutable::parse($get('data_inicial'))->dayOfWeekIso]
                             : [])
                         ->columns(7)
                         ->live()
-                        ->visible(fn (Get $get): bool => $get('repeticao') === 'semanal'
-                            || ($get('repeticao') === 'personalizada' && $get('unidade_repeticao') === 'semana'))
-                        ->required(fn (Get $get): bool => $get('repeticao') === 'personalizada'
-                            && $get('unidade_repeticao') === 'semana')
+                        ->visible(fn (Get $get): bool => in_array($get('repeticao'), ['semanal', 'personalizada'], true))
+                        ->required(fn (Get $get): bool => $get('repeticao') === 'personalizada')
                         ->columnSpanFull(),
 
                     DatePicker::make('data_inicial')
@@ -137,8 +116,6 @@ final class ReservaVeiculoForm
                                 null,
                                 [
                                     'repeticao' => $get('repeticao') ?? 'nenhuma',
-                                    'repetir_a_cada' => $get('repetir_a_cada') ?? 1,
-                                    'unidade_repeticao' => $get('unidade_repeticao'),
                                     'dias_semana' => $get('dias_semana') ?? [],
                                     'fim_repeticao' => 'data',
                                 ],
