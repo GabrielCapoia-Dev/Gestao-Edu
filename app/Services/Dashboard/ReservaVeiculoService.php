@@ -45,7 +45,7 @@ class ReservaVeiculoService
         Gate::forUser($ator)->authorize('create', ReservaVeiculo::class);
         $dados = $this->validarCriacao($dados);
         $periodos = $this->periodos(
-            $this->datasDoIntervalo($dados['data_inicial'], $dados['data_final']),
+            $this->datasDaRepeticao($dados),
             $dados['hora_inicio'],
             $dados['hora_fim'],
         );
@@ -160,6 +160,7 @@ class ReservaVeiculoService
         ?string $horaInicio,
         ?string $horaFim,
         ?int $ignorarReservaId = null,
+        array $regraRepeticao = [],
     ): array {
         Gate::forUser($ator)->authorize('viewAny', ReservaVeiculo::class);
         ReservaVeiculo::concluirExpiradas();
@@ -170,7 +171,11 @@ class ReservaVeiculoService
 
         try {
             $periodos = $this->periodos(
-                $this->datasDoIntervalo($dataInicial, $dataFinal),
+                $this->datasDaRepeticao([
+                    'data_inicial' => $dataInicial,
+                    'data_final' => $dataFinal,
+                    ...$regraRepeticao,
+                ]),
                 $horaInicio,
                 $horaFim,
             );
@@ -178,21 +183,25 @@ class ReservaVeiculoService
             return [];
         }
 
+        $conflitos = ReservaVeiculo::query()
+            ->ativas()
+            ->when($ignorarReservaId, fn (Builder $reservas): Builder => $reservas->whereKeyNot($ignorarReservaId))
+            ->where('data_inicio', '<', collect($periodos)->max('fim'))
+            ->where('data_fim', '>', collect($periodos)->min('inicio'))
+            ->get(['veiculo_transporte_id', 'data_inicio', 'data_fim']);
+
+        $veiculosIndisponiveis = $conflitos
+            ->filter(fn (ReservaVeiculo $reserva): bool => collect($periodos)->contains(
+                fn (array $periodo): bool => $reserva->data_inicio->lt($periodo['fim'])
+                    && $reserva->data_fim->gt($periodo['inicio']),
+            ))
+            ->pluck('veiculo_transporte_id')
+            ->unique()
+            ->all();
+
         return VeiculoTransporte::query()
             ->ativos()
-            ->where(function (Builder $veiculos) use ($periodos, $ignorarReservaId): void {
-                foreach ($periodos as $periodo) {
-                    $veiculos->whereDoesntHave(
-                        'reservasAtivas',
-                        fn (Builder $reservas): Builder => $this->aplicarConflito(
-                            $reservas,
-                            $periodo['inicio'],
-                            $periodo['fim'],
-                            $ignorarReservaId,
-                        ),
-                    );
-                }
-            })
+            ->whereNotIn('id', $veiculosIndisponiveis)
             ->orderBy('identificacao')
             ->orderBy('placa')
             ->get()
@@ -221,27 +230,51 @@ class ReservaVeiculoService
     /** @return array<string, mixed> */
     private function validarCriacao(array $dados): array
     {
+        $dados['repeticao'] ??= ! empty($dados['reservar_varios_dias']) ? 'diaria' : 'nenhuma';
+        $dados['fim_repeticao'] ??= 'data';
+
         if (! array_key_exists('escola_ids', $dados) && array_key_exists('escola_id', $dados)) {
             $dados['escola_ids'] = $dados['escola_id'] ? [$dados['escola_id']] : null;
         }
 
         $validados = validator($dados, [
             'data_inicial' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
-            'reservar_varios_dias' => ['required', 'boolean'],
+            'repeticao' => ['required', Rule::in(['nenhuma', 'diaria', 'dias_uteis', 'semanal', 'mensal', 'anual', 'personalizada'])],
+            'repetir_a_cada' => ['nullable', 'integer', 'min:1', 'max:52'],
+            'unidade_repeticao' => ['nullable', Rule::in(['dia', 'semana', 'mes', 'ano'])],
+            'dias_semana' => ['nullable', 'array'],
+            'dias_semana.*' => ['integer', 'between:1,7'],
+            'fim_repeticao' => ['required', Rule::in(['data', 'ocorrencias'])],
+            'quantidade_ocorrencias' => [
+                Rule::requiredIf(fn (): bool => ($dados['fim_repeticao'] ?? null) === 'ocorrencias' && ($dados['repeticao'] ?? 'nenhuma') !== 'nenhuma'),
+                'nullable', 'integer', 'min:1', 'max:366',
+            ],
             'data_final' => [
+                Rule::excludeIf(fn (): bool => ($dados['repeticao'] ?? 'nenhuma') === 'nenhuma'
+                    || ($dados['fim_repeticao'] ?? 'data') !== 'data'),
                 'nullable',
-                Rule::requiredIf(fn (): bool => (bool) ($dados['reservar_varios_dias'] ?? false)),
+                Rule::requiredIf(fn (): bool => ($dados['repeticao'] ?? 'nenhuma') !== 'nenhuma' && ($dados['fim_repeticao'] ?? 'data') === 'data'),
                 'date_format:Y-m-d',
                 'after_or_equal:data_inicial',
             ],
             ...$this->regrasComuns(),
         ], $this->mensagens())->validate();
 
-        $validados['data_final'] = $validados['reservar_varios_dias']
-            ? $validados['data_final']
-            : $validados['data_inicial'];
+        $validados['repetir_a_cada'] = (int) ($validados['repetir_a_cada'] ?? 1);
+        $validados['unidade_repeticao'] ??= match ($validados['repeticao']) {
+            'diaria', 'dias_uteis' => 'dia',
+            'semanal' => 'semana',
+            'mensal' => 'mes',
+            'anual' => 'ano',
+            default => 'semana',
+        };
+        $validados['data_final'] = $validados['repeticao'] === 'nenhuma'
+            ? $validados['data_inicial']
+            : ($validados['fim_repeticao'] === 'data'
+                ? $validados['data_final']
+                : CarbonImmutable::parse($validados['data_inicial'])->addYears(10)->toDateString());
 
-        $this->datasDoIntervalo($validados['data_inicial'], $validados['data_final']);
+        $this->datasDaRepeticao($validados);
 
         return $validados;
     }
@@ -319,31 +352,123 @@ class ReservaVeiculoService
     }
 
     /** @return list<string> */
-    private function datasDoIntervalo(string $dataInicial, string $dataFinal): array
+    private function datasDaRepeticao(array $dados): array
     {
         $timezone = (string) config('dashboard.calendar.timezone', config('app.timezone'));
-        $inicio = CarbonImmutable::createFromFormat('!Y-m-d', $dataInicial, $timezone);
-        $fim = CarbonImmutable::createFromFormat('!Y-m-d', $dataFinal, $timezone);
-
-        if (! $inicio || ! $fim || $fim->lt($inicio)) {
+        $inicio = CarbonImmutable::createFromFormat('!Y-m-d', $dados['data_inicial'] ?? '', $timezone);
+        if (! $inicio) {
             throw ValidationException::withMessages([
-                'data_final' => 'A data final deve ser igual ou posterior à data inicial.',
+                'data_inicial' => 'Informe uma data inicial válida.',
+            ]);
+        }
+        $repeticao = $dados['repeticao'] ?? 'nenhuma';
+        $fim = $repeticao === 'nenhuma'
+            ? $inicio
+            : (($dados['fim_repeticao'] ?? 'data') === 'ocorrencias'
+                ? $inicio->addYears(10)
+                : CarbonImmutable::createFromFormat('!Y-m-d', $dados['data_final'] ?? '', $timezone));
+
+        if (! $inicio || ! $fim || $fim->lt($inicio) || $fim->gt($inicio->addYears(10))) {
+            throw ValidationException::withMessages([
+                'data_final' => 'A repetição deve terminar entre a data inicial e, no máximo, 10 anos depois.',
             ]);
         }
 
-        if ($inicio->diffInDays($fim) > 30) {
-            throw ValidationException::withMessages([
-                'data_final' => 'O intervalo pode ter no máximo 31 dias.',
-            ]);
+        if ($repeticao === 'nenhuma') {
+            return [$inicio->toDateString()];
         }
 
         $datas = [];
+        $maximo = ($dados['fim_repeticao'] ?? 'data') === 'ocorrencias'
+            ? (int) ($dados['quantidade_ocorrencias'] ?? 0)
+            : 366;
+        if ($maximo < 1 || $maximo > 366) {
+            throw ValidationException::withMessages([
+                'quantidade_ocorrencias' => 'Informe entre 1 e 366 ocorrências.',
+            ]);
+        }
+        $intervalo = max(1, (int) ($dados['repetir_a_cada'] ?? 1));
+        $unidade = $dados['unidade_repeticao'] ?? match ($repeticao) {
+            'diaria', 'dias_uteis' => 'dia',
+            'semanal' => 'semana',
+            'mensal' => 'mes',
+            'anual' => 'ano',
+            default => 'semana',
+        };
+        $dias = array_values(array_unique(array_map('intval', $dados['dias_semana'] ?? [])));
+        if ($repeticao === 'semanal' && $dias === []) {
+            $dias = [$inicio->dayOfWeekIso];
+        }
+        if ($repeticao === 'personalizada' && $unidade === 'semana' && $dias === []) {
+            throw ValidationException::withMessages([
+                'dias_semana' => 'Selecione ao menos um dia da semana para a repetição personalizada.',
+            ]);
+        }
 
-        for ($data = $inicio; $data->lte($fim); $data = $data->addDay()) {
-            $datas[] = $data->toDateString();
+        $limite = $inicio->addYears(10)->min($fim);
+        for ($data = $inicio; $data->lte($limite); $data = $data->addDay()) {
+            if ($this->ocorreNaData($data, $inicio, $repeticao, $unidade, $intervalo, $dias)) {
+                $datas[] = $data->toDateString();
+                if (($dados['fim_repeticao'] ?? 'data') === 'data' && count($datas) > 366) {
+                    throw ValidationException::withMessages([
+                        'data_final' => 'A série pode conter no máximo 366 ocorrências. Reduza o intervalo ou o período.',
+                    ]);
+                }
+                if (($dados['fim_repeticao'] ?? 'data') === 'ocorrencias' && count($datas) >= $maximo) {
+                    break;
+                }
+            }
+        }
+
+        if ($datas === [] || (($dados['fim_repeticao'] ?? 'data') === 'ocorrencias' && count($datas) < $maximo)) {
+            throw ValidationException::withMessages([
+                'quantidade_ocorrencias' => 'Não foi possível concluir essa repetição dentro do limite máximo de 10 anos.',
+            ]);
         }
 
         return $datas;
+    }
+
+    /** @param list<int> $dias */
+    private function ocorreNaData(CarbonImmutable $data, CarbonImmutable $inicio, string $repeticao, string $unidade, int $intervalo, array $dias): bool
+    {
+        $diasUteis = $data->isWeekday();
+        $diffDias = $this->diferencaEmDias($inicio, $data);
+        $diffSemanas = intdiv(
+            $this->diferencaEmDias(
+                $inicio->startOfWeek(CarbonImmutable::MONDAY),
+                $data->startOfWeek(CarbonImmutable::MONDAY),
+            ),
+            7,
+        );
+        $diffMeses = (($data->year - $inicio->year) * 12) + $data->month - $inicio->month;
+        $diffAnos = $data->year - $inicio->year;
+
+        return match ($repeticao) {
+            'diaria' => $diffDias % $intervalo === 0,
+            'dias_uteis' => $diasUteis,
+            'semanal' => $diffSemanas % $intervalo === 0 && in_array($data->dayOfWeekIso, $dias ?: [$inicio->dayOfWeekIso], true),
+            'mensal' => $diffMeses % $intervalo === 0
+                && $data->dayOfWeekIso === $inicio->dayOfWeekIso
+                && (int) ceil($data->day / 7) === (int) ceil($inicio->day / 7),
+            'anual' => $diffAnos % $intervalo === 0 && $data->month === $inicio->month && $data->day === $inicio->day,
+            'personalizada' => match ($unidade) {
+                'dia' => $diffDias % $intervalo === 0,
+                'semana' => $diffSemanas % $intervalo === 0 && in_array($data->dayOfWeekIso, $dias, true),
+                'mes' => $diffMeses % $intervalo === 0 && $data->day === $inicio->day,
+                'ano' => $diffAnos % $intervalo === 0 && $data->month === $inicio->month && $data->day === $inicio->day,
+                default => false,
+            },
+            default => false,
+        };
+    }
+
+    private function diferencaEmDias(CarbonImmutable $inicio, CarbonImmutable $fim): int
+    {
+        $inicioUtc = CarbonImmutable::createFromFormat('!Y-m-d', $inicio->toDateString(), 'UTC');
+        $fimUtc = CarbonImmutable::createFromFormat('!Y-m-d', $fim->toDateString(), 'UTC');
+
+        return (int) $inicioUtc->diffInDays($fimUtc);
     }
 
     /**
@@ -354,39 +479,22 @@ class ReservaVeiculoService
         array $periodos,
         ?int $ignorarReservaId = null,
     ): void {
-        foreach ($periodos as $periodo) {
-            $conflito = ReservaVeiculo::query()
-                ->ativas()
-                ->where('veiculo_transporte_id', $veiculoId)
-                ->when(
-                    $ignorarReservaId,
-                    fn (Builder $reservas): Builder => $reservas->whereKeyNot($ignorarReservaId),
-                )
-                ->where('data_inicio', '<', $periodo['fim'])
-                ->where('data_fim', '>', $periodo['inicio'])
-                ->exists();
+        $conflitos = ReservaVeiculo::query()
+            ->ativas()
+            ->where('veiculo_transporte_id', $veiculoId)
+            ->when($ignorarReservaId, fn (Builder $reservas): Builder => $reservas->whereKeyNot($ignorarReservaId))
+            ->where('data_inicio', '<', collect($periodos)->max('fim'))
+            ->where('data_fim', '>', collect($periodos)->min('inicio'))
+            ->get(['data_inicio', 'data_fim']);
 
-            if ($conflito) {
+        foreach ($periodos as $periodo) {
+            if ($conflitos->contains(fn (ReservaVeiculo $reserva): bool => $reserva->data_inicio->lt($periodo['fim'])
+                && $reserva->data_fim->gt($periodo['inicio']))) {
                 throw ValidationException::withMessages([
                     'veiculo_transporte_id' => 'O veículo já possui uma reserva neste dia e horário.',
                 ]);
             }
         }
-    }
-
-    private function aplicarConflito(
-        Builder $query,
-        CarbonImmutable $inicio,
-        CarbonImmutable $fim,
-        ?int $ignorarReservaId,
-    ): Builder {
-        return $query
-            ->when(
-                $ignorarReservaId,
-                fn (Builder $reservas): Builder => $reservas->whereKeyNot($ignorarReservaId),
-            )
-            ->where('data_inicio', '<', $fim)
-            ->where('data_fim', '>', $inicio);
     }
 
     /**

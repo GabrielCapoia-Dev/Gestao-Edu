@@ -60,7 +60,8 @@ class ReservaVeiculoPageTest extends TestCase
         $componente
             ->setActionData([
                 'data_inicial' => today()->addDay()->toDateString(),
-                'reservar_varios_dias' => true,
+                'repeticao' => 'diaria',
+                'fim_repeticao' => 'data',
                 'data_final' => today()->addDays(2)->toDateString(),
                 'hora_inicio' => '09:00',
                 'hora_fim' => '11:00',

@@ -6,8 +6,10 @@ use App\Models\Escola;
 use App\Models\ReservaVeiculo;
 use App\Models\User;
 use App\Services\Dashboard\ReservaVeiculoService;
-use Filament\Forms\Components\Checkbox;
+use Carbon\CarbonImmutable;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -31,11 +33,56 @@ final class ReservaVeiculoForm
                         ->disabled()
                         ->dehydrated(false),
 
-                    Checkbox::make('reservar_varios_dias')
-                        ->label('Reservar para vários dias')
-                        ->helperText('O mesmo horário será reservado em todos os dias do intervalo, por até 31 dias.')
-                        ->default(false)
+                    Select::make('repeticao')
+                        ->label('Repetição')
+                        ->options([
+                            'nenhuma' => 'Não se repete',
+                            'diaria' => 'Todos os dias',
+                            'dias_uteis' => 'Todos os dias da semana (segunda a sexta)',
+                            'semanal' => 'Semanalmente',
+                            'mensal' => 'Mensalmente no mesmo dia da semana',
+                            'anual' => 'Anualmente na mesma data',
+                            'personalizada' => 'Personalizar…',
+                        ])
+                        ->default('nenhuma')
+                        ->native(false)
                         ->live(),
+
+                    TextInput::make('repetir_a_cada')
+                        ->label('Repetir a cada')
+                        ->numeric()
+                        ->default(1)
+                        ->minValue(1)
+                        ->maxValue(52)
+                        ->suffix(fn (Get $get): string => match ($get('unidade_repeticao')) {
+                            'dia' => 'dia(s)', 'semana' => 'semana(s)', 'mes' => 'mês(es)', 'ano' => 'ano(s)', default => '',
+                        })
+                        ->visible(fn (Get $get): bool => $get('repeticao') === 'personalizada')
+                        ->required(fn (Get $get): bool => $get('repeticao') === 'personalizada'),
+
+                    Select::make('unidade_repeticao')
+                        ->label('Unidade')
+                        ->options(['dia' => 'dia', 'semana' => 'semana', 'mes' => 'mês', 'ano' => 'ano'])
+                        ->default('semana')
+                        ->native(false)
+                        ->live()
+                        ->visible(fn (Get $get): bool => $get('repeticao') === 'personalizada')
+                        ->required(fn (Get $get): bool => $get('repeticao') === 'personalizada'),
+
+                    CheckboxList::make('dias_semana')
+                        ->label('Repetir nos dias')
+                        ->options(['1' => 'Seg', '2' => 'Ter', '3' => 'Qua', '4' => 'Qui', '5' => 'Sex', '6' => 'Sáb', '7' => 'Dom'])
+                        ->helperText('Na repetição semanal, sem seleção, será usado o dia da data inicial.')
+                        ->default(fn (Get $get): array => filled($get('data_inicial'))
+                            ? [(string) CarbonImmutable::parse($get('data_inicial'))->dayOfWeekIso]
+                            : [])
+                        ->columns(7)
+                        ->live()
+                        ->visible(fn (Get $get): bool => $get('repeticao') === 'semanal'
+                            || ($get('repeticao') === 'personalizada' && $get('unidade_repeticao') === 'semana'))
+                        ->required(fn (Get $get): bool => $get('repeticao') === 'personalizada'
+                            && $get('unidade_repeticao') === 'semana')
+                        ->columnSpanFull(),
 
                     DatePicker::make('data_inicial')
                         ->label('Data da reserva')
@@ -44,16 +91,35 @@ final class ReservaVeiculoForm
                         ->native()
                         ->displayFormat('d/m/Y')
                         ->live()
-                        ->columnSpan(fn (Get $get): int => $get('reservar_varios_dias') ? 1 : 2),
+                        ->columnSpan(fn (Get $get): int => $get('repeticao') !== 'nenhuma' ? 1 : 2),
 
                     DatePicker::make('data_final')
-                        ->label('Data final')
-                        ->required(fn (Get $get): bool => (bool) $get('reservar_varios_dias'))
+                        ->label('Repetir até')
+                        ->required(fn (Get $get): bool => $get('repeticao') !== 'nenhuma' && $get('fim_repeticao') === 'data')
                         ->minDate(fn (Get $get): mixed => $get('data_inicial') ?: today())
                         ->native()
                         ->displayFormat('d/m/Y')
-                        ->visible(fn (Get $get): bool => (bool) $get('reservar_varios_dias'))
+                        ->visible(fn (Get $get): bool => $get('repeticao') !== 'nenhuma' && $get('fim_repeticao') === 'data')
                         ->live(),
+
+                    Radio::make('fim_repeticao')
+                        ->label('Termina')
+                        ->options(['data' => 'Em uma data', 'ocorrencias' => 'Após um número de ocorrências'])
+                        ->default('data')
+                        ->inline()
+                        ->live()
+                        ->visible(fn (Get $get): bool => $get('repeticao') !== 'nenhuma')
+                        ->columnSpanFull(),
+
+                    TextInput::make('quantidade_ocorrencias')
+                        ->label('Número de ocorrências')
+                        ->numeric()
+                        ->default(2)
+                        ->minValue(1)
+                        ->maxValue(366)
+                        ->helperText('A série pode ter até 366 ocorrências e terminar em até 10 anos.')
+                        ->visible(fn (Get $get): bool => $get('repeticao') !== 'nenhuma' && $get('fim_repeticao') === 'ocorrencias')
+                        ->required(fn (Get $get): bool => $get('repeticao') !== 'nenhuma' && $get('fim_repeticao') === 'ocorrencias'),
 
                     TimePicker::make('hora_inicio')
                         ->label('Horário inicial')
@@ -77,7 +143,7 @@ final class ReservaVeiculoForm
             self::destinoEAtividade(),
 
             Section::make('Veículo')
-                ->description('A lista considera todas as datas e o intervalo de horário informados.')
+                ->description('A lista considera todas as ocorrências e o intervalo de horário informados.')
                 ->schema([
                     Select::make('veiculo_transporte_id')
                         ->label('Veículo disponível')
@@ -85,12 +151,23 @@ final class ReservaVeiculoForm
                             ->veiculosDisponiveis(
                                 $usuario,
                                 $get('data_inicial'),
-                                $get('reservar_varios_dias') ? $get('data_final') : $get('data_inicial'),
+                                $get('repeticao') !== 'nenhuma' && $get('fim_repeticao') === 'data'
+                                    ? $get('data_final')
+                                    : $get('data_inicial'),
                                 $get('hora_inicio'),
                                 $get('hora_fim'),
+                                null,
+                                [
+                                    'repeticao' => $get('repeticao') ?? 'nenhuma',
+                                    'repetir_a_cada' => $get('repetir_a_cada') ?? 1,
+                                    'unidade_repeticao' => $get('unidade_repeticao'),
+                                    'dias_semana' => $get('dias_semana') ?? [],
+                                    'fim_repeticao' => $get('fim_repeticao') ?? 'data',
+                                    'quantidade_ocorrencias' => $get('quantidade_ocorrencias'),
+                                ],
                             ))
                         ->searchable()
-                        ->noOptionsMessage(fn (Get $get): string => $get('reservar_varios_dias')
+                        ->noOptionsMessage(fn (Get $get): string => $get('repeticao') !== 'nenhuma'
                             ? 'Não há veículos disponíveis para os dias e o horário selecionados.'
                             : 'Não há veículos disponíveis para o dia e o horário selecionados.')
                         ->noSearchResultsMessage('Nenhum veículo disponível corresponde à busca.')

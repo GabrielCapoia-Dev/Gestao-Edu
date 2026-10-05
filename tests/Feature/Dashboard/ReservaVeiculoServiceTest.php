@@ -100,6 +100,71 @@ class ReservaVeiculoServiceTest extends TestCase
         );
     }
 
+    public function test_cria_repeticao_semanal_nos_dias_selecionados_e_agrupa_as_ocorrencias(): void
+    {
+        $inicio = today()->next(Carbon::MONDAY);
+        $fim = $inicio->copy()->addDays(14);
+
+        $reservas = $this->service->criarEmLote($this->usuario, $this->dados([
+            'data_inicial' => $inicio->toDateString(),
+            'data_final' => $fim->toDateString(),
+            'repeticao' => 'personalizada',
+            'repetir_a_cada' => 1,
+            'unidade_repeticao' => 'semana',
+            'dias_semana' => [1, 3],
+            'fim_repeticao' => 'data',
+        ]));
+
+        $this->assertSame([
+            $inicio->toDateString(),
+            $inicio->copy()->addDays(2)->toDateString(),
+            $inicio->copy()->addDays(7)->toDateString(),
+            $inicio->copy()->addDays(9)->toDateString(),
+            $inicio->copy()->addDays(14)->toDateString(),
+        ], $reservas->map(fn (ReservaVeiculo $reserva): string => $reserva->data_inicio->toDateString())->all());
+        $this->assertCount(1, $reservas->pluck('grupo_recorrencia')->unique());
+    }
+
+    public function test_repeticao_por_quantidade_reserva_exatamente_o_numero_de_ocorrencias(): void
+    {
+        $inicio = today()->addDays(2);
+        $reservas = $this->service->criarEmLote($this->usuario, $this->dados([
+            'data_inicial' => $inicio->toDateString(),
+            'data_final' => null,
+            'repeticao' => 'diaria',
+            'fim_repeticao' => 'ocorrencias',
+            'quantidade_ocorrencias' => 4,
+        ]));
+
+        $this->assertCount(4, $reservas);
+        $this->assertSame(
+            $inicio->copy()->addDays(3)->toDateString(),
+            $reservas->last()->data_inicio->toDateString(),
+        );
+    }
+
+    public function test_conflito_em_uma_ocorrencia_da_repeticao_impede_a_serie_inteira(): void
+    {
+        $inicio = today()->addDays(2);
+        $this->service->criarEmLote($this->usuario, $this->dados([
+            'data_inicial' => $inicio->copy()->addDays(2)->toDateString(),
+        ]));
+
+        try {
+            $this->service->criarEmLote($this->usuario, $this->dados([
+                'data_inicial' => $inicio->toDateString(),
+                'data_final' => $inicio->copy()->addDays(4)->toDateString(),
+                'repeticao' => 'diaria',
+                'fim_repeticao' => 'data',
+            ]));
+            $this->fail('A série deveria ser rejeitada por conflito em uma ocorrência.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('veiculo_transporte_id', $exception->errors());
+        }
+
+        $this->assertDatabaseCount('reservas_veiculos', 1);
+    }
+
     public function test_cria_uma_reserva_com_varias_escolas(): void
     {
         $segundaEscola = Escola::query()->create([

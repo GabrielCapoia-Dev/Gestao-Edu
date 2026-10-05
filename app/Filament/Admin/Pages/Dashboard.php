@@ -118,7 +118,7 @@ class Dashboard extends Page
                 ->visible(fn (): bool => Gate::forUser($usuario)->allows('create', ReservaVeiculo::class))
                 ->authorize(fn (): bool => Gate::forUser($usuario)->allows('create', ReservaVeiculo::class))
                 ->modalHeading('Nova reserva de veículo')
-                ->modalDescription('Para vários dias, informe o intervalo. O horário será repetido diariamente.')
+                ->modalDescription('Escolha quando a reserva se repete e até quando. Todas as ocorrências serão verificadas antes de confirmar.')
                 ->modalWidth('3xl')
                 ->closeModalByClickingAway(false)
                 ->schema(ReservaVeiculoForm::criacao($usuario))
