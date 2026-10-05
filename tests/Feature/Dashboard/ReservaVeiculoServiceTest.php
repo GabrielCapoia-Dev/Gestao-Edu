@@ -143,6 +143,22 @@ class ReservaVeiculoServiceTest extends TestCase
         );
     }
 
+    public function test_mensalmente_usa_intervalo_e_ignora_configuracao_antiga_de_ocorrencias(): void
+    {
+        $inicio = today()->addDays(2);
+        $reservas = $this->service->criarEmLote($this->usuario, $this->dados([
+            'data_inicial' => $inicio->toDateString(),
+            'data_final' => $inicio->copy()->addDays(70)->toDateString(),
+            'repeticao' => 'mensal',
+            'fim_repeticao' => 'ocorrencias',
+            'quantidade_ocorrencias' => null,
+        ]));
+
+        $this->assertCount(3, $reservas);
+        $this->assertSame($inicio->dayOfWeekIso, $reservas->last()->data_inicio->dayOfWeekIso);
+        $this->assertSame((int) ceil($inicio->day / 7), (int) ceil($reservas->last()->data_inicio->day / 7));
+    }
+
     public function test_repeticao_personalizada_pode_terminar_por_numero_de_ocorrencias(): void
     {
         $inicio = today()->next(Carbon::MONDAY);

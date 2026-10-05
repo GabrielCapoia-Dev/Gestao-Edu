@@ -92,13 +92,13 @@ final class ReservaVeiculoForm
                         ->columnSpan(fn (Get $get): int => $get('repeticao') !== 'nenhuma' ? 1 : 2),
 
                     DatePicker::make('data_final')
-                        ->label(fn (Get $get): string => $get('repeticao') === 'diaria' ? 'Data final' : 'Repetir até')
-                        ->required(fn (Get $get): bool => $get('repeticao') === 'diaria'
+                        ->label(fn (Get $get): string => in_array($get('repeticao'), ['diaria', 'mensal'], true) ? 'Data final' : 'Repetir até')
+                        ->required(fn (Get $get): bool => in_array($get('repeticao'), ['diaria', 'mensal'], true)
                             || ($get('repeticao') !== 'nenhuma' && $get('fim_repeticao') === 'data'))
                         ->minDate(fn (Get $get): mixed => $get('data_inicial') ?: today())
                         ->native()
                         ->displayFormat('d/m/Y')
-                        ->visible(fn (Get $get): bool => $get('repeticao') === 'diaria'
+                        ->visible(fn (Get $get): bool => in_array($get('repeticao'), ['diaria', 'mensal'], true)
                             || ($get('repeticao') !== 'nenhuma' && $get('fim_repeticao') === 'data'))
                         ->live(),
 
@@ -108,7 +108,7 @@ final class ReservaVeiculoForm
                         ->default('data')
                         ->inline()
                         ->live()
-                        ->visible(fn (Get $get): bool => ! in_array($get('repeticao'), ['nenhuma', 'diaria'], true))
+                        ->visible(fn (Get $get): bool => ! in_array($get('repeticao'), ['nenhuma', 'diaria', 'mensal'], true))
                         ->columnSpanFull(),
 
                     TextInput::make('quantidade_ocorrencias')
@@ -118,9 +118,9 @@ final class ReservaVeiculoForm
                         ->minValue(1)
                         ->maxValue(366)
                         ->helperText('A série pode ter até 366 ocorrências e terminar em até 10 anos.')
-                        ->visible(fn (Get $get): bool => ! in_array($get('repeticao'), ['nenhuma', 'diaria'], true)
+                        ->visible(fn (Get $get): bool => ! in_array($get('repeticao'), ['nenhuma', 'diaria', 'mensal'], true)
                             && $get('fim_repeticao') === 'ocorrencias')
-                        ->required(fn (Get $get): bool => ! in_array($get('repeticao'), ['nenhuma', 'diaria'], true)
+                        ->required(fn (Get $get): bool => ! in_array($get('repeticao'), ['nenhuma', 'diaria', 'mensal'], true)
                             && $get('fim_repeticao') === 'ocorrencias'),
 
                     TimePicker::make('hora_inicio')
@@ -153,7 +153,7 @@ final class ReservaVeiculoForm
                             ->veiculosDisponiveis(
                                 $usuario,
                                 $get('data_inicial'),
-                                $get('repeticao') === 'diaria'
+                                in_array($get('repeticao'), ['diaria', 'mensal'], true)
                                     || ($get('repeticao') !== 'nenhuma' && $get('fim_repeticao') === 'data')
                                     ? $get('data_final')
                                     : $get('data_inicial'),
@@ -165,7 +165,9 @@ final class ReservaVeiculoForm
                                     'repetir_a_cada' => $get('repetir_a_cada') ?? 1,
                                     'unidade_repeticao' => $get('unidade_repeticao'),
                                     'dias_semana' => $get('dias_semana') ?? [],
-                                    'fim_repeticao' => $get('repeticao') === 'diaria' ? 'data' : ($get('fim_repeticao') ?? 'data'),
+                                    'fim_repeticao' => in_array($get('repeticao'), ['diaria', 'mensal'], true)
+                                        ? 'data'
+                                        : ($get('fim_repeticao') ?? 'data'),
                                     'quantidade_ocorrencias' => $get('quantidade_ocorrencias'),
                                 ],
                             ))

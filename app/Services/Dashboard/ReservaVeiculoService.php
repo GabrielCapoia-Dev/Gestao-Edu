@@ -232,7 +232,7 @@ class ReservaVeiculoService
     {
         $dados['repeticao'] ??= ! empty($dados['reservar_varios_dias']) ? 'diaria' : 'nenhuma';
         $dados['fim_repeticao'] ??= 'data';
-        if ($dados['repeticao'] === 'diaria') {
+        if (in_array($dados['repeticao'], ['diaria', 'mensal'], true)) {
             $dados['fim_repeticao'] = 'data';
         }
 
@@ -364,7 +364,9 @@ class ReservaVeiculoService
             ]);
         }
         $repeticao = $dados['repeticao'] ?? 'nenhuma';
-        $fimRepeticao = $repeticao === 'diaria' ? 'data' : ($dados['fim_repeticao'] ?? 'data');
+        $fimRepeticao = in_array($repeticao, ['diaria', 'mensal'], true)
+            ? 'data'
+            : ($dados['fim_repeticao'] ?? 'data');
         $fim = $repeticao === 'nenhuma'
             ? $inicio
             : ($fimRepeticao === 'ocorrencias'
