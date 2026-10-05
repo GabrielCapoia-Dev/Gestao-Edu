@@ -20,9 +20,11 @@ Entregar uma `main` consolidada, publicada no repositório remoto e refletida no
 5. Consolidar alterações em uma branch apropriada, criando commit apenas quando necessário para preservar trabalho já realizado. Fazer merge na `main`; se houver conflito, resolver por análise do conteúdo e registrar o que foi preservado. Nunca usar `reset --hard`, `checkout --` para apagar trabalho ou merge forçado sem revisão.
 6. Executar validações proporcionais: `git diff --check`, `php -l` nos PHP alterados e testes focados disponíveis. Registrar testes bloqueados por dependências ou ambiente.
 7. Publicar a `main` no remoto somente quando essa atualização fizer parte do pedido.
-8. No hub, acessar o projeto remoto já configurado, atualizar para `origin/main`, reconstruir/recriar o serviço necessário e executar migrations com `--force` e limpeza de caches quando fizer parte do procedimento do projeto.
-9. Verificar `docker compose ps` e o health status explícito do container `laravel-app-gestao-edu`. Só considerar concluído quando estiver `running healthy`; investigar logs e corrigir/reiniciar o serviço se estiver `starting`, `unhealthy`, parado ou causando 502.
-10. Enviar a cada chat analisado um resumo com commit, alterações integradas, conflitos, validações e estado do hub.
+8. Antes de atualizar o app no hub, inspecionar `docker-compose.yml`/`compose.yaml` e o entrypoint para identificar cron e workers que compartilham banco e cache de permissões. Se o boot executar migrations, seeders ou sincronização de roles/permissões, parar graciosamente os serviços `cron` e workers antes de iniciar o deploy; não deixar processos antigos consultar ou repovoar o cache durante a sincronização. Não matar processos à força nem interromper trabalhos sem respeitar o encerramento gracioso configurado.
+9. Atualizar para `origin/main`, reconstruir/recriar o app e executar o procedimento de migrations e limpeza de caches definido pelo projeto. Aguardar o app ficar saudável e o entrypoint terminar antes de iniciar novamente cron e workers.
+10. Verificar `docker compose ps` e o health status explícito do container `laravel-app-gestao-edu`. Além da saúde do container, validar que o cache de permissões do Spatie corresponde ao catálogo e às permissões atribuídas à role Admin no banco, e que uma permissão administrativa representativa é reconhecida pelo guard correto. Se banco e cache divergirem, não declarar sucesso: invalidar o cache após a sincronização, revalidar e investigar qualquer processo concorrente antes de reativar workers.
+11. Só então iniciar/recriar cron e workers e confirmar que ficaram saudáveis. Só considerar concluído quando o app estiver `running healthy`, as permissões conferirem e os serviços em segundo plano estiverem operacionais; investigar logs e corrigir/reiniciar serviços se estiverem `starting`, `unhealthy`, parados ou causando 502.
+12. Enviar a cada chat analisado um resumo com commit, alterações integradas, conflitos, validações e estado do hub.
 
 ## Regras de segurança
 
@@ -30,6 +32,7 @@ Entregar uma `main` consolidada, publicada no repositório remoto e refletida no
 - Preservar permissões, regras de negócio e alterações existentes.
 - Não expor senhas, tokens ou credenciais em mensagens, commits ou logs.
 - Não acessar produção, executar comandos destrutivos ou remover containers órfãos sem solicitação específica.
+- Nunca atualizar somente o serviço `app` enquanto cron/workers antigos continuam ativos quando o boot altera permissões compartilhadas; isso permite corrida na invalidação e repopulação do cache Redis do Spatie.
 - Se houver conflito sem resolução segura, working tree ambíguo ou container que não fique saudável, parar e informar a pendência em vez de declarar sucesso.
 
 ## Relatório final

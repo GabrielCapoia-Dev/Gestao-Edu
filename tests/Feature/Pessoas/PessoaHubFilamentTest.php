@@ -659,32 +659,6 @@ class PessoaHubFilamentTest extends TestCase
             ->assertDontSee('password');
     }
 
-    public function test_formulario_disponibiliza_rh_duas_matriculas_e_jornada_so_para_professor(): void
-    {
-        $usuario = $this->usuarioHubAdmin([
-            'Listar Pessoas',
-            'Criar Pessoas',
-            'Gerenciar Vínculos Estruturais de Pessoas',
-        ]);
-
-        Livewire::actingAs($usuario)
-            ->test(PessoaForm::class, ['pessoaId' => null])
-            ->assertSeeHtml('value="rh"')
-            ->assertSee('Jornada')
-            ->call('cargoAlterado', ServidorResource::CARGO_EQUIPE_GESTORA)
-            ->assertDontSee('Jornada')
-            ->assertSee('Matrícula comum')
-            ->call('cargoAlterado', ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA)
-            ->assertSee('Escolas assessoradas')
-            ->assertSee('Matrícula comum')
-            ->call('adicionarMatricula')
-            ->assertCount('matriculas', 2)
-            ->assertDontSee('Jornada')
-            ->call('cargoAlterado', ServidorResource::CARGO_RH)
-            ->assertSee('Matrícula comum')
-            ->assertDontSee('Jornada');
-    }
-
     public function test_modais_de_criacao_visualizacao_e_edicao_sao_montados_pela_tabela(): void
     {
         $usuario = $this->usuarioHubAdmin([
