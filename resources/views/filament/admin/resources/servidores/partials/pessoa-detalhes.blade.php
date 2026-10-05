@@ -51,13 +51,19 @@
         }
 
         if (! is_array($valor)) {
-            return (string) $valor;
+            $texto = (string) $valor;
+
+            return preg_match('/^\d{4}-\d{2}-\d{2}$/', $texto)
+                ? \Illuminate\Support\Carbon::parse($texto)->format('d/m/Y')
+                : $texto;
         }
 
         if (array_is_list($valor)) {
             return $valor === []
                 ? 'Nenhum vínculo'
-                : collect($valor)->map($formatarValorHistorico)->implode('; ');
+                : collect($valor)->values()->map(fn (mixed $item, int $indice): string =>
+                    'Vínculo '.($indice + 1).': '.$formatarValorHistorico($item)
+                )->implode(' · ');
         }
 
         $rotulos = [
@@ -70,7 +76,7 @@
         ];
 
         return collect($valor)
-            ->reject(fn (mixed $item, string|int $chave): bool => $chave === 'id' || $item === null || $item === '')
+            ->reject(fn (mixed $item, string|int $chave): bool => in_array($chave, ['id', 'codigo', 'codigo_escola'], true) || $item === null || $item === '')
             ->map(fn (mixed $item, string|int $chave): string => ($rotulos[$chave] ?? ucfirst((string) $chave))
                 .': '.$formatarValorHistorico($item))
             ->implode(' · ');
@@ -437,8 +443,8 @@
                         @foreach ($movimentacao->alteracoes as $campo => $mudanca)
                             <div>
                                 <b>{{ match ($campo) { 'cargo' => 'Cargo e vínculos', 'lotacao' => 'Lotação', 'matriculas' => 'Matrículas e turnos', 'pedagogico' => 'Turmas, séries e componentes', default => $campo } }}</b>
-                                <small>Antes: {{ $formatarValorHistorico($mudanca['antes'] ?? null) }}</small>
-                                <small>Depois: {{ $formatarValorHistorico($mudanca['depois'] ?? null) }}</small>
+                                <small class="pessoa-custom-view__history-change pessoa-custom-view__history-change--before"><span>Antes</span>{{ $formatarValorHistorico($mudanca['antes'] ?? null) }}</small>
+                                <small class="pessoa-custom-view__history-change pessoa-custom-view__history-change--after"><span>Depois</span>{{ $formatarValorHistorico($mudanca['depois'] ?? null) }}</small>
                             </div>
                         @endforeach
                     </article>

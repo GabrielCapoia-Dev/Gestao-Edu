@@ -374,6 +374,28 @@
         color: var(--pv-muted);
     }
 
+    .pessoa-custom-view__history-change {
+        display: grid;
+        gap: 0.15rem;
+        line-height: 1.45;
+    }
+
+    .pessoa-custom-view__history-change span {
+        color: var(--pv-text);
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .pessoa-custom-view__history-change--before span {
+        color: #9a6a25;
+    }
+
+    .pessoa-custom-view__history-change--after span {
+        color: #23734a;
+    }
+
     .pessoa-custom-view__saldo-history {
         display: grid;
         gap: 0.55rem;

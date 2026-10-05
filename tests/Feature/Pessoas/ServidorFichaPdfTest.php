@@ -14,6 +14,16 @@ class ServidorFichaPdfTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_template_da_ficha_apresenta_historico_funcional_sem_json_bruto(): void
+    {
+        $template = file_get_contents(resource_path('views/relatorios/servidores/ficha.blade.php'));
+
+        $this->assertIsString($template);
+        $this->assertStringNotContainsString('json_encode($alteracao', $template);
+        $this->assertStringContainsString('$formatarHistoricoFicha', $template);
+        $this->assertStringContainsString("['id', 'codigo', 'codigo_escola']", $template);
+    }
+
     public function test_ficha_funcional_exporta_pdf_completo_e_autorizado(): void
     {
         $servidor = Servidor::query()->create([

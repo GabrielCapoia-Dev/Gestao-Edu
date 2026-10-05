@@ -27,12 +27,60 @@
         .list th { color: #5d7391; background: #f3f7fb; font-size: 8px; }
         .list td { font-size: 8px; overflow-wrap: anywhere; }
         .muted { color: #7185a0; }
+        .history-value div + div { margin-top: 3px; }
+        .history-value strong { color: #315d8a; font-size: 7px; }
         .pill { display: inline-block; padding: 2px 6px; border-radius: 8px; color: #315d8a; background: #eaf2fb; }
         .footer { position: fixed; right: 0; bottom: -28px; left: 0; padding-top: 6px; border-top: 1px solid #d8e4f2; color: #70839d; font-size: 8px; }
         .footer .page { float: right; }
     </style>
 </head>
 <body>
+    @php
+        $formatarHistoricoFicha = function (mixed $valor) use (&$formatarHistoricoFicha): array {
+            if ($valor === null || $valor === '') {
+                return ['—'];
+            }
+
+            if (is_bool($valor)) {
+                return [$valor ? 'Sim' : 'Não'];
+            }
+
+            if (! is_array($valor)) {
+                $texto = (string) $valor;
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $texto)) {
+                    return [\Illuminate\Support\Carbon::parse($texto)->format('d/m/Y')];
+                }
+
+                return [$texto];
+            }
+
+            if (array_is_list($valor)) {
+                if ($valor === []) {
+                    return ['Nenhum vínculo'];
+                }
+
+                return collect($valor)->values()->flatMap(fn (mixed $item, int $indice): array => collect($formatarHistoricoFicha($item))
+                    ->map(fn (string $linha): string => 'Vínculo '.($indice + 1).': '.$linha)
+                    ->all())->all();
+            }
+
+            $rotulos = [
+                'cargo' => 'Cargo', 'escola' => 'Escola', 'setor' => 'Setor',
+                'lotacao' => 'Lotação', 'matricula' => 'Matrícula', 'turno' => 'Turno',
+                'jornada' => 'Jornada', 'serie' => 'Série', 'turma' => 'Turma',
+                'componente' => 'Componente', 'status' => 'Situação',
+                'inicio' => 'Início', 'fim' => 'Fim', 'arquivada' => 'Arquivada',
+                'ativo' => 'Vínculo ativo', 'nome' => 'Nome',
+            ];
+
+            return collect($valor)
+                ->reject(fn (mixed $item, string|int $chave): bool => in_array($chave, ['id', 'codigo', 'codigo_escola'], true) || $item === null || $item === '')
+                ->flatMap(fn (mixed $item, string|int $chave): array => collect($formatarHistoricoFicha($item))
+                    ->map(fn (string $linha): string => ($rotulos[$chave] ?? ucfirst((string) $chave)).': '.$linha)
+                    ->all())->values()->all();
+        };
+    @endphp
+
     <header class="top">
         <p class="brand">Prefeitura Municipal de Umuarama · Secretaria de Educação</p>
         <h1>Ficha funcional</h1>
@@ -169,8 +217,8 @@
                         <tr>
                             <td>{{ $movimentacao->ocorrido_em?->format('d/m/Y H:i') }}</td><td>{{ $movimentacao->usuario?->name ?? 'Sistema' }}</td>
                             <td>{{ ucfirst(str_replace('_', ' ', $campo)) }}</td>
-                            <td>{{ is_array($alteracao['antes'] ?? null) ? json_encode($alteracao['antes'], JSON_UNESCAPED_UNICODE) : ($alteracao['antes'] ?? '—') }}</td>
-                            <td>{{ is_array($alteracao['depois'] ?? null) ? json_encode($alteracao['depois'], JSON_UNESCAPED_UNICODE) : ($alteracao['depois'] ?? '—') }}</td>
+                            <td class="history-value">@foreach ($formatarHistoricoFicha($alteracao['antes'] ?? null) as $linha)<div>{{ $linha }}</div>@endforeach</td>
+                            <td class="history-value">@foreach ($formatarHistoricoFicha($alteracao['depois'] ?? null) as $linha)<div>{{ $linha }}</div>@endforeach</td>
                         </tr>
                     @endforeach
                 @endforeach
