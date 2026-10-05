@@ -54,6 +54,7 @@ Mapear rapidamente o controle de acesso para evitar regressao em:
 - Confirmar se o escopo final depende de `id_escola`, pivot `escola_user`, `setor_id` ou professor vinculado.
 - Confirmar heranca de setores pela hierarquia e capacidades de `SetorAccessCapability`.
 - No preview de perfil, preservar bloqueio de escrita no servidor; esconder botoes na UI nao e controle suficiente.
+- A conta raiz (ID 1) e usuários com papel `Admin` devem continuar autenticáveis mesmo se os vínculos funcionais estiverem ausentes, duplicados ou inconsistentes. Manter a exceção alinhada entre `canAuthenticate()` e `scopeCanAuthenticate()`; exclusão/soft delete continua bloqueando login.
 - Revisar nomes de permissoes com acentuacao, mojibake ou busca por fragmento.
 - Separar permissao de leitura global da autorizacao de escrita: nunca amplie `canAccessEscola()` para liberar consultas de rede; crie/ use escopo de leitura e confirme policies de mutacao independentemente.
 - Assessoria Pedagógica e RH podem consultar escola/dados de rede por vínculo funcional, sem receber `accessGlobalScope`; RH tem preset próprio sincronizado com o cargo funcional `rh`.

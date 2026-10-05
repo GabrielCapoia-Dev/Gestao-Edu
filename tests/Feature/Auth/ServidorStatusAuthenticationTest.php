@@ -4,6 +4,7 @@ namespace Tests\Feature\Auth;
 
 use App\Models\FuncaoAdministrativa;
 use App\Models\Pessoa;
+use App\Models\Role;
 use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -44,6 +45,26 @@ class ServidorStatusAuthenticationTest extends TestCase
 
         $this->assertFalse($user->fresh()->canAuthenticate());
         $this->assertFalse($user->fresh()->canAccessAdminPanel());
+    }
+
+    public function test_admin_pode_autenticar_com_multiplos_vinculos_funcionais(): void
+    {
+        User::factory()->create(); // reserva o id raiz para que o teste cubra o papel Admin
+        $admin = User::factory()->create(['ativo' => true]);
+        $admin->assignRole(Role::findOrCreate('Admin', 'web'));
+
+        foreach (['Primeiro vínculo', 'Segundo vínculo'] as $nome) {
+            $pessoa = Pessoa::query()->create([
+                'user_id' => $admin->id,
+                'nome' => $nome,
+                'email' => str($nome)->slug('.').'@edu.umuarama.pr.gov.br',
+                'status' => Pessoa::STATUS_ATIVO,
+            ]);
+            $this->vincularCargo($pessoa);
+        }
+
+        $this->assertTrue($admin->fresh()->canAuthenticate());
+        $this->assertTrue(User::query()->canAuthenticate()->whereKey($admin->id)->exists());
     }
 
     public function test_backfill_cria_usuario_e_inativa_cadastro_sem_email(): void

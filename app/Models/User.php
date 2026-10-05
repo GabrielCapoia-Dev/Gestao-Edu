@@ -150,6 +150,11 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
             return $this->canAuthenticateCache = false;
         }
 
+        // Admin e a conta-raiz nao dependem da unicidade dos vinculos funcionais.
+        if ((int) $this->getKey() === 1 || $this->hasRole('Admin')) {
+            return $this->canAuthenticateCache = true;
+        }
+
         $pessoasAtivas = $this->servidores()
             ->where('status', Pessoa::STATUS_ATIVO)
             ->where(function (Builder $pessoas): void {
@@ -169,20 +174,27 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     {
         return $query
             ->whereNull($query->getModel()->qualifyColumn('deleted_at'))
-            ->whereHas(
-                'servidores',
-                fn (Builder $pessoas): Builder => $pessoas
-                    ->where('status', Pessoa::STATUS_ATIVO)
-                    ->where(function (Builder $comCargo): void {
-                        $comCargo
-                            ->whereHas('professores', fn (Builder $professores): Builder => $professores->where('ativo', true))
-                            ->orWhereHas('vinculosAtivos', fn (Builder $vinculos): Builder => $vinculos
-                                ->whereHas('funcaoAdministrativa', fn (Builder $cargos): Builder => $cargos
-                                    ->where('codigo', '<>', Pessoa::CARGO_PENDENTE_CODIGO)));
-                    }),
-                '=',
-                1,
-            );
+            ->where(function (Builder $usuarios): void {
+                $usuarios
+                    ->whereKey(1)
+                    ->orWhereHas('roles', fn (Builder $roles): Builder => $roles
+                        ->where('name', 'Admin')
+                        ->where('guard_name', 'web'))
+                    ->orWhereHas(
+                        'servidores',
+                        fn (Builder $pessoas): Builder => $pessoas
+                            ->where('status', Pessoa::STATUS_ATIVO)
+                            ->where(function (Builder $comCargo): void {
+                                $comCargo
+                                    ->whereHas('professores', fn (Builder $professores): Builder => $professores->where('ativo', true))
+                                    ->orWhereHas('vinculosAtivos', fn (Builder $vinculos): Builder => $vinculos
+                                        ->whereHas('funcaoAdministrativa', fn (Builder $cargos): Builder => $cargos
+                                            ->where('codigo', '<>', Pessoa::CARGO_PENDENTE_CODIGO)));
+                            }),
+                        '=',
+                        1,
+                    );
+            });
     }
 
     public function hasPermissionTo($permission, $guardName = null): bool
