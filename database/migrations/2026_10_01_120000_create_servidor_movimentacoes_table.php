@@ -9,8 +9,12 @@ return new class extends Migration
 {
     public function up(): void
     {
-        foreach (['servidores', 'users'] as $table) {
-            $this->garantirChavePrimariaId($table);
+        foreach ([
+            'servidores' => 'BIGINT UNSIGNED',
+            'users' => 'BIGINT UNSIGNED',
+            'migrations' => 'INT UNSIGNED',
+        ] as $table => $idType) {
+            $this->garantirChavePrimariaId($table, $idType);
         }
 
         $this->removerTabelaParcialVazia();
@@ -31,7 +35,7 @@ return new class extends Migration
         Schema::dropIfExists('servidor_movimentacoes');
     }
 
-    private function garantirChavePrimariaId(string $table): void
+    private function garantirChavePrimariaId(string $table, string $idType): void
     {
         if (! Schema::hasTable($table)) {
             return;
@@ -59,7 +63,7 @@ return new class extends Migration
             throw new RuntimeException("Não foi possível restaurar a chave primária de {$table}: existem IDs ausentes ou duplicados.");
         }
 
-        DB::statement("ALTER TABLE `{$table}` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, ADD PRIMARY KEY (`id`)");
+        DB::statement("ALTER TABLE `{$table}` MODIFY `id` {$idType} NOT NULL AUTO_INCREMENT, ADD PRIMARY KEY (`id`)");
     }
 
     private function removerTabelaParcialVazia(): void
