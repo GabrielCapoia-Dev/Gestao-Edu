@@ -91,13 +91,36 @@ class ListSaldosEleitorais extends ListRecords
     public function getTabs(): array
     {
         $base = $this->getTableQuery();
+        $badgeCounts = null;
+        $getBadgeCounts = function () use ($base, &$badgeCounts): array {
+            if ($badgeCounts !== null) {
+                return $badgeCounts;
+            }
+
+            $counts = (clone $base)
+                ->where('status', SaldoEleitoral::STATUS_PENDENTE)
+                ->whereIn('tipo', [
+                    SaldoEleitoral::TIPO_ADICAO,
+                    SaldoEleitoral::TIPO_USO,
+                    SaldoEleitoral::TIPO_ESTORNO,
+                ])
+                ->selectRaw('tipo, COUNT(*) AS total')
+                ->groupBy('tipo')
+                ->pluck('total', 'tipo');
+
+            return $badgeCounts = [
+                'adicao' => (int) $counts->get(SaldoEleitoral::TIPO_ADICAO, 0),
+                'uso' => (int) $counts->get(SaldoEleitoral::TIPO_USO, 0)
+                    + (int) $counts->get(SaldoEleitoral::TIPO_ESTORNO, 0),
+            ];
+        };
 
         return [
             'adicao' => Tab::make('Adição de saldo')
-                ->badge(fn (): int => (clone $base)->where('tipo', SaldoEleitoral::TIPO_ADICAO)->where('status', SaldoEleitoral::STATUS_PENDENTE)->count())
+                ->badge(fn (): int => $getBadgeCounts()['adicao'])
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('tipo', SaldoEleitoral::TIPO_ADICAO)),
             'uso' => Tab::make('Uso do saldo')
-                ->badge(fn (): int => (clone $base)->whereIn('tipo', [SaldoEleitoral::TIPO_USO, SaldoEleitoral::TIPO_ESTORNO])->where('status', SaldoEleitoral::STATUS_PENDENTE)->count())
+                ->badge(fn (): int => $getBadgeCounts()['uso'])
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query->whereIn('tipo', [SaldoEleitoral::TIPO_USO, SaldoEleitoral::TIPO_ESTORNO])),
         ];
     }

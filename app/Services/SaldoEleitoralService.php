@@ -158,7 +158,7 @@ class SaldoEleitoralService
                 'decidido_em' => now(),
             ])->save();
 
-            return $registro->refresh();
+            return $registro;
         });
     }
 

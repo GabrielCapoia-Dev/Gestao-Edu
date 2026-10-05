@@ -65,7 +65,9 @@ class SaldoEleitoralServiceTest extends TestCase
         $pedido = $service->solicitar($servidor, $solicitante, SaldoEleitoral::TIPO_ADICAO, 9);
 
         $this->assertSame(0, $service->saldoAprovado($servidor));
-        $service->decidir($pedido, $rh, true);
+        $decidido = $service->decidir($pedido, $rh, true);
+
+        $this->assertSame(SaldoEleitoral::STATUS_APROVADO, $decidido->status);
         $this->assertSame(9, $service->saldoAprovado($servidor));
     }
 
