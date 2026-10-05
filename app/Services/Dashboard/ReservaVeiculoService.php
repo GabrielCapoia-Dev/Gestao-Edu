@@ -232,6 +232,9 @@ class ReservaVeiculoService
     {
         $dados['repeticao'] ??= ! empty($dados['reservar_varios_dias']) ? 'diaria' : 'nenhuma';
         $dados['fim_repeticao'] ??= 'data';
+        if ($dados['repeticao'] === 'diaria') {
+            $dados['fim_repeticao'] = 'data';
+        }
 
         if (! array_key_exists('escola_ids', $dados) && array_key_exists('escola_id', $dados)) {
             $dados['escola_ids'] = $dados['escola_id'] ? [$dados['escola_id']] : null;
@@ -361,9 +364,10 @@ class ReservaVeiculoService
             ]);
         }
         $repeticao = $dados['repeticao'] ?? 'nenhuma';
+        $fimRepeticao = $repeticao === 'diaria' ? 'data' : ($dados['fim_repeticao'] ?? 'data');
         $fim = $repeticao === 'nenhuma'
             ? $inicio
-            : (($dados['fim_repeticao'] ?? 'data') === 'ocorrencias'
+            : ($fimRepeticao === 'ocorrencias'
                 ? $inicio->addYears(10)
                 : CarbonImmutable::createFromFormat('!Y-m-d', $dados['data_final'] ?? '', $timezone));
 
@@ -378,7 +382,7 @@ class ReservaVeiculoService
         }
 
         $datas = [];
-        $maximo = ($dados['fim_repeticao'] ?? 'data') === 'ocorrencias'
+        $maximo = $fimRepeticao === 'ocorrencias'
             ? (int) ($dados['quantidade_ocorrencias'] ?? 0)
             : 366;
         if ($maximo < 1 || $maximo > 366) {
@@ -407,18 +411,18 @@ class ReservaVeiculoService
         for ($data = $inicio; $data->lte($limite); $data = $data->addDay()) {
             if ($this->ocorreNaData($data, $inicio, $repeticao, $unidade, $intervalo, $dias)) {
                 $datas[] = $data->toDateString();
-                if (($dados['fim_repeticao'] ?? 'data') === 'data' && count($datas) > 366) {
+                if ($fimRepeticao === 'data' && count($datas) > 366) {
                     throw ValidationException::withMessages([
                         'data_final' => 'A série pode conter no máximo 366 ocorrências. Reduza o intervalo ou o período.',
                     ]);
                 }
-                if (($dados['fim_repeticao'] ?? 'data') === 'ocorrencias' && count($datas) >= $maximo) {
+                if ($fimRepeticao === 'ocorrencias' && count($datas) >= $maximo) {
                     break;
                 }
             }
         }
 
-        if ($datas === [] || (($dados['fim_repeticao'] ?? 'data') === 'ocorrencias' && count($datas) < $maximo)) {
+        if ($datas === [] || ($fimRepeticao === 'ocorrencias' && count($datas) < $maximo)) {
             throw ValidationException::withMessages([
                 'quantidade_ocorrencias' => 'Não foi possível concluir essa repetição dentro do limite máximo de 10 anos.',
             ]);

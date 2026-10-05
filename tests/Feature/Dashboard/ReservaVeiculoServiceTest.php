@@ -125,20 +125,40 @@ class ReservaVeiculoServiceTest extends TestCase
         $this->assertCount(1, $reservas->pluck('grupo_recorrencia')->unique());
     }
 
-    public function test_repeticao_por_quantidade_reserva_exatamente_o_numero_de_ocorrencias(): void
+    public function test_todos_os_dias_usa_intervalo_e_ignora_configuracao_antiga_de_ocorrencias(): void
     {
         $inicio = today()->addDays(2);
         $reservas = $this->service->criarEmLote($this->usuario, $this->dados([
             'data_inicial' => $inicio->toDateString(),
-            'data_final' => null,
+            'data_final' => $inicio->copy()->addDays(3)->toDateString(),
             'repeticao' => 'diaria',
+            'fim_repeticao' => 'ocorrencias',
+            'quantidade_ocorrencias' => null,
+        ]));
+
+        $this->assertCount(4, $reservas);
+        $this->assertSame(
+            $inicio->copy()->addDays(3)->toDateString(),
+            $reservas->last()->data_inicio->toDateString(),
+        );
+    }
+
+    public function test_repeticao_personalizada_pode_terminar_por_numero_de_ocorrencias(): void
+    {
+        $inicio = today()->next(Carbon::MONDAY);
+        $reservas = $this->service->criarEmLote($this->usuario, $this->dados([
+            'data_inicial' => $inicio->toDateString(),
+            'data_final' => null,
+            'repeticao' => 'personalizada',
+            'unidade_repeticao' => 'semana',
+            'dias_semana' => [$inicio->dayOfWeekIso],
             'fim_repeticao' => 'ocorrencias',
             'quantidade_ocorrencias' => 4,
         ]));
 
         $this->assertCount(4, $reservas);
         $this->assertSame(
-            $inicio->copy()->addDays(3)->toDateString(),
+            $inicio->copy()->addWeeks(3)->toDateString(),
             $reservas->last()->data_inicio->toDateString(),
         );
     }

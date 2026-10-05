@@ -92,12 +92,14 @@ final class ReservaVeiculoForm
                         ->columnSpan(fn (Get $get): int => $get('repeticao') !== 'nenhuma' ? 1 : 2),
 
                     DatePicker::make('data_final')
-                        ->label('Repetir até')
-                        ->required(fn (Get $get): bool => $get('repeticao') !== 'nenhuma' && $get('fim_repeticao') === 'data')
+                        ->label(fn (Get $get): string => $get('repeticao') === 'diaria' ? 'Data final' : 'Repetir até')
+                        ->required(fn (Get $get): bool => $get('repeticao') === 'diaria'
+                            || ($get('repeticao') !== 'nenhuma' && $get('fim_repeticao') === 'data'))
                         ->minDate(fn (Get $get): mixed => $get('data_inicial') ?: today())
                         ->native()
                         ->displayFormat('d/m/Y')
-                        ->visible(fn (Get $get): bool => $get('repeticao') !== 'nenhuma' && $get('fim_repeticao') === 'data')
+                        ->visible(fn (Get $get): bool => $get('repeticao') === 'diaria'
+                            || ($get('repeticao') !== 'nenhuma' && $get('fim_repeticao') === 'data'))
                         ->live(),
 
                     Radio::make('fim_repeticao')
@@ -106,7 +108,7 @@ final class ReservaVeiculoForm
                         ->default('data')
                         ->inline()
                         ->live()
-                        ->visible(fn (Get $get): bool => $get('repeticao') !== 'nenhuma')
+                        ->visible(fn (Get $get): bool => ! in_array($get('repeticao'), ['nenhuma', 'diaria'], true))
                         ->columnSpanFull(),
 
                     TextInput::make('quantidade_ocorrencias')
@@ -116,8 +118,10 @@ final class ReservaVeiculoForm
                         ->minValue(1)
                         ->maxValue(366)
                         ->helperText('A série pode ter até 366 ocorrências e terminar em até 10 anos.')
-                        ->visible(fn (Get $get): bool => $get('repeticao') !== 'nenhuma' && $get('fim_repeticao') === 'ocorrencias')
-                        ->required(fn (Get $get): bool => $get('repeticao') !== 'nenhuma' && $get('fim_repeticao') === 'ocorrencias'),
+                        ->visible(fn (Get $get): bool => ! in_array($get('repeticao'), ['nenhuma', 'diaria'], true)
+                            && $get('fim_repeticao') === 'ocorrencias')
+                        ->required(fn (Get $get): bool => ! in_array($get('repeticao'), ['nenhuma', 'diaria'], true)
+                            && $get('fim_repeticao') === 'ocorrencias'),
 
                     TimePicker::make('hora_inicio')
                         ->label('Horário inicial')
@@ -149,7 +153,8 @@ final class ReservaVeiculoForm
                             ->veiculosDisponiveis(
                                 $usuario,
                                 $get('data_inicial'),
-                                $get('repeticao') !== 'nenhuma' && $get('fim_repeticao') === 'data'
+                                $get('repeticao') === 'diaria'
+                                    || ($get('repeticao') !== 'nenhuma' && $get('fim_repeticao') === 'data')
                                     ? $get('data_final')
                                     : $get('data_inicial'),
                                 $get('hora_inicio'),
@@ -160,7 +165,7 @@ final class ReservaVeiculoForm
                                     'repetir_a_cada' => $get('repetir_a_cada') ?? 1,
                                     'unidade_repeticao' => $get('unidade_repeticao'),
                                     'dias_semana' => $get('dias_semana') ?? [],
-                                    'fim_repeticao' => $get('fim_repeticao') ?? 'data',
+                                    'fim_repeticao' => $get('repeticao') === 'diaria' ? 'data' : ($get('fim_repeticao') ?? 'data'),
                                     'quantidade_ocorrencias' => $get('quantidade_ocorrencias'),
                                 ],
                             ))
