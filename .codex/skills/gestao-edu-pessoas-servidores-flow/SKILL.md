@@ -25,6 +25,7 @@ Preservar a identidade unica da pessoa e seus vinculos funcionais sem duplicar r
 - Somente Professor pode ter `jornada`; cargos administrativos usam matrículas funcionais comuns. Uma pessoa pode ter até duas matrículas nos turnos manhã+tarde, ou uma matrícula integral (40h).
 - Para um cargo funcional novo, sincronizar `FuncaoAdministrativa`, role/preset, criação/edição da Pessoa, formulários Filament e Livewire, filtro de cargo, acesso de leitura/escrita e o fluxo de reconciliação de roles. Cargo RH não recebe vínculo escolar.
 - RH autorizado a gerenciar vínculos estruturais pode associar escolas ao cadastro de Assessoria Pedagógica; essa associação é informativa e não deve ser usada como escopo de leitura do assessor.
+- Assessoria Pedagógica e RH com consulta a toda a rede podem usar todos os filtros de cargo na listagem de servidores. Isso é somente leitura: não concede `Gerenciar Vínculos Estruturais de Pessoas` nem libera ações de edição de cargos.
 - Separar identidade, vinculo funcional e credencial de acesso.
 - Tratar normalizacao e backfill como operacoes idempotentes e auditaveis.
 - Confirmar impacto em equipe gestora, professor, manutencao e obras antes de excluir vinculo.

@@ -118,6 +118,16 @@ class ServidorResource extends Resource
         return $options;
     }
 
+    public static function usuarioPodeFiltrarTodosOsCargos(): bool
+    {
+        $user = Auth::user();
+        $scope = app(PessoaScopeService::class);
+
+        return ServidorEquipeGestoraForm::usuarioPodeAdministrar()
+            || $scope->hasGlobalAccess($user)
+            || $scope->podeConsultarTodaRede($user);
+    }
+
     public static function usuarioPodeGerenciarEstrutura(?Servidor $record = null): bool
     {
         return $record

@@ -3,7 +3,6 @@
 namespace App\Livewire\Pessoas;
 
 use App\Filament\Admin\Resources\Servidores\ServidorResource;
-use App\Filament\Admin\Resources\Servidores\Schemas\ServidorEquipeGestoraForm;
 use App\Models\PessoaMatricula;
 use App\Models\ProfessorComponenteSolicitacao;
 use App\Models\Role;
@@ -71,14 +70,17 @@ class ServidoresTable extends Component implements HasForms
         $this->opcoesCargos = [
             ServidorResource::CARGO_PROFESSOR => 'Professor',
         ];
-        if (ServidorEquipeGestoraForm::usuarioPodeAdministrar()) {
+        if (ServidorResource::usuarioPodeFiltrarTodosOsCargos()) {
             $this->opcoesCargos += [
                 'diretor' => 'Diretor',
                 'coordenador' => 'Coordenador',
                 'secretario' => 'Secretário',
                 ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA => 'Assessoria Pedagógica',
+                ServidorResource::CARGO_RH => 'RH',
                 ServidorResource::CARGO_MANUTENCAO => 'Manutenção',
                 ServidorResource::CARGO_OBRAS => 'Obras',
+                ServidorResource::CARGO_MOTORISTA => 'Motorista',
+                ServidorResource::CARGO_TRANSPORTE => 'Transporte',
                 'sem_cargo' => 'Sem cargo ativo',
             ];
         }

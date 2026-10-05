@@ -107,6 +107,49 @@ class PessoaHubFilamentTest extends TestCase
             ->assertSee($semProfessor->nome);
     }
 
+    public function test_assessoria_pedagogica_pode_filtrar_todos_os_cargos_sem_permissao_estrutural(): void
+    {
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo($this->garantirPermissao('Listar Pessoas'));
+
+        $setor = $this->criarSetor('Setor da Assessoria no filtro');
+        $escola = $this->criarEscola('Escola da Assessoria no filtro', $setor);
+        $assessoria = $this->criarServidor('Assessoria que filtra a rede', $escola, $setor, $usuario->id);
+        ServidorFuncaoAdministrativa::query()->create([
+            'servidor_id' => $assessoria->id,
+            'funcao_administrativa_id' => FuncaoAdministrativa::assessoriaPedagogicaPadrao()->id,
+            'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+            'origem' => 'teste',
+            'data_inicio' => now()->toDateString(),
+        ]);
+
+        $manutencao = $this->criarServidor('Servidor da Manutenção para filtrar', $escola, $setor);
+        ServidorFuncaoAdministrativa::query()->create([
+            'servidor_id' => $manutencao->id,
+            'funcao_administrativa_id' => FuncaoAdministrativa::manutencaoPadrao()->id,
+            'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+            'origem' => 'teste',
+            'data_inicio' => now()->toDateString(),
+        ]);
+
+        $this->actingAs($usuario);
+        $this->assertFalse(ServidorEquipeGestoraForm::usuarioPodeAdministrar());
+        $this->assertTrue(ServidorResource::usuarioPodeFiltrarTodosOsCargos());
+
+        Livewire::actingAs($usuario)
+            ->test(ServidoresTable::class)
+            ->assertOk()
+            ->assertSet('opcoesCargos.'.ServidorResource::CARGO_MANUTENCAO, 'Manutenção')
+            ->assertSet('opcoesCargos.'.ServidorResource::CARGO_RH, 'RH')
+            ->set('filtrosFormData.cargo', [ServidorResource::CARGO_MANUTENCAO])
+            ->call('aplicarFiltros')
+            ->assertSee($manutencao->nome)
+            ->assertDontSee($assessoria->nome);
+    }
+
     public function test_componente_livewire_de_servidores_renderiza_filtros_colunas_e_paginacao_proprios(): void
     {
         $usuario = $this->usuarioComPermissaoListar();
