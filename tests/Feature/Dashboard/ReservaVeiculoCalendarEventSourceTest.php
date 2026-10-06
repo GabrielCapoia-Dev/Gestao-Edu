@@ -12,6 +12,7 @@ use App\Models\VeiculoTransporte;
 use App\Services\Dashboard\Calendar\Sources\ReservaVeiculoCalendarEventSource;
 use App\Support\Dashboard\Calendar\CalendarQueryContext;
 use App\Support\Dashboard\DashboardUserContext;
+use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\PermissionRegistrar;
@@ -20,6 +21,14 @@ use Tests\TestCase;
 class ReservaVeiculoCalendarEventSourceTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        CarbonImmutable::setTestNow();
+
+        parent::tearDown();
+    }
 
     public function test_reserva_de_escola_aparece_para_a_unidade_e_outro_local_fica_fora_do_escopo_local(): void
     {
@@ -138,6 +147,36 @@ class ReservaVeiculoCalendarEventSourceTest extends TestCase
         $this->assertSame('Reserva concluída', $eventos->first()->resumo);
         $this->assertSame(ReservaVeiculoStatus::CONCLUIDA->value, $eventos->first()->status);
         $this->assertSame(ReservaVeiculoStatus::CONCLUIDA->label(), $eventos->first()->statusLabel);
+    }
+
+    public function test_agenda_nao_atualiza_o_banco_e_mapeia_reserva_iniciada_como_concluida(): void
+    {
+        Carbon::setTestNow('2026-07-29 09:00:00');
+        CarbonImmutable::setTestNow('2026-07-29 09:00:00');
+
+        $usuario = User::factory()->create();
+        $veiculo = VeiculoTransporte::query()->create([
+            'placa' => 'PER1F23',
+            'identificacao' => 'Veículo Performance',
+            'capacidade_passageiros' => 5,
+            'ativo' => true,
+        ]);
+        $reserva = $this->reserva($usuario, $veiculo, null, 'Atividade em andamento', 'Secretaria', '08:00', '10:00');
+        $contexto = new CalendarQueryContext(
+            user: $usuario,
+            userContext: $this->contextoUsuario($usuario),
+            inicio: CarbonImmutable::parse('2026-07-29 00:00:00'),
+            fim: CarbonImmutable::parse('2026-07-29 23:59:59'),
+        );
+
+        $evento = collect(app(ReservaVeiculoCalendarEventSource::class)->events($contexto))->first();
+
+        $this->assertSame(ReservaVeiculoStatus::CONCLUIDA->value, $evento?->status);
+        $this->assertSame(ReservaVeiculoStatus::CONCLUIDA->label(), $evento?->statusLabel);
+        $this->assertDatabaseHas('reservas_veiculos', [
+            'id' => $reserva->id,
+            'status' => ReservaVeiculoStatus::ATIVA->value,
+        ]);
     }
 
     private function reserva(

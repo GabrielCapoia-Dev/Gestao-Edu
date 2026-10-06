@@ -27,8 +27,6 @@ class ReservaVeiculoCalendarEventSource implements CalendarEventSource
 
     public function events(CalendarQueryContext $context): iterable
     {
-        ReservaVeiculo::concluirExpiradas();
-
         $reservas = $this->visibleQuery($context)
             ->where('data_inicio', '<=', $context->fim)
             ->where('data_fim', '>=', $context->inicio)
@@ -109,6 +107,10 @@ class ReservaVeiculoCalendarEventSource implements CalendarEventSource
         CalendarQueryContext $context,
         ReservaVeiculo $reserva,
     ): CalendarEventData {
+        $status = $reserva->status === ReservaVeiculoStatus::ATIVA && $reserva->data_inicio->lte(now())
+            ? ReservaVeiculoStatus::CONCLUIDA
+            : $reserva->status;
+
         return new CalendarEventData(
             id: $this->key().':'.$reserva->id,
             source: $this->key(),
@@ -121,8 +123,8 @@ class ReservaVeiculoCalendarEventSource implements CalendarEventSource
             categoria: 'veiculos',
             categoriaLabel: 'Veículo',
             assunto: $reserva->atividade,
-            status: $reserva->status->value,
-            statusLabel: $reserva->status->label(),
+            status: $status->value,
+            statusLabel: $status->label(),
             prioridade: DashboardPrioridade::Normal,
             progresso: null,
             cor: 'azul',
