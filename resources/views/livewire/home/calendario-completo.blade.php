@@ -119,7 +119,11 @@
                             <div class="full-calendar__events">
                                 @forelse ($day['events'] as $event)
                                     <article
-                                        class="full-calendar__event color-{{ $event->cor }}"
+                                        @class([
+                                            'full-calendar__event',
+                                            'color-'.$event->cor,
+                                            'is-own-reservation' => $event->source === 'reservas_veiculos' && $event->reservadaPeloUsuario,
+                                        ])
                                         @style(["--agenda-event-color: {$event->corDestaque}" => filled($event->corDestaque)])
                                         title="{{ $event->resumo ?: $event->titulo }}"
                                         @if ($event->source === 'manual')

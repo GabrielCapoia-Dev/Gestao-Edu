@@ -499,6 +499,16 @@
     transform: translateY(-2px) scale(1.012);
 }
 
+.home-agenda__event.is-own-reservation,
+.home-agenda__event.is-own-reservation.is-open,
+.home-agenda__event.is-own-reservation .home-agenda__event-detail {
+    background: #edf8ef;
+}
+
+.home-agenda__event.is-own-reservation {
+    border-left-color: #43a66b;
+}
+
 .home-agenda__event-toggle:focus-visible {
     outline: 2px solid #a2c7ef;
     outline-offset: -2px;
@@ -7545,6 +7555,11 @@ html.dark {
     border-radius: .45rem;
     background: #f5f7fb;
     color: #34425b;
+}
+
+.full-calendar__event.is-own-reservation {
+    border-left-color: #43a66b;
+    background: #edf8ef;
 }
 
 .full-calendar .color-verde {

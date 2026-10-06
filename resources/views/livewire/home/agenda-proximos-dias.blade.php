@@ -87,7 +87,11 @@
                             @forelse ($day['events'] as $event)
                                 @php($eventDomId = 'agenda-evento-'.md5($day['date']->toDateString().'-'.$event->id))
                                 <article
-                                    class="home-agenda__event color-{{ $event->cor }}"
+                                    @class([
+                                        'home-agenda__event',
+                                        'color-'.$event->cor,
+                                        'is-own-reservation' => $event->source === 'reservas_veiculos' && $event->reservadaPeloUsuario,
+                                    ])
                                     @style(["--agenda-event-color: {$event->corDestaque}" => filled($event->corDestaque)])
                                     wire:key="agenda-{{ $day['date']->toDateString() }}-{{ $event->id }}"
                                     x-data="{ aberto: false }"

@@ -68,6 +68,31 @@ class ReservaVeiculoCalendarEventSourceTest extends TestCase
         $this->assertSame('Visita à escola', $eventos->first()->resumo);
         $this->assertSame('#A855F7', $eventos->first()->corDestaque);
         $this->assertSame($criador->name, $eventos->first()->solicitante);
+        $this->assertFalse($eventos->first()->reservadaPeloUsuario);
+    }
+
+    public function test_reserva_indica_se_foi_criada_pelo_usuario_efetivo_do_contexto(): void
+    {
+        $usuario = User::factory()->create();
+        $veiculo = VeiculoTransporte::query()->create([
+            'placa' => 'OWN1R23',
+            'identificacao' => 'Veículo Próprio',
+            'capacidade_passageiros' => 5,
+            'ativo' => true,
+        ]);
+        $this->reserva($usuario, $veiculo, null, 'Reserva própria', 'Secretaria');
+
+        $contexto = new CalendarQueryContext(
+            user: $usuario,
+            userContext: $this->contextoUsuario($usuario),
+            inicio: CarbonImmutable::parse('2026-07-29 00:00:00'),
+            fim: CarbonImmutable::parse('2026-07-29 23:59:59'),
+        );
+
+        $evento = collect(app(ReservaVeiculoCalendarEventSource::class)->events($contexto))->first();
+
+        $this->assertTrue($evento?->reservadaPeloUsuario);
+        $this->assertTrue($evento?->toArray()['reservada_pelo_usuario']);
     }
 
     public function test_filtro_de_veiculos_exibe_todas_as_reservas_para_usuario_autorizado(): void

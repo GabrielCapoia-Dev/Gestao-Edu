@@ -140,6 +140,7 @@ class ReservaVeiculoCalendarEventSource implements CalendarEventSource
             local: $reserva->local_nome,
             corDestaque: $reserva->veiculo?->cor,
             solicitante: $reserva->usuario?->name,
+            reservadaPeloUsuario: (int) $reserva->usuario_id === (int) $context->user->getKey(),
         );
     }
 

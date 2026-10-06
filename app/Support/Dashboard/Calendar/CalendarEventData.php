@@ -40,6 +40,7 @@ final readonly class CalendarEventData
         public ?int $escolasCount = null,
         public ?int $turmasCount = null,
         public ?int $alunosCount = null,
+        public bool $reservadaPeloUsuario = false,
     ) {}
 
     public function precisaTransporte(): bool
@@ -83,6 +84,7 @@ final readonly class CalendarEventData
             'escolas_count' => $this->escolasCount,
             'turmas_count' => $this->turmasCount,
             'alunos_count' => $this->alunosCount,
+            'reservada_pelo_usuario' => $this->reservadaPeloUsuario,
         ];
     }
 }
