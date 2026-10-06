@@ -98,6 +98,7 @@ class CalendarioCompleto extends Component
 
         try {
             $result = $this->carregarEventos($user, $inicio, $fim, $this->escopoAgenda);
+            $eventosPorDia = $this->indexarEventosPorDia($inicio, $fim, $result->events);
 
             if ($this->visualizacao === 'ano') {
                 for ($month = $inicio->startOfMonth(); $month->lte($fim); $month = $month->addMonth()) {
@@ -105,11 +106,11 @@ class CalendarioCompleto extends Component
                     $months[] = [
                         'date' => $month,
                         'offset' => $month->dayOfWeekIso - 1,
-                        'days' => $this->montarDias($month, $monthEnd, $result->events),
+                        'days' => $this->montarDias($month, $monthEnd, $eventosPorDia),
                     ];
                 }
             } else {
-                $days = $this->montarDias($inicio, $fim, $result->events);
+                $days = $this->montarDias($inicio, $fim, $eventosPorDia);
             }
         } catch (\Throwable $exception) {
             report($exception);
@@ -276,30 +277,50 @@ class CalendarioCompleto extends Component
     }
 
     /**
-     * @param  list<CalendarEventData>  $events
+     * @param  array<string, list<CalendarEventData>>  $eventosPorDia
      * @return list<array{date: CarbonImmutable, events: list<CalendarEventData>}>
      */
     private function montarDias(
         CarbonImmutable $inicio,
         CarbonImmutable $fim,
-        array $events,
+        array $eventosPorDia,
     ): array {
         $days = [];
 
         for ($date = $inicio->startOfDay(); $date->lte($fim); $date = $date->addDay()) {
-            $dayStart = $date->startOfDay();
-            $dayEnd = $date->endOfDay();
             $days[] = [
                 'date' => $date,
-                'events' => array_values(array_filter(
-                    $events,
-                    static fn (CalendarEventData $event): bool => $event->inicio->lte($dayEnd)
-                        && $event->fim->gte($dayStart),
-                )),
+                'events' => $eventosPorDia[$date->toDateString()] ?? [],
             ];
         }
 
         return $days;
+    }
+
+    /**
+     * Indexa uma vez os eventos por dia para evitar revarrer todo o calendário a cada célula,
+     * especialmente na visualização anual.
+     *
+     * @param  list<CalendarEventData>  $events
+     * @return array<string, list<CalendarEventData>>
+     */
+    private function indexarEventosPorDia(
+        CarbonImmutable $inicio,
+        CarbonImmutable $fim,
+        array $events,
+    ): array {
+        $eventosPorDia = [];
+
+        foreach ($events as $event) {
+            $primeiroDia = $event->inicio->startOfDay()->max($inicio->startOfDay());
+            $ultimoDia = $event->fim->startOfDay()->min($fim->startOfDay());
+
+            for ($dia = $primeiroDia; $dia->lte($ultimoDia); $dia = $dia->addDay()) {
+                $eventosPorDia[$dia->toDateString()][] = $event;
+            }
+        }
+
+        return $eventosPorDia;
     }
 
     private function referenciaValida(): CarbonImmutable

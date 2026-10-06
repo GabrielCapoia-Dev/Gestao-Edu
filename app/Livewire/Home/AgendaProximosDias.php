@@ -101,56 +101,65 @@ class AgendaProximosDias extends Component
     {
         $context = $this->makeContext($this->escopoAgenda);
         $result = null;
-        $tabsAgenda = [];
+        $abasAgenda = [];
         $podeCriarEvento = false;
         $podeVisualizarVeiculos = false;
 
         if ($context) {
             try {
                 $aggregator = app(CalendarEventAggregator::class);
-                $resultadoPessoal = $aggregator->aggregate($this->contextoObrigatorio('pessoal'));
                 $ehMembroDaManutencao = app(PedidoService::class)->ehMembroDaManutencao($context->user);
-                $resultados = [
-                    'pessoal' => $this->filtrarResultadoPor(
-                        $resultadoPessoal,
-                        static fn ($evento): bool => ! in_array($evento->categoria, self::CATEGORIAS_MANUTENCAO, true),
-                    ),
-                    'transporte' => $this->filtrarResultadoPor(
-                        $resultadoPessoal,
-                        static fn ($evento): bool => $evento->precisaTransporte(),
-                    ),
-                    'manutencao' => $ehMembroDaManutencao
-                        ? $aggregator->aggregate($this->contextoObrigatorio('manutencao'))
-                        : $this->filtrarResultado($resultadoPessoal, self::CATEGORIAS_MANUTENCAO),
-                    'pedagogico' => $this->filtrarResultado($resultadoPessoal, self::CATEGORIAS_PEDAGOGICAS),
-                ];
+                $abasAgenda = $this->montarAbas($context->user);
+                $escopoAgendaAtivo = collect($abasAgenda)->contains(
+                    fn (array $aba): bool => $aba['key'] === $this->escopoAgenda,
+                ) ? $this->escopoAgenda : ($abasAgenda[0]['key'] ?? 'pessoal');
+                $this->escopoAgenda = $escopoAgendaAtivo;
 
-                if ($this->podeVisualizarRede($context->user)) {
+                // Carrega apenas a fonte necessária para a aba atual. Antes, a renderização
+                // consultava também rede, veículos, manutenção e avaliação em toda interação.
+                if ($escopoAgendaAtivo === 'rede') {
                     $resultadoRede = $this->filtrarResultadoPor(
                         $aggregator->aggregate($this->contextoObrigatorio('rede')),
                         static fn ($evento): bool => ! in_array($evento->categoria, self::CATEGORIAS_MANUTENCAO, true),
                     );
+                    $resultadoPessoal = $aggregator->aggregate($this->contextoObrigatorio('pessoal'));
                     $idsPessoais = collect($resultadoPessoal->events)->pluck('id')->flip();
-                    $resultados['rede'] = $this->filtrarResultadoPor(
+                    $result = $this->filtrarResultadoPor(
                         $resultadoRede,
                         static fn ($evento): bool => ! $idsPessoais->has($evento->id),
+                        $resultadoPessoal,
                     );
-                }
-
-                if ($this->podeVisualizarVeiculos($context->user)) {
+                } elseif ($escopoAgendaAtivo === 'veiculos') {
                     $podeVisualizarVeiculos = true;
-                    $resultados['veiculos'] = $aggregator->aggregate($this->contextoObrigatorio('veiculos'));
+                    $result = $aggregator->aggregate($this->contextoObrigatorio('veiculos'));
+                } elseif ($escopoAgendaAtivo === 'manutencao' && $ehMembroDaManutencao) {
+                    $result = $aggregator->aggregate($this->contextoObrigatorio('manutencao'));
+                } else {
+                    $resultadoPessoal = $aggregator->aggregate($this->contextoObrigatorio('pessoal'));
+                    $result = match ($escopoAgendaAtivo) {
+                        'pessoal' => $this->filtrarResultadoPor(
+                            $resultadoPessoal,
+                            static fn ($evento): bool => ! in_array($evento->categoria, self::CATEGORIAS_MANUTENCAO, true),
+                        ),
+                        'transporte' => $this->filtrarResultadoPor(
+                            $resultadoPessoal,
+                            static fn ($evento): bool => $evento->precisaTransporte(),
+                        ),
+                        'manutencao' => $this->filtrarResultado($resultadoPessoal, self::CATEGORIAS_MANUTENCAO),
+                        'pedagogico' => $this->filtrarResultado($resultadoPessoal, self::CATEGORIAS_PEDAGOGICAS),
+                        default => $resultadoPessoal,
+                    };
                 }
 
+                $contagemEscopoAtivo = count($result->events);
+                $abasAgenda = array_map(
+                    static fn (array $aba): array => [
+                        ...$aba,
+                        'count' => $aba['key'] === $escopoAgendaAtivo ? $contagemEscopoAtivo : null,
+                    ],
+                    $abasAgenda,
+                );
                 $podeCriarEvento = Gate::forUser($context->user)->allows('create', EventoCalendario::class);
-
-                $tabsAgenda = $this->montarAbas($context->user, $resultados);
-                $escopoAgendaAtivo = collect($tabsAgenda)->contains(
-                    fn (array $aba): bool => $aba['key'] === $this->escopoAgenda,
-                )
-                    ? $this->escopoAgenda
-                    : ($tabsAgenda[0]['key'] ?? 'pessoal');
-                $result = $resultados[$escopoAgendaAtivo] ?? $resultadoPessoal;
             } catch (\Throwable $exception) {
                 report($exception);
                 $this->erro = 'Não foi possível carregar a agenda agora. Tente novamente.';
@@ -183,7 +192,7 @@ class AgendaProximosDias extends Component
             'sourceErrors' => $result?->errors ?? [],
             'truncated' => $result?->truncated ?? false,
             'periodOptions' => $this->periodOptions(),
-            'tabsAgenda' => $tabsAgenda,
+            'tabsAgenda' => $abasAgenda,
             'escopoAgendaAtivo' => $escopoAgendaAtivo ?? $this->escopoAgenda,
             'podeCriarEvento' => $podeCriarEvento,
             'podeVisualizarVeiculos' => $podeVisualizarVeiculos,
@@ -221,8 +230,7 @@ class AgendaProximosDias extends Component
                 redeCompleta: $escopo === 'rede',
                 somenteReservasVeiculos: $escopo === 'veiculos',
                 somenteNaoEncerrados: true,
-                ignorarPedidosManutencao: $escopo === 'rede'
-                    || ($escopo === 'pessoal' && app(PedidoService::class)->ehMembroDaManutencao($user)),
+                ignorarPedidosManutencao: in_array($escopo, ['rede', 'pessoal'], true),
             );
         } catch (\Throwable $exception) {
             $this->erro = $exception instanceof InvalidArgumentException
@@ -294,10 +302,9 @@ class AgendaProximosDias extends Component
     }
 
     /**
-     * @param  array<string, CalendarAggregationResult>  $resultados
-     * @return list<array{key: string, label: string, count: int}>
+     * @return list<array{key: string, label: string}>
      */
-    private function montarAbas(User $user, array $resultados): array
+    private function montarAbas(User $user): array
     {
         $ehMembroDaManutencao = app(PedidoService::class)->ehMembroDaManutencao($user);
         $abas = $ehMembroDaManutencao
@@ -320,12 +327,6 @@ class AgendaProximosDias extends Component
 
         $abas[] = ['key' => 'pedagogico', 'label' => 'Pedagógico'];
 
-        return array_values(array_filter(array_map(
-            static fn (array $aba): array => [
-                ...$aba,
-                'count' => count(($resultados[$aba['key']] ?? null)?->events ?? []),
-            ],
-            $abas,
-        ), static fn (array $aba): bool => $aba['count'] > 0));
+        return $abas;
     }
 }

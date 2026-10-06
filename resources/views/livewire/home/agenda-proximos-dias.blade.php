@@ -10,7 +10,6 @@
             @if (($tabsAgenda ?? []) !== [])
                 <div class="home-agenda__scope" role="tablist" aria-label="Escopo da agenda">
                     @foreach ($tabsAgenda as $aba)
-                        @continue(($aba['count'] ?? 0) < 1)
                         <button
                             type="button"
                             role="tab"
@@ -19,9 +18,11 @@
                             wire:click="definirEscopo('{{ $aba['key'] }}')"
                         >
                             <span>{{ $aba['label'] }}</span>
-                            <span class="home-agenda__scope-count" aria-label="{{ $aba['count'] }} evento(s)">
-                                {{ $aba['count'] > 99 ? '99+' : $aba['count'] }}
-                            </span>
+                            @if (isset($aba['count']))
+                                <span class="home-agenda__scope-count" aria-label="{{ $aba['count'] }} evento(s)">
+                                    {{ $aba['count'] > 99 ? '99+' : $aba['count'] }}
+                                </span>
+                            @endif
                         </button>
                     @endforeach
                 </div>

@@ -30,6 +30,8 @@ class AgendaEscopoManutencaoTest extends TestCase
     /** @var list<CalendarEventData> */
     private array $eventos;
 
+    private AgendaEscopoManutencaoSource $source;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -50,10 +52,8 @@ class AgendaEscopoManutencaoTest extends TestCase
             $this->evento('evento-pedagogico', 'pedagogico', $inicio->addHours(3)),
         ];
 
-        app()->instance(
-            CalendarEventAggregator::class,
-            new CalendarEventAggregator([new AgendaEscopoManutencaoSource($this->eventos)]),
-        );
+        $this->source = new AgendaEscopoManutencaoSource($this->eventos);
+        app()->instance(CalendarEventAggregator::class, new CalendarEventAggregator([$this->source]));
         app()->instance(
             DashboardUserContextFactory::class,
             \Mockery::mock(DashboardUserContextFactory::class)
@@ -90,7 +90,8 @@ class AgendaEscopoManutencaoTest extends TestCase
         $component->mount();
         $component->escopoAgenda = 'pessoal';
 
-        $pessoal = collect($component->render()->getData()['days'])->flatMap(
+        $data = $component->render()->getData();
+        $pessoal = collect($data['days'])->flatMap(
             static fn (array $day): array => $day['events'],
         );
 
@@ -98,6 +99,11 @@ class AgendaEscopoManutencaoTest extends TestCase
         $this->assertContains('evento-geral', $pessoal->pluck('id')->all());
         $this->assertContains('reserva-veiculo', $pessoal->pluck('id')->all());
         $this->assertContains('evento-pedagogico', $pessoal->pluck('id')->all());
+        $this->assertSame(1, $this->source->calls);
+        $this->assertSame(
+            ['pessoal', 'rede', 'transporte', 'manutencao', 'pedagogico'],
+            collect($data['tabsAgenda'])->pluck('key')->all(),
+        );
 
         $component->escopoAgenda = 'manutencao';
         $manutencao = collect($component->render()->getData()['days'])->flatMap(
@@ -105,6 +111,7 @@ class AgendaEscopoManutencaoTest extends TestCase
         );
 
         $this->assertSame(['manutencao'], $manutencao->pluck('categoria')->unique()->all());
+        $this->assertSame(2, $this->source->calls);
     }
 
     public function test_calendario_completo_para_mim_omite_manutencao_e_a_mantem_em_sua_aba(): void
@@ -174,6 +181,8 @@ class AgendaEscopoManutencaoTest extends TestCase
 
 final class AgendaEscopoManutencaoSource implements CalendarEventSource
 {
+    public int $calls = 0;
+
     /** @param list<CalendarEventData> $eventos */
     public function __construct(private readonly array $eventos) {}
 
@@ -189,6 +198,8 @@ final class AgendaEscopoManutencaoSource implements CalendarEventSource
 
     public function events(CalendarQueryContext $context): iterable
     {
+        $this->calls++;
+
         return $this->eventos;
     }
 
