@@ -158,9 +158,11 @@ class CalendarioCompleto extends Component
         CarbonImmutable $fim,
         string $escopo,
     ): CalendarAggregationResult {
+        $somenteIndicadores = $this->visualizacao === 'ano';
+
         if ($escopo === 'rede') {
-            $resultadoRede = app(CalendarNetworkEventLoader::class)->load($user, $inicio, $fim);
-            $resultadoPessoal = $this->agregarIntervalo($user, $inicio, $fim, 'pessoal');
+            $resultadoRede = app(CalendarNetworkEventLoader::class)->load($user, $inicio, $fim, $somenteIndicadores);
+            $resultadoPessoal = $this->agregarIntervalo($user, $inicio, $fim, 'pessoal', $somenteIndicadores);
             $idsPessoais = collect($resultadoPessoal->events)->pluck('id')->flip();
 
             return $this->filtrarResultadoPor(
@@ -172,15 +174,15 @@ class CalendarioCompleto extends Component
         }
 
         if ($escopo === 'veiculos') {
-            return $this->agregarIntervalo($user, $inicio, $fim, 'veiculos');
+            return $this->agregarIntervalo($user, $inicio, $fim, 'veiculos', $somenteIndicadores);
         }
 
         if ($escopo === 'manutencao'
             && app(PedidoService::class)->ehMembroDaManutencao($user)) {
-            return $this->agregarIntervalo($user, $inicio, $fim, 'manutencao');
+            return $this->agregarIntervalo($user, $inicio, $fim, 'manutencao', $somenteIndicadores);
         }
 
-        $resultadoPessoal = $this->agregarIntervalo($user, $inicio, $fim, 'pessoal');
+        $resultadoPessoal = $this->agregarIntervalo($user, $inicio, $fim, 'pessoal', $somenteIndicadores);
 
         return match ($escopo) {
             'pessoal' => $this->filtrarResultadoPor(
@@ -208,6 +210,7 @@ class CalendarioCompleto extends Component
         CarbonImmutable $inicio,
         CarbonImmutable $fim,
         string $escopo,
+        bool $somenteIndicadores = false,
     ): CalendarAggregationResult {
         $userContext = app(DashboardUserContextFactory::class)->make($user);
         $events = [];
@@ -225,6 +228,7 @@ class CalendarioCompleto extends Component
                 fim: $chunkFim,
                 somenteReservasVeiculos: $escopo === 'veiculos',
                 ignorarPedidosManutencao: $escopo === 'pessoal' && $ehMembroDaManutencao,
+                somenteIndicadores: $somenteIndicadores,
             ));
 
             foreach ($result->events as $event) {

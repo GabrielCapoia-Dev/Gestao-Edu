@@ -20,6 +20,7 @@ class CalendarNetworkEventLoader
         User $user,
         CarbonImmutable $inicio,
         CarbonImmutable $fim,
+        bool $somenteIndicadores = false,
     ): CalendarAggregationResult {
         $userContext = $this->userContextFactory->make($user);
         $events = [];
@@ -36,6 +37,7 @@ class CalendarNetworkEventLoader
                 fim: $chunkFim,
                 redeCompleta: true,
                 manutencaoSomenteEscolasUsuario: true,
+                somenteIndicadores: $somenteIndicadores,
             ));
 
             foreach ($result->events as $event) {

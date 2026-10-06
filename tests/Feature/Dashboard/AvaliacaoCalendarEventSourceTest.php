@@ -99,6 +99,22 @@ class AvaliacaoCalendarEventSourceTest extends TestCase
         $detail = $source->detail($context, (string) $avaliacaoA->id);
 
         $this->assertNull($detail?->metadata['Progresso']);
+
+        $indicatorContext = new CalendarQueryContext(
+            user: $userA,
+            userContext: $context->userContext,
+            inicio: $context->inicio,
+            fim: $context->fim,
+            somenteIndicadores: true,
+        );
+        $progressService = \Mockery::mock(AvaliacaoDashboardProgressService::class);
+        $progressService->shouldNotReceive('batch');
+        $indicatorEvents = iterator_to_array(
+            (new AvaliacaoCalendarEventSource($progressService))->events($indicatorContext),
+        );
+
+        $this->assertCount(2, $indicatorEvents);
+        $this->assertNull($indicatorEvents[0]->progresso);
     }
 
     public function test_progresso_do_professor_usa_pares_turma_componente_sem_depender_do_professor_na_resposta(): void

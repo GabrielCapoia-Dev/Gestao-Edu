@@ -54,7 +54,9 @@ class AvaliacaoCalendarEventSource implements CalendarEventSource
             ->limit(max(1, (int) config('dashboard.calendar.max_events', 500)) + 1)
             ->get();
 
-        $progressos = $this->progressos($avaliacoes->pluck('id')->all(), $context);
+        $progressos = $context->somenteIndicadores
+            ? []
+            : $this->progressos($avaliacoes->pluck('id')->all(), $context);
 
         foreach ($avaliacoes as $avaliacao) {
             foreach ($this->marcosNoPeriodo($avaliacao, $context) as $marco => $data) {
