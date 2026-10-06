@@ -70,7 +70,9 @@ class AvaliacaoCalendarEventSourceTest extends TestCase
         $inativa->turmas()->attach($turmaA->id);
         $foraDoPeriodo->turmas()->attach($turmaA->id);
         $context = $this->contexto($userA, $agora, $agora->addDays(6)->endOfDay());
-        $source = app(AvaliacaoCalendarEventSource::class);
+        $progressService = \Mockery::mock(AvaliacaoDashboardProgressService::class);
+        $progressService->shouldReceive('batch')->once()->andReturn([]);
+        $source = new AvaliacaoCalendarEventSource($progressService);
 
         $result = (new CalendarEventAggregator([$source]))->aggregate($context);
         $events = collect($result->events);
@@ -92,6 +94,7 @@ class AvaliacaoCalendarEventSourceTest extends TestCase
         $this->assertStringNotContainsString('Progresso em atualização', (string) $events->first()->resumo);
         $this->assertSame($escolaA->id, $events->first()->escolaId);
         $this->assertNull($source->detail($context, (string) $avaliacaoB->id));
+        $source->events($context);
 
         $detail = $source->detail($context, (string) $avaliacaoA->id);
 

@@ -22,6 +22,9 @@ use Throwable;
 
 class AvaliacaoCalendarEventSource implements CalendarEventSource
 {
+    /** @var array<string, array<int, AvaliacaoDashboardProgressData>> */
+    private array $progressCache = [];
+
     public function __construct(private readonly AvaliacaoDashboardProgressService $progressService) {}
 
     public function key(): string
@@ -203,7 +206,24 @@ class AvaliacaoCalendarEventSource implements CalendarEventSource
             ? null
             : $context->user->professores()->where('ativo', true)->pluck('id')->map(fn ($id): int => (int) $id)->all();
 
-        return $this->progressService->batch($avaliacaoIds, $schoolIds, $professorIds);
+        $normalizarIds = static function (?array $ids): ?array {
+            if ($ids === null) {
+                return null;
+            }
+
+            $ids = array_values(array_unique(array_map('intval', $ids)));
+            sort($ids);
+
+            return $ids;
+        };
+
+        $avaliacaoIds = $normalizarIds($avaliacaoIds) ?? [];
+        $schoolIds = $normalizarIds($schoolIds);
+        $professorIds = $normalizarIds($professorIds);
+        $cacheKey = hash('sha256', serialize([$avaliacaoIds, $schoolIds, $professorIds]));
+
+        return $this->progressCache[$cacheKey]
+            ??= $this->progressService->batch($avaliacaoIds, $schoolIds, $professorIds);
     }
 
     private function map(

@@ -17,6 +17,7 @@ class DashboardServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->scoped(DashboardUserContextFactory::class);
+        $this->app->scoped(AvaliacaoCalendarEventSource::class);
 
         $this->app->tag([
             ManualCalendarEventSource::class,
