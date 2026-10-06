@@ -111,7 +111,10 @@ class AgendaProximosDias extends Component
                 $resultadoPessoal = $aggregator->aggregate($this->contextoObrigatorio('pessoal'));
                 $ehMembroDaManutencao = app(PedidoService::class)->ehMembroDaManutencao($context->user);
                 $resultados = [
-                    'pessoal' => $resultadoPessoal,
+                    'pessoal' => $this->filtrarResultadoPor(
+                        $resultadoPessoal,
+                        static fn ($evento): bool => ! in_array($evento->categoria, self::CATEGORIAS_MANUTENCAO, true),
+                    ),
                     'transporte' => $this->filtrarResultadoPor(
                         $resultadoPessoal,
                         static fn ($evento): bool => $evento->precisaTransporte(),

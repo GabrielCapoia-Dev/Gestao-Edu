@@ -182,6 +182,10 @@ class CalendarioCompleto extends Component
         $resultadoPessoal = $this->agregarIntervalo($user, $inicio, $fim, 'pessoal');
 
         return match ($escopo) {
+            'pessoal' => $this->filtrarResultadoPor(
+                $resultadoPessoal,
+                static fn (CalendarEventData $event): bool => ! in_array($event->categoria, self::CATEGORIAS_MANUTENCAO, true),
+            ),
             'transporte' => $this->filtrarResultadoPor(
                 $resultadoPessoal,
                 static fn (CalendarEventData $event): bool => $event->precisaTransporte(),
