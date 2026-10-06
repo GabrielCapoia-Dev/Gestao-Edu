@@ -280,6 +280,15 @@ class CalendarEventAggregatorTest extends TestCase
             'visualizacao' => 'mes',
             'referencia' => '2026-07-01',
             'erro' => null,
+            'abasAgenda' => [
+                ['key' => 'pessoal', 'label' => 'Para mim'],
+                ['key' => 'rede', 'label' => 'Para a rede'],
+                ['key' => 'veiculos', 'label' => 'Veículos'],
+                ['key' => 'transporte', 'label' => 'Transporte'],
+                ['key' => 'manutencao', 'label' => 'Manutenção'],
+                ['key' => 'pedagogico', 'label' => 'Pedagógico'],
+            ],
+            'escopoAgenda' => 'rede',
         ])->render();
 
         $this->assertStringContainsString('Julho de 2026', $html);
@@ -289,6 +298,15 @@ class CalendarEventAggregatorTest extends TestCase
         $this->assertStringContainsString('Planilha', $html);
         $this->assertStringContainsString('XLSX', $html);
         $this->assertStringContainsString('PDF', $html);
+        $this->assertStringContainsString('aria-label="Escopo do calendário"', $html);
+        $this->assertSame(6, substr_count($html, 'wire:click="definirEscopo'));
+        $this->assertStringContainsString('aria-selected="true"', $html);
+        $this->assertStringContainsString('Para mim', $html);
+        $this->assertStringContainsString('Para a rede', $html);
+        $this->assertStringContainsString('Veículos', $html);
+        $this->assertStringContainsString('Transporte', $html);
+        $this->assertStringContainsString('Manutenção', $html);
+        $this->assertStringContainsString('Pedagógico', $html);
         $this->assertSame(2, substr_count($html, 'full-calendar__day--empty'));
         $this->assertStringContainsString('Evento historico', $html);
     }

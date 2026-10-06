@@ -30,6 +30,24 @@
         </div>
     </header>
 
+    @if (($abasAgenda ?? []) !== [])
+        <div class="full-calendar__scopes" role="tablist" aria-label="Escopo do calendário">
+            <div class="home-agenda__scope">
+                @foreach ($abasAgenda as $aba)
+                    <button
+                        type="button"
+                        role="tab"
+                        @class(['is-active' => $escopoAgenda === $aba['key']])
+                        aria-selected="{{ $escopoAgenda === $aba['key'] ? 'true' : 'false' }}"
+                        wire:click="definirEscopo('{{ $aba['key'] }}')"
+                    >
+                        <span>{{ $aba['label'] }}</span>
+                    </button>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
     @if ($erro)
         <p class="full-calendar__message" role="alert">{{ $erro }}</p>
     @else

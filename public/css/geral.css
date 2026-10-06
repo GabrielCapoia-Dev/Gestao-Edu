@@ -7343,6 +7343,19 @@ html.dark {
     margin-bottom: 1rem;
 }
 
+.full-calendar__scopes {
+    width: 100%;
+    margin: 0 0 1rem;
+    overflow-x: auto;
+    scrollbar-width: thin;
+}
+
+.full-calendar__scopes .home-agenda__scope {
+    display: inline-grid;
+    width: max-content;
+    grid-auto-columns: max-content;
+}
+
 .full-calendar__navigation,
 .full-calendar__toolbar-actions,
 .full-calendar__views {
@@ -7698,6 +7711,12 @@ html.dark {
 
     .full-calendar__views button {
         flex: 1;
+    }
+
+    .full-calendar__scopes .home-agenda__scope {
+        grid-template-columns: none;
+        grid-auto-flow: column;
+        grid-auto-columns: max-content;
     }
 
     .full-calendar__year-grid {
