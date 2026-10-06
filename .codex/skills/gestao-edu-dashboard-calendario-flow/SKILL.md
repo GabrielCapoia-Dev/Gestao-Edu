@@ -29,6 +29,7 @@ Manter coerencia entre eventos, fontes agregadas, publico-alvo, escolas, permiss
 - Criação e edição de reservas devem rejeitar datas/horários retroativos e exigir pelo menos 20 minutos entre o momento atual e o início de cada ocorrência; alinhar o limite visual do campo de hora com a validação do serviço.
 - Ao alterar disponibilidade recorrente, gerar a mesma lista de datas no formulário e no serviço de criação; validar conflitos em lote, mantendo a trava transacional do veículo e sem uma consulta por ocorrência.
 - Manter importacao por linha rastreavel e idempotente.
+- O calendário completo da rede deve oferecer os mesmos escopos da agenda do dashboard (Para mim, Para a rede, Veículos, Transporte, Manutenção e Pedagógico), exibindo Veículos somente com a permissão correspondente e validando a seleção também no servidor. Carregar os eventos apenas do escopo selecionado para evitar multiplicar consultas ao abrir ou navegar no calendário; preservar as regras de visibilidade específicas de cada fonte.
 
 ## Saida esperada
 
