@@ -30,6 +30,7 @@ Manter coerencia entre eventos, fontes agregadas, publico-alvo, escolas, permiss
 - Ao alterar disponibilidade recorrente, gerar a mesma lista de datas no formulário e no serviço de criação; validar conflitos em lote, mantendo a trava transacional do veículo e sem uma consulta por ocorrência.
 - Manter importacao por linha rastreavel e idempotente.
 - O calendário completo da rede deve oferecer os mesmos escopos da agenda do dashboard (Para mim, Para a rede, Veículos, Transporte, Manutenção e Pedagógico), exibindo Veículos somente com a permissão correspondente e validando a seleção também no servidor. Carregar os eventos apenas do escopo selecionado para evitar multiplicar consultas ao abrir ou navegar no calendário; preservar as regras de visibilidade específicas de cada fonte.
+- Na visualização anual, a interface consome apenas marcadores/contagens por dia: manter os mesmos eventos e datas, mas sinalizar `somenteIndicadores` para evitar calcular progresso de avaliações que não aparece nessa grade. Ao deduplicar rede e pessoal no mesmo request, memoizar o progresso de avaliações por IDs e escopo normalizados em uma instância scoped por request; não usar estado estático ou cache persistente que possa exibir progresso desatualizado.
 
 ## Saida esperada
 
