@@ -21,6 +21,7 @@ Opcoes relevantes:
 - `--parts 2`: exige exatamente duas partes. Sem essa opcao, inicia em duas e aumenta somente se necessario.
 - `--output-dir "C:\destino"`: grava em outro diretorio.
 - `--force`: substitui partes com os mesmos nomes; use apenas quando a solicitacao autorizar a regeneracao.
+- `--data-only`: gera apenas `INSERT INTO`, sem reconstruir tabelas. Use somente quando o banco de destino ja possuir a estrutura correta e todas as tabelas estiverem vazias.
 
 ## Invariantes
 
@@ -29,6 +30,7 @@ Opcoes relevantes:
 - A ultima parte deve aplicar `ALTER TABLE`, indices, `AUTO_INCREMENT` e chaves estrangeiras depois dos dados.
 - Cada parte deve iniciar com verificacoes de chave estrangeira e unicidade desativadas e terminar com `COMMIT` e restauracao das verificacoes.
 - Nao altere, filtre ou deduplique dados do dump.
+- No modo `--data-only`, nao inclua `DROP TABLE`, `CREATE TABLE` nem `ALTER TABLE`; nomeie as saidas como `- dados - parte N.sql.bz2`.
 - Nao importe o backup automaticamente. A skill apenas prepara arquivos para um banco de testes.
 - Se o script rejeitar comandos nao suportados, nao os descarte. Informe a limitacao ou ajuste o script de forma testada.
 

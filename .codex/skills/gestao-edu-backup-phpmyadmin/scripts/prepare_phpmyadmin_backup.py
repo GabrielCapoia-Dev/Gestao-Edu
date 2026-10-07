@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import bz2
+import math
 import re
 import sys
 from dataclasses import dataclass
@@ -57,6 +58,14 @@ def parse_args() -> argparse.Namespace:
         "--force",
         action="store_true",
         help="Substitui arquivos de saida existentes",
+    )
+    parser.add_argument(
+        "--data-only",
+        action="store_true",
+        help=(
+            "Gera somente INSERTs para um banco com estrutura existente e tabelas vazias; "
+            "nao inclui DROP, CREATE ou ALTER TABLE"
+        ),
     )
     return parser.parse_args()
 
@@ -131,13 +140,11 @@ def read_statements(source: Path) -> DumpStatements:
     return DumpStatements(**groups)
 
 
-def compressed_size(value: str) -> int:
-    return len(bz2.compress(value.encode("utf-8"), compresslevel=9))
-
-
-def header(part: int, total: int) -> str:
+def header(part: int, total: int, data_only: bool = False) -> str:
+    mode = "dados" if data_only else "estrutura e dados"
     return (
         "-- Dump preparado para importacao sequencial no phpMyAdmin.\n"
+        f"-- Conteudo: {mode}.\n"
         f"-- Parte {part} de {total}. Importe as partes em ordem numerica.\n"
         'SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";\n'
         'SET time_zone = "+00:00";\n'
@@ -155,70 +162,123 @@ FOOTER = (
 )
 
 
-def estimated_partitions(
-    dump: DumpStatements,
-    part_count: int,
-) -> list[tuple[int, int]]:
-    weights = [compressed_size(statement) for statement in dump.inserts]
-    fixed = [compressed_size(header(index + 1, part_count) + FOOTER) for index in range(part_count)]
-    fixed[0] += compressed_size("".join(dump.schema))
-    fixed[-1] += compressed_size("".join(dump.alters))
-    target = (sum(weights) + sum(fixed)) / part_count
-
-    ranges: list[tuple[int, int]] = []
-    start = 0
-    for part_index in range(part_count - 1):
-        remaining_parts = part_count - part_index - 1
-        max_end = len(weights) - remaining_parts
-        budget = max(0.0, target - fixed[part_index])
-        accumulated = 0
-        end = start
-
-        while end < max_end:
-            next_weight = weights[end]
-            if end > start and accumulated + next_weight > budget:
-                break
-            accumulated += next_weight
-            end += 1
-
-        ranges.append((start, max(start + 1, end)))
-        start = ranges[-1][1]
-
-    ranges.append((start, len(weights)))
-    return ranges
-
-
 def build_payloads(
     dump: DumpStatements,
     ranges: Sequence[tuple[int, int]],
+    data_only: bool = False,
 ) -> list[bytes]:
-    payloads: list[bytes] = []
     total = len(ranges)
 
-    for index, (start, end) in enumerate(ranges):
-        sections = [header(index + 1, total)]
-        if index == 0:
-            sections.extend(["-- Estrutura completa.\n\n", "".join(dump.schema)])
+    return [
+        build_part_payload(dump, start, end, index, total, data_only)
+        for index, (start, end) in enumerate(ranges)
+    ]
 
+
+def build_part_payload(
+    dump: DumpStatements,
+    start: int,
+    end: int,
+    index: int,
+    total: int,
+    data_only: bool = False,
+) -> bytes:
+    sections = [header(index + 1, total, data_only)]
+    if index == 0 and not data_only:
+        sections.extend(["-- Estrutura completa.\n\n", "".join(dump.schema)])
+
+    sections.extend(
+        [
+            f"-- Dados: INSERTs {start + 1} a {end}.\n\n",
+            "".join(dump.inserts[start:end]),
+        ]
+    )
+
+    if index == total - 1 and not data_only:
         sections.extend(
             [
-                f"-- Dados: INSERTs {start + 1} a {end}.\n\n",
-                "".join(dump.inserts[start:end]),
+                "-- Indices, AUTO_INCREMENT e chaves estrangeiras.\n\n",
+                "".join(dump.alters),
             ]
         )
 
-        if index == total - 1:
-            sections.extend(
-                [
-                    "-- Indices, AUTO_INCREMENT e chaves estrangeiras.\n\n",
-                    "".join(dump.alters),
-                ]
-            )
+    sections.append(FOOTER)
 
-        sections.append(FOOTER)
-        payloads.append("".join(sections).encode("utf-8"))
+    return "".join(sections).encode("utf-8")
 
-    return payloads
+
+def measured_partitions(
+    dump: DumpStatements,
+    part_count: int,
+    max_bytes: int,
+    data_only: bool = False,
+) -> list[tuple[int, int]] | None:
+    single_payload = build_part_payload(
+        dump,
+        0,
+        len(dump.inserts),
+        0,
+        1,
+        data_only,
+    )
+    single_size = len(bz2.compress(single_payload, compresslevel=9))
+    if single_size > part_count * max_bytes:
+        return None
+
+    initial_target = max(1, math.ceil(single_size / part_count * 1.03))
+    targets = [initial_target]
+    if initial_target < max_bytes:
+        step = max(1, math.ceil((max_bytes - initial_target) / 8))
+        targets.extend(range(initial_target + step, max_bytes, step))
+        targets.append(max_bytes)
+
+    for target in targets:
+        ranges: list[tuple[int, int]] = []
+        start = 0
+
+        for index in range(part_count - 1):
+            remaining_parts = part_count - index - 1
+            max_end = len(dump.inserts) - remaining_parts
+            low = start + 1
+            high = max_end
+            best: int | None = None
+
+            while low <= high:
+                middle = (low + high) // 2
+                payload = build_part_payload(
+                    dump,
+                    start,
+                    middle,
+                    index,
+                    part_count,
+                    data_only,
+                )
+                size = len(bz2.compress(payload, compresslevel=9))
+                if size <= target:
+                    best = middle
+                    low = middle + 1
+                else:
+                    high = middle - 1
+
+            if best is None:
+                ranges = []
+                break
+
+            ranges.append((start, best))
+            start = best
+
+        if not ranges and part_count > 1:
+            continue
+
+        ranges.append((start, len(dump.inserts)))
+        payloads = build_payloads(dump, ranges, data_only)
+        if all(
+            len(bz2.compress(payload, compresslevel=9)) <= max_bytes
+            for payload in payloads
+        ):
+            return ranges
+
+    return None
 
 
 def compress_payloads(payloads: Sequence[bytes]) -> list[bytes]:
@@ -230,6 +290,7 @@ def choose_parts(
     requested_parts: int | None,
     max_parts: int,
     max_bytes: int,
+    data_only: bool = False,
 ) -> tuple[list[tuple[int, int]], list[bytes], list[bytes]]:
     candidates = [requested_parts] if requested_parts is not None else range(2, max_parts + 1)
 
@@ -239,8 +300,16 @@ def choose_parts(
         if part_count > len(dump.inserts):
             raise ValueError("Ha menos INSERTs do que a quantidade de partes solicitada.")
 
-        ranges = estimated_partitions(dump, part_count)
-        payloads = build_payloads(dump, ranges)
+        ranges = measured_partitions(dump, part_count, max_bytes, data_only)
+        if ranges is None:
+            if requested_parts is not None:
+                raise ValueError(
+                    f"As {requested_parts} partes excedem o limite de "
+                    f"{max_bytes / 1024:.0f} KiB. Remova --parts para usar o modo automatico."
+                )
+            continue
+
+        payloads = build_payloads(dump, ranges, data_only)
         compressed = compress_payloads(payloads)
         if all(len(part) <= max_bytes for part in compressed):
             return ranges, payloads, compressed
@@ -257,10 +326,16 @@ def choose_parts(
     )
 
 
-def output_paths(source: Path, output_dir: Path, count: int) -> list[Path]:
+def output_paths(
+    source: Path,
+    output_dir: Path,
+    count: int,
+    data_only: bool = False,
+) -> list[Path]:
     width = len(str(count))
+    qualifier = " - dados" if data_only else ""
     return [
-        output_dir / f"{source.stem} - parte {index:0{width}d}.sql.bz2"
+        output_dir / f"{source.stem}{qualifier} - parte {index:0{width}d}.sql.bz2"
         for index in range(1, count + 1)
     ]
 
@@ -310,14 +385,23 @@ def main() -> int:
         args.parts,
         args.max_parts,
         max_bytes,
+        args.data_only,
     )
-    paths = output_paths(source, output_dir, len(ranges))
+    if args.data_only:
+        forbidden = re.compile(rb"(?m)^(?:DROP|CREATE|ALTER)\s+TABLE\b")
+        if any(forbidden.search(payload) for payload in payloads):
+            raise ValueError("O modo --data-only gerou indevidamente comandos de estrutura.")
+
+    paths = output_paths(source, output_dir, len(ranges), args.data_only)
     write_outputs(paths, payloads, compressed, args.force, max_bytes)
 
-    print(
-        f"Validado: {len(dump.schema)} comandos de estrutura, "
-        f"{len(dump.inserts)} INSERTs e {len(dump.alters)} ALTERs."
-    )
+    if args.data_only:
+        print(f"Validado em modo data-only: {len(dump.inserts)} INSERTs, sem comandos de estrutura.")
+    else:
+        print(
+            f"Validado: {len(dump.schema)} comandos de estrutura, "
+            f"{len(dump.inserts)} INSERTs e {len(dump.alters)} ALTERs."
+        )
     for index, (path, archive, (start, end)) in enumerate(
         zip(paths, compressed, ranges, strict=True),
         start=1,
@@ -326,7 +410,10 @@ def main() -> int:
             f"Parte {index}: {path} | {len(archive) / 1024:.1f} KiB | "
             f"INSERTs {start + 1}-{end}"
         )
-    print("Importe as partes em ordem numerica em um banco de testes vazio.")
+    if args.data_only:
+        print("Importe em ordem numerica em um banco com estrutura existente e tabelas vazias.")
+    else:
+        print("Importe as partes em ordem numerica em um banco de testes vazio.")
     return 0
 
 
