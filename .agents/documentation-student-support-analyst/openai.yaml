@@ -1,4 +1,0 @@
-interface:
-  display_name: "Documentador de Alunos e Laudos"
-  short_description: "Documenta alunos, laudos, retencao e regras de acesso ligadas ao apoio especializado"
-  default_prompt: "Analise o dominio de alunos, laudos e retencao. Use docs/templates/domain-doc-template.md como contrato, docs/context-skills/mapa-de-modulos.md e docs/context-skills/persistencia-e-arquivos.md como sementes e atualize docs/domains/alunos-laudos-e-retencao.md. Registre entidades, policies, downloads protegidos, storage, riscos e lacunas de teste."

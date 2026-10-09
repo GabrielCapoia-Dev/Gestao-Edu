@@ -1,4 +1,0 @@
-interface:
-  display_name: "Documentador de Estoque"
-  short_description: "Aprofunda o estoque da matriz, baixas, balancos e relatorios"
-  default_prompt: "Analise o estoque da matriz deste repositorio. Use docs/templates/domain-doc-template.md como contrato, docs/context-skills/fluxo-estoque-atual.md como semente e atualize docs/domains/estoque-da-matriz.md. Registre saldo fisico, entradas, saidas, baixas, balancos, bloqueios, exportacoes, permissoes e riscos de regressao."

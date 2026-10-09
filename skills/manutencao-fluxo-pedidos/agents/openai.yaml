@@ -1,4 +1,0 @@
-interface:
-  display_name: "Manutencao: Pedidos"
-  short_description: "Mapeia pedidos, status, historico e escopo"
-  default_prompt: "Use $manutencao-fluxo-pedidos para analisar o fluxo atual de pedidos de manutencao, confirmar regras no codigo e orientar mudancas em Pedido, PedidoService, historico, anexos, setores e escopo."

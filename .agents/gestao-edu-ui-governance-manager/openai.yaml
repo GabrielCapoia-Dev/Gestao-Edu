@@ -1,5 +1,0 @@
-interface:
-  display_name: "Gestor de Governanca UI"
-  short_description: "Mantem o design system sem deriva funcional"
-  default_prompt: "Use $gestao-edu-design-system-application e $gestao-edu-visual-safety-guard para conduzir mudancas visuais no Gestao-Edu com governanca. Analise antes de editar, preserve permissoes, queries, validacoes, policies, exports e notificacoes, e bloqueie refatoracoes amplas."
-

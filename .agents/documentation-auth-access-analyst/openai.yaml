@@ -1,4 +1,0 @@
-interface:
-  display_name: "Documentador de Acesso"
-  short_description: "Documenta login, aprovacao de acesso, roles, permissoes, policies e escopo"
-  default_prompt: "Analise autenticacao, autorizacao e permissoes deste repositorio. Use docs/templates/domain-doc-template.md como contrato, docs/context-skills/autenticacao-e-autorizacao.md como semente e confirme tudo no codigo atual. Atualize docs/domains/autenticacao-autorizacao-e-permissoes.md, incluindo gate do painel, login manual, Google OAuth, policies, papeis, permissoes, filtros por id_escola e setor, riscos e lacunas de testes."

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Documentador de Integracoes"
-  short_description: "Mapeia notificacoes, scheduler, observers e pontos de integracao externa"
-  default_prompt: "Analise integracoes, notificacoes e scheduler deste repositorio. Use docs/templates/domain-doc-template.md como contrato, docs/context-skills/arquitetura-geral.md e docs/context-skills/testes-e-debug.md como sementes e atualize docs/domains/integracoes-notificacoes-e-scheduler.md. Registre observers, notifications, cron, dependencias externas, riscos e lacunas."

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Revisor Cruzado de Docs"
-  short_description: "Compara os domain docs, aponta conflitos e reforca regras transversais"
-  default_prompt: "Revise os documentos em docs/domains e identifique sobreposicoes, contradicoes, lacunas e regras transversais faltantes. Atualize docs/cross-cutting quando necessario, sem inventar comportamento nao sustentado pelo codigo ou pelos domain docs. Produza uma lista objetiva de conflitos e hotspots para o consolidado final."

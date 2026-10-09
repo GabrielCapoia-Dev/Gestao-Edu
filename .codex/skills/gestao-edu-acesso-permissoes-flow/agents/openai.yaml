@@ -1,4 +1,0 @@
-interface:
-  display_name: "Acesso e Permissoes"
-  short_description: "Analisa autenticacao, permissoes e escopos"
-  default_prompt: "Use $gestao-edu-acesso-permissoes-flow para analisar esta tarefa no Gestao-Edu e propor uma alteracao segura."

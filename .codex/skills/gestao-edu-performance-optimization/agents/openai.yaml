@@ -1,4 +1,0 @@
-interface:
-  display_name: "Gestao-Edu Performance Optimization"
-  short_description: "Detecta gargalos em UI, banco e carga"
-  default_prompt: "Use $gestao-edu-performance-optimization para analisar e otimizar um gargalo do Gestao-Edu com evidencias de codigo e carga."

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Pedidos de Manutencao"
-  short_description: "Analisa o ciclo de pedidos de manutencao"
-  default_prompt: "Use $manutencao-fluxo-pedidos para analisar este fluxo de pedidos."

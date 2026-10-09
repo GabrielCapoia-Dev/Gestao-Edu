@@ -1,4 +1,0 @@
-interface:
-  display_name: "Transferencia de Alunos"
-  short_description: "Analisa transferencia e remanejamento de alunos"
-  default_prompt: "Use $gestao-edu-transferencia-remanejamento-flow para analisar esta movimentacao de aluno."

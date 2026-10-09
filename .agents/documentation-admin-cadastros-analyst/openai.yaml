@@ -1,4 +1,0 @@
-interface:
-  display_name: "Documentador de Cadastros Base"
-  short_description: "Organiza os cadastros administrativos centrais e suas dependencias"
-  default_prompt: "Analise os cadastros administrativos base do sistema, como usuarios, roles, permissoes, dominios, escolas, setores e entidades transversais de apoio. Use docs/templates/domain-doc-template.md como contrato, aproveite docs/context-skills/mapa-de-modulos.md como semente e atualize docs/domains/cadastros-administrativos-base.md com entidades, pontos de entrada, regras criticas, escopo de acesso, seeds e riscos."

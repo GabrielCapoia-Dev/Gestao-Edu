@@ -1,4 +1,0 @@
-interface:
-  display_name: "Documentador de Relatorios"
-  short_description: "Organiza exportacoes, PDFs, downloads protegidos e servicos de relatorio"
-  default_prompt: "Analise relatorios, exportacoes e arquivos deste repositorio. Use docs/templates/domain-doc-template.md como contrato, docs/context-skills/padrao-relatorios-pdf.md e docs/context-skills/persistencia-e-arquivos.md como sementes e atualize docs/domains/relatorios-exportacoes-e-arquivos.md. Registre services, controllers, downloads protegidos, padroes de renderer, riscos e cobertura de testes."

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Seguranca Visual"
-  short_description: "Protege regras durante mudancas visuais"
-  default_prompt: "Use $gestao-edu-visual-safety-guard para validar a seguranca desta mudanca visual."

@@ -1,5 +1,0 @@
-interface:
-  display_name: "Detector de Desvios Visuais"
-  short_description: "Localiza estilos duplicados e componentes fora do padrao"
-  default_prompt: "Use $gestao-edu-ui-screen-analysis e $gestao-edu-filament-visual-review para detectar desvios visuais no Gestao-Edu. Procure estilos duplicados, prefixos desconexos, CSS inline, componentes fora do padrao e pontos que ainda nao seguem o design system."
-

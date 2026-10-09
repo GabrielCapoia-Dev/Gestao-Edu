@@ -1,4 +1,0 @@
-interface:
-  display_name: "Gestao-Edu Kit"
-  short_description: "Orienta mudancas amplas e escolhe skills"
-  default_prompt: "Use $gestao-edu-kit para orientar esta mudanca ampla no Gestao-Edu."

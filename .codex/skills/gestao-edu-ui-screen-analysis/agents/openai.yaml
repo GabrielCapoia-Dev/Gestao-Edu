@@ -1,4 +1,0 @@
-interface:
-  display_name: "Analise de Tela UI"
-  short_description: "Mapeia uma tela antes de alteracoes visuais"
-  default_prompt: "Use $gestao-edu-ui-screen-analysis para mapear esta tela antes da alteracao."

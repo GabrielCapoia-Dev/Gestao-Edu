@@ -1,4 +1,0 @@
-interface:
-  display_name: "Pessoas e Servidores"
-  short_description: "Analisa pessoas, vinculos e servidores"
-  default_prompt: "Use $gestao-edu-pessoas-servidores-flow para analisar este fluxo de pessoas e servidores."

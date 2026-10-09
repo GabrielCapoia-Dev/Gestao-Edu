@@ -1,4 +1,0 @@
-interface:
-  display_name: "Gestor de Movimentacao"
-  short_description: "Cuida de transferencia e remanejamento"
-  default_prompt: "Use $gestao-edu-transferencia-remanejamento-flow para transferencia, remanejamento, matricula pendente e parecer; quando tocar respostas, progresso ou PDF, acione tambem $gestao-edu-avaliacoes-flow."

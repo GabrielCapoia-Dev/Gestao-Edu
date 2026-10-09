@@ -1,4 +1,0 @@
-interface:
-  display_name: "Dashboard e Calendario"
-  short_description: "Analisa eventos, avisos, reservas e transporte"
-  default_prompt: "Use $gestao-edu-dashboard-calendario-flow para analisar esta tarefa no Gestao-Edu e propor uma alteracao segura."
