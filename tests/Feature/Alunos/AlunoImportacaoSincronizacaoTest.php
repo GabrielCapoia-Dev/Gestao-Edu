@@ -9,6 +9,7 @@ use App\Models\Turma;
 use App\Services\AlunoMovimentacaoService;
 use App\Services\Alunos\AlunoImportacaoSpreadsheetService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -208,6 +209,52 @@ class AlunoImportacaoSincronizacaoTest extends TestCase
         $this->assertSame($escolaDestino->id, $pendente->turma->id_escola);
     }
 
+    public function test_importacao_reconhece_ativo_mesmo_com_chaves_derivadas_inconsistentes(): void
+    {
+        Storage::fake('local');
+
+        $escolaHistorica = $this->criarEscola('Escola Histórica');
+        $escolaOrigem = $this->criarEscola('Escola Origem Inconsistente');
+        $escolaDestino = $this->criarEscola('Escola Destino Inconsistente');
+        $serie = $this->criarSerie('Infantil 4');
+        $turmaHistorica = $this->criarTurma($escolaHistorica, $serie, 'A', 'manha');
+        $turmaOrigem = $this->criarTurma($escolaOrigem, $serie, 'B', 'manha');
+        $this->criarTurma($escolaDestino, $serie, 'C', 'tarde');
+
+        $historico = $this->criarAlunoPrincipal($turmaHistorica, '1035154880', [
+            'status' => Aluno::STATUS_TRANSFERIDO,
+        ]);
+        DB::table('alunos')->where('id', $historico->id)->update([
+            'cgm_matricula_ativa' => $historico->cgm,
+            'cgm_unidade_matricula_ativa' => $escolaHistorica->id.'|'.$historico->cgm,
+        ]);
+
+        $origem = $this->criarAlunoPrincipal($turmaOrigem, '1035154880');
+        DB::table('alunos')->where('id', $origem->id)->update([
+            'cgm_matricula_ativa' => null,
+        ]);
+
+        $caminho = $this->criarPlanilhaNoStorage('local', [
+            $this->cabecalho(),
+            [$escolaDestino->nome, $serie->nome, 'C', 'Tarde', '1035154880', 'Aluno Atualizado', '08/09/2021', 'F', '04/09/2026', 'Principal'],
+        ]);
+
+        $resultado = app(AlunoImportacaoSpreadsheetService::class)->importar($caminho, null, 'local');
+
+        $this->assertSame(1, $resultado['total_importado']);
+        $this->assertSame(1, $resultado['total_pendente']);
+        $this->assertSame(2, Aluno::query()->where('cgm', '1035154880')->count());
+        $this->assertDatabaseHas('alunos', [
+            'id' => $origem->id,
+            'status' => Aluno::STATUS_MATRICULADO,
+        ]);
+        $this->assertDatabaseHas('alunos', [
+            'cgm' => '1035154880',
+            'status' => Aluno::STATUS_PENDENTE,
+            'pendencia_origem_aluno_id' => $origem->id,
+        ]);
+    }
+
     private function cabecalho(): array
     {
         return [
@@ -259,7 +306,7 @@ class AlunoImportacaoSincronizacaoTest extends TestCase
             'data_matricula' => $dados['data_matricula'] ?? '2026-02-05',
             'id_turma' => $turma->id,
             'tipo_vinculo' => Aluno::TIPO_VINCULO_PRINCIPAL,
-            'status' => Aluno::STATUS_MATRICULADO,
+            'status' => $dados['status'] ?? Aluno::STATUS_MATRICULADO,
         ]);
     }
 

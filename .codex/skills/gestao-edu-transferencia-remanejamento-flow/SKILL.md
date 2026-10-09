@@ -51,6 +51,15 @@ Mapear o fluxo de movimentacao de alunos para evitar regressao em:
 - Permitir edicao apenas da copia de destino quando `bloqueio_tipo = transferencia` e o parecer ja foi gerado.
 - Manter dados de remanejamento bloqueados quando a regra exigir historico imutavel.
 - Confirmar notificacoes e permissoes de gerar parecer, transferir e remanejar.
+- Tratar `cgm_matricula_ativa`, `cgm_contra_turno_ativo` e
+  `cgm_unidade_matricula_ativa` como colunas derivadas: a fonte canonica para
+  decidir se existe vinculo ativo e `cgm` + `tipo_vinculo` + `status` + turma.
+  Importacoes e bloqueios nao devem depender exclusivamente dessas chaves,
+  pois bases legadas podem ter marcadores ausentes ou stale.
+- Antes de reconstruir chaves derivadas, validar duplicidades semanticas de
+  Principal matriculado, Principal por unidade e Contra Turno matriculado;
+  saneamento deve alterar somente as colunas derivadas e preservar alunos,
+  historico e avaliacoes.
 
 ## Saida esperada
 

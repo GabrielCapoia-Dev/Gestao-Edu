@@ -160,12 +160,11 @@ class AlunoMovimentacaoService
             ->where('status', Aluno::STATUS_PENDENTE)
             ->keyBy('cgm');
 
+        // As colunas *_ativa são derivadas e podem estar inconsistentes em bases
+        // legadas. A decisão de transferência deve usar o estado canônico.
         $ativosIndex = $alunosCadastrados
-            ->filter(
-                fn (Aluno $a): bool =>
-                    $a->cgm_matricula_ativa !== null
-            )
-            ->keyBy('cgm_matricula_ativa');
+            ->where('status', Aluno::STATUS_MATRICULADO)
+            ->keyBy('cgm');
 
         $importados = 0;
         $criadosPendentes = 0;
@@ -186,17 +185,13 @@ class AlunoMovimentacaoService
                 $cgm
             );
 
-            if (
-                $chaveUnidade !== null
-                && $alunosCadastrados->first(
-                    fn (Aluno $a): bool =>
-                        $a->cgm_unidade_matricula_ativa === $chaveUnidade
-                )
-            ) {
-                $alunoExistente = $alunosCadastrados->first(
-                    fn (Aluno $a): bool =>
-                        $a->cgm_unidade_matricula_ativa === $chaveUnidade
-                );
+            $alunoExistente = $alunosCadastrados->first(
+                fn (Aluno $a): bool =>
+                    $a->cgm === $cgm
+                    && (int) $a->turma?->id_escola === $escolaId
+            );
+
+            if ($chaveUnidade !== null && $alunoExistente) {
 
                 throw new MatriculaAlunoBloqueadaException(
                     $alunoExistente,
@@ -323,10 +318,11 @@ class AlunoMovimentacaoService
         if ($chaveUnidade) {
             $ativoNaMesmaUnidade = Aluno::query()
                 ->with('turma.escola')
-                ->where(
-                    'cgm_unidade_matricula_ativa',
-                    $chaveUnidade
-                )
+                ->where('cgm', $cgm)
+                ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
+                ->whereIn('status', [Aluno::STATUS_MATRICULADO, Aluno::STATUS_PENDENTE])
+                ->whereHas('turma', fn (Builder $query): Builder => $query
+                    ->where('id_escola', $escolaDestinoId))
                 ->when(
                     $ignorar,
                     fn (Builder $query): Builder =>
@@ -373,14 +369,12 @@ class AlunoMovimentacaoService
 
         $ativo = Aluno::query()
             ->with('turma.escola')
-            ->where(
-                'cgm_matricula_ativa',
-                $cgm
-            )
+            ->where('cgm', $cgm)
             ->where(
                 'tipo_vinculo',
                 Aluno::TIPO_VINCULO_PRINCIPAL
             )
+            ->where('status', Aluno::STATUS_MATRICULADO)
             ->when(
                 $ignorar,
                 fn (Builder $query): Builder =>
