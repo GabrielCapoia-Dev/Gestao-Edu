@@ -93,24 +93,7 @@ class DatabaseSeeder extends Seeder
 
         $this->seedDominios();
 
-        // // Normaliza massa legada (professores → Pessoa + professor_matriculas). Idempotente.
-        // $this->call(PessoaLegadoNormalizacaoSeeder::class);
-        // Artisan::call('pessoas:sincronizar-acessos', ['--apply' => true]);
-
         $this->call([
-            // SetorSeeder::class,
-            // TipoStatusSeeder::class,
-            // TipoManutencaoSeeder::class,
-            // EscolaSeeder::class,
-            // EmpresaContratadaSeeder::class,
-            // PedidoSeeder::class,
-            // ItensSeeder::class,
-            // ContratoSeeder::class,
-            // PedidoMerendaSeeder::class,
-            // EstoqueInventarioOrganicoSeeder::class,
-            // AvaliacaoFluxoSeeder::class,
-            // PautasCombinatoriasSeeder::class,
-            // AvaliacoesVariadasSeeder::class,
         ]);
     }
 
