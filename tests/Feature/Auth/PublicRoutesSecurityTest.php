@@ -29,6 +29,5 @@ class PublicRoutesSecurityTest extends TestCase
         $this->get('/politica-de-privacidade')->assertOk();
         $this->get('/termos-de-servico')->assertOk();
         $this->get('/admin/login')->assertOk();
-        $this->get('/app/login')->assertOk();
     }
 }

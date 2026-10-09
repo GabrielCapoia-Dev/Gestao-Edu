@@ -195,9 +195,3 @@ Route::prefix('admin/feedback-pedidos')
         Route::get('/exportar-pdf/terceirizada', [FeedbackPedidoExportController::class, 'exportarTerceirizada'])
             ->name('feedback-pedidos.export-terceirizada');
     });
-
-require __DIR__.'/mobile.php';
-
-Route::get('/baixar-app', function () {
-    return redirect()->route('mobile.install');
-})->name('mobile.install.short');

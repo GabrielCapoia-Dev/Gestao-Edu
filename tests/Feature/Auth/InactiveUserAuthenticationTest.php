@@ -14,7 +14,7 @@ class InactiveUserAuthenticationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_inactive_user_cannot_login_manually_on_admin_or_mobile(): void
+    public function test_inactive_user_cannot_login_manually_on_admin(): void
     {
         $user = User::factory()->create([
             'email_approved' => true,
@@ -26,13 +26,6 @@ class InactiveUserAuthenticationTest extends TestCase
             'email' => $user->email,
             'password' => 'Senha@1234',
         ])->assertRedirect(route('filament.admin.auth.login'));
-
-        $this->assertGuest();
-
-        $this->post('/app/login', [
-            'email' => $user->email,
-            'password' => 'Senha@1234',
-        ])->assertSessionHasErrors('email');
 
         $this->assertGuest();
     }

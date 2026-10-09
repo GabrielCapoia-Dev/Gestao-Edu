@@ -13,7 +13,7 @@
 
     const heavyPattern = /(salvar|excluir|deletar|delete|confirmar|enviar|gerar|exportar|importar|atualizar|sincronizar|baixar|cancelar|aprovar|recusar|finalizar|validar|aplicar|registrar|remover|vincular|desvincular|create|store|save|update|destroy|submit|export|import|download|pdf|xlsx|csv|relatorio|relatorio)/i;
     const passivePattern = /(fechar|close|toggle|alternar|mudarAba|definirVisualizacao|definirModo|abrirModal|abrirSlide|abrirAluno|abrirTurma|selecionar|previousPage|nextPage|gotoPage|mudarPagina|sortBy|limparFiltros|refreshPresence|pollAutoDownload)/i;
-    const backgroundUrlPattern = /(user-presence|presence|heartbeat|notifications\/unread|notificacoes\/contador|mobile-sw\.js|mobile\.webmanifest)/i;
+    const backgroundUrlPattern = /(user-presence|presence|heartbeat|notifications\/unread|notificacoes\/contador)/i;
 
     const state = {
         overlayCount: 0,
