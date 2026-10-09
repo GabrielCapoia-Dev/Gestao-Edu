@@ -223,55 +223,6 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         ], $usuario);
     }
 
-    public function test_backfill_estrutural_preserva_id_orfao_antes_de_limpar_relacao(): void
-    {
-        $usuario = User::factory()->create([
-            'id_escola' => $this->escola->id,
-            'email_approved' => true,
-        ]);
-        $pedido = $this->service->criarPedido([
-            'tipo_manutencao_id' => $this->tipo->id,
-            'tipo_manutencao_opcao_ids' => [$this->opcaoLuz->id],
-            'data_identificacao_problema' => '2026-05-01',
-            'descricao_pedido' => 'Pedido com autor legado.',
-            'nome_solicitante' => 'Direção',
-        ], $usuario);
-
-        if (DB::getDriverName() === 'sqlite') {
-            DB::statement('PRAGMA defer_foreign_keys = ON');
-
-            Schema::table('pedidos', function ($table): void {
-                $table->dropForeign(['solicitante_id']);
-            });
-        } else {
-            Schema::disableForeignKeyConstraints();
-        }
-
-        DB::table('pedidos')->where('id', $pedido->id)->update([
-            'solicitante_id' => 999999,
-            'solicitante_id_legado' => null,
-            'solicitante_nome_snapshot' => null,
-            'solicitante_email_snapshot' => null,
-        ]);
-        if (DB::getDriverName() !== 'sqlite') {
-            Schema::enableForeignKeyConstraints();
-        }
-
-        $this->assertSame(0, Artisan::call('dados:backfill-estrutural'));
-        $this->assertDatabaseHas('pedidos', [
-            'id' => $pedido->id,
-            'solicitante_id' => 999999,
-            'solicitante_id_legado' => null,
-        ]);
-
-        $this->assertSame(0, Artisan::call('dados:backfill-estrutural', ['--apply' => true]));
-        $this->assertDatabaseHas('pedidos', [
-            'id' => $pedido->id,
-            'solicitante_id' => null,
-            'solicitante_id_legado' => 999999,
-        ]);
-    }
-
     public function test_listagem_diferencia_pedido_encaminhado_do_aberto(): void
     {
         $pedidoAberto = $this->pedido(status: 'Em Aberto', setor: $this->educacao, escola: $this->escola);

@@ -45,7 +45,6 @@ class AvaliacaoDashboardReadOnlyTest extends TestCase
             'requestSyncEstruturaAvaliacao(',
             'AvaliacaoDashboardAlunoObserver',
             'AvaliacaoDashboardSourceObserver',
-            'avaliacoes:dispatch-dashboard-pendencias --limit=',
             'queue-dashboard:',
             'queue-worker", "dashboard',
             'queue:listen dashboard_redis',

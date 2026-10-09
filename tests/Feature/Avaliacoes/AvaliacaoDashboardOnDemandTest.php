@@ -58,7 +58,7 @@ class AvaliacaoDashboardOnDemandTest extends TestCase
         Queue::assertNothingPushed();
     }
 
-    public function test_rebuild_servico_comando_e_jobs_legados_sao_inertes(): void
+    public function test_rebuild_servico_e_jobs_legados_sao_inertes(): void
     {
         Queue::fake();
         $cenario = $this->criarCenario();
@@ -74,10 +74,6 @@ class AvaliacaoDashboardOnDemandTest extends TestCase
         (new RebuildAvaliacaoDashboardFactsJob($avaliacaoId))->handle();
         (new SyncAvaliacaoDashboardAlunoJob($avaliacaoId, $alunoId))->handle();
         (new SyncAvaliacaoDashboardScopeJob($avaliacaoId, 'turma', (int) $cenario['turma']->id, 'teste'))->handle();
-
-        $this->artisan('avaliacoes:rebuild-dashboard-facts', ['avaliacaoId' => $avaliacaoId])
-            ->expectsOutputToContain('Rebuild desativado')
-            ->assertSuccessful();
 
         $this->assertDatabaseCount('avaliacao_dashboard_fatos', 0);
         $this->assertDatabaseCount('avaliacao_dashboard_pendencias', 0);

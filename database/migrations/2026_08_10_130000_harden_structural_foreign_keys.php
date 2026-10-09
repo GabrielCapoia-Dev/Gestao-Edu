@@ -169,7 +169,7 @@ return new class extends Migration
         $withoutSchool = DB::table('pedidos')->whereNull('escola_id')->count();
 
         if ($withoutSchool > 0) {
-            throw new RuntimeException("Existem {$withoutSchool} pedidos sem escola; execute dados:backfill-estrutural antes da migration.");
+            throw new RuntimeException("Existem {$withoutSchool} pedidos sem escola; saneie os dados antes da migration.");
         }
 
         if (! Schema::hasColumn('pedidos', 'pedido_principal_id')) {

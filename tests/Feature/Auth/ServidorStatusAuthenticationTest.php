@@ -67,31 +67,6 @@ class ServidorStatusAuthenticationTest extends TestCase
         $this->assertTrue(User::query()->canAuthenticate()->whereKey($admin->id)->exists());
     }
 
-    public function test_backfill_cria_usuario_e_inativa_cadastro_sem_email(): void
-    {
-        $elegivel = Pessoa::query()->create([
-            'nome' => 'Pessoa Elegível',
-            'email' => 'pessoa.elegivel@edu.umuarama.pr.gov.br',
-            'status' => Pessoa::STATUS_ATIVO,
-        ]);
-        $semEmail = Pessoa::query()->create([
-            'nome' => 'Pessoa Sem E-mail',
-            'status' => Pessoa::STATUS_ATIVO,
-        ]);
-        $this->vincularCargo($elegivel);
-        $this->vincularCargo($semEmail);
-
-        $exitCode = Artisan::call('pessoas:sincronizar-acessos', ['--apply' => true]);
-
-        $this->assertSame(0, $exitCode);
-        $this->assertNotNull($elegivel->fresh()->user_id);
-        $this->assertTrue($elegivel->fresh()->user->canAuthenticate());
-        $this->assertSame(Pessoa::STATUS_INATIVO, $semEmail->fresh()->status);
-        $this->assertNotNull($semEmail->fresh()->user_id);
-        $this->assertNull($semEmail->fresh()->user->email);
-        $this->assertFalse($semEmail->fresh()->user->canAuthenticate());
-    }
-
     private function vincularCargo(Pessoa $pessoa): void
     {
         $funcao = FuncaoAdministrativa::query()->firstOrCreate(

@@ -175,28 +175,6 @@ class AvaliacaoPersistenciaRelacionalTest extends TestCase
         $this->assertSame(Avaliacao::STATUS_ATIVA, $cenario['avaliacao']->fresh()->status);
     }
 
-    public function test_comando_migra_json_atual_sem_apagar_documento(): void
-    {
-        $cenario = $this->criarCenario(sincronizarCiclo: false);
-        $documento = app(AvaliacaoAlunoDocumentoService::class)
-            ->obterOuCriar($cenario['avaliacao']->id, $cenario['aluno']);
-        app(AvaliacaoAlunoDocumentoService::class)->salvarPauta($documento, $cenario['pauta']->id, [
-            'alternativa_id' => $cenario['alternativa']->id,
-            'componente_curricular_id' => $cenario['componente']->id,
-        ]);
-
-        $this->artisan('avaliacoes:migrar-documentos-operacionais', ['--avaliacao' => $cenario['avaliacao']->id])
-            ->assertSuccessful();
-
-        $this->assertDatabaseHas('avaliacao_respostas_operacionais', [
-            'avaliacao_id' => $cenario['avaliacao']->id,
-            'aluno_id' => $cenario['aluno']->id,
-            'pauta_id' => $cenario['pauta']->id,
-        ]);
-        $this->assertDatabaseHas('avaliacao_aluno_documentos', ['id' => $documento->id]);
-        $this->assertDatabaseHas('avaliacao_migracao_checkpoints', ['ultimo_documento_id' => $documento->id]);
-    }
-
     /** @return array<string, mixed> */
     private function criarCenario(bool $sincronizarCiclo = true): array
     {
