@@ -8,8 +8,6 @@ export default defineConfig({
             input: [
                 'resources/css/app.css',
                 'resources/js/app.js',
-                'resources/css/leaflet-map-style.css',
-                'resources/js/leafletMapComponent.js',
             ],
             refresh: true,
         }),
