@@ -3,14 +3,15 @@
 namespace App\Livewire\Pessoas;
 
 use App\Filament\Admin\Resources\Servidores\ServidorResource;
+use App\Models\ComponenteCurricular;
 use App\Models\PessoaMatricula;
 use App\Models\ProfessorComponenteSolicitacao;
 use App\Models\Role;
+use App\Models\Serie;
 use App\Models\Servidor;
 use App\Models\User;
 use App\Services\Exports\ExportRequestService;
 use App\Services\ProfessorComponenteSolicitacaoService;
-use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -37,8 +38,10 @@ class ServidoresTable extends Component implements HasForms
     public array $escola = [];
     public array $nivelAcesso = [];
     public ?string $solicitacoesPendentes = null;
-    public bool $emailDuplicado = false;
+    public ?string $emailDuplicado = null;
     public ?string $saldoEleitoral = null;
+    public array $series = [];
+    public array $componentes = [];
     public string $ordenarPor = 'updated_at';
     public string $ordenarDirecao = 'desc';
     public int $perPage = 5;
@@ -62,6 +65,8 @@ class ServidoresTable extends Component implements HasForms
     public array $opcoesTurnos = [];
     public array $opcoesEscolas = [];
     public array $opcoesNiveis = [];
+    public array $opcoesSeries = [];
+    public array $opcoesComponentes = [];
 
     public function mount(): void
     {
@@ -87,6 +92,8 @@ class ServidoresTable extends Component implements HasForms
         $this->opcoesStatus = Servidor::statusOptions();
         $this->opcoesTurnos = PessoaMatricula::turnosOptions();
         $this->opcoesEscolas = ServidorResource::escolasOptionsEscopadas();
+        $this->opcoesSeries = Serie::query()->orderBy('nome')->pluck('nome', 'id')->all();
+        $this->opcoesComponentes = ComponenteCurricular::query()->orderBy('nome')->pluck('nome', 'id')->all();
         if (Gate::allows('viewAny', User::class)) {
             $this->opcoesNiveis = Role::query()->orderBy('name')->pluck('name', 'id')->mapWithKeys(
                 fn (string $nome, int|string $id): array => [(int) $id => $nome],
@@ -173,9 +180,32 @@ class ServidoresTable extends Component implements HasForms
                 ->placeholder('Todas');
         }
 
-        $campos[] = Checkbox::make('emailDuplicado')
+        $campos[] = Select::make('emailDuplicado')
             ->label('E-mail duplicado')
-            ->columnSpan(1);
+            ->options([
+                'com' => 'Com e-mail duplicado',
+                'sem' => 'Sem e-mail duplicado',
+            ])
+            ->placeholder('Todos')
+            ->native(false);
+
+        $campos[] = Select::make('series')
+            ->label('Série')
+            ->options($this->opcoesSeries)
+            ->multiple()
+            ->native(false)
+            ->searchable()
+            ->preload()
+            ->placeholder('Todas as séries');
+
+        $campos[] = Select::make('componentes')
+            ->label('Componente')
+            ->options($this->opcoesComponentes)
+            ->multiple()
+            ->native(false)
+            ->searchable()
+            ->preload()
+            ->placeholder('Todos os componentes');
 
         $campos[] = Select::make('saldoEleitoral')
             ->label('Servidores com saldo eleitoral')
@@ -225,8 +255,10 @@ class ServidoresTable extends Component implements HasForms
         $this->nivelAcesso = Gate::allows('viewAny', User::class) ? ($filtros['nivelAcesso'] ?? []) : [];
         $this->arquivados = $filtros['arquivados'] ?? 'sem';
         $this->solicitacoesPendentes = $filtros['solicitacoesPendentes'] ?? null;
-        $this->emailDuplicado = (bool) ($filtros['emailDuplicado'] ?? false);
+        $this->emailDuplicado = $filtros['emailDuplicado'] ?? null;
         $this->saldoEleitoral = $filtros['saldoEleitoral'] ?? null;
+        $this->series = collect($filtros['series'] ?? [])->filter()->map(fn (mixed $id): int => (int) $id)->values()->all();
+        $this->componentes = collect($filtros['componentes'] ?? [])->filter()->map(fn (mixed $id): int => (int) $id)->values()->all();
         $this->selecionados = [];
         $this->resetPage('servidoresPage');
     }
@@ -242,8 +274,10 @@ class ServidoresTable extends Component implements HasForms
         $this->escola = [];
         $this->nivelAcesso = [];
         $this->solicitacoesPendentes = null;
-        $this->emailDuplicado = false;
+        $this->emailDuplicado = null;
         $this->saldoEleitoral = null;
+        $this->series = [];
+        $this->componentes = [];
         $this->filtrosForm->fill($this->estadoInicialDosFiltros());
         $this->selecionados = [];
         $this->resetPage('servidoresPage');
@@ -527,8 +561,16 @@ class ServidoresTable extends Component implements HasForms
             $query->onlyTrashed();
         }
 
-        if ($this->emailDuplicado) {
-            $query->comEmailDuplicado();
+        if ($this->emailDuplicado !== null) {
+            ServidorResource::aplicarFiltroEmailDuplicado($query, $this->emailDuplicado);
+        }
+
+        if ($this->series !== []) {
+            ServidorResource::aplicarFiltroSeries($query, $this->series);
+        }
+
+        if ($this->componentes !== []) {
+            ServidorResource::aplicarFiltroComponentes($query, $this->componentes);
         }
 
         if (in_array($this->saldoEleitoral, ['sim', 'nao'], true)) {
@@ -583,6 +625,8 @@ class ServidoresTable extends Component implements HasForms
             'solicitacoesPendentes' => $this->solicitacoesPendentes,
             'emailDuplicado' => $this->emailDuplicado,
             'saldoEleitoral' => $this->saldoEleitoral,
+            'series' => $this->series,
+            'componentes' => $this->componentes,
         ];
     }
 

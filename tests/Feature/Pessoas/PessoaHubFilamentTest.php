@@ -539,6 +539,80 @@ class PessoaHubFilamentTest extends TestCase
         }
     }
 
+    public function test_filtros_de_servidores_por_serie_componente_e_email_duplicado(): void
+    {
+        $setor = $this->criarSetor('Setor dos filtros pedagógicos');
+        $escola = $this->criarEscola('Escola dos filtros pedagógicos', $setor);
+        $serieA = Serie::query()->create(['codigo' => 'SER-FILTRO-A', 'nome' => 'Série A']);
+        $serieB = Serie::query()->create(['codigo' => 'SER-FILTRO-B', 'nome' => 'Série B']);
+        $componenteA = ComponenteCurricular::query()->create(['codigo' => 'COMP-FILTRO-A', 'nome' => 'Componente A']);
+        $componenteB = ComponenteCurricular::query()->create(['codigo' => 'COMP-FILTRO-B', 'nome' => 'Componente B']);
+
+        $servidorA = $this->criarServidor('Servidor Filtro A', $escola, $setor);
+        $professorA = Professor::query()->create([
+            'servidor_id' => $servidorA->id,
+            'id_escola' => $escola->id,
+            'matricula' => 'FILTRO-A',
+            'nome' => $servidorA->nome,
+            'ativo' => true,
+        ]);
+        $turmaA = Turma::query()->create([
+            'codigo' => 'TUR-FILTRO-A',
+            'nome' => 'Turma A',
+            'turno' => 'manha',
+            'id_serie' => $serieA->id,
+            'id_escola' => $escola->id,
+        ]);
+        TurmaComponenteProfessor::query()->create([
+            'turma_id' => $turmaA->id,
+            'componente_curricular_id' => $componenteA->id,
+            'professor_id' => $professorA->id,
+            'tem_professor' => true,
+        ]);
+
+        $servidorB = $this->criarServidor('Servidor Filtro B', $escola, $setor);
+        $professorB = Professor::query()->create([
+            'servidor_id' => $servidorB->id,
+            'id_escola' => $escola->id,
+            'matricula' => 'FILTRO-B',
+            'nome' => $servidorB->nome,
+            'ativo' => true,
+        ]);
+        $turmaB = Turma::query()->create([
+            'codigo' => 'TUR-FILTRO-B',
+            'nome' => 'Turma B',
+            'turno' => 'manha',
+            'id_serie' => $serieB->id,
+            'id_escola' => $escola->id,
+        ]);
+        TurmaComponenteProfessor::query()->create([
+            'turma_id' => $turmaB->id,
+            'componente_curricular_id' => $componenteB->id,
+            'professor_id' => $professorB->id,
+            'tem_professor' => true,
+        ]);
+
+        $servidorDuplicado = $this->criarServidor('Servidor Filtro Duplicado', $escola, $setor);
+        $servidorDuplicado->update(['email' => $servidorA->email]);
+
+        $this->assertSame(
+            [$servidorA->id],
+            ServidorResource::aplicarFiltroSeries(Servidor::query(), [$serieA->id])->pluck('id')->all(),
+        );
+        $this->assertSame(
+            [$servidorB->id],
+            ServidorResource::aplicarFiltroComponentes(Servidor::query(), [$componenteB->id])->pluck('id')->all(),
+        );
+        $this->assertEqualsCanonicalizing(
+            [$servidorA->id, $servidorDuplicado->id],
+            ServidorResource::aplicarFiltroEmailDuplicado(Servidor::query(), 'com')->pluck('id')->all(),
+        );
+        $this->assertContains(
+            $servidorB->id,
+            ServidorResource::aplicarFiltroEmailDuplicado(Servidor::query(), 'sem')->pluck('id')->all(),
+        );
+    }
+
     public function test_listagem_de_servidores_exibe_escola_somente_para_professor_equipe_gestora(): void
     {
         $setor = $this->criarSetor('Setor visibilidade de escola');

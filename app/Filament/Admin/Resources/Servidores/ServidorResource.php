@@ -8,6 +8,7 @@ use App\Filament\Admin\Pages\GerenciarEventos;
 use App\Filament\Admin\Resources\Servidores\Actions\PessoaAcessoActions;
 use App\Filament\Admin\Resources\Servidores\Pages\ManageServidores;
 use App\Filament\Admin\Resources\Servidores\Schemas\ServidorEquipeGestoraForm;
+use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\EventoCalendario;
 use App\Models\Pessoa;
@@ -16,6 +17,7 @@ use App\Models\Professor;
 use App\Models\ProfessorComponenteSolicitacao;
 use App\Models\ProfessorMatricula;
 use App\Models\Role;
+use App\Models\Serie;
 use App\Models\SaldoEleitoral;
 use App\Models\Servidor;
 use App\Models\Setor;
@@ -498,6 +500,32 @@ class ServidorResource extends Resource
                     ->searchable()
                     ->preload(),
 
+                SelectFilter::make('series')
+                    ->label('Série')
+                    ->columnSpan(4)
+                    ->placeholder('Todas as séries')
+                    ->options(fn (): array => Serie::query()->orderBy('nome')->pluck('nome', 'id')->all())
+                    ->multiple()
+                    ->query(fn (Builder $query, array $data): Builder => static::aplicarFiltroSeries(
+                        $query,
+                        collect($data['values'] ?? [])->filter()->map(fn (mixed $id): int => (int) $id)->values()->all(),
+                    ))
+                    ->searchable()
+                    ->preload(),
+
+                SelectFilter::make('componentes')
+                    ->label('Componente')
+                    ->columnSpan(4)
+                    ->placeholder('Todos os componentes')
+                    ->options(fn (): array => ComponenteCurricular::query()->orderBy('nome')->pluck('nome', 'id')->all())
+                    ->multiple()
+                    ->query(fn (Builder $query, array $data): Builder => static::aplicarFiltroComponentes(
+                        $query,
+                        collect($data['values'] ?? [])->filter()->map(fn (mixed $id): int => (int) $id)->values()->all(),
+                    ))
+                    ->searchable()
+                    ->preload(),
+
                 SelectFilter::make('nivel_acesso')
                     ->label('Nível de acesso')
                     ->columnSpan(4)
@@ -518,10 +546,18 @@ class ServidorResource extends Resource
                     ->preload()
                     ->visible(fn (): bool => Gate::allows('viewAny', User::class)),
 
-                Filter::make('email_duplicado')
+                SelectFilter::make('email_duplicado')
                     ->label('E-mail duplicado')
                     ->columnSpan(4)
-                    ->query(fn (Builder $query): Builder => $query->comEmailDuplicado()),
+                    ->placeholder('Todos')
+                    ->options([
+                        'com' => 'Com e-mail duplicado',
+                        'sem' => 'Sem e-mail duplicado',
+                    ])
+                    ->query(fn (Builder $query, array $data): Builder => static::aplicarFiltroEmailDuplicado(
+                        $query,
+                        $data['value'] ?? null,
+                    )),
             ], layout: FiltersLayout::AboveContent)
             ->filtersFormColumns(12)
             ->recordAction(null)
@@ -1345,6 +1381,66 @@ class ServidorResource extends Resource
             return (app(PessoaScopeService::class)->hasGlobalAccess(Auth::user()) || app(PessoaScopeService::class)->podeConsultarTodaRede(Auth::user()))
                 ? $matriculas
                 : static::restringirMatriculasAoEscopo($matriculas);
+        });
+    }
+
+    /** @param list<int> $series */
+    public static function aplicarFiltroSeries(Builder $query, array $series): Builder
+    {
+        $series = collect($series)->map(fn (mixed $id): int => (int) $id)->filter()->unique()->values()->all();
+
+        if ($series === []) {
+            return $query;
+        }
+
+        return $query->whereHas('professores', fn (Builder $professores): Builder => $professores
+            ->where('ativo', true)
+            ->whereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereIn('id_serie', $series)));
+    }
+
+    /** @param list<int> $componentes */
+    public static function aplicarFiltroComponentes(Builder $query, array $componentes): Builder
+    {
+        $componentes = collect($componentes)->map(fn (mixed $id): int => (int) $id)->filter()->unique()->values()->all();
+
+        if ($componentes === []) {
+            return $query;
+        }
+
+        return $query->whereHas('professores', function (Builder $professores) use ($componentes): void {
+            $professores
+                ->where('ativo', true)
+                ->where(function (Builder $professor) use ($componentes): void {
+                    $professor
+                        ->whereHas('componentesPorTurma', fn (Builder $itens): Builder => $itens->whereIn('componentes_curriculares.id', $componentes))
+                        ->orWhereHas('componentesFuncionais', fn (Builder $itens): Builder => $itens->whereIn('componentes_curriculares.id', $componentes));
+                });
+        });
+    }
+
+    public static function aplicarFiltroEmailDuplicado(Builder $query, mixed $valor): Builder
+    {
+        if ($valor === 'com') {
+            return $query->comEmailDuplicado();
+        }
+
+        if ($valor !== 'sem') {
+            return $query;
+        }
+
+        $table = $query->getModel()->getTable();
+
+        return $query->where(function (Builder $pessoas) use ($table): void {
+            $pessoas
+                ->whereNull("{$table}.email_normalizado")
+                ->orWhereNotExists(function ($duplicados) use ($table): void {
+                    $duplicados
+                        ->selectRaw('1')
+                        ->from("{$table} as pessoa_email_duplicado")
+                        ->whereColumn('pessoa_email_duplicado.email_normalizado', "{$table}.email_normalizado")
+                        ->whereColumn('pessoa_email_duplicado.id', '<>', "{$table}.id")
+                        ->whereNull('pessoa_email_duplicado.deleted_at');
+                });
         });
     }
 
