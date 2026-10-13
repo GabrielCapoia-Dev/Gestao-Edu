@@ -12,6 +12,17 @@ return new class extends Migration
             return;
         }
 
+        $primaryKeyExists = DB::table('information_schema.KEY_COLUMN_USAGE')
+            ->where('TABLE_SCHEMA', DB::getDatabaseName())
+            ->where('TABLE_NAME', 'pedido_historicos')
+            ->where('CONSTRAINT_NAME', 'PRIMARY')
+            ->where('COLUMN_NAME', 'id')
+            ->exists();
+
+        if (! $primaryKeyExists) {
+            DB::statement('ALTER TABLE `pedido_historicos` ADD PRIMARY KEY (`id`)');
+        }
+
         DB::statement(
             'ALTER TABLE `pedido_historicos` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT'
         );
