@@ -6,6 +6,7 @@ use App\Models\Aluno;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\File;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -37,17 +38,22 @@ class PermissionCentralizationTest extends TestCase
         $this->assertTrue(Gate::forUser($user)->allows('deleteBulk', Aluno::class));
     }
 
-    public function test_script_centralizacao_permite_apenas_policies(): void
+    public function test_centralizacao_permite_apenas_policies(): void
     {
-        $script = base_path('scripts/check-permission-centralization.sh');
+        $violations = [];
 
-        $this->assertFileExists($script);
+        foreach (File::allFiles(app_path()) as $file) {
+            $relativePath = str_replace('\\', '/', $file->getRelativePathname());
 
-        $output = [];
-        $exitCode = 0;
-        exec('bash ' . escapeshellarg($script), $output, $exitCode);
+            if (str_starts_with($relativePath, 'Policies/') || $relativePath === 'Models/User.php') {
+                continue;
+            }
 
-        $this->assertSame(0, $exitCode, implode("\n", $output));
-        $this->assertStringContainsString('OK:', implode("\n", $output));
+            if (str_contains($file->getContents(), 'hasPermissionTo')) {
+                $violations[] = $relativePath;
+            }
+        }
+
+        $this->assertSame([], $violations, 'hasPermissionTo encontrado fora de Policies/ e Models/User.php: '.implode(', ', $violations));
     }
 }
