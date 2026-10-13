@@ -117,6 +117,7 @@ class PessoaHubFilamentTest extends TestCase
 
         $setor = $this->criarSetor('Setor da Assessoria no filtro');
         $escola = $this->criarEscola('Escola da Assessoria no filtro', $setor);
+        $outraEscola = $this->criarEscola('Outra Escola da Rede no filtro', $setor);
         $assessoria = $this->criarServidor('Assessoria que filtra a rede', $escola, $setor, $usuario->id);
         ServidorFuncaoAdministrativa::query()->create([
             'servidor_id' => $assessoria->id,
@@ -138,10 +139,13 @@ class PessoaHubFilamentTest extends TestCase
         $this->actingAs($usuario);
         $this->assertFalse(ServidorEquipeGestoraForm::usuarioPodeAdministrar());
         $this->assertTrue(ServidorResource::usuarioPodeFiltrarTodosOsCargos());
+        $this->assertArrayHasKey($escola->id, ServidorResource::escolasOptionsEscopadas());
+        $this->assertArrayHasKey($outraEscola->id, ServidorResource::escolasOptionsEscopadas());
 
         Livewire::actingAs($usuario)
             ->test(ServidoresTable::class)
             ->assertOk()
+            ->assertSet('opcoesEscolas.'.$outraEscola->id, $outraEscola->nome)
             ->assertSet('opcoesCargos.'.ServidorResource::CARGO_MANUTENCAO, 'Manutenção')
             ->assertSet('opcoesCargos.'.ServidorResource::CARGO_RH, 'RH')
             ->set('filtrosFormData.cargo', [ServidorResource::CARGO_MANUTENCAO])

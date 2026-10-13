@@ -1237,10 +1237,7 @@ class ServidorResource extends Resource
             return app(UserService::class)->opcoesDeEscolasParaCampo($user);
         }
 
-        if (
-            $scope->podeConsultarTodaRede($user)
-            && Gate::forUser($user)->allows('manageStructure', Servidor::class)
-        ) {
+        if ($scope->podeConsultarTodaRede($user)) {
             return Escola::query()
                 ->where('ativo', true)
                 ->orderBy('nome')
