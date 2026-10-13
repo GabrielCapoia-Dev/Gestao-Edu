@@ -106,6 +106,7 @@ class AgendaEscopoManutencaoTest extends TestCase
         );
         $this->assertSame(
             [
+                'rede' => 0,
                 'manutencao' => 1,
                 'pedagogico' => 1,
             ],
@@ -135,7 +136,10 @@ class AgendaEscopoManutencaoTest extends TestCase
         $tabs = $component->render()->getData()['tabsAgenda'];
 
         $this->assertSame(['pessoal', 'rede'], collect($tabs)->pluck('key')->all());
-        $this->assertSame([], collect($tabs)->filter(fn (array $aba): bool => isset($aba['count']))->all());
+        $this->assertSame(['rede' => 0], collect($tabs)
+            ->filter(fn (array $aba): bool => isset($aba['count']))
+            ->mapWithKeys(fn (array $aba): array => [$aba['key'] => $aba['count']])
+            ->all());
     }
 
     public function test_calendario_completo_para_mim_omite_manutencao_e_a_mantem_em_sua_aba(): void

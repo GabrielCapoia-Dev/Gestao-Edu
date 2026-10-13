@@ -307,12 +307,17 @@ class AgendaProximosDias extends Component
         foreach ($abasDisponiveis as $aba) {
             $resultado = $resultados[$aba['key']] ?? null;
 
-            if (in_array($aba['key'], ['pessoal', 'rede'], true)) {
+            if ($aba['key'] === 'pessoal') {
                 $abas[] = $aba;
                 continue;
             }
 
             $count = count($resultado?->events ?? []);
+
+            if ($aba['key'] === 'rede') {
+                $abas[] = [...$aba, 'count' => $count];
+                continue;
+            }
 
             if ($count > 0) {
                 $abas[] = [...$aba, 'count' => $count];
