@@ -183,7 +183,10 @@ class CalendarEventAggregatorTest extends TestCase
 
         $this->assertFalse($source->supports($this->contexto(ignorarPedidosManutencao: true)));
         $agenda = file_get_contents(app_path('Livewire/Home/AgendaProximosDias.php'));
-        $this->assertStringContainsString('ignorarPedidosManutencao: $escopo === \'rede\'', $agenda);
+        $this->assertStringContainsString(
+            "ignorarPedidosManutencao: in_array(\$escopo, ['rede', 'pessoal'], true)",
+            $agenda,
+        );
     }
 
     public function test_detalhe_de_evento_exibe_estado_neutro_sem_coordenadas(): void
