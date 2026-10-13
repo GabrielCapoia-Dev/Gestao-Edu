@@ -18,6 +18,17 @@ class EnforceAbsoluteSessionLifetime
             return $next($request);
         }
 
+        // A remember-token would recreate the session without the original
+        // auth.login_at marker and could restart the absolute lifetime.
+        if (Auth::viaRemember()) {
+            Auth::guard()->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->to(Filament::getLoginUrl())
+                ->with('session_expired', 'Sua sessão expirou. Faça login novamente.');
+        }
+
         $lifetimeMinutes = (int) config('session.absolute_lifetime_minutes', 60);
 
         if ($lifetimeMinutes < 1) {

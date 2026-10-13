@@ -26,7 +26,7 @@ class LoginForm extends Component
         if (! Auth::guard(Filament::getAuthGuard())->attemptWhen(
             $credentials,
             fn (mixed $user): bool => $user instanceof User && $user->canAuthenticate(),
-            $this->remember,
+            false,
         )) {
             throw ValidationException::withMessages([
                 'email' => __('auth.failed'),

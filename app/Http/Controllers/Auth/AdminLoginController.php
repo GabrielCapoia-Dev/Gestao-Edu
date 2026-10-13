@@ -43,7 +43,6 @@ class AdminLoginController extends Controller
         $data = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
-            'remember' => ['nullable'],
         ], [
             'email.required' => 'Informe o email.',
             'email.email' => 'Informe um email valido.',
@@ -65,15 +64,13 @@ class AdminLoginController extends Controller
             'password' => $data['password'],
         ];
 
-        $remember = $request->boolean('remember');
-
         if (! $panel->auth()->attemptWhen($credentials, function ($user) use ($panel): bool {
             if (! $user instanceof FilamentUser) {
                 return true;
             }
 
             return $user->canAccessPanel($panel);
-        }, $remember)) {
+        }, false)) {
             RateLimiter::hit($throttleKey, 60);
 
             throw ValidationException::withMessages([

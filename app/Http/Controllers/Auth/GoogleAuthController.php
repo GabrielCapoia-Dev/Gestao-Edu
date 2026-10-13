@@ -66,7 +66,7 @@ class GoogleAuthController extends Controller
                 return redirect()->to($loginUrl);
             }
 
-            $panel->auth()->login($user, true);
+            $panel->auth()->login($user, false);
             session()->regenerate();
 
             session()->forget('google_auth.redirect_to');

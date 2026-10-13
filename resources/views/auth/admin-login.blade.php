@@ -607,20 +607,6 @@
             font-size: 13px;
         }
 
-        .remember {
-            display: inline-flex;
-            align-items: center;
-            gap: 9px;
-            user-select: none;
-        }
-
-        .remember input {
-            width: 17px;
-            height: 17px;
-            margin: 0;
-            accent-color: var(--primary);
-        }
-
         .submit,
         .google {
             width: 100%;
@@ -1081,13 +1067,6 @@
                         @error('password')
                             <p class="error">{{ $message }}</p>
                         @enderror
-                    </div>
-
-                    <div class="options">
-                        <label class="remember" for="remember">
-                            <input id="remember" name="remember" type="checkbox" value="1">
-                            Manter conectado
-                        </label>
                     </div>
 
                     <button class="submit" type="submit">Entrar no sistema</button>

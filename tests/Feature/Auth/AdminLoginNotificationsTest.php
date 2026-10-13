@@ -5,6 +5,7 @@ namespace Tests\Feature\Auth;
 use App\Models\User;
 use Filament\Notifications\Notification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
@@ -86,5 +87,22 @@ class AdminLoginNotificationsTest extends TestCase
             ->assertSee('Entre em contato com o administrador');
 
         $this->assertGuest();
+    }
+
+    public function test_login_manual_nao_cria_remember_token(): void
+    {
+        $user = User::factory()->create([
+            'email_approved' => true,
+            'password' => Hash::make('Senha@1234'),
+        ]);
+
+        $this->post(route('admin.login.store'), [
+            'email' => $user->email,
+            'password' => 'Senha@1234',
+            'remember' => '1',
+        ])->assertRedirect();
+
+        $this->assertAuthenticatedAs($user);
+        $this->assertCookieMissing(Auth::guard()->getRecallerName());
     }
 }
