@@ -109,56 +109,19 @@ class AgendaProximosDias extends Component
             try {
                 $aggregator = app(CalendarEventAggregator::class);
                 $ehMembroDaManutencao = app(PedidoService::class)->ehMembroDaManutencao($context->user);
-                $abasAgenda = $this->montarAbas($context->user);
+                $resultados = $this->carregarResultadosDosEscopos(
+                    $context->user,
+                    $aggregator,
+                    $ehMembroDaManutencao,
+                );
+                $abasAgenda = $this->montarAbasComResultados($context->user, $resultados);
                 $escopoAgendaAtivo = collect($abasAgenda)->contains(
                     fn (array $aba): bool => $aba['key'] === $this->escopoAgenda,
                 ) ? $this->escopoAgenda : ($abasAgenda[0]['key'] ?? 'pessoal');
                 $this->escopoAgenda = $escopoAgendaAtivo;
 
-                // Carrega apenas a fonte necessária para a aba atual. Antes, a renderização
-                // consultava também rede, veículos, manutenção e avaliação em toda interação.
-                if ($escopoAgendaAtivo === 'rede') {
-                    $resultadoRede = $this->filtrarResultadoPor(
-                        $aggregator->aggregate($this->contextoObrigatorio('rede')),
-                        static fn ($evento): bool => ! in_array($evento->categoria, self::CATEGORIAS_MANUTENCAO, true),
-                    );
-                    $resultadoPessoal = $aggregator->aggregate($this->contextoObrigatorio('pessoal'));
-                    $idsPessoais = collect($resultadoPessoal->events)->pluck('id')->flip();
-                    $result = $this->filtrarResultadoPor(
-                        $resultadoRede,
-                        static fn ($evento): bool => ! $idsPessoais->has($evento->id),
-                        $resultadoPessoal,
-                    );
-                } elseif ($escopoAgendaAtivo === 'veiculos') {
-                    $podeVisualizarVeiculos = true;
-                    $result = $aggregator->aggregate($this->contextoObrigatorio('veiculos'));
-                } elseif ($escopoAgendaAtivo === 'manutencao' && $ehMembroDaManutencao) {
-                    $result = $aggregator->aggregate($this->contextoObrigatorio('manutencao'));
-                } else {
-                    $resultadoPessoal = $aggregator->aggregate($this->contextoObrigatorio('pessoal'));
-                    $result = match ($escopoAgendaAtivo) {
-                        'pessoal' => $this->filtrarResultadoPor(
-                            $resultadoPessoal,
-                            static fn ($evento): bool => ! in_array($evento->categoria, self::CATEGORIAS_MANUTENCAO, true),
-                        ),
-                        'transporte' => $this->filtrarResultadoPor(
-                            $resultadoPessoal,
-                            static fn ($evento): bool => $evento->precisaTransporte(),
-                        ),
-                        'manutencao' => $this->filtrarResultado($resultadoPessoal, self::CATEGORIAS_MANUTENCAO),
-                        'pedagogico' => $this->filtrarResultado($resultadoPessoal, self::CATEGORIAS_PEDAGOGICAS),
-                        default => $resultadoPessoal,
-                    };
-                }
-
-                $contagemEscopoAtivo = count($result->events);
-                $abasAgenda = array_map(
-                    static fn (array $aba): array => [
-                        ...$aba,
-                        'count' => $aba['key'] === $escopoAgendaAtivo ? $contagemEscopoAtivo : null,
-                    ],
-                    $abasAgenda,
-                );
+                $result = $resultados[$escopoAgendaAtivo] ?? new CalendarAggregationResult([], [], false);
+                $podeVisualizarVeiculos = $this->podeVisualizarVeiculos($context->user);
                 $podeCriarEvento = Gate::forUser($context->user)->allows('create', EventoCalendario::class);
             } catch (\Throwable $exception) {
                 report($exception);
@@ -328,5 +291,77 @@ class AgendaProximosDias extends Component
         $abas[] = ['key' => 'pedagogico', 'label' => 'Pedagógico'];
 
         return $abas;
+    }
+
+    /**
+     * Mantém as abas-base e só adiciona temas que tenham itens no período consultado.
+     * @return list<array{key: string, label: string, count?: int}>
+     */
+    private function montarAbasComResultados(
+        User $user,
+        array $resultados,
+    ): array {
+        $abasDisponiveis = $this->montarAbas($user);
+        $abas = [];
+
+        foreach ($abasDisponiveis as $aba) {
+            $resultado = $resultados[$aba['key']] ?? null;
+
+            if (in_array($aba['key'], ['pessoal', 'rede'], true)) {
+                $abas[] = $aba;
+                continue;
+            }
+
+            $count = count($resultado?->events ?? []);
+
+            if ($count > 0) {
+                $abas[] = [...$aba, 'count' => $count];
+            }
+        }
+
+        return $abas;
+    }
+
+    /** @return array<string, CalendarAggregationResult> */
+    private function carregarResultadosDosEscopos(
+        User $user,
+        CalendarEventAggregator $aggregator,
+        bool $ehMembroDaManutencao,
+    ): array {
+        $resultadoPessoal = $aggregator->aggregate($this->contextoObrigatorio('pessoal'));
+        $pessoal = $this->filtrarResultadoPor(
+            $resultadoPessoal,
+            static fn ($evento): bool => ! in_array($evento->categoria, self::CATEGORIAS_MANUTENCAO, true),
+        );
+        $resultados = [
+            'pessoal' => $pessoal,
+            'transporte' => $this->filtrarResultadoPor(
+                $pessoal,
+                static fn ($evento): bool => $evento->precisaTransporte(),
+            ),
+            'pedagogico' => $this->filtrarResultado($pessoal, self::CATEGORIAS_PEDAGOGICAS),
+            'manutencao' => $ehMembroDaManutencao
+                ? $aggregator->aggregate($this->contextoObrigatorio('manutencao'))
+                : $this->filtrarResultado($resultadoPessoal, self::CATEGORIAS_MANUTENCAO),
+        ];
+
+        if ($this->podeVisualizarVeiculos($user)) {
+            $resultados['veiculos'] = $aggregator->aggregate($this->contextoObrigatorio('veiculos'));
+        }
+
+        if ($this->podeVisualizarRede($user)) {
+            $resultadoRede = $this->filtrarResultadoPor(
+                $aggregator->aggregate($this->contextoObrigatorio('rede')),
+                static fn ($evento): bool => ! in_array($evento->categoria, self::CATEGORIAS_MANUTENCAO, true),
+            );
+            $idsPessoais = collect($resultadoPessoal->events)->pluck('id')->flip();
+            $resultados['rede'] = $this->filtrarResultadoPor(
+                $resultadoRede,
+                static fn ($evento): bool => ! $idsPessoais->has($evento->id),
+                $resultadoPessoal,
+            );
+        }
+
+        return $resultados;
     }
 }

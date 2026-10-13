@@ -101,8 +101,18 @@ class AgendaEscopoManutencaoTest extends TestCase
         $this->assertContains('evento-pedagogico', $pessoal->pluck('id')->all());
         $this->assertSame(1, $this->source->calls);
         $this->assertSame(
-            ['pessoal', 'rede', 'transporte', 'manutencao', 'pedagogico'],
+            ['pessoal', 'rede', 'manutencao', 'pedagogico'],
             collect($data['tabsAgenda'])->pluck('key')->all(),
+        );
+        $this->assertSame(
+            [
+                'manutencao' => 1,
+                'pedagogico' => 1,
+            ],
+            collect($data['tabsAgenda'])
+                ->filter(fn (array $aba): bool => isset($aba['count']))
+                ->mapWithKeys(fn (array $aba): array => [$aba['key'] => $aba['count']])
+                ->all(),
         );
 
         $component->escopoAgenda = 'manutencao';
@@ -111,7 +121,21 @@ class AgendaEscopoManutencaoTest extends TestCase
         );
 
         $this->assertSame(['manutencao'], $manutencao->pluck('categoria')->unique()->all());
-        $this->assertSame(2, $this->source->calls);
+        $this->assertSame(4, $this->source->calls);
+    }
+
+    public function test_agenda_exibe_apenas_as_abas_base_quando_os_demais_temas_estao_zerados(): void
+    {
+        $this->source = new AgendaEscopoManutencaoSource([]);
+        app()->instance(CalendarEventAggregator::class, new CalendarEventAggregator([$this->source]));
+
+        $component = new AgendaProximosDias;
+        $component->mount();
+
+        $tabs = $component->render()->getData()['tabsAgenda'];
+
+        $this->assertSame(['pessoal', 'rede'], collect($tabs)->pluck('key')->all());
+        $this->assertSame([], collect($tabs)->filter(fn (array $aba): bool => isset($aba['count']))->all());
     }
 
     public function test_calendario_completo_para_mim_omite_manutencao_e_a_mantem_em_sua_aba(): void
