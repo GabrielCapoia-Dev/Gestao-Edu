@@ -873,8 +873,13 @@ class PedidosTable
                 ->label('Gerenciar')
                 ->icon('heroicon-o-pencil-square')
                 ->color('warning')
-                ->visible(fn (Pedido $record) => static::podeExibirAcaoGerenciar($record, $user, $service))
-                ->action(function (Pedido $record) use ($user, $service) {
+                ->visible(fn (?Pedido $record) => $record !== null
+                    && static::podeExibirAcaoGerenciar($record, $user, $service))
+                ->action(function (?Pedido $record) use ($user, $service): void {
+                    if (! $record || ! $user) {
+                        return;
+                    }
+
                     $service->assumirPedido($record, $user);
 
                     redirect(route('filament.admin.resources.pedidos.edit', $record));

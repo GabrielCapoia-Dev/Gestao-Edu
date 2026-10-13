@@ -755,18 +755,20 @@ class PedidoService
         User $usuario,
         ?string $descricao = null
     ): void {
-        $statusAnteriorId = $pedido->tipo_status_id;
+        DB::transaction(function () use ($pedido, $novoStatus, $usuario, $descricao): void {
+            $statusAnteriorId = $pedido->tipo_status_id;
 
-        $pedido->update([
-            'tipo_status_id' => $novoStatus->id,
-            'responsavel_id' => $usuario->id,
-        ]);
+            $pedido->update([
+                'tipo_status_id' => $novoStatus->id,
+                'responsavel_id' => $usuario->id,
+            ]);
 
-        $this->registrarHistorico($pedido, $statusAnteriorId, $novoStatus->id, $usuario, $descricao);
+            $this->registrarHistorico($pedido, $statusAnteriorId, $novoStatus->id, $usuario, $descricao);
 
-        if ($novoStatus->finaliza_pedido) {
-            $pedido->update(['data_entrega' => now()]);
-        }
+            if ($novoStatus->finaliza_pedido) {
+                $pedido->update(['data_entrega' => now()]);
+            }
+        });
     }
 
     public function encaminharParaSetor(Pedido $pedido, Setor $setorDestino, User $usuario, ?string $descricao = null): void
