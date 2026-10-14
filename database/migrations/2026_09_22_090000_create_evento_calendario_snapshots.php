@@ -23,9 +23,15 @@ return new class extends Migration
         if (! Schema::hasTable('evento_calendario_participantes_snapshot')) {
             Schema::create('evento_calendario_participantes_snapshot', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('evento_calendario_id')->constrained('eventos_calendario')->cascadeOnDelete();
-            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->foreignId('escola_id')->nullable()->constrained('escolas')->nullOnDelete();
+            $table->foreignId('evento_calendario_id');
+            $table->foreign('evento_calendario_id', 'fk_ecps_evento')
+                ->references('id')->on('eventos_calendario')->cascadeOnDelete();
+            $table->foreignId('user_id')->nullable();
+            $table->foreign('user_id', 'fk_ecps_user')
+                ->references('id')->on('users')->nullOnDelete();
+            $table->foreignId('escola_id')->nullable();
+            $table->foreign('escola_id', 'fk_ecps_escola')
+                ->references('id')->on('escolas')->nullOnDelete();
             $table->json('escola_ids')->nullable();
             $table->string('nome');
             $table->string('email')->nullable();
@@ -41,12 +47,24 @@ return new class extends Migration
         if (! Schema::hasTable('evento_calendario_alunos_snapshot')) {
             Schema::create('evento_calendario_alunos_snapshot', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('evento_calendario_id')->constrained('eventos_calendario')->cascadeOnDelete();
-            $table->foreignId('evento_calendario_escola_id')->constrained('evento_calendario_escolas')->cascadeOnDelete();
-            $table->foreignId('aluno_id')->nullable()->constrained('alunos')->nullOnDelete();
-            $table->foreignId('escola_id')->nullable()->constrained('escolas')->nullOnDelete();
-            $table->foreignId('serie_id')->nullable()->constrained('series')->nullOnDelete();
-            $table->foreignId('turma_id')->nullable()->constrained('turmas')->nullOnDelete();
+            $table->foreignId('evento_calendario_id');
+            $table->foreign('evento_calendario_id', 'fk_ecas_evento')
+                ->references('id')->on('eventos_calendario')->cascadeOnDelete();
+            $table->foreignId('evento_calendario_escola_id');
+            $table->foreign('evento_calendario_escola_id', 'fk_ecas_escola_evento')
+                ->references('id')->on('evento_calendario_escolas')->cascadeOnDelete();
+            $table->foreignId('aluno_id')->nullable();
+            $table->foreign('aluno_id', 'fk_ecas_aluno')
+                ->references('id')->on('alunos')->nullOnDelete();
+            $table->foreignId('escola_id')->nullable();
+            $table->foreign('escola_id', 'fk_ecas_escola')
+                ->references('id')->on('escolas')->nullOnDelete();
+            $table->foreignId('serie_id')->nullable();
+            $table->foreign('serie_id', 'fk_ecas_serie')
+                ->references('id')->on('series')->nullOnDelete();
+            $table->foreignId('turma_id')->nullable();
+            $table->foreign('turma_id', 'fk_ecas_turma')
+                ->references('id')->on('turmas')->nullOnDelete();
             $table->string('aluno_nome');
             $table->string('cgm')->nullable();
             $table->string('escola_nome');
